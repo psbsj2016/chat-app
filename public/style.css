@@ -1,0 +1,32 @@
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+body { background: #d1d7db; height: 100vh; display: flex; justify-content: center; align-items: center; }
+
+/* Telas Pequenas (Login) */
+.container { background: white; padding: 30px; border-radius: 10px; width: 350px; text-align: center; }
+.hidden { display: none !important; }
+input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+button { width: 100%; padding: 10px; background: #00a884; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+/* TELA GRANDE DO CHAT */
+.chat-app { width: 90vw; height: 90vh; background: white; display: flex; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+/* Lado Esquerdo */
+.sidebar { width: 30%; border-right: 1px solid #ddd; display: flex; flex-direction: column; background: white; }
+.sidebar-header { padding: 15px; background: #f0f2f5; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+#users-list { overflow-y: auto; flex: 1; }
+.user-item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; }
+.user-item:hover { background: #f5f6f6; }
+.user-item.active { background: #e9edef; }
+.avatar { width: 40px; height: 40px; background: #ccc; border-radius: 50%; margin-right: 10px; }
+
+/* Lado Direito */
+.chat-area { width: 70%; display: flex; flex-direction: column; background: #efeae2; }
+.chat-header { padding: 10px 15px; background: #f0f2f5; height: 60px; display: flex; align-items: center; border-bottom: 1px solid #ddd; }
+#chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.input-area { padding: 10px; background: #f0f2f5; display: flex; gap: 10px; }
+
+/* Mensagens */
+.message { padding: 8px 12px; border-radius: 8px; max-width: 60%; font-size: 14px; position: relative; }
+.my-msg { background: #d9fdd3; align-self: flex-end; }
+.other-msg { background: white; align-self: flex-start; }
