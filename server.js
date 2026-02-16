@@ -63,9 +63,9 @@ app.post('/register', async (req, res) => {
             user = await User.create({ email, password: hashedPassword, code });
         }
 
-        // ENVIO DO E-MAIL REAL
+        // ENVIO DO E-MAIL REAL (CORRIGIDO)
         const mailOptions = {
-            from: 'Chat App <seuemail@gmail.com>',
+            from: `Chat App <${process.env.EMAIL_USER}>`, 
             to: email,
             subject: 'Seu Código de Verificação - Chat App',
             html: `
