@@ -1,3 +1,4 @@
+const nodemailer = require('nodemailer'); // O Carteiro
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -18,6 +19,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chat-app';
 mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
+
+// --- CONFIGURAÇÃO DO E-MAIL ---
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER, // O teu e-mail (vamos por no Render)
+        pass: process.env.EMAIL_PASS  // A senha de app (vamos por no Render)
+    }
+});
 
 // --- MODELOS ---
 const UserSchema = new mongoose.Schema({
@@ -52,9 +62,32 @@ app.post('/register', async (req, res) => {
         } else {
             user = await User.create({ email, password: hashedPassword, code });
         }
-        console.log(`📨 Código para ${email}: ${code}`);
-        res.json({ message: 'Verifique o terminal.' });
-    } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); }
+
+        // ENVIO DO E-MAIL REAL
+        const mailOptions = {
+            from: 'Chat App <seuemail@gmail.com>',
+            to: email,
+            subject: 'Seu Código de Verificação - Chat App',
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <h2>Bem-vindo ao Chat!</h2>
+                    <p>Seu código de verificação é:</p>
+                    <h1 style="color: #00a884; letter-spacing: 5px;">${code}</h1>
+                    <p>Insira este código no site para ativar sua conta.</p>
+                </div>
+            `
+        };
+
+        // Envia e espera a resposta
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ E-mail enviado para ${email}`);
+
+        res.json({ message: 'Código enviado para o seu e-mail!' });
+
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao enviar e-mail ou salvar usuário.' }); 
+    }
 });
 
 app.post('/verify', async (req, res) => {
