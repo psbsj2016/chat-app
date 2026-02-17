@@ -20,14 +20,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chat-app';
 mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
 
-// --- CONFIGURAÇÃO DO E-MAIL (MODO OUTLOOK/HOTMAIL) ---
-// Esta configuração é mais simples e não costuma ser bloqueada pelo Render
+// --- CONFIGURAÇÃO MANUAL DO OUTLOOK (ANTI-TIMEOUT) ---
 const transporter = nodemailer.createTransport({
-    service: 'hotmail', // O Nodemailer já sabe as portas certas para @outlook e @hotmail
+    host: "smtp-mail.outlook.com", // Endereço exato do servidor
+    port: 587,                     // Porta padrão para envio
+    secure: false,                 // Usa STARTTLS (padrão 587)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    tls: {
+        ciphers: 'SSLv3',          // Ajuda na compatibilidade com servidores Microsoft
+        rejectUnauthorized: false  // Aceita a conexão sem reclamar de certificados
+    },
+    connectionTimeout: 10000,      // Espera 10 segundos antes de desistir
+    greetingTimeout: 10000,        // Espera 10 segundos pela resposta inicial
+    family: 4                      // O SEGREDO: Força IPv4 para não se perder na rede do Render
 });
 
 // --- MODELOS ---
