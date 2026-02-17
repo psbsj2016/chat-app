@@ -20,22 +20,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chat-app';
 mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
 
-// --- CONFIGURAÇÃO MANUAL DO OUTLOOK (ANTI-TIMEOUT) ---
+// --- CONFIGURAÇÃO DO E-MAIL (MODO PROFISSIONAL: BREVO) ---
 const transporter = nodemailer.createTransport({
-    host: "smtp-mail.outlook.com", // Endereço exato do servidor
-    port: 587,                     // Porta padrão para envio
-    secure: false,                 // Usa STARTTLS (padrão 587)
+    host: 'smtp-relay.brevo.com', // Servidor do Brevo
+    port: 587,                    // Porta padrão
+    secure: false,                // false para porta 587
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        ciphers: 'SSLv3',          // Ajuda na compatibilidade com servidores Microsoft
-        rejectUnauthorized: false  // Aceita a conexão sem reclamar de certificados
-    },
-    connectionTimeout: 10000,      // Espera 10 segundos antes de desistir
-    greetingTimeout: 10000,        // Espera 10 segundos pela resposta inicial
-    family: 4                      // O SEGREDO: Força IPv4 para não se perder na rede do Render
+        user: process.env.EMAIL_USER, // Seu login do Brevo (configurado no Render)
+        pass: process.env.EMAIL_PASS  // Sua chave SMTP (configurada no Render)
+    }
 });
 
 // --- MODELOS ---
