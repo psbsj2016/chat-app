@@ -11,21 +11,28 @@
     <div id="register-screen" class="container">
         <h2>Criar Conta</h2>
         <form onsubmit="event.preventDefault(); register()">
-            <input type="password" id="reg-pass" placeholder="Crie uma senha" autocomplete="new-password"><button>Cadastrar e-mail</button>
+            <input type="email" id="reg-email" placeholder="Seu e-mail" autocomplete="username" required>
+            
+            <input type="password" id="reg-pass" placeholder="Crie uma senha" autocomplete="new-password">
+            <button>Cadastrar</button>
         </form>
         <div class="link" onclick="showLogin()">Já tenho conta</div>
     </div>
 
     <div id="verify-screen" class="container hidden">
         <h2>Verificar</h2>
-        <p>Veja o código no terminal preto.</p>
-        <input type="text" id="verify-code" placeholder="Código"><button onclick="verify()">Validar</button>
+        <p>Veja o código no seu e-mail (ou Spam).</p>
+        <input type="text" id="verify-code" placeholder="Código">
+        <button onclick="verify()">Validar</button>
     </div>
 
     <div id="login-screen" class="container hidden">
         <h2>Entrar</h2>
         <form onsubmit="event.preventDefault(); login()">
-            <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password"><button>Entrar</button>
+            <input type="email" id="login-email" placeholder="Seu e-mail" autocomplete="username" required>
+
+            <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password">
+            <button>Entrar</button>
         </form>
         <div class="link" onclick="showRegister()">Criar conta</div>
     </div>

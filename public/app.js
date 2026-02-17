@@ -23,17 +23,18 @@ function showChat() {
 async function register() {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-pass').value;
-    const btn = document.querySelector('button'); // Pega o botão para mudar o texto
+    
+    // MELHORIA: Seleciona o botão ESPECÍFICO da tela de registro
+    const btn = document.querySelector('#register-screen button');
 
     if(!email || !password) return alert("Preencha todos os campos!");
 
-    // 1. Feedback Visual (Avisa que está trabalhando)
+    // Feedback Visual
     const textoOriginal = btn.innerText;
-    btn.innerText = "Enviando e-mail... aguarde...";
+    btn.innerText = "Enviando e-mail...";
     btn.disabled = true;
 
     try {
-        // IMPORTANTE: Não use 'http://localhost:4000'. Use apenas '/register'
         const res = await fetch('/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -43,45 +44,84 @@ async function register() {
         const data = await res.json();
 
         if (res.ok) {
-            // Sucesso!
             localStorage.setItem('temp_email', email);
             alert('✅ Sucesso! Código enviado para o seu e-mail.');
             showVerify(); 
         } else {
-            // Erro vindo do servidor (ex: Email já existe)
             alert('❌ Erro: ' + (data.error || 'Algo deu errado'));
         }
     } catch (error) {
-        // Erro de rede (Internet ou Servidor Off)
         console.error('Erro:', error);
-        alert('❌ Erro de Conexão. O servidor pode estar reiniciando ou offline.');
+        alert('❌ Erro de Conexão. Tente novamente.');
     } finally {
-        // Restaura o botão
         btn.innerText = textoOriginal;
         btn.disabled = false;
     }
 }
+
 async function verify() {
     const code = document.getElementById('verify-code').value;
     const email = localStorage.getItem('temp_email');
-    const res = await fetch('/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, code})});
-    if(res.ok) { alert('Sucesso!'); showLogin(); } else { alert('Código errado'); }
+    
+    if(!code) return alert('Digite o código!');
+
+    const res = await fetch('/verify', { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({email, code})
+    });
+    
+    if(res.ok) { 
+        alert('✅ Conta verificada com sucesso!'); 
+        showLogin(); 
+    } else { 
+        alert('❌ Código errado ou expirado.'); 
+    }
 }
+
 async function login() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-pass').value;
-    const res = await fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password})});
-    const data = await res.json();
-    if(res.ok) {
-        token = data.token; myId = data.myId; userEmail = data.email;
-        localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('userEmail', userEmail);
-        showChat();
-    } else { alert(data.error); }
+    
+    // MELHORIA: Feedback visual também no botão de Login
+    const btn = document.querySelector('#login-screen button');
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Entrando...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/login', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({email, password})
+        });
+        
+        const data = await res.json();
+        
+        if(res.ok) {
+            token = data.token; 
+            myId = data.myId; 
+            userEmail = data.email;
+            localStorage.setItem('token', token); 
+            localStorage.setItem('myId', myId); 
+            localStorage.setItem('userEmail', userEmail);
+            showChat();
+        } else { 
+            alert('❌ ' + data.error); 
+        }
+    } catch (e) {
+        alert('Erro de conexão.');
+    } finally {
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+    }
 }
+
 function logout() { localStorage.clear(); location.reload(); }
 
 // --- CHAT PRIVADO ---
 async function loadUsers() {
+    if(!myId) return;
     const res = await fetch(`/users/${myId}`);
     const users = await res.json();
     const list = document.getElementById('users-list');
@@ -120,7 +160,7 @@ function sendMessage() {
 
 function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
 
-// --- NOVO: Lógica de "Digitando..." ---
+// --- Digitado... ---
 const msgInput = document.getElementById('message-input');
 if(msgInput) {
     msgInput.addEventListener('input', () => {
@@ -131,7 +171,6 @@ if(msgInput) {
 }
 
 socket.on('display_typing', (data) => {
-    // Só mostramos o aviso SE estivermos com a janela dessa pessoa aberta
     if (data.senderId === selectedUserId) {
         const feedback = document.getElementById('feedback-area');
         feedback.innerText = 'digitando...';
@@ -144,27 +183,23 @@ socket.on('receive_message', (msg) => {
     const isFromSelected = msg.sender === selectedUserId;
     const isFromMe = msg.sender === myId;
     
-    // Atualiza a tela se a conversa estiver aberta
     if (isFromSelected || (isFromMe && msg.receiver === selectedUserId)) {
         displayMessage(msg);
-        // Remove o aviso de digitando assim que a mensagem chega
         document.getElementById('feedback-area').innerText = ''; 
     }
 });
 
-// --- NOVO: Função que mostra a mensagem com HORA ---
+// --- Exibir Mensagem (Com Hora) ---
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
     const div = document.createElement('div');
     const isMe = msg.sender === myId;
     
-    // Formatar Hora
     const dateObj = msg.timestamp ? new Date(msg.timestamp) : new Date();
     const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
     
-    // Montar HTML com a hora pequenina
     div.innerHTML = `
         ${msg.content}
         <div style="font-size: 10px; text-align: right; opacity: 0.6; margin-top: 4px;">
