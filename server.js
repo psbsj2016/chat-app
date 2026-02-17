@@ -22,11 +22,16 @@ mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
 
 // --- CONFIGURAÇÃO DO E-MAIL ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    // Mudamos de 'service: gmail' para configuração explícita para evitar erros
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true para 465, false para outras portas
     auth: {
-        user: process.env.EMAIL_USER, // O teu e-mail (vamos por no Render)
-        pass: process.env.EMAIL_PASS  // A senha de app (vamos por no Render)
-    }
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    // O SEGREDO ESTÁ AQUI EMBAIXO:
+    family: 4 // Força o uso de IPv4 e evita o erro ENETUNREACH
 });
 
 // --- MODELOS ---
