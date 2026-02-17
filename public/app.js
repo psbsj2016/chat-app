@@ -23,10 +23,43 @@ function showChat() {
 async function register() {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-pass').value;
-    await fetch('/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password})});
-    alert('Verifique o terminal!');
-    localStorage.setItem('temp_email', email);
-    showVerify();
+    const btn = document.querySelector('button'); // Pega o botão para mudar o texto
+
+    if(!email || !password) return alert("Preencha todos os campos!");
+
+    // 1. Feedback Visual (Avisa que está trabalhando)
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Enviando e-mail... aguarde...";
+    btn.disabled = true;
+
+    try {
+        // IMPORTANTE: Não use 'http://localhost:4000'. Use apenas '/register'
+        const res = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            // Sucesso!
+            localStorage.setItem('temp_email', email);
+            alert('✅ Sucesso! Código enviado para o seu e-mail.');
+            showVerify(); 
+        } else {
+            // Erro vindo do servidor (ex: Email já existe)
+            alert('❌ Erro: ' + (data.error || 'Algo deu errado'));
+        }
+    } catch (error) {
+        // Erro de rede (Internet ou Servidor Off)
+        console.error('Erro:', error);
+        alert('❌ Erro de Conexão. O servidor pode estar reiniciando ou offline.');
+    } finally {
+        // Restaura o botão
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+    }
 }
 async function verify() {
     const code = document.getElementById('verify-code').value;
