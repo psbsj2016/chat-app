@@ -20,17 +20,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chat-app';
 mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
 
-// --- CONFIGURAÇÃO DO E-MAIL (MODO BLINDADO) ---
+// --- CONFIGURAÇÃO DO E-MAIL (MODO UNIVERSAL) ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,       // MUDANÇA 1: Porta segura do Google
-    secure: true,    // MUDANÇA 2: Usa SSL desde o início
+    port: 587,       // Porta padrão para envio via nuvem
+    secure: false,   // false para porta 587 (usa STARTTLS)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
+    family: 4,       // IMPORTANTE: Força IPv4 para evitar erro de rede no Render
     tls: {
-        rejectUnauthorized: false // MUDANÇA 3: Aceita conexão mesmo se o servidor chiar
+        rejectUnauthorized: false // Aceita certificados do servidor sem chiar
     }
 });
 
