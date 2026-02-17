@@ -20,21 +20,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/chat-app';
 mongoose.connect(mongoURI).then(() => console.log('✅ MongoDB Conectado!'));
 
-// --- CONFIGURAÇÃO DO E-MAIL (TENTATIVA GOOGLEMAIL) ---
+// --- CONFIGURAÇÃO DO E-MAIL (MODO OUTLOOK/HOTMAIL) ---
+// Esta configuração é mais simples e não costuma ser bloqueada pelo Render
 const transporter = nodemailer.createTransport({
-    host: 'smtp.googlemail.com', // <--- O TRUQUE: Endereço alternativo do Google
-    port: 587,
-    secure: false, // false para 587
+    service: 'hotmail', // O Nodemailer já sabe as portas certas para @outlook e @hotmail
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    },
-    // Configurações vitais para evitar timeouts:
-    family: 4,     // Força IPv4 (evita erro de rede)
-    logger: true,  // Vai mostrar mais detalhes no log se der erro
-    debug: true,   // Ativa modo de depuração
-    tls: {
-        rejectUnauthorized: false // Aceita conexão mesmo se o servidor chiar
     }
 });
 
