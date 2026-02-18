@@ -68,9 +68,11 @@ app.post('/register', async (req, res) => {
             user = await User.create({ email, password: hashedPassword, code });
         }
 
-        // ENVIO DO E-MAIL REAL (CORRIGIDO)
+       // ENVIO DO E-MAIL REAL
         const mailOptions = {
-            from: `Chat App <${process.env.EMAIL_USER}>`, 
+            // AQUI ESTÁ A MUDANÇA: Coloque o seu e-mail REAL (que está verificado no Brevo)
+            from: 'Chat App <psbsj.2020@outlook.com>', 
+            
             to: email,
             subject: 'Seu Código de Verificação - Chat App',
             html: `
