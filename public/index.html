@@ -33,6 +33,13 @@
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
             <div class="menu-item logout" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
         </div>
+        
+         <div class="search-container">
+            <div class="search-box">
+                <span class="material-icons">search</span>
+                <input type="text" id="search-input" placeholder="Pesquisar..." onkeyup="handleSearch(this.value)">
+            </div>
+        </div>
 
         <div id="users-list" class="contact-list"></div>
     </div>

@@ -390,3 +390,93 @@ if(token && myId) {
 } else {
     showElement('auth-screen');
 }
+
+// --- LÓGICA DE PESQUISA GLOBAL ---
+
+let searchTimeout = null; // Para não buscar a cada letra (Debounce)
+
+function handleSearch(query) {
+    // Se limpar o campo, volta a mostrar a lista normal
+    if (!query.trim()) {
+        loadContacts();
+        return;
+    }
+
+    // Espera o usuário parar de digitar por 300ms antes de buscar (Performance)
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => performSearch(query), 300);
+}
+
+async function performSearch(query) {
+    try {
+        const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`);
+        const data = await res.json();
+        renderSearchResults(data);
+    } catch (e) { console.error("Erro na busca", e); }
+}
+
+function renderSearchResults(data) {
+    const list = document.getElementById('users-list');
+    list.innerHTML = ''; // Limpa a lista atual
+
+    // 1. Exibir Usuários Encontrados
+    if (data.users.length > 0) {
+        const title = document.createElement('div');
+        title.className = 'search-section-title';
+        title.innerText = 'Contatos';
+        list.appendChild(title);
+
+        data.users.forEach(user => {
+            const el = createSearchItem(user, null);
+            list.appendChild(el);
+        });
+    }
+
+    // 2. Exibir Mensagens Encontradas
+    if (data.messages.length > 0) {
+        const title = document.createElement('div');
+        title.className = 'search-section-title';
+        title.innerText = 'Mensagens';
+        list.appendChild(title);
+
+        data.messages.forEach(msg => {
+            // Descobre quem é o "Outro" na conversa
+            const isMeSender = msg.sender._id === myId;
+            const chatPartner = isMeSender ? msg.receiver : msg.sender;
+            
+            const el = createSearchItem(chatPartner, msg);
+            list.appendChild(el);
+        });
+    }
+
+    if (data.users.length === 0 && data.messages.length === 0) {
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#888">Nenhum resultado encontrado.</div>';
+    }
+}
+
+function createSearchItem(user, msgMatch) {
+    const div = document.createElement('div');
+    div.className = 'user-item';
+    
+    // Se for clique em mensagem, abre o chat e (futuramente) rola até ela
+    // Por enquanto, abre o chat normal com a pessoa
+    div.onclick = () => openChat(user._id, user.displayName, user.photoUrl);
+
+    const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const name = user.displayName || 'Usuário';
+
+    let subText = 'Toque para conversar';
+    if (msgMatch) {
+        // Mostra o trecho da mensagem encontrada
+        subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`;
+    }
+
+    div.innerHTML = `
+        <img src="${photo}" alt="Avatar">
+        <div class="info">
+            <div style="font-weight:bold">${name}</div>
+            <div class="match-preview">${subText}</div>
+        </div>
+    `;
+    return div;
+}

@@ -192,13 +192,40 @@ app.get('/messages/:myId/:otherId', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
 
-// 6. UPLOAD (NOVA!)
+// 6. BUSCA GLOBAL (NOVA!)
+app.get('/search', async (req, res) => {
+    const { query, myId } = req.query;
+    if (!query || !myId) return res.json({ users: [], messages: [] });
+
+    try {
+        // 1. Buscar Usuários (exceto eu mesmo)
+        const users = await User.find({
+            _id: { $ne: myId },
+            displayName: { $regex: query, $options: 'i' } // 'i' ignora maiúsculas/minúsculas
+        }).select('displayName photoUrl email');
+
+        // 2. Buscar Mensagens (onde sou remetente ou destinatário)
+        const messages = await Message.find({
+            $or: [
+                { sender: myId, content: { $regex: query, $options: 'i' } },
+                { receiver: myId, content: { $regex: query, $options: 'i' } }
+            ]
+        }).populate('sender receiver', 'displayName photoUrl'); // Traz dados de quem mandou/recebeu
+
+        res.json({ users, messages });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro na busca' });
+    }
+});
+
+// 7. UPLOAD (NOVA!)
 app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     res.json({ url: req.file.path, type: req.file.mimetype });
 });
 
-// 7. ATUALIZAR PERFIL (NOVA ROTA!)
+// 8. ATUALIZAR PERFIL (NOVA ROTA!)
 app.put('/update-profile', async (req, res) => {
     const { userId, displayName, photoUrl } = req.body;
     try {

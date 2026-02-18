@@ -260,3 +260,54 @@ emoji-picker {
     clear: both;
     display: table;
 }
+
+/* --- BARRA DE PESQUISA --- */
+.search-container {
+    background: #fff;
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: #f0f2f5;
+    border-radius: 8px;
+    padding: 8px 15px;
+}
+
+.search-box .material-icons {
+    color: #54656f;
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    outline: none;
+    font-size: 15px;
+    color: #3b4a54;
+}
+
+/* Títulos das seções de busca (Ex: "Contatos", "Mensagens") */
+.search-section-title {
+    padding: 15px 15px 5px 15px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #008069;
+    text-transform: uppercase;
+    background: #fff;
+}
+
+/* Destaque do texto encontrado na mensagem */
+.match-preview {
+    font-size: 13px;
+    color: #666;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
