@@ -317,3 +317,74 @@ if(token && myId) {
 } else {
     showElement('auth-screen');
 }
+
+// --- NOVA LÓGICA DE CONFIGURAÇÕES (PERFIL) ---
+
+function openSettings() {
+    toggleMenu('main-menu'); // Fecha o menu
+    showElement('settings-modal');
+    
+    // Preenche com dados atuais (Salvos no localStorage no login)
+    document.getElementById('settings-name').value = localStorage.getItem('displayName') || '';
+    document.getElementById('settings-avatar').src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+}
+
+function closeSettings() {
+    hideElement('settings-modal');
+}
+
+function triggerProfileUpload() {
+    document.getElementById('profile-file-input').click();
+}
+
+async function uploadProfilePhoto(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Feedback visual
+    document.getElementById('settings-avatar').style.opacity = '0.5';
+
+    try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        // Atualiza o preview da imagem
+        document.getElementById('settings-avatar').src = data.url;
+        document.getElementById('settings-avatar').setAttribute('data-new-url', data.url); // Guarda para salvar depois
+        document.getElementById('settings-avatar').style.opacity = '1';
+    } catch (e) {
+        alert('Erro ao enviar foto');
+    }
+}
+
+async function saveProfile() {
+    const newName = document.getElementById('settings-name').value;
+    const newPhoto = document.getElementById('settings-avatar').getAttribute('data-new-url');
+    
+    try {
+        const res = await fetch('/update-profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: myId, 
+                displayName: newName, 
+                photoUrl: newPhoto 
+            })
+        });
+
+        if(res.ok) {
+            // Atualiza LocalStorage
+            if(newName) localStorage.setItem('displayName', newName);
+            if(newPhoto) localStorage.setItem('photoUrl', newPhoto);
+            
+            alert('Perfil atualizado!');
+            closeSettings();
+            loadContacts(); // Recarrega para ver se muda algo (opcional)
+        } else {
+            alert('Erro ao salvar.');
+        }
+    } catch (e) { console.error(e); }
+}

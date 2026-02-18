@@ -1,124 +1,96 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-body { background-color: #e5ddd5; height: 100vh; overflow: hidden; }
 
-/* Utilitários */
-.hidden { display: none !important; }
-.icon-btn { background: none; border: none; cursor: pointer; color: #555; padding: 5px; }
-.material-icons { font-size: 24px; vertical-align: middle; }
-
-/* Autenticação */
-.container { 
-    max-width: 350px; margin: 50px auto; background: white; padding: 20px; 
-    border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; 
+/* FIX MOBILE: Usa 100dvh para ignorar barras do navegador */
+body { 
+    background-color: #e5ddd5; 
+    height: 100dvh; 
+    width: 100%;
+    overflow: hidden; 
+    display: flex;
+    justify-content: center;
 }
-.container input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
-.container button { width: 100%; padding: 10px; background: #008069; color: white; border: none; cursor: pointer; }
 
-/* Telas do App */
-.app-screen { width: 100%; height: 100%; display: flex; flex-direction: column; background: white; }
+/* Modal de Configurações */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 1000;
+    display: flex; justify-content: center; align-items: center;
+}
+.modal-content {
+    background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 350px; text-align: center;
+}
+.profile-edit img {
+    width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+    border: 3px solid #008069; cursor: pointer;
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 5px; color: white; cursor: pointer; }
 
-/* Cabeçalhos (Main e Chat) */
+/* Estrutura das Telas */
+.app-screen { 
+    width: 100%; height: 100%; 
+    display: flex; flex-direction: column; 
+    background: white; 
+    position: relative;
+}
+
+/* Headers */
 .main-header, .chat-header {
-    height: 60px; background: #008069; color: white; display: flex; 
+    height: 60px; min-height: 60px; /* Garante tamanho fixo */
+    background: #008069; color: white; display: flex; 
     align-items: center; justify-content: space-between; padding: 0 10px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10;
 }
-.main-header .icon-btn, .chat-header .icon-btn { color: white; }
-.header-title { font-size: 1.2rem; font-weight: bold; }
 
-/* Info do Chat (Centro) */
-.chat-info { display: flex; flex-direction: column; align-items: center; flex: 1; cursor: pointer; }
-.avatar-small { 
-    width: 32px; height: 32px; object-fit: cover; 
-    border-radius: 5px; /* Quadrado com cantos leves */
-    border: 1px solid rgba(255,255,255,0.5);
-}
-#chat-title { font-size: 0.9rem; margin-top: 2px; font-weight: 600; }
-
-/* Listas */
-.contact-list { flex: 1; overflow-y: auto; background: white; }
-.user-item { 
-    padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; cursor: pointer; 
-}
-.user-item:hover { background: #f5f5f5; }
-.user-item img { width: 45px; height: 45px; border-radius: 8px; margin-right: 15px; object-fit: cover; }
-
-/* Chat Box */
+/* Chat Box (Onde as mensagens ficam) */
 #chat-box { 
-    flex: 1; background: #e5ddd5; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; 
+    flex: 1; /* Ocupa todo o espaço disponível */
+    background: #e5ddd5; padding: 15px; 
+    overflow-y: auto; /* Permite rolar */
+    display: flex; flex-direction: column; gap: 8px; 
     background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
 }
 
-/* Mensagens */
-.message { max-width: 70%; padding: 8px 12px; border-radius: 8px; font-size: 14px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
-.my-msg { align-self: flex-end; background: #d9fdd3; }
-.other-msg { align-self: flex-start; background: white; }
+/* Input Area (Onde digita) */
+.input-area { 
+    background: #f0f2f5; 
+    padding: 8px; 
+    display: flex; align-items: flex-end; gap: 8px; 
+    min-height: 60px; /* Altura mínima garantida */
+    border-top: 1px solid #ddd;
+}
 
-/* Status de Leitura (VV) */
-.msg-status { float: right; font-size: 10px; margin-left: 5px; margin-top: 5px; color: #999; }
-.msg-status.read { color: #53bdeb; } /* Azul quando lido */
+#message-input {
+    flex: 1; padding: 12px 15px; border-radius: 20px; background: white;
+    max-height: 120px; overflow-y: auto; border: 1px solid white; outline: none; font-size: 16px; /* Fonte 16px evita zoom no iPhone */
+}
 
-/* Menus Dropdown */
+/* Classes Utilitárias e Botões */
+.hidden { display: none !important; }
+.icon-btn { background: none; border: none; cursor: pointer; color: #555; padding: 5px; }
+.material-icons { font-size: 24px; color: white; }
+.input-area .material-icons { color: #555; } /* Ícones do input são cinza */
+
+/* Menus */
 .dropdown-menu {
     position: absolute; top: 60px; background: white; border-radius: 5px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; min-width: 180px;
-    animation: fadeIn 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 20; min-width: 200px;
 }
 .right-menu { right: 10px; }
-.menu-item { padding: 12px 20px; display: flex; align-items: center; gap: 10px; cursor: pointer; color: #333; }
-.menu-item:hover { background: #f0f0f0; }
+.menu-item { padding: 15px; display: flex; align-items: center; gap: 10px; cursor: pointer; color: #333; border-bottom: 1px solid #eee; }
+.menu-item .material-icons { color: #555; }
 
-/* Input Area */
-.input-area { background: #f0f2f5; padding: 10px; display: flex; align-items: center; gap: 10px; }
-.input-area input { flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; }
-.send-btn { background: #008069; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
-
-/* Menu de Estilos */
-.style-popup {
-    position: absolute; bottom: 70px; left: 10px; background: white; 
-    padding: 10px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    display: flex; gap: 5px;
-}
-.style-popup button { width: 30px; height: 30px; border: 1px solid #ddd; background: white; cursor: pointer; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* ... (Mantenha o CSS anterior) ... */
-
-/* Ajuste do Input Rico */
-#message-input {
-    flex: 1;
-    padding: 12px 15px;
-    border-radius: 20px;
-    background: white;
-    max-height: 100px;
-    overflow-y: auto;
-    border: 1px solid white;
-    outline: none;
-    font-size: 15px;
-}
-#message-input:focus { border-color: #008069; }
-
-/* Emoji Picker Flutuante */
-emoji-picker {
-    position: absolute;
-    bottom: 70px;
-    left: 50px;
-    z-index: 100;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-    --num-columns: 8;
-}
-
-/* Imagens e Áudio no Chat */
-.chat-image {
-    max-width: 100%;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-bottom: 5px;
-}
-.chat-audio { width: 250px; margin: 5px 0; }
-.chat-pdf {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(0,0,0,0.05); padding: 10px; border-radius: 8px;
-    text-decoration: none; color: #333; font-weight: bold;
-}
+/* Login e Listas (Mantidos) */
+.container { max-width: 350px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+.container input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; }
+.container button { width: 100%; padding: 12px; background: #008069; color: white; border: none; }
+.user-item { padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; cursor: pointer; }
+.user-item img { width: 50px; height: 50px; border-radius: 8px; margin-right: 15px; object-fit: cover; }
+.avatar-small { width: 35px; height: 35px; border-radius: 5px; object-fit: cover; border: 1px solid rgba(255,255,255,0.5); }
+.chat-info { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.message { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 14px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); word-wrap: break-word; }
+.my-msg { align-self: flex-end; background: #d9fdd3; }
+.other-msg { align-self: flex-start; background: white; }
+.chat-image { max-width: 100%; border-radius: 5px; }
+.style-popup { position: absolute; bottom: 70px; left: 10px; background: white; padding: 10px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); display: flex; gap: 5px; z-index: 50; }
+emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num-columns: 8; width: 300px; height: 300px; }

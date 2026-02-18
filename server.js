@@ -191,6 +191,23 @@ app.post('/upload', upload.single('file'), (req, res) => {
     res.json({ url: req.file.path, type: req.file.mimetype });
 });
 
+// 7. ATUALIZAR PERFIL (NOVA ROTA!)
+app.put('/update-profile', async (req, res) => {
+    const { userId, displayName, photoUrl } = req.body;
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        if (displayName) user.displayName = displayName;
+        if (photoUrl) user.photoUrl = photoUrl;
+
+        await user.save();
+        res.json({ message: 'Perfil atualizado!', user });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
+});
+
 // --- SOCKET.IO ---
 let users = {};
 
