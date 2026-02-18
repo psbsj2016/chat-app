@@ -34,19 +34,36 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// --- MODELOS ---
+// --- MODELOS ATUALIZADOS ---
+
+// Usuário (Agora com foto e nome de exibição)
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
+    displayName: { type: String }, // Nome que aparece para os outros
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }, // Foto base64 ou URL
     code: { type: String }, 
     isVerified: { type: Boolean, default: false }
 });
 const User = mongoose.model('User', UserSchema);
 
+// Grupo (NOVO!)
+const GroupSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/69/69589.png' },
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+});
+const Group = mongoose.model('Group', GroupSchema);
+
+// Mensagem (Agora com status de leitura e tipo)
 const MessageSchema = new mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Pode ser null se for grupo
+    group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },   // Preenchido se for mensagem de grupo
     content: String,
+    type: { type: String, default: 'text' }, // 'text', 'image', 'audio', 'pdf'
+    status: { type: String, default: 'sent' }, // 'sent', 'delivered', 'read'
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', MessageSchema);

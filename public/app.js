@@ -1,214 +1,95 @@
 const socket = io();
 let myId = localStorage.getItem('myId');
-let userEmail = localStorage.getItem('userEmail');
 let token = localStorage.getItem('token');
-let selectedUserId = null;
+let currentChatId = null; // ID do usuário ou grupo atual
 
-// --- NAVEGAÇÃO ---
-function showScreen(id) {
-    document.querySelectorAll('.container, .chat-app').forEach(el => el.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-    if(id === 'chat-screen') document.getElementById(id).style.display = 'flex';
-}
-function showLogin() { showScreen('login-screen'); }
-function showRegister() { showScreen('register-screen'); }
-function showVerify() { showScreen('verify-screen'); }
-function showChat() { 
-    showScreen('chat-screen'); 
-    socket.emit('join_room', myId); 
-    loadUsers(); 
+// --- Lógica de Interface ---
+function showElement(id) { document.getElementById(id).classList.remove('hidden'); }
+function hideElement(id) { document.getElementById(id).classList.add('hidden'); }
+
+// Alternar Telas
+function showMainScreen() {
+    hideElement('auth-screen');
+    hideElement('chat-screen');
+    showElement('main-screen');
+    loadContacts(); // Recarrega lista
 }
 
-// --- AUTH ---
-async function register() {
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-pass').value;
+function openChat(id, name, photo) {
+    currentChatId = id;
+    hideElement('main-screen');
+    showElement('chat-screen');
     
-    // MELHORIA: Seleciona o botão ESPECÍFICO da tela de registro
-    const btn = document.querySelector('#register-screen button');
-
-    if(!email || !password) return alert("Preencha todos os campos!");
-
-    // Feedback Visual
-    const textoOriginal = btn.innerText;
-    btn.innerText = "Enviando e-mail...";
-    btn.disabled = true;
-
-    try {
-        const res = await fetch('/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            localStorage.setItem('temp_email', email);
-            alert('✅ Sucesso! Código enviado para o seu e-mail.');
-            showVerify(); 
-        } else {
-            alert('❌ Erro: ' + (data.error || 'Algo deu errado'));
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('❌ Erro de Conexão. Tente novamente.');
-    } finally {
-        btn.innerText = textoOriginal;
-        btn.disabled = false;
-    }
+    // Atualiza cabeçalho do chat
+    document.getElementById('chat-title').innerText = name;
+    document.getElementById('chat-avatar').src = photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    
+    loadMessages(id);
+    socket.emit('join_room', myId); // Garante que estou ouvindo
 }
 
-async function verify() {
-    const code = document.getElementById('verify-code').value;
-    const email = localStorage.getItem('temp_email');
-    
-    if(!code) return alert('Digite o código!');
-
-    const res = await fetch('/verify', { 
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({email, code})
-    });
-    
-    if(res.ok) { 
-        alert('✅ Conta verificada com sucesso!'); 
-        showLogin(); 
-    } else { 
-        alert('❌ Código errado ou expirado.'); 
-    }
+function backToMain() {
+    currentChatId = null;
+    showMainScreen();
 }
 
-async function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-pass').value;
-    
-    // MELHORIA: Feedback visual também no botão de Login
-    const btn = document.querySelector('#login-screen button');
-    const textoOriginal = btn.innerText;
-    btn.innerText = "Entrando...";
-    btn.disabled = true;
-
-    try {
-        const res = await fetch('/login', { 
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({email, password})
-        });
-        
-        const data = await res.json();
-        
-        if(res.ok) {
-            token = data.token; 
-            myId = data.myId; 
-            userEmail = data.email;
-            localStorage.setItem('token', token); 
-            localStorage.setItem('myId', myId); 
-            localStorage.setItem('userEmail', userEmail);
-            showChat();
-        } else { 
-            alert('❌ ' + data.error); 
-        }
-    } catch (e) {
-        alert('Erro de conexão.');
-    } finally {
-        btn.innerText = textoOriginal;
-        btn.disabled = false;
-    }
+function toggleMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    menu.classList.toggle('hidden');
 }
 
-function logout() { localStorage.clear(); location.reload(); }
+// --- Autenticação (Simplificada para o exemplo) ---
+// ... (Mantenha sua lógica de login/register antiga aqui, mas redirecione para showMainScreen() no sucesso)
 
-// --- CHAT PRIVADO ---
-async function loadUsers() {
-    if(!myId) return;
+// --- Carregar Contatos (Nova Lógica Visual) ---
+async function loadContacts() {
+    // Aqui você faria o fetch('/users/' + myId)
+    // Vou simular para visualização:
     const res = await fetch(`/users/${myId}`);
     const users = await res.json();
+    
     const list = document.getElementById('users-list');
     list.innerHTML = '';
+
     users.forEach(user => {
+        // Usa a foto do usuário ou um padrão
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const name = user.displayName || user.email.split('@')[0];
+
         const div = document.createElement('div');
         div.className = 'user-item';
-        div.innerHTML = `<div class="avatar"></div> ${user.email.split('@')[0]}`;
-        div.onclick = () => selectUser(user._id, user.email, div);
+        div.onclick = () => openChat(user._id, name, photo);
+        div.innerHTML = `
+            <img src="${photo}" alt="Avatar">
+            <div class="info">
+                <div style="font-weight:bold">${name}</div>
+                <div style="font-size:12px; color:#666">Toque para conversar</div>
+            </div>
+        `;
         list.appendChild(div);
     });
 }
 
-async function selectUser(id, email, element) {
-    selectedUserId = id;
-    document.querySelectorAll('.user-item').forEach(e => e.classList.remove('active'));
-    element.classList.add('active');
-    document.getElementById('chat-title').innerText = email;
-    document.getElementById('input-area').classList.remove('hidden');
-
-    const res = await fetch(`/messages/${myId}/${selectedUserId}`);
-    const msgs = await res.json();
-    const box = document.getElementById('chat-box');
-    box.innerHTML = '';
-    msgs.forEach(displayMessage);
-}
-
-function sendMessage() {
-    const input = document.getElementById('message-input');
-    const content = input.value;
-    if(!content || !selectedUserId) return;
-
-    socket.emit('private_message', { senderId: myId, receiverId: selectedUserId, content });
-    input.value = '';
-}
-
-function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
-
-// --- Digitado... ---
-const msgInput = document.getElementById('message-input');
-if(msgInput) {
-    msgInput.addEventListener('input', () => {
-        if(selectedUserId) {
-            socket.emit('private_typing', { senderId: myId, receiverId: selectedUserId });
-        }
-    });
-}
-
-socket.on('display_typing', (data) => {
-    if (data.senderId === selectedUserId) {
-        const feedback = document.getElementById('feedback-area');
-        feedback.innerText = 'digitando...';
-        setTimeout(() => feedback.innerText = '', 3000);
-    }
-});
-
-// --- Receber Mensagem ---
-socket.on('receive_message', (msg) => {
-    const isFromSelected = msg.sender === selectedUserId;
-    const isFromMe = msg.sender === myId;
-    
-    if (isFromSelected || (isFromMe && msg.receiver === selectedUserId)) {
-        displayMessage(msg);
-        document.getElementById('feedback-area').innerText = ''; 
-    }
-});
-
-// --- Exibir Mensagem (Com Hora) ---
+// --- Mensagens com Status (VV) ---
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
     const div = document.createElement('div');
     const isMe = msg.sender === myId;
-    
-    const dateObj = msg.timestamp ? new Date(msg.timestamp) : new Date();
-    const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
     
+    // Conteúdo + Status
     div.innerHTML = `
         ${msg.content}
-        <div style="font-size: 10px; text-align: right; opacity: 0.6; margin-top: 4px;">
-            ${timeString}
-        </div>
+        <span class="msg-status ${msg.status === 'read' ? 'read' : ''}">
+            ${isMe ? '✔✔' : ''} 
+        </span>
     `;
-    
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
 }
 
-if(token && myId) showChat(); else showLogin();
+// ... (Mantenha as funções sendMessage, receive_message do código anterior)
+
+// Inicialização
+if(token) showMainScreen();
