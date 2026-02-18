@@ -117,3 +117,67 @@ body {
 .container input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
 .container button { width: 100%; padding: 12px; background: #008069; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 .link { margin-top: 15px; color: #008069; cursor: pointer; font-size: 14px; }
+
+/* --- BARRA FLUTUANTE DE FORMATAÇÃO --- */
+.floating-toolbar {
+    position: absolute;
+    z-index: 1000;
+    background-color: #333; /* Fundo escuro elegante */
+    border-radius: 8px;
+    padding: 5px;
+    display: flex;
+    gap: 5px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transform: translateX(-50%); /* Centraliza com base na posição left */
+    animation: popUp 0.2s ease-out;
+}
+
+/* Setinha em baixo da barra (opcional, fica chique) */
+.floating-toolbar::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.toolbar-group {
+    display: flex;
+    gap: 2px;
+}
+
+.toolbar-separator {
+    width: 1px;
+    background-color: #555;
+    margin: 0 5px;
+}
+
+.floating-toolbar button {
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+    min-width: 30px;
+}
+
+.floating-toolbar button:hover {
+    background-color: #555;
+}
+
+@keyframes popUp {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Ajuste no input para garantir que o menu não seja cortado */
+.input-area {
+    position: relative; 
+    z-index: 50;
+}

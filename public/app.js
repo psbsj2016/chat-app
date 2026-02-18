@@ -388,3 +388,52 @@ async function saveProfile() {
         }
     } catch (e) { console.error(e); }
 }
+
+// --- LÓGICA DE FORMATAÇÃO DE TEXTO (FLUTUANTE) ---
+
+// Aplica o estilo e impede que o botão "roube" o foco do texto
+function formatDoc(cmd, event, value = null) {
+    if(event) event.preventDefault(); // O PULO DO GATO: Impede perder a seleção ao clicar
+    document.execCommand(cmd, false, value);
+    // Mantém a barra visível ou atualiza
+    checkSelection();
+}
+
+// Verifica se há texto selecionado e posiciona a barra
+function checkSelection() {
+    const toolbar = document.getElementById('floating-toolbar');
+    const input = document.getElementById('message-input');
+    const selection = window.getSelection();
+
+    // 1. Verifica se a seleção está vazia ou se não está dentro do nosso input
+    if (selection.isCollapsed || !input.contains(selection.anchorNode)) {
+        toolbar.classList.add('hidden');
+        return;
+    }
+
+    // 2. Calcula a posição do texto selecionado
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // 3. Mostra a barra
+    toolbar.classList.remove('hidden');
+
+    // 4. Posiciona a barra (Matemática para centralizar acima da seleção)
+    // rect.left + (rect.width / 2) = Centro da seleção
+    // - input.getBoundingClientRect().left = Ajuste relativo ao container se necessário
+    // Mas como usamos position fixed/absolute na tela, usaremos as coordenadas da janela:
+    
+    toolbar.style.top = `${rect.top - 50}px`; // 50px acima do texto
+    toolbar.style.left = `${rect.left + (rect.width / 2)}px`;
+}
+
+// Esconde a barra se clicar fora ou começar a digitar sem selecionar
+document.addEventListener('mousedown', (e) => {
+    const toolbar = document.getElementById('floating-toolbar');
+    const input = document.getElementById('message-input');
+    
+    // Se o clique NÃO foi na barra e nem no input, esconde
+    if (!toolbar.contains(e.target) && e.target !== input) {
+        toolbar.classList.add('hidden');
+    }
+});

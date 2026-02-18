@@ -37,7 +37,7 @@
         <div id="users-list" class="contact-list"></div>
     </div>
 
-    <div id="chat-screen" class="app-screen hidden">
+   <div id="chat-screen" class="app-screen hidden">
         <div class="chat-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
             <div class="chat-info">
@@ -58,16 +58,29 @@
 
         <div id="chat-box"></div>
 
-        <div class="input-area">
-            <button class="icon-btn" onclick="toggleMenu('style-menu')"><span class="material-icons">text_format</span></button>
-            <div id="style-menu" class="style-popup hidden">
-                <button onclick="formatDoc('bold')"><b>B</b></button>
-                <button onclick="formatDoc('italic')"><i>I</i></button>
-                <button onclick="formatDoc('underline')"><u>U</u></button>
+        <div id="floating-toolbar" class="floating-toolbar hidden">
+            <div class="toolbar-group">
+                <button onmousedown="formatDoc('bold', event)" title="Negrito"><b>B</b></button>
+                <button onmousedown="formatDoc('italic', event)" title="Itálico"><i>I</i></button>
+                <button onmousedown="formatDoc('underline', event)" title="Sublinhado"><u>U</u></button>
+                <button onmousedown="formatDoc('strikeThrough', event)" title="Riscado"><s>S</s></button>
             </div>
-            <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons">sentiment_satisfied_alt</span></button>
+            <div class="toolbar-separator"></div>
+            <div class="toolbar-group">
+                <button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family:Arial">Arial</button>
+                <button onmousedown="formatDoc('fontName', event, 'Georgia')" style="font-family:Georgia">Geo</button>
+                <button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family:Courier New">Mono</button>
+                <button onmousedown="formatDoc('fontName', event, 'Comic Sans MS')" style="font-family:Comic Sans MS">Comic</button>
+                <button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family:Impact">Imp</button>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons" style="color:#54656f">sentiment_satisfied_alt</span></button>
             <emoji-picker id="emoji-picker" class="hidden"></emoji-picker>
-            <div id="message-input" contenteditable="true" placeholder="Mensagem..."></div>
+
+            <div id="message-input" contenteditable="true" placeholder="Mensagem..." onmouseup="checkSelection()" onkeyup="checkSelection()"></div>
+            
             <button class="send-btn" onclick="sendMessage()"><span class="material-icons">send</span></button>
         </div>
     </div>
