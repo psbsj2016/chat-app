@@ -3,7 +3,7 @@ let myId = localStorage.getItem('myId');
 let token = localStorage.getItem('token');
 let currentChatId = null;
 
-// --- FUNÇÕES AUXILIARES (ESSENCIAIS) ---
+// --- FUNÇÕES AUXILIARES ---
 function showElement(id) { 
     const el = document.getElementById(id);
     if(el) el.classList.remove('hidden'); 
@@ -19,7 +19,7 @@ function toggleMenu(menuId) {
     if(menu) menu.classList.toggle('hidden');
 }
 
-// --- NAVEGAÇÃO ENTRE TELAS ---
+// --- NAVEGAÇÃO ---
 function showMainScreen() {
     hideElement('auth-screen');
     hideElement('chat-screen');
@@ -35,7 +35,7 @@ function openChat(id, name, photo) {
     
     document.getElementById('chat-title').innerText = name;
     document.getElementById('chat-avatar').src = photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    document.getElementById('chat-box').innerHTML = ''; // Limpa chat anterior
+    document.getElementById('chat-box').innerHTML = ''; 
     
     loadMessages(id);
 }
@@ -98,11 +98,15 @@ async function handleAuth() {
                 const code = prompt("Digite o código recebido:");
                 if(code) verifyCodeManual(email, code);
             } else {
-                // Login Sucesso
                 token = data.token;
                 myId = data.myId;
                 localStorage.setItem('token', token);
                 localStorage.setItem('myId', myId);
+                
+                // Salva dados do perfil
+                localStorage.setItem('displayName', data.displayName || '');
+                localStorage.setItem('photoUrl', data.photoUrl || '');
+
                 showMainScreen();
             }
         } else {
@@ -126,7 +130,7 @@ async function verifyCodeManual(email, code) {
         });
         if(res.ok) {
             alert("Conta verificada! Faça login.");
-            toggleAuthMode(); // Volta para Login
+            toggleAuthMode(); 
         } else {
             alert("Código errado.");
         }
@@ -136,6 +140,60 @@ async function verifyCodeManual(email, code) {
 function logout() {
     localStorage.clear();
     location.reload();
+}
+
+// --- CONFIGURAÇÕES DE PERFIL ---
+function openSettings() {
+    toggleMenu('main-menu');
+    showElement('settings-modal');
+    document.getElementById('settings-name').value = localStorage.getItem('displayName') || '';
+    document.getElementById('settings-avatar').src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+}
+
+function closeSettings() {
+    hideElement('settings-modal');
+}
+
+function triggerProfileUpload() {
+    document.getElementById('profile-file-input').click();
+}
+
+async function uploadProfilePhoto(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    document.getElementById('settings-avatar').style.opacity = '0.5';
+
+    try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        document.getElementById('settings-avatar').src = data.url;
+        document.getElementById('settings-avatar').setAttribute('data-new-url', data.url);
+        document.getElementById('settings-avatar').style.opacity = '1';
+    } catch (e) { alert('Erro ao enviar foto'); }
+}
+
+async function saveProfile() {
+    const newName = document.getElementById('settings-name').value;
+    const newPhoto = document.getElementById('settings-avatar').getAttribute('data-new-url');
+    
+    try {
+        const res = await fetch('/update-profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, displayName: newName, photoUrl: newPhoto })
+        });
+
+        if(res.ok) {
+            if(newName) localStorage.setItem('displayName', newName);
+            if(newPhoto) localStorage.setItem('photoUrl', newPhoto);
+            alert('Perfil atualizado!');
+            closeSettings();
+            loadContacts();
+        } else { alert('Erro ao salvar.'); }
+    } catch (e) { console.error(e); }
 }
 
 // --- CARREGAR DADOS ---
@@ -171,18 +229,27 @@ async function loadMessages(userId) {
     msgs.forEach(displayMessage);
 }
 
-// --- LÓGICA DE EMOJIS (MÚLTIPLOS) ---
-document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
-    // Insere o emoji
-    document.execCommand('insertText', false, event.detail.unicode);
+// --- MENSAGENS E UPLOADS ---
+
+// Lógica de Emojis (Múltiplos + Não fecha menu)
+const emojiPicker = document.querySelector('emoji-picker');
+if(emojiPicker) {
+    emojiPicker.addEventListener('emoji-click', event => {
+        document.execCommand('insertText', false, event.detail.unicode);
+        // Não fechamos o menu aqui para permitir múltiplos cliques!
+    });
+}
 
 function toggleEmojiPicker() {
     const picker = document.getElementById('emoji-picker');
     picker.classList.toggle('hidden');
 }
 
-function formatDoc(cmd, value=null) {
+// Formatação (Negrito, Itálico, Fontes)
+function formatDoc(cmd, event, value=null) {
+    if(event) event.preventDefault(); // Mantém teclado no celular
     document.execCommand(cmd, false, value);
+    if (cmd === 'fontName') toggleMenu('attach-menu');
 }
 
 function triggerUpload(type) {
@@ -227,7 +294,7 @@ async function startRecording() {
         const mediaRecorder = new MediaRecorder(stream);
         const chunks = [];
 
-        alert('🎙️ Gravando... Clique em OK para ENVIAR.'); // Simples para começar
+        alert('🎙️ Gravando... Clique em OK para ENVIAR.'); 
 
         mediaRecorder.start();
         mediaRecorder.ondataavailable = e => chunks.push(e.data);
@@ -242,7 +309,7 @@ async function startRecording() {
             handleFileUpload(document.getElementById('file-input'));
         };
 
-        setTimeout(() => mediaRecorder.stop(), 2000); // Grava 2 segundos (teste)
+        setTimeout(() => mediaRecorder.stop(), 3000); // 3 segundos de teste
         
     } catch (err) {
         alert('Permissão de microfone negada!');
@@ -264,11 +331,10 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     };
 
     socket.emit('private_message', msgData);
-    
     if(!fileUrl) input.innerHTML = ''; 
 }
 
-// --- EXIBIR MENSAGEM (COM HORÁRIO) ---
+// --- EXIBIR MENSAGEM (COM HORÁRIO E ÍCONE) ---
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
     const div = document.createElement('div');
@@ -277,7 +343,6 @@ function displayMessage(msg) {
 
     let contentHtml = '';
 
-    // Verifica Tipo de Arquivo
     if (msg.fileType === 'image') {
         contentHtml = `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`;
     } else if (msg.fileType === 'audio') {
@@ -288,35 +353,30 @@ function displayMessage(msg) {
         contentHtml = msg.content; 
     }
 
-    // FORMATAÇÃO DA HORA (HH:MM)
+    // Hora Formatada (HH:MM)
     const date = new Date(msg.timestamp || Date.now());
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const timeString = `${hours}:${minutes}`;
 
-    // Monta o HTML com Hora + Status
     div.innerHTML = `
         ${contentHtml}
         <div class="msg-info">
             <span class="msg-time">${timeString}</span>
             <span class="msg-status ${msg.status === 'read' ? 'read' : ''}">
-                ${isMe ? '<span class="material-icons" style="font-size:14px">done_all</span>' : ''} 
+                ${isMe ? '<span class="material-icons" style="font-size:14px; margin-left:2px;">done_all</span>' : ''} 
             </span>
         </div>
     `;
-    
-    // Nota: Mudei o "VV" texto por um ícone "done_all" que fica mais bonito, se preferir texto volte para 'VV'
-    
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
 }
 
-// --- RECEBER DO SERVIDOR ---
+// --- SOCKET RECEBER ---
 socket.on('receive_message', (msg) => {
     const isFromSelected = msg.sender === currentChatId;
     const isFromMe = msg.sender === myId;
     
-    // Só mostra se for minha msg ou se estiver com o chat do remetente aberto
     if (isFromMe || (isFromSelected && msg.receiver === myId)) {
         displayMessage(msg);
     }
@@ -329,92 +389,4 @@ if(token && myId) {
     showMainScreen();
 } else {
     showElement('auth-screen');
-}
-
-// --- NOVA LÓGICA DE CONFIGURAÇÕES (PERFIL) ---
-
-function openSettings() {
-    toggleMenu('main-menu'); // Fecha o menu
-    showElement('settings-modal');
-    
-    // Preenche com dados atuais (Salvos no localStorage no login)
-    document.getElementById('settings-name').value = localStorage.getItem('displayName') || '';
-    document.getElementById('settings-avatar').src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-}
-
-function closeSettings() {
-    hideElement('settings-modal');
-}
-
-function triggerProfileUpload() {
-    document.getElementById('profile-file-input').click();
-}
-
-async function uploadProfilePhoto(input) {
-    const file = input.files[0];
-    if(!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    // Feedback visual
-    document.getElementById('settings-avatar').style.opacity = '0.5';
-
-    try {
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        
-        // Atualiza o preview da imagem
-        document.getElementById('settings-avatar').src = data.url;
-        document.getElementById('settings-avatar').setAttribute('data-new-url', data.url); // Guarda para salvar depois
-        document.getElementById('settings-avatar').style.opacity = '1';
-    } catch (e) {
-        alert('Erro ao enviar foto');
-    }
-}
-
-async function saveProfile() {
-    const newName = document.getElementById('settings-name').value;
-    const newPhoto = document.getElementById('settings-avatar').getAttribute('data-new-url');
-    
-    try {
-        const res = await fetch('/update-profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                userId: myId, 
-                displayName: newName, 
-                photoUrl: newPhoto 
-            })
-        });
-
-        if(res.ok) {
-            // Atualiza LocalStorage
-            if(newName) localStorage.setItem('displayName', newName);
-            if(newPhoto) localStorage.setItem('photoUrl', newPhoto);
-            
-            alert('Perfil atualizado!');
-            closeSettings();
-            loadContacts(); // Recarrega para ver se muda algo (opcional)
-        } else {
-            alert('Erro ao salvar.');
-        }
-    } catch (e) { console.error(e); }
-}
-
-// --- LÓGICA DE FORMATAÇÃO (VIA MENU) ---
-
-function formatDoc(cmd, event, value = null) {
-    if(event) {
-        // O PULO DO GATO:
-        // preventDefault impede que o clique no botão tire o foco do texto.
-        // Assim, o teclado do celular continua aberto!
-        event.preventDefault(); 
-    }
-    document.execCommand(cmd, false, value);
-    
-    // Opcional: Fecha o menu após escolher uma fonte (mas mantém aberto para B/I/U)
-    if (cmd === 'fontName') {
-        toggleMenu('attach-menu');
-    }
 }
