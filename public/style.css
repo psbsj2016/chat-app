@@ -213,3 +213,50 @@ body {
     position: relative; 
     z-index: 50;
 }
+
+/* --- AJUSTE DO EMOJI PICKER --- */
+emoji-picker {
+    position: absolute;
+    bottom: 70px; /* Fica ACIMA da barra de digitação (que tem ~60px) */
+    left: 10px;
+    z-index: 100;
+    --num-columns: 8;
+    width: 300px;
+    height: 300px;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    /* Garante que não empurre o layout */
+    display: flex; 
+}
+
+/* --- MENSAGEM COM HORÁRIO E VISTO --- */
+.msg-info {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 4px; /* Espaço entre Hora e VV */
+    margin-top: 2px;
+    float: right; /* Garante que fique no canto direito */
+    margin-left: 10px;
+}
+
+.msg-time {
+    font-size: 10px;
+    color: #999;
+}
+
+.msg-status {
+    font-size: 10px;
+    color: #999;
+    display: flex;
+    align-items: center;
+}
+
+.msg-status.read { color: #53bdeb; } /* Azul se lido */
+
+/* Ajuste para limpar o float */
+.message::after {
+    content: "";
+    clear: both;
+    display: table;
+}

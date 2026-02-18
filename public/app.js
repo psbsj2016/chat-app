@@ -171,11 +171,10 @@ async function loadMessages(userId) {
     msgs.forEach(displayMessage);
 }
 
-// --- MENSAGENS E UPLOADS ---
+// --- LÓGICA DE EMOJIS (MÚLTIPLOS) ---
 document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+    // Insere o emoji
     document.execCommand('insertText', false, event.detail.unicode);
-    document.getElementById('emoji-picker').classList.add('hidden');
-});
 
 function toggleEmojiPicker() {
     const picker = document.getElementById('emoji-picker');
@@ -269,7 +268,7 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     if(!fileUrl) input.innerHTML = ''; 
 }
 
-// --- EXIBIR MENSAGEM NA TELA ---
+// --- EXIBIR MENSAGEM (COM HORÁRIO) ---
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
     const div = document.createElement('div');
@@ -278,6 +277,7 @@ function displayMessage(msg) {
 
     let contentHtml = '';
 
+    // Verifica Tipo de Arquivo
     if (msg.fileType === 'image') {
         contentHtml = `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`;
     } else if (msg.fileType === 'audio') {
@@ -288,12 +288,25 @@ function displayMessage(msg) {
         contentHtml = msg.content; 
     }
 
+    // FORMATAÇÃO DA HORA (HH:MM)
+    const date = new Date(msg.timestamp || Date.now());
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+
+    // Monta o HTML com Hora + Status
     div.innerHTML = `
         ${contentHtml}
-        <span class="msg-status">
-            ${isMe ? '✔✔' : ''} 
-        </span>
+        <div class="msg-info">
+            <span class="msg-time">${timeString}</span>
+            <span class="msg-status ${msg.status === 'read' ? 'read' : ''}">
+                ${isMe ? '<span class="material-icons" style="font-size:14px">done_all</span>' : ''} 
+            </span>
+        </div>
     `;
+    
+    // Nota: Mudei o "VV" texto por um ícone "done_all" que fica mais bonito, se preferir texto volte para 'VV'
+    
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
 }
