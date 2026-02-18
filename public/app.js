@@ -174,8 +174,116 @@ function toggleMenu(menuId) {
     menu.classList.toggle('hidden');
 }
 
-// --- Autenticação (Simplificada para o exemplo) ---
-// ... (Mantenha sua lógica de login/register antiga aqui, mas redirecione para showMainScreen() no sucesso)
+// --- AUTENTICAÇÃO E NAVEGAÇÃO ---
+let isRegistering = false; // Controla se estamos na tela de Login ou Cadastro
+
+function toggleAuthMode() {
+    isRegistering = !isRegistering;
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('auth-btn');
+    const nameInput = document.getElementById('auth-name');
+    const toggleLink = document.querySelector('.link');
+
+    if (isRegistering) {
+        title.innerText = 'Criar Conta';
+        btn.innerText = 'Cadastrar';
+        nameInput.classList.remove('hidden'); // Mostra campo de nome
+        toggleLink.innerText = 'Já tem conta? Entrar';
+    } else {
+        title.innerText = 'Entrar';
+        btn.innerText = 'Entrar';
+        nameInput.classList.add('hidden'); // Esconde campo de nome
+        toggleLink.innerText = 'Não tem conta? Crie uma';
+    }
+}
+
+async function handleAuth() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-pass').value;
+    const name = document.getElementById('auth-name').value;
+    const btn = document.getElementById('auth-btn');
+
+    if (!email || !password) return alert("Preencha e-mail e senha!");
+
+    // Feedback Visual
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Processando...";
+    btn.disabled = true;
+
+    try {
+        if (isRegistering) {
+            // --- MODO CADASTRO ---
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, displayName: name })
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem('temp_email', email);
+                // Como não temos tela de verificar no novo HTML, vamos assumir verificado ou pedir alerta
+                // Se o seu backend exige verificação de código, precisamos reativar a tela de verificação
+                // Mas para testar agora, vamos pedir para verificar o email e depois logar
+                alert('✅ Cadastro realizado! Verifique o código no seu e-mail.');
+                
+                // Truque: Pede o código num prompt simples para não criar outra tela agora
+                const code = prompt("Digite o código recebido no e-mail:");
+                if(code) {
+                    await verifyCodeManual(email, code);
+                }
+            } else {
+                alert('Erro: ' + data.error);
+            }
+
+        } else {
+            // --- MODO LOGIN ---
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                // Salva tudo
+                token = data.token;
+                myId = data.myId;
+                localStorage.setItem('token', token);
+                localStorage.setItem('myId', myId);
+                
+                // Manda para a tela principal
+                showMainScreen();
+            } else {
+                alert('Erro: ' + (data.error || 'Dados incorretos'));
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro de conexão com o servidor.');
+    } finally {
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+    }
+}
+
+// Função auxiliar para verificar código via Prompt (Rápido)
+async function verifyCodeManual(email, code) {
+    try {
+        const res = await fetch('/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+        if(res.ok) {
+            alert("Conta verificada! Faça login agora.");
+            toggleAuthMode(); // Volta para tela de login
+        } else {
+            alert("Código errado.");
+        }
+    } catch(e) { alert("Erro ao verificar"); }
+}
 
 // --- Carregar Contatos (Nova Lógica Visual) ---
 async function loadContacts() {
