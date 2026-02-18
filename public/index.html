@@ -49,31 +49,33 @@
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons">attach_file</span></button>
         </div>
 
-        <div id="attach-menu" class="dropdown-menu right-menu hidden">
+       <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
             <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:#d3396d">image</span> Foto</div>
             <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons" style="color:#e03c31">picture_as_pdf</span> PDF</div>
             <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:#008069">mic</span> Áudio</div>
+            
+            <div class="menu-separator"></div>
+            <div class="menu-label">Formatação</div>
+
+            <div class="menu-row">
+                <button class="format-btn" onmousedown="formatDoc('bold', event)"><b>B</b></button>
+                <button class="format-btn" onmousedown="formatDoc('italic', event)"><i>I</i></button>
+                <button class="format-btn" onmousedown="formatDoc('underline', event)"><u>U</u></button>
+                <button class="format-btn" onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button>
+            </div>
+
+            <div class="menu-separator"></div>
+            <div class="menu-label">Fontes</div>
+
+            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial">Arial</div>
+            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Georgia')" style="font-family: Georgia">Georgia</div>
+            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: Courier New">Monospace</div>
+            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Comic Sans MS')" style="font-family: Comic Sans MS">Comic</div>
+            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact">Impact</div>
         </div>
 
         <div id="chat-box"></div>
-
-        <div id="floating-toolbar" class="floating-toolbar hidden">
-            <div class="toolbar-group">
-                <button onmousedown="formatDoc('bold', event)" title="Negrito"><b>B</b></button>
-                <button onmousedown="formatDoc('italic', event)" title="Itálico"><i>I</i></button>
-                <button onmousedown="formatDoc('underline', event)" title="Sublinhado"><u>U</u></button>
-                <button onmousedown="formatDoc('strikeThrough', event)" title="Riscado"><s>S</s></button>
-            </div>
-            <div class="toolbar-separator"></div>
-            <div class="toolbar-group">
-                <button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family:Arial">Arial</button>
-                <button onmousedown="formatDoc('fontName', event, 'Georgia')" style="font-family:Georgia">Geo</button>
-                <button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family:Courier New">Mono</button>
-                <button onmousedown="formatDoc('fontName', event, 'Comic Sans MS')" style="font-family:Comic Sans MS">Comic</button>
-                <button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family:Impact">Imp</button>
-            </div>
-        </div>
 
         <div class="input-area">
             <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons" style="color:#54656f">sentiment_satisfied_alt</span></button>

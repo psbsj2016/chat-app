@@ -389,79 +389,19 @@ async function saveProfile() {
     } catch (e) { console.error(e); }
 }
 
-// --- LÓGICA DE FORMATAÇÃO (MOBILE + DESKTOP) ---
+// --- LÓGICA DE FORMATAÇÃO (VIA MENU) ---
 
-// Função que aplica o estilo (Negrito, Itálico, etc)
 function formatDoc(cmd, event, value = null) {
     if(event) {
-        event.preventDefault(); // Impede que o botão roube o foco
-        event.stopPropagation();
+        // O PULO DO GATO:
+        // preventDefault impede que o clique no botão tire o foco do texto.
+        // Assim, o teclado do celular continua aberto!
+        event.preventDefault(); 
     }
     document.execCommand(cmd, false, value);
-    updateToolbarPosition(); // Mantém a barra no lugar
-}
-
-// Função principal que calcula onde mostrar a barra
-function updateToolbarPosition() {
-    const toolbar = document.getElementById('floating-toolbar');
-    const input = document.getElementById('message-input');
-    const selection = window.getSelection();
-
-    // 1. Segurança: Se não tem seleção ou não está no input, esconde
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-        toolbar.classList.add('hidden');
-        return;
-    }
-
-    // Verifica se a seleção está DENTRO do nosso campo de mensagem
-    if (!input.contains(selection.anchorNode)) {
-        toolbar.classList.add('hidden');
-        return;
-    }
-
-    // 2. Cálculos Matemáticos para Posicionar
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect(); // Pega coordenadas da seleção azul
-
-    // Se o rect for zero (bug comum), ignora
-    if (rect.width === 0 && rect.height === 0) return;
-
-    // 3. Mostra e Posiciona
-    toolbar.classList.remove('hidden');
     
-    // Centraliza horizontalmente sobre a seleção
-    let left = rect.left + (rect.width / 2);
-    
-    // Posiciona acima da seleção (Top - altura da barra)
-    let top = rect.top;
-
-    // Ajuste fino para não sair da tela no celular (Bordas)
-    if (left < 100) left = 100; // Não deixa sair na esquerda
-    if (left > window.innerWidth - 100) left = window.innerWidth - 100; // Direita
-
-    toolbar.style.left = `${left}px`;
-    toolbar.style.top = `${top}px`;
-}
-
-// --- ESCUTADORES DE EVENTOS (A Mágica) ---
-
-// 1. O evento 'selectionchange' funciona em PC e Celular
-document.addEventListener('selectionchange', () => {
-    // Pequeno atraso para garantir que o sistema selecionou
-    setTimeout(updateToolbarPosition, 10);
-});
-
-// 2. Esconder barra ao rolar a tela (opcional, melhora UX)
-document.addEventListener('scroll', () => {
-    const toolbar = document.getElementById('floating-toolbar');
-    if (!toolbar.classList.contains('hidden')) {
-        updateToolbarPosition();
+    // Opcional: Fecha o menu após escolher uma fonte (mas mantém aberto para B/I/U)
+    if (cmd === 'fontName') {
+        toggleMenu('attach-menu');
     }
-}, true);
-
-// 3. Prevenir que o clique na barra desfaça a seleção (Importante para Touch)
-const toolbar = document.getElementById('floating-toolbar');
-if (toolbar) {
-    toolbar.addEventListener('mousedown', (e) => e.preventDefault());
-    toolbar.addEventListener('touchstart', (e) => e.preventDefault());
 }

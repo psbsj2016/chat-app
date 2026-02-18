@@ -155,31 +155,52 @@ body {
     to { opacity: 1; transform: scale(1); }
 }
 
-/* --- BARRA FLUTUANTE (FIX PARA MOBILE) --- */
-.floating-toolbar {
-    position: fixed; /* Fixed para garantir que fique na tela */
-    z-index: 9999;
-    background-color: #222; 
-    border-radius: 8px;
-    padding: 8px;
+/* --- NOVO ESTILO DENTRO DO MENU --- */
+
+.menu-separator {
+    height: 1px;
+    background-color: #e9edef;
+    margin: 8px 0;
+}
+
+.menu-label {
+    font-size: 12px;
+    color: #888;
+    padding: 0 20px 5px 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Linha de botões (B, I, U) */
+.menu-row {
     display: flex;
-    gap: 8px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-    /* Centraliza e sobe um pouco */
-    transform: translate(-50%, -100%); 
-    margin-top: -10px; /* Dá uma folga do dedo */
+    justify-content: space-evenly; /* Distribui igualmente */
+    padding: 5px 15px;
+    margin-bottom: 5px;
 }
 
-/* Setinha da barra */
-.floating-toolbar::after {
-    content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
-    border-width: 6px; border-style: solid; border-color: #222 transparent transparent transparent;
+.format-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    transition: 0.2s;
+    display: flex; align-items: center; justify-content: center;
 }
 
-.floating-toolbar button {
-    background: transparent; border: 1px solid #444; 
-    color: white; padding: 6px 10px; border-radius: 4px;
-    font-size: 14px; min-width: 32px;
+.format-btn:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+}
+
+/* Itens de Fonte */
+.font-item {
+    padding: 10px 20px; /* Um pouco menor que os itens principais */
+    font-size: 16px;
 }
 
 @keyframes popUp {
