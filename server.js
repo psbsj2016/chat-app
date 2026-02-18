@@ -28,11 +28,18 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// --- CONFIGURAÇÃO OTIMIZADA DO CLOUDINARY ---
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'chat-app-uploads',
         resource_type: 'auto',
+        // AQUI ESTÁ A MÁGICA DA VELOCIDADE:
+        transformation: [
+            { width: 800, crop: "limit" }, // Reduz largura para max 800px (não precisa mais que isso no chat)
+            { quality: "auto" },           // Ajusta qualidade automaticamente para ficar leve
+            { fetch_format: "auto" }       // Converte para WebP se o navegador suportar (super leve)
+        ]
     },
 });
 const upload = multer({ storage: storage });
