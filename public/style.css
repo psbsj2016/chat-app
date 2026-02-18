@@ -82,3 +82,43 @@ body { background-color: #e5ddd5; height: 100vh; overflow: hidden; }
 .style-popup button { width: 30px; height: 30px; border: 1px solid #ddd; background: white; cursor: pointer; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ... (Mantenha o CSS anterior) ... */
+
+/* Ajuste do Input Rico */
+#message-input {
+    flex: 1;
+    padding: 12px 15px;
+    border-radius: 20px;
+    background: white;
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid white;
+    outline: none;
+    font-size: 15px;
+}
+#message-input:focus { border-color: #008069; }
+
+/* Emoji Picker Flutuante */
+emoji-picker {
+    position: absolute;
+    bottom: 70px;
+    left: 50px;
+    z-index: 100;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    --num-columns: 8;
+}
+
+/* Imagens e Áudio no Chat */
+.chat-image {
+    max-width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+.chat-audio { width: 250px; margin: 5px 0; }
+.chat-pdf {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(0,0,0,0.05); padding: 10px; border-radius: 8px;
+    text-decoration: none; color: #333; font-weight: bold;
+}

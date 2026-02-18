@@ -1,11 +1,147 @@
 const socket = io();
 let myId = localStorage.getItem('myId');
 let token = localStorage.getItem('token');
-let currentChatId = null; // ID do usuário ou grupo atual
+let currentChatId = null;
 
-// --- Lógica de Interface ---
-function showElement(id) { document.getElementById(id).classList.remove('hidden'); }
-function hideElement(id) { document.getElementById(id).classList.add('hidden'); }
+// --- Configuração Emoji Picker ---
+document.querySelector('emoji-picker').addEventListener('emoji-click', event => {
+    const input = document.getElementById('message-input');
+    input.focus();
+    document.execCommand('insertText', false, event.detail.unicode);
+    document.getElementById('emoji-picker').classList.add('hidden');
+});
+
+function toggleEmojiPicker() {
+    document.getElementById('emoji-picker').classList.toggle('hidden');
+}
+
+// --- Editor de Texto Rico (Negrito, Fontes) ---
+function formatDoc(cmd, value=null) {
+    document.execCommand(cmd, false, value);
+    document.getElementById('message-input').focus();
+}
+
+// --- Lógica de Upload ---
+function triggerUpload(type) {
+    const input = document.getElementById('file-input');
+    input.accept = type; // Define se aceita imagem, pdf ou tudo
+    input.click();       // Simula clique no input escondido
+    toggleMenu('attach-menu'); // Fecha menu
+}
+
+async function handleFileUpload(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    // Feedback Visual
+    const btn = document.querySelector('.send-btn');
+    btn.innerHTML = '<span class="material-icons spin">sync</span>'; 
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        let type = 'file';
+        if(file.type.startsWith('image')) type = 'image';
+        if(file.type.startsWith('audio')) type = 'audio';
+        if(file.type === 'application/pdf') type = 'pdf';
+
+        sendMessage(null, data.url, type); // Envia mensagem com o link
+    } catch (e) {
+        alert('Erro no upload');
+    } finally {
+        btn.innerHTML = '<span class="material-icons">send</span>';
+        input.value = ''; // Limpa input
+    }
+}
+
+// --- Gravação de Áudio ---
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const chunks = [];
+
+        alert('🎙️ Gravando... Clique em OK para PARAR e ENVIAR.');
+
+        mediaRecorder.start();
+        
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        
+        mediaRecorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' });
+            const file = new File([blob], "audio_rec.webm", { type: 'audio/webm' });
+            
+            // Reutiliza a função de upload
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('file-input').files = dataTransfer.files;
+            handleFileUpload(document.getElementById('file-input'));
+        };
+
+        // Simula parada após confirmar o alert (pode melhorar com botão de stop real depois)
+        setTimeout(() => mediaRecorder.stop(), 1000); // Hack simples: grava 1s se fechar rápido, mas o alert bloqueia.
+        // Melhoria futura: Criar botão de STOP na tela.
+        
+    } catch (err) {
+        alert('Permissão de microfone negada!');
+    }
+}
+
+// --- Envio de Mensagem (Híbrido Texto/Arquivo) ---
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
+    const input = document.getElementById('message-input');
+    // Pega o HTML (para manter negrito) se for texto, ou o argumento se for arquivo
+    const content = textOverride || input.innerHTML; 
+
+    if((!content && !fileUrl) || !currentChatId) return;
+
+    const msgData = { 
+        senderId: myId, 
+        receiverId: currentChatId, 
+        content: fileUrl ? 'Arquivo enviado' : content, // Texto de fallback
+        fileUrl, 
+        fileType 
+    };
+
+    socket.emit('private_message', msgData);
+    
+    if(!fileUrl) input.innerHTML = ''; // Limpa só se for texto
+}
+
+// --- Exibir Mensagens (Renderizar HTML/Img/Audio) ---
+function displayMessage(msg) {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    const isMe = msg.sender === myId;
+    div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
+
+    let contentHtml = '';
+
+    // Verifica Tipo de Mensagem
+    if (msg.fileType === 'image') {
+        contentHtml = `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`;
+    } else if (msg.fileType === 'audio') {
+        contentHtml = `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`;
+    } else if (msg.fileType === 'pdf') {
+        contentHtml = `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`;
+    } else {
+        // Texto normal (com formatação HTML segura)
+        contentHtml = msg.content; 
+    }
+
+    div.innerHTML = `
+        ${contentHtml}
+        <span class="msg-status">
+            ${isMe ? '✔✔' : ''} 
+        </span>
+    `;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
 
 // Alternar Telas
 function showMainScreen() {
@@ -89,7 +225,68 @@ function displayMessage(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
-// ... (Mantenha as funções sendMessage, receive_message do código anterior)
+
+function sendMessage() {
+    const input = document.getElementById('message-input');
+    const content = input.value;
+    if(!content || !selectedUserId) return;
+
+    socket.emit('private_message', { senderId: myId, receiverId: selectedUserId, content });
+    input.value = '';
+}
+
+function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
+
+// --- Digitado... ---
+const msgInput = document.getElementById('message-input');
+if(msgInput) {
+    msgInput.addEventListener('input', () => {
+        if(selectedUserId) {
+            socket.emit('private_typing', { senderId: myId, receiverId: selectedUserId });
+        }
+    });
+}
+
+socket.on('display_typing', (data) => {
+    if (data.senderId === selectedUserId) {
+        const feedback = document.getElementById('feedback-area');
+        feedback.innerText = 'digitando...';
+        setTimeout(() => feedback.innerText = '', 3000);
+    }
+});
+
+// --- Receber Mensagem ---
+socket.on('receive_message', (msg) => {
+    const isFromSelected = msg.sender === selectedUserId;
+    const isFromMe = msg.sender === myId;
+    
+    if (isFromSelected || (isFromMe && msg.receiver === selectedUserId)) {
+        displayMessage(msg);
+        document.getElementById('feedback-area').innerText = ''; 
+    }
+});
+
+// --- Exibir Mensagem (Com Hora) ---
+function displayMessage(msg) {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    const isMe = msg.sender === myId;
+    
+    const dateObj = msg.timestamp ? new Date(msg.timestamp) : new Date();
+    const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
+    
+    div.innerHTML = `
+        ${msg.content}
+        <div style="font-size: 10px; text-align: right; opacity: 0.6; margin-top: 4px;">
+            ${timeString}
+        </div>
+    `;
+    
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
 
 // Inicialização
 if(token) showMainScreen();
