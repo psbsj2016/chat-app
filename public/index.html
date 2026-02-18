@@ -12,32 +12,50 @@
     <div id="auth-screen" class="container">
         <h2 id="auth-title">Entrar</h2>
         <form id="auth-form" onsubmit="event.preventDefault(); handleAuth()">
-            <input type="email" id="auth-email" placeholder="E-mail" required>
-            <input type="password" id="auth-pass" placeholder="Senha" required>
+            <input type="email" id="auth-email" placeholder="E-mail" required autocomplete="username">
+            <input type="password" id="auth-pass" placeholder="Senha" required autocomplete="current-password">
             <input type="text" id="auth-name" placeholder="Seu Nome de Exibição" class="hidden">
             <button id="auth-btn">Entrar</button>
         </form>
         <div class="link" onclick="toggleAuthMode()">Não tem conta? Crie uma</div>
     </div>
 
+    <div id="main-screen" class="app-screen hidden">
+        <div class="main-header">
+            <button class="icon-btn" onclick="toggleMenu('main-menu')"><span class="material-icons">menu</span></button>
+            <span class="header-title">Conversas</span>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div id="main-menu" class="dropdown-menu hidden">
+            <div class="menu-item" onclick="alert('Em breve: Criar Grupo')"><span class="material-icons">group_add</span> Criar Grupo</div>
+            <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
+            <div class="menu-item" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
+        </div>
+
+        <div id="users-list" class="contact-list">
+            </div>
+    </div>
+
     <div id="chat-screen" class="app-screen hidden">
         <div class="chat-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
+            
             <div class="chat-info">
                 <img id="chat-avatar" src="" class="avatar-small">
                 <div class="chat-texts">
                     <span id="chat-title">Nome</span>
                 </div>
             </div>
+
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons">attach_file</span></button>
         </div>
 
         <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-            
-            <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:#d3396d">image</span> Fotos e Vídeos</div>
-            <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons" style="color:#e03c31">picture_as_pdf</span> Documento</div>
-            <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:#008069">mic</span> Áudio (Gravar)</div>
+            <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:#d3396d">image</span> Foto</div>
+            <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons" style="color:#e03c31">picture_as_pdf</span> PDF</div>
+            <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:#008069">mic</span> Áudio</div>
         </div>
 
         <div id="chat-box"></div>
@@ -46,23 +64,15 @@
             <button class="icon-btn" onclick="toggleMenu('style-menu')"><span class="material-icons">text_format</span></button>
             
             <div id="style-menu" class="style-popup hidden">
-                <button onclick="formatDoc('bold')" style="font-weight:bold">B</button>
-                <button onclick="formatDoc('italic')" style="font-style:italic">I</button>
-                <button onclick="formatDoc('underline')" style="text-decoration:underline">U</button>
-                <div style="width:1px; height:20px; background:#ddd; margin:0 5px;"></div>
-                <button onclick="formatDoc('fontName','Arial')" style="font-family:Arial">A</button>
-                <button onclick="formatDoc('fontName','Courier New')" style="font-family:Courier New">C</button>
-                <button onclick="formatDoc('fontName','Georgia')" style="font-family:Georgia">G</button>
-                <button onclick="formatDoc('fontName','Times New Roman')" style="font-family:Times New Roman">T</button>
-                <button onclick="formatDoc('fontName','Verdana')" style="font-family:Verdana">V</button>
+                <button onclick="formatDoc('bold')"><b>B</b></button>
+                <button onclick="formatDoc('italic')"><i>I</i></button>
+                <button onclick="formatDoc('underline')"><u>U</u></button>
             </div>
 
             <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons">sentiment_satisfied_alt</span></button>
-            
             <emoji-picker id="emoji-picker" class="hidden"></emoji-picker>
 
             <div id="message-input" contenteditable="true" placeholder="Mensagem..."></div>
-
             <button class="send-btn" onclick="sendMessage()"><span class="material-icons">send</span></button>
         </div>
     </div>
