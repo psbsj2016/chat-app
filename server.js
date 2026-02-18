@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const nodemailer = require('nodemailer');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Se não tiver, instale: npm install bcryptjs jsonwebtoken
 const jwt = require('jsonwebtoken');
 
 // --- NOVAS IMPORTAÇÕES PARA ARQUIVOS ---
@@ -31,8 +31,8 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'chat-app-uploads', // Nome da pasta no Cloudinary
-        resource_type: 'auto',      // Aceita imagem, audio, pdf...
+        folder: 'chat-app-uploads',
+        resource_type: 'auto',
     },
 });
 const upload = multer({ storage: storage });
@@ -56,37 +56,151 @@ const User = mongoose.model('User', UserSchema);
 const MessageSchema = new mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    content: String,          // Texto da mensagem (ou descrição)
-    fileUrl: String,          // URL do arquivo (se houver)
+    content: String,
+    fileUrl: String,
     fileType: { type: String, default: 'text' }, // 'text', 'image', 'audio', 'pdf'
     status: { type: String, default: 'sent' },
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', MessageSchema);
 
-// --- ROTA DE UPLOAD (NOVA!) ---
+// --- CONFIGURAÇÃO DE E-MAIL (BREVO/OUTLOOK) ---
+const transporter = nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587, 
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS 
+    },
+    tls: { rejectUnauthorized: false }
+});
+
+// --- ROTAS DE AUTENTICAÇÃO (LOGIN / REGISTER) ---
+
+// 1. REGISTRO
+app.post('/register', async (req, res) => {
+    const { email, password, displayName } = req.body;
+    try {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ error: 'E-mail já cadastrado' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const newUser = new User({ 
+            email, 
+            password: hashedPassword, 
+            code,
+            displayName: displayName || email.split('@')[0]
+        });
+        await newUser.save();
+
+        const mailOptions = {
+            from: 'Chat App <psbsj.2020@outlook.com>', // SEU EMAIL VERIFICADO NO BREVO
+            to: email,
+            subject: 'Seu Código de Verificação',
+            html: `<h1>Seu código é: ${code}</h1>`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log(error);
+                return res.status(500).json({ error: 'Erro ao enviar email' });
+            }
+            res.json({ message: 'Código enviado!' });
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
+// 2. LOGIN
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
+
+        // Se quiser forçar verificação, descomente a linha abaixo:
+        // if (!user.isVerified) return res.status(400).json({ error: 'Conta não verificada' });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' });
+
+        const token = jwt.sign({ id: user._id }, 'SEGREDO_SUPER_SECRETO', { expiresIn: '1h' });
+
+        res.json({ 
+            token, 
+            myId: user._id, 
+            email: user.email,
+            displayName: user.displayName,
+            photoUrl: user.photoUrl 
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
+// 3. VERIFICAR CÓDIGO
+app.post('/verify', async (req, res) => {
+    const { email, code } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
+
+        if (user.code === code) {
+            user.isVerified = true;
+            user.code = null; // Limpa o código
+            await user.save();
+            res.json({ message: 'Verificado com sucesso!' });
+        } else {
+            res.status(400).json({ error: 'Código inválido' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao verificar' });
+    }
+});
+
+// 4. LISTAR USUÁRIOS
+app.get('/users/:myId', async (req, res) => {
+    try {
+        const users = await User.find({ _id: { $ne: req.params.myId } }).select('-password -code');
+        res.json(users);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
+
+// 5. LISTAR MENSAGENS
+app.get('/messages/:myId/:otherId', async (req, res) => {
+    try {
+        const { myId, otherId } = req.params;
+        const messages = await Message.find({
+            $or: [
+                { sender: myId, receiver: otherId },
+                { sender: otherId, receiver: myId }
+            ]
+        }).sort('timestamp');
+        res.json(messages);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
+
+// 6. UPLOAD (NOVA!)
 app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-    // Retorna a URL segura do Cloudinary
     res.json({ url: req.file.path, type: req.file.mimetype });
 });
 
-// ... (MANTENHA SUAS ROTAS DE LOGIN, REGISTER, VERIFY IGUAIS AQUI) ...
-// ... (Copie do seu server.js antigo as rotas /register, /login, /verify, /users, /messages) ...
-// DICA: Se tiver dúvida, posso mandar o arquivo completo, mas tente manter suas rotas de auth.
-
-// --- SOCKET.IO (ATUALIZADO PARA TIPOS DE ARQUIVO) ---
+// --- SOCKET.IO ---
 let users = {};
 
 io.on('connection', (socket) => {
     socket.on('join_room', (userId) => {
         users[userId] = socket.id;
-        console.log(`Usuário ${userId} entrou.`);
     });
 
     socket.on('private_message', async ({ senderId, receiverId, content, fileUrl, fileType }) => {
         try {
-            // Salva no Banco com os novos campos
             const msg = new Message({ 
                 sender: senderId, 
                 receiver: receiverId, 
@@ -97,20 +211,13 @@ io.on('connection', (socket) => {
             });
             await msg.save();
 
-            // Envia para quem recebe (se online)
             const receiverSocketId = users[receiverId];
             if (receiverSocketId) {
                 io.to(receiverSocketId).emit('receive_message', msg);
             }
-            // Envia de volta para quem mandou (para atualizar a tela dele)
             socket.emit('receive_message', msg);
-
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     });
-
-    // ... (Mantenha o typing e disconnect) ...
 });
 
 const PORT = process.env.PORT || 10000;
