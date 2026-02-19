@@ -311,3 +311,64 @@ emoji-picker {
     text-overflow: ellipsis;
     max-width: 250px;
 }
+
+:root {
+    --primary-color: #008069;
+    --bg-color: #d1d7db;
+    --card-bg: #ffffff;
+    --text-color: #333;
+    --secondary-text: #666;
+    --input-bg: #f0f2f5;
+    --header-text: #fff;
+    --chat-bg-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+}
+
+/* TEMA ESCURO */
+body.dark-mode {
+    --primary-color: #202c33;
+    --bg-color: #111b21;
+    --card-bg: #202c33;
+    --text-color: #e9edef;
+    --secondary-text: #8696a0;
+    --input-bg: #2a3942;
+    --chat-bg-image: url('https://i.pinimg.com/originals/97/c0/07/97c00759d90d786d9b6096d274ad3e07.png');
+}
+
+/* Aplicação das variáveis */
+body { background-color: var(--bg-color); color: var(--text-color); }
+.app-screen { background: var(--card-bg); }
+.main-header, .chat-header { background: var(--primary-color); color: var(--header-text); }
+.user-item { border-bottom: 1px solid var(--input-bg); }
+.user-item:hover { background: var(--input-bg); }
+.search-container, .search-section-title { background: var(--card-bg); color: var(--text-color); }
+.search-box { background: var(--input-bg); }
+.search-box input { color: var(--text-color); }
+#chat-box { background-image: var(--chat-bg-image); background-color: var(--bg-color); }
+.input-area { background: var(--card-bg); border-top: 1px solid var(--input-bg); }
+#message-input { background: var(--input-bg); color: var(--text-color); border: none; }
+.dropdown-menu { background: var(--card-bg); }
+.menu-item { color: var(--text-color); }
+.menu-item:hover { background: var(--input-bg); }
+
+/* --- PÁGINA DE CONFIGURAÇÕES --- */
+.settings-content { padding: 20px; overflow-y: auto; height: 100%; background: var(--bg-color); }
+
+.settings-card { background: var(--card-bg); padding: 15px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; margin-bottom: 20px; }
+.profile-info { margin-left: 15px; }
+.profile-info h3 { margin: 0; font-size: 18px; }
+.edit-btn { font-size: 12px; color: #008069; cursor: pointer; }
+
+.settings-group { background: var(--card-bg); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.group-title { padding: 15px; background: var(--input-bg); font-weight: bold; font-size: 13px; color: var(--secondary-text); text-transform: uppercase; }
+.setting-item { padding: 15px; border-bottom: 1px solid var(--input-bg); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.setting-item:last-child { border-bottom: none; }
+.action-link { color: #008069; font-weight: 500; }
+
+/* Setor no Contato (O rótulo acima da foto) */
+.user-avatar-container { position: relative; margin-right: 15px; text-align: center; }
+.sector-badge { 
+    display: block; 
+    font-size: 10px; font-weight: bold; color: #008069; 
+    margin-bottom: 2px; text-transform: uppercase;
+}
+.user-item.sectored { border-left: 4px solid #008069; } /* Marca lateral */

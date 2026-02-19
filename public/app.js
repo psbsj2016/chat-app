@@ -480,3 +480,137 @@ function createSearchItem(user, msgMatch) {
     `;
     return div;
 }
+
+// VARIÁVEIS GLOBAIS NOVAS
+let currentSectors = [];
+let currentUserSettings = {};
+
+// --- ABRIR CONFIGURAÇÕES ---
+function openSettingsPage() {
+    toggleMenu('main-menu');
+    hideElement('main-screen');
+    showElement('settings-screen');
+
+    // Preenche dados
+    document.getElementById('config-name').innerText = localStorage.getItem('displayName');
+    document.getElementById('config-email').innerText = localStorage.getItem('temp_email') || 'email@usuario.com'; // (Ideal: salvar email no login)
+    document.getElementById('config-avatar').src = localStorage.getItem('photoUrl');
+    
+    // Carrega setores salvos (Simulação: Buscar do servidor seria o ideal)
+    renderSectorsList();
+}
+
+// --- TEMA E WALLPAPER ---
+function changeTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
+    saveSettings({ theme });
+}
+
+async function uploadWallpaper(input) {
+    // Reutiliza a função de upload de foto
+    // ... (Lógica de upload aqui, igual profile)
+    // Supondo que pegou a URL:
+    // const url = ...
+    // document.documentElement.style.setProperty('--chat-bg-image', `url(${url})`);
+    // saveSettings({ chatWallpaper: url });
+    alert("Função de upload de wallpaper em construção (Use a lógica do profile)");
+}
+
+// --- SETORES ---
+function createNewSector() {
+    const name = prompt("Nome do Setor (Ex: Trabalho):");
+    if (!name) return;
+
+    // Adiciona novo setor
+    currentSectors.push({ name, members: [] });
+    renderSectorsList();
+    saveSettings({ sectors: currentSectors });
+}
+
+function renderSectorsList() {
+    const list = document.getElementById('sectors-list');
+    list.innerHTML = '';
+
+    currentSectors.forEach((sector, index) => {
+        const div = document.createElement('div');
+        div.className = 'setting-item';
+        div.innerHTML = `
+            <span>${sector.name} (${sector.members.length} membros)</span>
+            <span class="action-link" onclick="editSector(${index})">Gerenciar</span>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function editSector(index) {
+    const sector = currentSectors[index];
+    const emailToAdd = prompt(`Adicionar membro ao setor ${sector.name}.\nDigite o E-mail do contato:`);
+    
+    // Simplificação: Adiciona o ID se achar (na prática precisaria buscar ID pelo email)
+    if(emailToAdd) {
+        // Lógica complexa: precisaria buscar o ID do usuário pelo email no banco
+        alert("Para adicionar membros, precisamos buscar o ID pelo email. (Implementar rota de busca)");
+    }
+}
+
+// --- SALVAR TUDO NO SERVIDOR ---
+async function saveSettings(data) {
+    // Atualiza localmente
+    currentUserSettings = { ...currentUserSettings, ...data };
+
+    await fetch('/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: myId, ...data })
+    });
+}
+
+// --- CARREGAR CONTATOS COM SETORES (ATUALIZADO) ---
+// Substitua a função loadContacts antiga por esta:
+async function loadContacts() {
+    if(!myId) return;
+    const res = await fetch(`/users/${myId}`);
+    const users = await res.json();
+    
+    // Carrega meus dados para saber meus setores
+    // (Ideal: uma rota /me que traz tudo)
+    
+    const list = document.getElementById('users-list');
+    list.innerHTML = '';
+
+    users.forEach(user => {
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const name = user.displayName || user.email.split('@')[0];
+
+        // VERIFICA SE ESTÁ EM UM SETOR (Simulado)
+        let sectorLabel = '';
+        let extraClass = '';
+        
+        // Loop pelos setores para ver se esse user._id está lá
+        currentSectors.forEach(sec => {
+            if(sec.members.includes(user._id)) {
+                sectorLabel = `<span class="sector-badge">${sec.name}</span>`;
+                extraClass = 'sectored';
+            }
+        });
+
+        const div = document.createElement('div');
+        div.className = `user-item ${extraClass}`;
+        div.onclick = () => openChat(user._id, name, photo);
+        div.innerHTML = `
+            <div class="user-avatar-container">
+                ${sectorLabel}
+                <img src="${photo}" alt="Avatar">
+            </div>
+            <div class="info">
+                <div style="font-weight:bold">${name}</div>
+                <div style="font-size:12px; color:var(--secondary-text)">Toque para conversar</div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}

@@ -55,6 +55,63 @@
             </div>
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons">attach_file</span></button>
         </div>
+         
+        <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
+            <span class="header-title">Configurações</span>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div class="settings-content">
+            <div class="settings-card profile-card">
+                <img id="config-avatar" src="" onclick="triggerProfileUpload()">
+                <div class="profile-info">
+                    <h3 id="config-name">Nome do Usuário</h3>
+                    <span class="edit-btn" onclick="openEditName()">✎ Editar</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="group-title">Cadastro</div>
+                <div class="setting-item">
+                    <span>E-mail</span>
+                    <span id="config-email" style="color:#666; font-size:14px;">email@teste.com</span>
+                </div>
+                <div class="setting-item delete-account" onclick="deleteAccount()">
+                    <span style="color:red"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:red">delete</span> Deletar Conta</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="group-title">Conversas</div>
+                <div class="setting-item">
+                    <span>Tema</span>
+                    <select id="theme-selector" onchange="changeTheme(this.value)">
+                        <option value="light">Padrão (Claro)</option>
+                        <option value="dark">Escuro</option>
+                    </select>
+                </div>
+                <div class="setting-item" onclick="triggerWallpaperUpload()">
+                    <span>Papel de Parede do Chat</span>
+                    <span class="action-link">Escolher</span>
+                    <input type="file" id="wallpaper-input" hidden onchange="uploadWallpaper(this)">
+                </div>
+                <div class="setting-item" onclick="resetWallpaper()">
+                    <span>Restaurar Fundo Padrão</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="group-title">Setores (Organização)</div>
+                <div class="setting-item" onclick="createNewSector()">
+                    <span style="color:#008069; font-weight:bold;">+ Criar Novo Setor</span>
+                </div>
+                <div id="sectors-list">
+                    </div>
+            </div>
+        </div>
+    </div>
 
        <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">

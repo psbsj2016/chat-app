@@ -49,14 +49,21 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Conectado!"))
     .catch(err => console.error("Erro MongoDB:", err));
 
-// --- MODELOS ---
+// --- MODELOS ATUALIZADOS ---
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     displayName: String,
     photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
     code: String,
-    isVerified: { type: Boolean, default: false }
+    isVerified: { type: Boolean, default: false },
+    // NOVOS CAMPOS:
+    theme: { type: String, default: 'light' }, // 'light' ou 'dark'
+    chatWallpaper: { type: String, default: '' }, // URL da imagem de fundo
+    sectors: [{ 
+        name: String, 
+        members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] 
+    }]
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -81,6 +88,37 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS 
     },
     tls: { rejectUnauthorized: false }
+});
+
+
+// 9. SALVAR PREFERÊNCIAS (TEMA / WALLPAPER / SETORES)
+app.put('/settings', async (req, res) => {
+    const { userId, theme, chatWallpaper, sectors } = req.body;
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+        if (theme) user.theme = theme;
+        if (chatWallpaper !== undefined) user.chatWallpaper = chatWallpaper;
+        if (sectors) user.sectors = sectors;
+
+        await user.save();
+        res.json({ message: 'Configurações salvas!', user });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao salvar' });
+    }
+});
+
+// 10. DELETAR CONTA
+app.delete('/delete-account/:userId', async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.userId);
+        // Opcional: Deletar mensagens onde ele é sender
+        await Message.deleteMany({ sender: req.params.userId });
+        res.json({ message: 'Conta deletada.' });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao deletar' });
+    }
 });
 
 // --- ROTAS DE AUTENTICAÇÃO (LOGIN / REGISTER) ---
@@ -273,3 +311,4 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`🚀 Servidor na porta ${PORT}`));
+
