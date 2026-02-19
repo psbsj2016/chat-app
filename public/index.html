@@ -193,6 +193,36 @@
         </div>
     </div>
 
+          <div id="add-sector-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px;">
+            <h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Setor</h3>
+            <p id="sector-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p>
+            
+            <div id="sector-checkbox-list" class="checkbox-list">
+                </div>
+            
+            <div class="modal-actions" style="margin-top:20px;">
+                <button onclick="hideElement('add-sector-modal')" style="background:#ccc;">Cancelar</button>
+                <button onclick="submitAddSector()" style="background:#008069;">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-group-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px;">
+            <h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Grupo</h3>
+            <p id="group-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p>
+            
+            <div id="group-checkbox-list" class="checkbox-list">
+                </div>
+            
+            <div class="modal-actions" style="margin-top:20px;">
+                <button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button>
+                <button onclick="submitAddGroup()" style="background:#008069;">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>

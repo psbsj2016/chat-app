@@ -44,6 +44,9 @@ function backToMain() {
 // --- VARIÁVEIS GLOBAIS ---
 let selectedUserIds = []; // Lista de IDs para o grupo
 let isGroupChat = false;  // Flag para saber se o chat atual é grupo
+let onlineUsersList = [];
+let targetContactId = null;
+
 
 // --- NOVO: ABRIR CHAT (SUPORTA GRUPO E PESSOA) ---
 function openChat(id, name, photo, email, type = 'user') {
@@ -77,7 +80,47 @@ async function loadGroupMessages(groupId) {
     msgs.forEach(displayMessage);
 }
 
-// --- ATUALIZADO: CARREGAR CONTATOS E GRUPOS ---
+// Adicione junto com suas variáveis globais lá em cima
+let onlineUsersList = [];
+let targetContactId = null;
+
+// ATUALIZE A FUNÇÃO DE LOGIN PARA RECUPERAR OS SETORES DA NUVEM (Procure o trecho 'if (res.ok)' no seu handleAuth)
+// ...
+            if (isRegistering) {
+                alert('✅ Código enviado para o seu e-mail!');
+                const code = prompt("Digite o código recebido:");
+                if(code) verifyCodeManual(email, code);
+            } else {
+                token = data.token;
+                myId = data.myId;
+                localStorage.setItem('token', token);
+                localStorage.setItem('myId', myId);
+                
+                localStorage.setItem('displayName', data.displayName || '');
+                localStorage.setItem('photoUrl', data.photoUrl || '');
+                if(data.email) localStorage.setItem('userEmail', data.email);
+
+                // IMPORTANTE AQUI:
+                currentSectors = data.sectors || []; 
+                if(data.theme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                }
+
+                showMainScreen();
+            }
+// ...
+
+// RECEBER LISTA ONLINE DO SERVIDOR (Adicione junto com seus socket.on)
+socket.on('online_users', (list) => {
+    onlineUsersList = list;
+    if(document.getElementById('main-screen').classList.contains('hidden') === false) {
+        loadContacts(); // Atualiza a tela para mudar as bolinhas se estiver na tela inicial
+    }
+});
+
+
+// ATUALIZE A FUNÇÃO loadContacts() COMPLETA:
 async function loadContacts() {
     if(!myId) return;
     const list = document.getElementById('users-list');
@@ -90,14 +133,14 @@ async function loadContacts() {
     groups.forEach(group => {
         const div = document.createElement('div');
         div.className = 'user-item';
-        // Ícone de Grupo
         const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
         
-        // Clicar abre como GRUPO
         div.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group');
         
         div.innerHTML = `
-            <img src="${photo}" alt="Group">
+            <div class="user-avatar-container">
+                <img src="${photo}" alt="Group" class="avatar-small" style="width:50px; height:50px;">
+            </div>
             <div class="info">
                 <div style="font-weight:bold">${group.name}</div>
                 <div style="font-size:12px; color:#008069">Grupo</div>
@@ -106,7 +149,7 @@ async function loadContacts() {
         list.appendChild(div);
     });
 
-    // 2. Buscar Usuários (Mantido igual)
+    // 2. Buscar Usuários
     const resUsers = await fetch(`/users/${myId}`);
     const users = await resUsers.json();
 
@@ -115,7 +158,11 @@ async function loadContacts() {
         const name = user.displayName || user.email.split('@')[0];
         const email = user.email;
 
-        // Setores (Lógica existente)
+        // Verifica Bolinha Online
+        const isOnline = onlineUsersList.includes(user._id);
+        const statusClass = isOnline ? 'status-online' : 'status-offline';
+
+        // Verifica Setores
         let sectorLabel = '';
         let extraClass = '';
         currentSectors.forEach(sec => {
@@ -127,104 +174,143 @@ async function loadContacts() {
 
         const div = document.createElement('div');
         div.className = `user-item ${extraClass}`;
-        // Clicar abre como USER
-        div.onclick = () => openChat(user._id, name, photo, email, 'user');
         
-        div.innerHTML = `
+        // Área clicável principal
+        const clickArea = document.createElement('div');
+        clickArea.style.display = 'flex';
+        clickArea.style.flex = '1';
+        clickArea.onclick = () => openChat(user._id, name, photo, email, 'user');
+
+        clickArea.innerHTML = `
             <div class="user-avatar-container">
+                <div class="status-dot ${statusClass}"></div>
                 ${sectorLabel}
-                <img src="${photo}" alt="Avatar">
+                <img src="${photo}" alt="Avatar" class="avatar-small" style="width:50px; height:50px;">
             </div>
             <div class="info">
                 <div style="font-weight:bold">${name}</div>
                 <div style="font-size:12px; color:var(--secondary-text)">Toque para conversar</div>
             </div>
         `;
+
+        // Menu 3 pontinhos (impede abrir o chat)
+        const menuArea = document.createElement('div');
+        menuArea.className = 'contact-actions';
+        // Impede propagação do clique
+        menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); };
+        
+        menuArea.innerHTML = `
+            <span class="material-icons" style="color:#888;">more_vert</span>
+            <div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px;">
+                <div class="menu-item" onclick="event.stopPropagation(); openAddSectorModal('${user._id}', '${name}')">Adicionar ao Setor</div>
+                <div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div>
+            </div>
+        `;
+
+        div.appendChild(clickArea);
+        div.appendChild(menuArea);
         list.appendChild(div);
     });
 }
 
-// --- LÓGICA DE CRIAR GRUPO ---
-
-// 1. Abrir Modal e Carregar Candidatos
-async function openCreateGroupModal() {
-    // Altera o onclick do menu no HTML para chamar esta função
-    toggleMenu('main-menu');
-    showElement('create-group-modal');
-    selectedUserIds = []; // Limpa seleção
-    document.getElementById('group-name-input').value = '';
-
-    const res = await fetch(`/users/${myId}`);
-    const users = await res.json();
+// --- LÓGICA DE ADICIONAR A SETOR (NOVO) ---
+function openAddSectorModal(userId, name) {
+    targetContactId = userId;
+    toggleMenu(`contact-menu-${userId}`); // Fecha o menuzinho
+    document.getElementById('sector-target-name').innerText = `Contato: ${name}`;
     
-    const list = document.getElementById('group-candidates-list');
+    const list = document.getElementById('sector-checkbox-list');
+    list.innerHTML = '';
+    
+    if(currentSectors.length === 0) {
+        list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor criado nas configurações.</span>';
+    }
+
+    currentSectors.forEach((sec, idx) => {
+        const isAlreadyIn = sec.members.includes(userId);
+        list.innerHTML += `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked disabled' : ''}> 
+                ${sec.name} ${isAlreadyIn ? '(Já adicionado)' : ''}
+            </label>
+        `;
+    });
+    
+    showElement('add-sector-modal');
+}
+
+async function submitAddSector() {
+    const checkboxes = document.querySelectorAll('#sector-checkbox-list input:checked:not(:disabled)');
+    if(checkboxes.length === 0) return alert("Selecione um setor novo!");
+
+    const confirmar = confirm("O contato será inserido ao(s) setor(es) selecionado(s). Deseja continuar?");
+    if(!confirmar) return;
+
+    // Atualiza a memória
+    checkboxes.forEach(cb => {
+        const idx = cb.value;
+        currentSectors[idx].members.push(targetContactId);
+    });
+
+    // Salva na nuvem
+    await saveProfile({ sectors: currentSectors });
+    
+    alert("Contato inserido no setor com sucesso!");
+    hideElement('add-sector-modal');
+    loadContacts(); // Recarrega para mostrar o título do setor
+}
+
+// --- LÓGICA DE ADICIONAR A GRUPO (NOVO) ---
+async function openAddGroupModal(userId, name) {
+    targetContactId = userId;
+    toggleMenu(`contact-menu-${userId}`);
+    document.getElementById('group-target-name').innerText = `Contato: ${name}`;
+
+    // Busca meus grupos para listar
+    const res = await fetch(`/groups/${myId}`);
+    const groups = await res.json();
+
+    const list = document.getElementById('group-checkbox-list');
     list.innerHTML = '';
 
-    users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'candidate-item';
-        div.dataset.name = user.displayName.toLowerCase(); // Para pesquisa
-        div.onclick = () => toggleCandidate(div, user._id);
-        
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        
-        div.innerHTML = `
-            <img src="${photo}">
-            <span>${user.displayName || user.email}</span>
-        `;
-        list.appendChild(div);
-    });
-}
-
-function closeCreateGroup() {
-    hideElement('create-group-modal');
-}
-
-// 2. Selecionar / Deselecionar
-function toggleCandidate(el, id) {
-    if (selectedUserIds.includes(id)) {
-        selectedUserIds = selectedUserIds.filter(uid => uid !== id);
-        el.classList.remove('selected');
-    } else {
-        selectedUserIds.push(id);
-        el.classList.add('selected');
+    if(groups.length === 0) {
+        list.innerHTML = '<span style="font-size:12px; color:#999;">Você não participa de nenhum grupo.</span>';
     }
-}
 
-// 3. Filtrar na lista (Pesquisa do Modal)
-function filterGroupContacts(query) {
-    const items = document.querySelectorAll('.candidate-item');
-    items.forEach(item => {
-        const name = item.dataset.name;
-        if (name.includes(query.toLowerCase())) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
+    groups.forEach((g) => {
+        const isAlreadyIn = g.members.includes(userId);
+        list.innerHTML += `
+            <label class="checkbox-item">
+                <input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> 
+                ${g.name} ${isAlreadyIn ? '(Já no grupo)' : ''}
+            </label>
+        `;
     });
+
+    showElement('add-group-modal');
 }
 
-// 4. Enviar para o Servidor
-async function submitCreateGroup() {
-    const name = document.getElementById('group-name-input').value;
-    if (!name) return alert("Digite um nome para o grupo!");
-    if (selectedUserIds.length === 0) return alert("Selecione pelo menos 1 pessoa!");
+async function submitAddGroup() {
+    const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)');
+    if(checkboxes.length === 0) return alert("Selecione um grupo novo!");
+
+    const groupIds = Array.from(checkboxes).map(cb => cb.value);
+
+    const confirmar = confirm("O contato participará do(s) chat(s) de grupo selecionado(s). Clique em OK para adicionar.");
+    if(!confirmar) return;
 
     try {
-        const res = await fetch('/groups', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, adminId: myId, members: selectedUserIds })
+        const res = await fetch('/groups/add-member', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ groupIds, userId: targetContactId })
         });
         
-        if (res.ok) {
-            alert("Grupo criado!");
-            closeCreateGroup();
-            loadContacts(); // Recarrega lista principal
-        } else {
-            alert("Erro ao criar grupo.");
+        if(res.ok) {
+            alert("Contato inserido no chat do grupo com sucesso!");
+            hideElement('add-group-modal');
         }
-    } catch (e) { console.error(e); }
+    } catch(e) { alert("Erro ao adicionar"); }
 }
 
 // --- ATUALIZADO: ENVIAR MENSAGEM (COM SUPORTE A GRUPO) ---
@@ -310,8 +396,7 @@ async function handleAuth() {
         
         const data = await res.json();
         
-        if (res.ok) {
-            if (isRegistering) {
+       if (isRegistering) {
                 alert('✅ Código enviado para o seu e-mail!');
                 const code = prompt("Digite o código recebido:");
                 if(code) verifyCodeManual(email, code);
@@ -323,10 +408,10 @@ async function handleAuth() {
                 
                 localStorage.setItem('displayName', data.displayName || '');
                 localStorage.setItem('photoUrl', data.photoUrl || '');
-                // Salva email do usuário logado se vier do back (opcional)
                 if(data.email) localStorage.setItem('userEmail', data.email);
 
-                // Aplica tema salvo
+                // IMPORTANTE AQUI:
+                currentSectors = data.sectors || []; 
                 if(data.theme === 'dark') {
                     document.body.classList.add('dark-mode');
                     localStorage.setItem('theme', 'dark');
@@ -334,6 +419,7 @@ async function handleAuth() {
 
                 showMainScreen();
             }
+
         } else {
             alert('Erro: ' + (data.error || 'Algo deu errado'));
         }
@@ -671,6 +757,13 @@ socket.on('receive_message', (msg) => {
     
     if (isFromMe || (isFromSelected && msg.receiver === myId)) {
         displayMessage(msg);
+    }
+});
+
+socket.on('online_users', (list) => {
+    onlineUsersList = list;
+    if(document.getElementById('main-screen').classList.contains('hidden') === false) {
+        loadContacts(); // Atualiza a tela para mudar as bolinhas se estiver na tela inicial
     }
 });
 
