@@ -372,3 +372,98 @@ body { background-color: var(--bg-color); color: var(--text-color); }
     margin-bottom: 2px; text-transform: uppercase;
 }
 .user-item.sectored { border-left: 4px solid #008069; } /* Marca lateral */
+
+/* --- SWITCH (BOTÃO DE LIGAR/DESLIGAR) --- */
+.switch {
+  position: relative; display: inline-block; width: 40px; height: 24px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc; transition: .4s; border-radius: 34px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
+  background-color: white; transition: .4s; border-radius: 50%;
+}
+input:checked + .slider { background-color: #008069; }
+input:checked + .slider:before { transform: translateX(16px); }
+
+/* --- TEMA ESCURO (DARK MODE) --- */
+body.dark-mode {
+    background-color: #111b21;
+    color: #e9edef;
+}
+body.dark-mode .app-screen, 
+body.dark-mode .settings-content, 
+body.dark-mode .settings-card, 
+body.dark-mode .settings-group,
+body.dark-mode .dropdown-menu {
+    background-color: #0f1c24 !important;
+    color: white;
+}
+body.dark-mode .setting-item { border-bottom: 1px solid #202c33; }
+body.dark-mode .main-header { background-color: #202c33; }
+body.dark-mode input { background-color: #2a3942; color: white; }
+
+/* --- CABEÇALHO DO CHAT --- */
+.chat-info.clickable {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Empurra conteúdo para direita (perto da foto) */
+    flex: 1;
+    cursor: pointer;
+    margin: 0 10px;
+    padding: 5px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.chat-info.clickable:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.chat-texts {
+    text-align: right; /* Texto alinhado à direita, perto da foto */
+    margin-right: 12px; /* Espaço entre nome e foto */
+}
+
+#chat-title {
+    font-size: 17px;
+    font-weight: 800; /* NEGRITO FORTE */
+    color: white;
+    display: block;
+}
+
+/* Foto no Header */
+.avatar-small {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* --- MODAL DE PERFIL DO CONTATO --- */
+.profile-view-card {
+    background: white; padding: 30px; border-radius: 15px;
+    width: 85%; max-width: 320px;
+    display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    animation: zoomIn 0.2s ease;
+}
+
+.profile-view-card img {
+    width: 120px; height: 120px; border-radius: 50%;
+    object-fit: cover; border: 4px solid #008069;
+    margin-bottom: 15px;
+}
+
+.profile-view-card h3 {
+    font-size: 22px; margin-bottom: 20px; color: #333; font-weight: bold;
+}
+
+.profile-detail-item {
+    background: #f0f2f5; padding: 10px 15px; border-radius: 8px;
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    color: #555; font-size: 14px;
+}

@@ -2,6 +2,11 @@ const socket = io();
 let myId = localStorage.getItem('myId');
 let token = localStorage.getItem('token');
 let currentChatId = null;
+let currentChatEmail = ''; // Variável Global para o Email
+
+// --- VARIÁVEIS GLOBAIS DE CONFIG ---
+let currentSectors = [];
+let currentUserSettings = {};
 
 // --- FUNÇÕES AUXILIARES ---
 function showElement(id) { 
@@ -23,14 +28,26 @@ function toggleMenu(menuId) {
 function showMainScreen() {
     hideElement('auth-screen');
     hideElement('chat-screen');
+    hideElement('settings-screen');
     showElement('main-screen');
     loadContacts(); 
     socket.emit('join_room', myId);
 }
 
-function openChat(id, name, photo) {
+function backToMain() {
+    currentChatId = null;
+    hideElement('settings-screen');
+    hideElement('chat-screen');
+    showElement('main-screen');
+}
+
+// --- ABRIR CHAT (COM E-MAIL) ---
+function openChat(id, name, photo, email) {
     currentChatId = id;
+    currentChatEmail = email; // Salva o email
+    
     hideElement('main-screen');
+    hideElement('settings-screen');
     showElement('chat-screen');
     
     document.getElementById('chat-title').innerText = name;
@@ -40,9 +57,20 @@ function openChat(id, name, photo) {
     loadMessages(id);
 }
 
-function backToMain() {
-    currentChatId = null;
-    showMainScreen();
+// --- PERFIL DO CONTATO (HEADER) ---
+function viewContactProfile() {
+    const name = document.getElementById('chat-title').innerText;
+    const photo = document.getElementById('chat-avatar').src;
+
+    document.getElementById('view-contact-name').innerText = name;
+    document.getElementById('view-contact-avatar').src = photo;
+    document.getElementById('view-contact-email').innerText = currentChatEmail || 'E-mail oculto';
+
+    showElement('contact-profile-modal');
+}
+
+function closeContactProfile() {
+    hideElement('contact-profile-modal');
 }
 
 // --- AUTENTICAÇÃO ---
@@ -103,9 +131,16 @@ async function handleAuth() {
                 localStorage.setItem('token', token);
                 localStorage.setItem('myId', myId);
                 
-                // Salva dados do perfil
                 localStorage.setItem('displayName', data.displayName || '');
                 localStorage.setItem('photoUrl', data.photoUrl || '');
+                // Salva email do usuário logado se vier do back (opcional)
+                if(data.email) localStorage.setItem('userEmail', data.email);
+
+                // Aplica tema salvo
+                if(data.theme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                }
 
                 showMainScreen();
             }
@@ -142,16 +177,61 @@ function logout() {
     location.reload();
 }
 
-// --- CONFIGURAÇÕES DE PERFIL ---
+// --- CONFIGURAÇÕES (TELA CHEIA) ---
 function openSettings() {
     toggleMenu('main-menu');
-    showElement('settings-modal');
-    document.getElementById('settings-name').value = localStorage.getItem('displayName') || '';
-    document.getElementById('settings-avatar').src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    hideElement('main-screen');
+    showElement('settings-screen');
+
+    document.getElementById('config-name').innerText = localStorage.getItem('displayName') || 'Sem nome';
+    document.getElementById('config-avatar').src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    document.getElementById('config-email').innerText = localStorage.getItem('userEmail') || 'E-mail cadastrado';
+
+    // Estado do Switch de Tema
+    const isDark = localStorage.getItem('theme') === 'dark';
+    document.getElementById('theme-switch').checked = isDark;
+
+    renderSectorsList();
 }
 
-function closeSettings() {
-    hideElement('settings-modal');
+function editName() {
+    const newName = prompt("Novo nome de exibição:");
+    if(newName) {
+        document.getElementById('config-name').innerText = newName;
+        saveProfile({ displayName: newName });
+    }
+}
+
+function createNewSector() {
+    const name = prompt("Nome do Setor (ex: Trabalho):");
+    if(name) {
+        currentSectors.push({ name, members: [] });
+        renderSectorsList();
+        saveProfile({ sectors: currentSectors });
+    }
+}
+
+function renderSectorsList() {
+    const list = document.getElementById('sectors-list');
+    list.innerHTML = '';
+    currentSectors.forEach(sec => {
+        const div = document.createElement('div');
+        div.className = 'setting-item';
+        div.innerHTML = `<span>${sec.name}</span> <small>0 membros</small>`;
+        list.appendChild(div);
+    });
+}
+
+function toggleTheme(isDark) {
+    if(isDark) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('theme', 'dark');
+        saveProfile({ theme: 'dark' });
+    } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('theme', 'light');
+        saveProfile({ theme: 'light' });
+    }
 }
 
 function triggerProfileUpload() {
@@ -164,36 +244,48 @@ async function uploadProfilePhoto(input) {
 
     const formData = new FormData();
     formData.append('file', file);
-    document.getElementById('settings-avatar').style.opacity = '0.5';
+    // Feedback visual na tela de settings
+    const avatar = document.getElementById('config-avatar'); // Pega o avatar da tela de config
+    if(avatar) avatar.style.opacity = '0.5';
 
     try {
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
-        document.getElementById('settings-avatar').src = data.url;
-        document.getElementById('settings-avatar').setAttribute('data-new-url', data.url);
-        document.getElementById('settings-avatar').style.opacity = '1';
+        
+        // Atualiza na tela de settings
+        if(avatar) {
+            avatar.src = data.url;
+            avatar.style.opacity = '1';
+        }
+        // Salva URL para envio posterior se precisar, ou salva direto
+        saveProfile({ photoUrl: data.url });
+        
     } catch (e) { alert('Erro ao enviar foto'); }
 }
 
-async function saveProfile() {
-    const newName = document.getElementById('settings-name').value;
-    const newPhoto = document.getElementById('settings-avatar').getAttribute('data-new-url');
-    
+async function saveProfile(dataToUpdate) {
     try {
-        const res = await fetch('/update-profile', {
+        await fetch('/settings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: myId, displayName: newName, photoUrl: newPhoto })
+            body: JSON.stringify({ userId: myId, ...dataToUpdate })
         });
+        
+        if(dataToUpdate.displayName) localStorage.setItem('displayName', dataToUpdate.displayName);
+        if(dataToUpdate.photoUrl) localStorage.setItem('photoUrl', dataToUpdate.photoUrl);
+        if(dataToUpdate.theme) localStorage.setItem('theme', dataToUpdate.theme);
+        
+    } catch(e) { console.error("Erro ao salvar perfil", e); }
+}
 
-        if(res.ok) {
-            if(newName) localStorage.setItem('displayName', newName);
-            if(newPhoto) localStorage.setItem('photoUrl', newPhoto);
-            alert('Perfil atualizado!');
-            closeSettings();
-            loadContacts();
-        } else { alert('Erro ao salvar.'); }
-    } catch (e) { console.error(e); }
+function deleteAccount() {
+    if(confirm("TEM CERTEZA? Isso apagará tudo permanentemente!")) {
+        fetch(`/delete-account/${myId}`, { method: 'DELETE' })
+        .then(() => {
+            alert("Conta deletada.");
+            logout();
+        });
+    }
 }
 
 // --- CARREGAR DADOS ---
@@ -208,15 +300,32 @@ async function loadContacts() {
     users.forEach(user => {
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         const name = user.displayName || user.email.split('@')[0];
+        const email = user.email; // IMPORTANTE: Pega o email
+
+        // Lógica de Setores (Exemplo simples)
+        let sectorLabel = '';
+        let extraClass = '';
+        currentSectors.forEach(sec => {
+            if(sec.members.includes(user._id)) {
+                sectorLabel = `<span class="sector-badge">${sec.name}</span>`;
+                extraClass = 'sectored';
+            }
+        });
 
         const div = document.createElement('div');
-        div.className = 'user-item';
-        div.onclick = () => openChat(user._id, name, photo);
+        div.className = `user-item ${extraClass}`;
+        
+        // Passa o email ao abrir o chat
+        div.onclick = () => openChat(user._id, name, photo, email);
+        
         div.innerHTML = `
-            <img src="${photo}" alt="Avatar">
+            <div class="user-avatar-container">
+                ${sectorLabel}
+                <img src="${photo}" alt="Avatar">
+            </div>
             <div class="info">
                 <div style="font-weight:bold">${name}</div>
-                <div style="font-size:12px; color:#666">Toque para conversar</div>
+                <div style="font-size:12px; color:var(--secondary-text)">Toque para conversar</div>
             </div>
         `;
         list.appendChild(div);
@@ -230,13 +339,10 @@ async function loadMessages(userId) {
 }
 
 // --- MENSAGENS E UPLOADS ---
-
-// Lógica de Emojis (Múltiplos + Não fecha menu)
 const emojiPicker = document.querySelector('emoji-picker');
 if(emojiPicker) {
     emojiPicker.addEventListener('emoji-click', event => {
         document.execCommand('insertText', false, event.detail.unicode);
-        // Não fechamos o menu aqui para permitir múltiplos cliques!
     });
 }
 
@@ -245,9 +351,8 @@ function toggleEmojiPicker() {
     picker.classList.toggle('hidden');
 }
 
-// Formatação (Negrito, Itálico, Fontes)
 function formatDoc(cmd, event, value=null) {
-    if(event) event.preventDefault(); // Mantém teclado no celular
+    if(event) event.preventDefault(); 
     document.execCommand(cmd, false, value);
     if (cmd === 'fontName') toggleMenu('attach-menu');
 }
@@ -309,7 +414,7 @@ async function startRecording() {
             handleFileUpload(document.getElementById('file-input'));
         };
 
-        setTimeout(() => mediaRecorder.stop(), 3000); // 3 segundos de teste
+        setTimeout(() => mediaRecorder.stop(), 3000); // 3s
         
     } catch (err) {
         alert('Permissão de microfone negada!');
@@ -334,7 +439,7 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     if(!fileUrl) input.innerHTML = ''; 
 }
 
-// --- EXIBIR MENSAGEM (COM HORÁRIO E ÍCONE) ---
+// --- EXIBIR MENSAGEM ---
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
     const div = document.createElement('div');
@@ -342,7 +447,6 @@ function displayMessage(msg) {
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
 
     let contentHtml = '';
-
     if (msg.fileType === 'image') {
         contentHtml = `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`;
     } else if (msg.fileType === 'audio') {
@@ -353,7 +457,6 @@ function displayMessage(msg) {
         contentHtml = msg.content; 
     }
 
-    // Hora Formatada (HH:MM)
     const date = new Date(msg.timestamp || Date.now());
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -372,7 +475,6 @@ function displayMessage(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
-// --- SOCKET RECEBER ---
 socket.on('receive_message', (msg) => {
     const isFromSelected = msg.sender === currentChatId;
     const isFromMe = msg.sender === myId;
@@ -382,7 +484,6 @@ socket.on('receive_message', (msg) => {
     }
 });
 
-// Inicialização
 function handleEnter(e) { if(e.key === 'Enter') sendMessage(); }
 
 if(token && myId) {
@@ -391,18 +492,14 @@ if(token && myId) {
     showElement('auth-screen');
 }
 
-// --- LÓGICA DE PESQUISA GLOBAL ---
-
-let searchTimeout = null; // Para não buscar a cada letra (Debounce)
+// --- BUSCA GLOBAL ---
+let searchTimeout = null;
 
 function handleSearch(query) {
-    // Se limpar o campo, volta a mostrar a lista normal
     if (!query.trim()) {
         loadContacts();
         return;
     }
-
-    // Espera o usuário parar de digitar por 300ms antes de buscar (Performance)
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => performSearch(query), 300);
 }
@@ -417,9 +514,8 @@ async function performSearch(query) {
 
 function renderSearchResults(data) {
     const list = document.getElementById('users-list');
-    list.innerHTML = ''; // Limpa a lista atual
+    list.innerHTML = ''; 
 
-    // 1. Exibir Usuários Encontrados
     if (data.users.length > 0) {
         const title = document.createElement('div');
         title.className = 'search-section-title';
@@ -432,7 +528,6 @@ function renderSearchResults(data) {
         });
     }
 
-    // 2. Exibir Mensagens Encontradas
     if (data.messages.length > 0) {
         const title = document.createElement('div');
         title.className = 'search-section-title';
@@ -440,10 +535,8 @@ function renderSearchResults(data) {
         list.appendChild(title);
 
         data.messages.forEach(msg => {
-            // Descobre quem é o "Outro" na conversa
             const isMeSender = msg.sender._id === myId;
             const chatPartner = isMeSender ? msg.receiver : msg.sender;
-            
             const el = createSearchItem(chatPartner, msg);
             list.appendChild(el);
         });
@@ -458,16 +551,14 @@ function createSearchItem(user, msgMatch) {
     const div = document.createElement('div');
     div.className = 'user-item';
     
-    // Se for clique em mensagem, abre o chat e (futuramente) rola até ela
-    // Por enquanto, abre o chat normal com a pessoa
-    div.onclick = () => openChat(user._id, user.displayName, user.photoUrl);
+    // Passa o email aqui também
+    div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email);
 
     const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
     const name = user.displayName || 'Usuário';
 
     let subText = 'Toque para conversar';
     if (msgMatch) {
-        // Mostra o trecho da mensagem encontrada
         subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`;
     }
 
@@ -479,138 +570,4 @@ function createSearchItem(user, msgMatch) {
         </div>
     `;
     return div;
-}
-
-// VARIÁVEIS GLOBAIS NOVAS
-let currentSectors = [];
-let currentUserSettings = {};
-
-// --- ABRIR CONFIGURAÇÕES ---
-function openSettingsPage() {
-    toggleMenu('main-menu');
-    hideElement('main-screen');
-    showElement('settings-screen');
-
-    // Preenche dados
-    document.getElementById('config-name').innerText = localStorage.getItem('displayName');
-    document.getElementById('config-email').innerText = localStorage.getItem('temp_email') || 'email@usuario.com'; // (Ideal: salvar email no login)
-    document.getElementById('config-avatar').src = localStorage.getItem('photoUrl');
-    
-    // Carrega setores salvos (Simulação: Buscar do servidor seria o ideal)
-    renderSectorsList();
-}
-
-// --- TEMA E WALLPAPER ---
-function changeTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-mode');
-    } else {
-        document.body.classList.remove('dark-mode');
-    }
-    saveSettings({ theme });
-}
-
-async function uploadWallpaper(input) {
-    // Reutiliza a função de upload de foto
-    // ... (Lógica de upload aqui, igual profile)
-    // Supondo que pegou a URL:
-    // const url = ...
-    // document.documentElement.style.setProperty('--chat-bg-image', `url(${url})`);
-    // saveSettings({ chatWallpaper: url });
-    alert("Função de upload de wallpaper em construção (Use a lógica do profile)");
-}
-
-// --- SETORES ---
-function createNewSector() {
-    const name = prompt("Nome do Setor (Ex: Trabalho):");
-    if (!name) return;
-
-    // Adiciona novo setor
-    currentSectors.push({ name, members: [] });
-    renderSectorsList();
-    saveSettings({ sectors: currentSectors });
-}
-
-function renderSectorsList() {
-    const list = document.getElementById('sectors-list');
-    list.innerHTML = '';
-
-    currentSectors.forEach((sector, index) => {
-        const div = document.createElement('div');
-        div.className = 'setting-item';
-        div.innerHTML = `
-            <span>${sector.name} (${sector.members.length} membros)</span>
-            <span class="action-link" onclick="editSector(${index})">Gerenciar</span>
-        `;
-        list.appendChild(div);
-    });
-}
-
-function editSector(index) {
-    const sector = currentSectors[index];
-    const emailToAdd = prompt(`Adicionar membro ao setor ${sector.name}.\nDigite o E-mail do contato:`);
-    
-    // Simplificação: Adiciona o ID se achar (na prática precisaria buscar ID pelo email)
-    if(emailToAdd) {
-        // Lógica complexa: precisaria buscar o ID do usuário pelo email no banco
-        alert("Para adicionar membros, precisamos buscar o ID pelo email. (Implementar rota de busca)");
-    }
-}
-
-// --- SALVAR TUDO NO SERVIDOR ---
-async function saveSettings(data) {
-    // Atualiza localmente
-    currentUserSettings = { ...currentUserSettings, ...data };
-
-    await fetch('/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: myId, ...data })
-    });
-}
-
-// --- CARREGAR CONTATOS COM SETORES (ATUALIZADO) ---
-// Substitua a função loadContacts antiga por esta:
-async function loadContacts() {
-    if(!myId) return;
-    const res = await fetch(`/users/${myId}`);
-    const users = await res.json();
-    
-    // Carrega meus dados para saber meus setores
-    // (Ideal: uma rota /me que traz tudo)
-    
-    const list = document.getElementById('users-list');
-    list.innerHTML = '';
-
-    users.forEach(user => {
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        const name = user.displayName || user.email.split('@')[0];
-
-        // VERIFICA SE ESTÁ EM UM SETOR (Simulado)
-        let sectorLabel = '';
-        let extraClass = '';
-        
-        // Loop pelos setores para ver se esse user._id está lá
-        currentSectors.forEach(sec => {
-            if(sec.members.includes(user._id)) {
-                sectorLabel = `<span class="sector-badge">${sec.name}</span>`;
-                extraClass = 'sectored';
-            }
-        });
-
-        const div = document.createElement('div');
-        div.className = `user-item ${extraClass}`;
-        div.onclick = () => openChat(user._id, name, photo);
-        div.innerHTML = `
-            <div class="user-avatar-container">
-                ${sectorLabel}
-                <img src="${photo}" alt="Avatar">
-            </div>
-            <div class="info">
-                <div style="font-weight:bold">${name}</div>
-                <div style="font-size:12px; color:var(--secondary-text)">Toque para conversar</div>
-            </div>
-        `;
-        list.appendChild(div);
-    });
 }

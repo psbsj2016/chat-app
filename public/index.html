@@ -44,76 +44,21 @@
         <div id="users-list" class="contact-list"></div>
     </div>
 
-   <div id="chat-screen" class="app-screen hidden">
+    <div id="chat-screen" class="app-screen hidden">
         <div class="chat-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
-            <div class="chat-info">
-                <img id="chat-avatar" src="" class="avatar-small">
+            
+            <div class="chat-info clickable" onclick="viewContactProfile()">
                 <div class="chat-texts">
-                    <span id="chat-title">Nome</span>
+                    <span id="chat-title">Nome do Contato</span>
                 </div>
+                <img id="chat-avatar" src="" class="avatar-small">
             </div>
+
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons">attach_file</span></button>
         </div>
-         
-        <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
-        <div class="main-header">
-            <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
-            <span class="header-title">Configurações</span>
-            <div style="width: 40px;"></div>
-        </div>
 
-        <div class="settings-content">
-            <div class="settings-card profile-card">
-                <img id="config-avatar" src="" onclick="triggerProfileUpload()">
-                <div class="profile-info">
-                    <h3 id="config-name">Nome do Usuário</h3>
-                    <span class="edit-btn" onclick="openEditName()">✎ Editar</span>
-                </div>
-            </div>
-
-            <div class="settings-group">
-                <div class="group-title">Cadastro</div>
-                <div class="setting-item">
-                    <span>E-mail</span>
-                    <span id="config-email" style="color:#666; font-size:14px;">email@teste.com</span>
-                </div>
-                <div class="setting-item delete-account" onclick="deleteAccount()">
-                    <span style="color:red"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:red">delete</span> Deletar Conta</span>
-                </div>
-            </div>
-
-            <div class="settings-group">
-                <div class="group-title">Conversas</div>
-                <div class="setting-item">
-                    <span>Tema</span>
-                    <select id="theme-selector" onchange="changeTheme(this.value)">
-                        <option value="light">Padrão (Claro)</option>
-                        <option value="dark">Escuro</option>
-                    </select>
-                </div>
-                <div class="setting-item" onclick="triggerWallpaperUpload()">
-                    <span>Papel de Parede do Chat</span>
-                    <span class="action-link">Escolher</span>
-                    <input type="file" id="wallpaper-input" hidden onchange="uploadWallpaper(this)">
-                </div>
-                <div class="setting-item" onclick="resetWallpaper()">
-                    <span>Restaurar Fundo Padrão</span>
-                </div>
-            </div>
-
-            <div class="settings-group">
-                <div class="group-title">Setores (Organização)</div>
-                <div class="setting-item" onclick="createNewSector()">
-                    <span style="color:#008069; font-weight:bold;">+ Criar Novo Setor</span>
-                </div>
-                <div id="sectors-list">
-                    </div>
-            </div>
-        </div>
-    </div>
-
-       <div id="attach-menu" class="dropdown-menu right-menu hidden">
+        <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
             <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:#d3396d">image</span> Foto</div>
             <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons" style="color:#e03c31">picture_as_pdf</span> PDF</div>
@@ -151,18 +96,73 @@
         </div>
     </div>
 
-    <div id="settings-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3>Meu Perfil</h3>
-            <div class="profile-edit">
-                <img id="settings-avatar" src="" onclick="triggerProfileUpload()">
-                <p style="font-size:12px; color:#666;">Toque na foto para alterar</p>
+    <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
+            <span class="header-title">Configurações</span>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div class="settings-content">
+            <div class="settings-card">
+                <div style="position: relative;">
+                    <img id="config-avatar" src="" onclick="triggerProfileUpload()" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #008069;">
+                    <span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: #008069; color: white; border-radius: 50%; padding: 4px; font-size: 14px;">edit</span>
+                </div>
+                <div class="profile-info">
+                    <h3 id="config-name">Nome</h3>
+                    <span class="edit-btn" onclick="editName()">✎ Editar Nome</span>
+                </div>
                 <input type="file" id="profile-file-input" hidden onchange="uploadProfilePhoto(this)">
             </div>
-            <input type="text" id="settings-name" placeholder="Seu Nome de Exibição">
-            <div class="modal-actions">
-                <button onclick="closeSettings()" style="background:#ccc;">Cancelar</button>
-                <button onclick="saveProfile()" style="background:#008069;">Salvar</button>
+
+            <div class="settings-group">
+                <div class="group-title">Cadastro</div>
+                <div class="setting-item">
+                    <span>E-mail</span>
+                    <span id="config-email" style="color:#666; font-size:14px;">Carregando...</span>
+                </div>
+                <div class="setting-item" onclick="deleteAccount()">
+                    <span style="color:red"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:red">delete_forever</span> Deletar Minha Conta</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="group-title">Aparência</div>
+                <div class="setting-item">
+                    <span>Tema Escuro</span>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="setting-item" onclick="alert('Em breve: Upload de Wallpaper')">
+                    <span>Papel de Parede</span>
+                    <span class="action-link">Escolher</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="group-title">Meus Setores</div>
+                <div class="setting-item" onclick="createNewSector()">
+                    <span style="color:#008069; font-weight:bold;">+ Novo Setor</span>
+                </div>
+                <div id="sectors-list">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
+        <div class="modal-content profile-view-card">
+            <div style="text-align: right; width: 100%;">
+                <span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span>
+            </div>
+            <img id="view-contact-avatar" src="">
+            <h3 id="view-contact-name">Nome</h3>
+            <div class="profile-detail-item">
+                <span class="material-icons">email</span>
+                <span id="view-contact-email">email@exemplo.com</span>
             </div>
         </div>
     </div>
