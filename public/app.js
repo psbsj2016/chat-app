@@ -41,20 +41,210 @@ function backToMain() {
     showElement('main-screen');
 }
 
-// --- ABRIR CHAT (COM E-MAIL) ---
-function openChat(id, name, photo, email) {
+// --- VARIÁVEIS GLOBAIS ---
+let selectedUserIds = []; // Lista de IDs para o grupo
+let isGroupChat = false;  // Flag para saber se o chat atual é grupo
+
+// --- NOVO: ABRIR CHAT (SUPORTA GRUPO E PESSOA) ---
+function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id;
-    currentChatEmail = email; // Salva o email
+    currentChatEmail = email; 
     
+    // Define se é grupo
+    isGroupChat = (type === 'group');
+
     hideElement('main-screen');
     hideElement('settings-screen');
     showElement('chat-screen');
     
     document.getElementById('chat-title').innerText = name;
-    document.getElementById('chat-avatar').src = photo || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
     document.getElementById('chat-box').innerHTML = ''; 
     
-    loadMessages(id);
+    // Se for grupo, avisa o socket para entrar na sala
+    if (isGroupChat) {
+        socket.emit('join_group', id);
+        loadGroupMessages(id);
+    } else {
+        loadMessages(id);
+    }
+}
+
+// --- NOVO: CARREGAR MENSAGENS DE GRUPO ---
+async function loadGroupMessages(groupId) {
+    const res = await fetch(`/group-messages/${groupId}`);
+    const msgs = await res.json();
+    msgs.forEach(displayMessage);
+}
+
+// --- ATUALIZADO: CARREGAR CONTATOS E GRUPOS ---
+async function loadContacts() {
+    if(!myId) return;
+    const list = document.getElementById('users-list');
+    list.innerHTML = '';
+
+    // 1. Buscar Grupos
+    const resGroups = await fetch(`/groups/${myId}`);
+    const groups = await resGroups.json();
+
+    groups.forEach(group => {
+        const div = document.createElement('div');
+        div.className = 'user-item';
+        // Ícone de Grupo
+        const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+        
+        // Clicar abre como GRUPO
+        div.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group');
+        
+        div.innerHTML = `
+            <img src="${photo}" alt="Group">
+            <div class="info">
+                <div style="font-weight:bold">${group.name}</div>
+                <div style="font-size:12px; color:#008069">Grupo</div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+
+    // 2. Buscar Usuários (Mantido igual)
+    const resUsers = await fetch(`/users/${myId}`);
+    const users = await resUsers.json();
+
+    users.forEach(user => {
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const name = user.displayName || user.email.split('@')[0];
+        const email = user.email;
+
+        // Setores (Lógica existente)
+        let sectorLabel = '';
+        let extraClass = '';
+        currentSectors.forEach(sec => {
+            if(sec.members.includes(user._id)) {
+                sectorLabel = `<span class="sector-badge">${sec.name}</span>`;
+                extraClass = 'sectored';
+            }
+        });
+
+        const div = document.createElement('div');
+        div.className = `user-item ${extraClass}`;
+        // Clicar abre como USER
+        div.onclick = () => openChat(user._id, name, photo, email, 'user');
+        
+        div.innerHTML = `
+            <div class="user-avatar-container">
+                ${sectorLabel}
+                <img src="${photo}" alt="Avatar">
+            </div>
+            <div class="info">
+                <div style="font-weight:bold">${name}</div>
+                <div style="font-size:12px; color:var(--secondary-text)">Toque para conversar</div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+// --- LÓGICA DE CRIAR GRUPO ---
+
+// 1. Abrir Modal e Carregar Candidatos
+async function openCreateGroupModal() {
+    // Altera o onclick do menu no HTML para chamar esta função
+    toggleMenu('main-menu');
+    showElement('create-group-modal');
+    selectedUserIds = []; // Limpa seleção
+    document.getElementById('group-name-input').value = '';
+
+    const res = await fetch(`/users/${myId}`);
+    const users = await res.json();
+    
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '';
+
+    users.forEach(user => {
+        const div = document.createElement('div');
+        div.className = 'candidate-item';
+        div.dataset.name = user.displayName.toLowerCase(); // Para pesquisa
+        div.onclick = () => toggleCandidate(div, user._id);
+        
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        
+        div.innerHTML = `
+            <img src="${photo}">
+            <span>${user.displayName || user.email}</span>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function closeCreateGroup() {
+    hideElement('create-group-modal');
+}
+
+// 2. Selecionar / Deselecionar
+function toggleCandidate(el, id) {
+    if (selectedUserIds.includes(id)) {
+        selectedUserIds = selectedUserIds.filter(uid => uid !== id);
+        el.classList.remove('selected');
+    } else {
+        selectedUserIds.push(id);
+        el.classList.add('selected');
+    }
+}
+
+// 3. Filtrar na lista (Pesquisa do Modal)
+function filterGroupContacts(query) {
+    const items = document.querySelectorAll('.candidate-item');
+    items.forEach(item => {
+        const name = item.dataset.name;
+        if (name.includes(query.toLowerCase())) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// 4. Enviar para o Servidor
+async function submitCreateGroup() {
+    const name = document.getElementById('group-name-input').value;
+    if (!name) return alert("Digite um nome para o grupo!");
+    if (selectedUserIds.length === 0) return alert("Selecione pelo menos 1 pessoa!");
+
+    try {
+        const res = await fetch('/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, adminId: myId, members: selectedUserIds })
+        });
+        
+        if (res.ok) {
+            alert("Grupo criado!");
+            closeCreateGroup();
+            loadContacts(); // Recarrega lista principal
+        } else {
+            alert("Erro ao criar grupo.");
+        }
+    } catch (e) { console.error(e); }
+}
+
+// --- ATUALIZADO: ENVIAR MENSAGEM (COM SUPORTE A GRUPO) ---
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
+    const input = document.getElementById('message-input');
+    const content = textOverride || input.innerHTML; 
+
+    if((!content && !fileUrl) || !currentChatId) return;
+
+    const msgData = { 
+        senderId: myId, 
+        receiverId: isGroupChat ? null : currentChatId, // Se for grupo, não tem receiver direto
+        groupId: isGroupChat ? currentChatId : null,    // Se for user, não tem groupId
+        content: fileUrl ? 'Arquivo enviado' : content,
+        fileUrl, 
+        fileType 
+    };
+
+    socket.emit('private_message', msgData);
+    if(!fileUrl) input.innerHTML = ''; 
 }
 
 // --- PERFIL DO CONTATO (HEADER) ---

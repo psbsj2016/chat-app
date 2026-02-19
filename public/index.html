@@ -28,7 +28,7 @@
         </div>
 
         <div id="main-menu" class="dropdown-menu hidden">
-            <div class="menu-item" onclick="alert('Em breve: Criar Grupo')"><span class="material-icons">group_add</span> Criar Grupo</div>
+            <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
             <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
             <div class="menu-item logout" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
@@ -168,6 +168,27 @@
             <div class="profile-detail-item">
                 <span class="material-icons">email</span>
                 <span id="view-contact-email">email@exemplo.com</span>
+            </div>
+        </div>
+    </div>
+
+        <div id="create-group-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;">
+            <h3>Novo Grupo</h3>
+            
+            <input type="text" id="group-name-input" placeholder="Nome do Grupo" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px;">
+            
+            <div class="search-box" style="margin-bottom: 10px;">
+                <span class="material-icons">search</span>
+                <input type="text" placeholder="Buscar contatos..." onkeyup="filterGroupContacts(this.value)">
+            </div>
+
+            <div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;">
+                </div>
+
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button onclick="closeCreateGroup()" style="background:#ccc; color:#333;">Cancelar</button>
+                <button onclick="submitCreateGroup()" style="background:#008069;">CRIAR GRUPO</button>
             </div>
         </div>
     </div>

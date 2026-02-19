@@ -67,16 +67,57 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
+// NOVO: Schema de Grupo
+const GroupSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } // Ícone padrão de grupo
+});
+const Group = mongoose.model('Group', GroupSchema);
+
+// ATUALIZADO: MessageSchema (Adicione o campo groupId)
 const MessageSchema = new mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Para chat privado
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, // Para chat de grupo (NOVO)
     content: String,
     fileUrl: String,
-    fileType: { type: String, default: 'text' }, // 'text', 'image', 'audio', 'pdf'
+    fileType: { type: String, default: 'text' },
     status: { type: String, default: 'sent' },
     timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', MessageSchema);
+
+// 12. CRIAR GRUPO
+app.post('/groups', async (req, res) => {
+    const { name, adminId, members } = req.body;
+    try {
+        // O Admin também é membro
+        const allMembers = [...members, adminId];
+        const newGroup = new Group({ name, admin: adminId, members: allMembers });
+        await newGroup.save();
+        res.json(newGroup);
+    } catch (e) { res.status(500).json({ error: 'Erro ao criar grupo' }); }
+});
+
+// 13. LISTAR GRUPOS DO USUÁRIO
+app.get('/groups/:userId', async (req, res) => {
+    try {
+        const groups = await Group.find({ members: req.params.userId });
+        res.json(groups);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
+
+// 14. MENSAGENS DO GRUPO
+app.get('/group-messages/:groupId', async (req, res) => {
+    try {
+        const messages = await Message.find({ groupId: req.params.groupId })
+            .populate('sender', 'displayName photoUrl') // Precisa saber quem mandou
+            .sort('timestamp');
+        res.json(messages);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
 
 // --- CONFIGURAÇÃO DE E-MAIL (BREVO/OUTLOOK) ---
 const transporter = nodemailer.createTransport({
@@ -296,31 +337,43 @@ app.delete('/messages/:myId/:otherId', async (req, res) => {
     }
 });
 
-// --- SOCKET.IO ---
+// --- SOCKET.IO (ATUALIZADO) ---
 let users = {};
 
 io.on('connection', (socket) => {
     socket.on('join_room', (userId) => {
         users[userId] = socket.id;
+        socket.join(userId); // Entra na sala pessoal
     });
 
-    socket.on('private_message', async ({ senderId, receiverId, content, fileUrl, fileType }) => {
+    // NOVO: Entrar na sala do grupo
+    socket.on('join_group', (groupId) => {
+        socket.join(groupId);
+    });
+
+    socket.on('private_message', async (data) => {
         try {
+            const { senderId, receiverId, groupId, content, fileUrl, fileType } = data;
+            
             const msg = new Message({ 
                 sender: senderId, 
-                receiver: receiverId, 
-                content, 
-                fileUrl, 
-                fileType: fileType || 'text',
-                status: 'sent' 
+                receiver: receiverId, // Pode ser null se for grupo
+                groupId: groupId,     // Pode ser null se for privado
+                content, fileUrl, fileType: fileType || 'text', status: 'sent' 
             });
             await msg.save();
 
-            const receiverSocketId = users[receiverId];
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('receive_message', msg);
+            // Se for GRUPO
+            if (groupId) {
+                // Envia para todos na sala do grupo (incluindo quem mandou)
+                io.to(groupId).emit('receive_message', msg);
+            } 
+            // Se for PRIVADO
+            else {
+                const receiverSocketId = users[receiverId];
+                if (receiverSocketId) io.to(receiverSocketId).emit('receive_message', msg);
+                socket.emit('receive_message', msg);
             }
-            socket.emit('receive_message', msg);
         } catch (e) { console.error(e); }
     });
 });
