@@ -44,8 +44,7 @@ function backToMain() {
     showElement('main-screen');
 }
 
-// --- ABRIR CHAT (USUÁRIO OU GRUPO) ---
-// --- 2. ABRIR CHAT (ATUALIZADO PARA MOSTRAR STATUS NO TOPO) ---
+// --- ABRIR CHAT (COM PROTEÇÃO DE ERROS) ---
 function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id;
     currentChatEmail = email; 
@@ -59,17 +58,18 @@ function openChat(id, name, photo, email, type = 'user') {
     document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
     document.getElementById('chat-box').innerHTML = ''; 
 
-    // Lógica da Bolinha no Cabeçalho
+    // PROTEÇÃO: Só altera a bolinha se ela realmente existir no HTML
     const headerDot = document.getElementById('chat-header-status');
-    if (isGroupChat) {
-        headerDot.classList.add('hidden'); // Esconde em grupos
-    } else {
-        headerDot.classList.remove('hidden');
-        headerDot.classList.remove('status-online', 'status-offline');
-        if (onlineUsersList.includes(id)) {
-            headerDot.classList.add('status-online');
+    if (headerDot) {
+        if (isGroupChat) {
+            headerDot.classList.add('hidden'); // Esconde em grupos
         } else {
-            headerDot.classList.add('status-offline');
+            headerDot.classList.remove('hidden', 'status-online', 'status-offline');
+            if (onlineUsersList.includes(id)) {
+                headerDot.classList.add('status-online');
+            } else {
+                headerDot.classList.add('status-offline');
+            }
         }
     }
     
