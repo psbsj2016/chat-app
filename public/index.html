@@ -76,12 +76,17 @@
 
             <div class="menu-separator"></div>
             <div class="menu-label">Fontes</div>
-
             <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial">Arial</div>
             <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Georgia')" style="font-family: Georgia">Georgia</div>
             <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: Courier New">Monospace</div>
             <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Comic Sans MS')" style="font-family: Comic Sans MS">Comic</div>
             <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact">Impact</div>
+
+            <div class="menu-separator"></div>
+            <div class="menu-item logout" onclick="deleteCurrentChat()">
+                <span class="material-icons">delete_forever</span> 
+                <span style="font-weight: bold;">Apagar Conversa</span>
+            </div>
         </div>
 
         <div id="chat-box"></div>

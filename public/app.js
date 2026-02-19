@@ -571,3 +571,34 @@ function createSearchItem(user, msgMatch) {
     `;
     return div;
 }
+
+// ... (outras funções)
+
+// --- APAGAR CONVERSA ---
+async function deleteCurrentChat() {
+    if (!currentChatId) return;
+
+    // 1. Confirmação de Segurança
+    const confirmDelete = confirm("⚠️ ATENÇÃO!\n\nTem certeza que deseja apagar TODA a conversa com este contato?\nEssa ação não pode ser desfeita.");
+    
+    if (!confirmDelete) return;
+
+    try {
+        // 2. Chama o Servidor
+        const res = await fetch(`/messages/${myId}/${currentChatId}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            // 3. Limpa a tela na hora
+            document.getElementById('chat-box').innerHTML = '';
+            toggleMenu('attach-menu'); // Fecha o menu
+            alert("Conversa apagada!");
+        } else {
+            alert("Erro ao apagar mensagens.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Erro de conexão.");
+    }
+}

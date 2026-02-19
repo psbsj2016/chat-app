@@ -280,6 +280,22 @@ app.put('/update-profile', async (req, res) => {
     }
 });
 
+// 11. APAGAR CONVERSA INTEIRA
+app.delete('/messages/:myId/:otherId', async (req, res) => {
+    const { myId, otherId } = req.params;
+    try {
+        await Message.deleteMany({
+            $or: [
+                { sender: myId, receiver: otherId },
+                { sender: otherId, receiver: myId }
+            ]
+        });
+        res.json({ message: 'Conversa apagada com sucesso.' });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao apagar conversa.' });
+    }
+});
+
 // --- SOCKET.IO ---
 let users = {};
 
