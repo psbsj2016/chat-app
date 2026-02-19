@@ -5,10 +5,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const nodemailer = require('nodemailer');
-const bcrypt = require('bcryptjs'); // Se não tiver, instale: npm install bcryptjs jsonwebtoken
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// --- NOVAS IMPORTAÇÕES PARA ARQUIVOS ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
@@ -28,17 +27,15 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// --- CONFIGURAÇÃO OTIMIZADA DO CLOUDINARY ---
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'chat-app-uploads',
         resource_type: 'auto',
-        // AQUI ESTÁ A MÁGICA DA VELOCIDADE:
         transformation: [
-            { width: 800, crop: "limit" }, // Reduz largura para max 800px (não precisa mais que isso no chat)
-            { quality: "auto" },           // Ajusta qualidade automaticamente para ficar leve
-            { fetch_format: "auto" }       // Converte para WebP se o navegador suportar (super leve)
+            { width: 800, crop: "limit" }, 
+            { quality: "auto" },           
+            { fetch_format: "auto" }       
         ]
     },
 });
@@ -49,7 +46,7 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Conectado!"))
     .catch(err => console.error("Erro MongoDB:", err));
 
-// --- MODELOS ATUALIZADOS ---
+// --- MODELOS ---
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
@@ -57,9 +54,8 @@ const UserSchema = new mongoose.Schema({
     photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
     code: String,
     isVerified: { type: Boolean, default: false },
-    // NOVOS CAMPOS:
-    theme: { type: String, default: 'light' }, // 'light' ou 'dark'
-    chatWallpaper: { type: String, default: '' }, // URL da imagem de fundo
+    theme: { type: String, default: 'light' },
+    chatWallpaper: { type: String, default: '' },
     sectors: [{ 
         name: String, 
         members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] 
@@ -67,20 +63,18 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// NOVO: Schema de Grupo
 const GroupSchema = new mongoose.Schema({
     name: { type: String, required: true },
     admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } // Ícone padrão de grupo
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }
 });
 const Group = mongoose.model('Group', GroupSchema);
 
-// ATUALIZADO: MessageSchema (Adicione o campo groupId)
 const MessageSchema = new mongoose.Schema({
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Para chat privado
-    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, // Para chat de grupo (NOVO)
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
     content: String,
     fileUrl: String,
     fileType: { type: String, default: 'text' },
@@ -89,37 +83,7 @@ const MessageSchema = new mongoose.Schema({
 });
 const Message = mongoose.model('Message', MessageSchema);
 
-// 12. CRIAR GRUPO
-app.post('/groups', async (req, res) => {
-    const { name, adminId, members } = req.body;
-    try {
-        // O Admin também é membro
-        const allMembers = [...members, adminId];
-        const newGroup = new Group({ name, admin: adminId, members: allMembers });
-        await newGroup.save();
-        res.json(newGroup);
-    } catch (e) { res.status(500).json({ error: 'Erro ao criar grupo' }); }
-});
-
-// 13. LISTAR GRUPOS DO USUÁRIO
-app.get('/groups/:userId', async (req, res) => {
-    try {
-        const groups = await Group.find({ members: req.params.userId });
-        res.json(groups);
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
-});
-
-// 14. MENSAGENS DO GRUPO
-app.get('/group-messages/:groupId', async (req, res) => {
-    try {
-        const messages = await Message.find({ groupId: req.params.groupId })
-            .populate('sender', 'displayName photoUrl') // Precisa saber quem mandou
-            .sort('timestamp');
-        res.json(messages);
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
-});
-
-// --- CONFIGURAÇÃO DE E-MAIL (BREVO/OUTLOOK) ---
+// --- CONFIGURAÇÃO DE E-MAIL ---
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 587, 
@@ -131,40 +95,8 @@ const transporter = nodemailer.createTransport({
     tls: { rejectUnauthorized: false }
 });
 
+// --- ROTAS DA API ---
 
-// 9. SALVAR PREFERÊNCIAS (TEMA / WALLPAPER / SETORES)
-app.put('/settings', async (req, res) => {
-    const { userId, theme, chatWallpaper, sectors } = req.body;
-    try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-
-        if (theme) user.theme = theme;
-        if (chatWallpaper !== undefined) user.chatWallpaper = chatWallpaper;
-        if (sectors) user.sectors = sectors;
-
-        await user.save();
-        res.json({ message: 'Configurações salvas!', user });
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao salvar' });
-    }
-});
-
-// 10. DELETAR CONTA
-app.delete('/delete-account/:userId', async (req, res) => {
-    try {
-        await User.findByIdAndDelete(req.params.userId);
-        // Opcional: Deletar mensagens onde ele é sender
-        await Message.deleteMany({ sender: req.params.userId });
-        res.json({ message: 'Conta deletada.' });
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao deletar' });
-    }
-});
-
-// --- ROTAS DE AUTENTICAÇÃO (LOGIN / REGISTER) ---
-
-// 1. REGISTRO
 app.post('/register', async (req, res) => {
     const { email, password, displayName } = req.body;
     try {
@@ -175,42 +107,30 @@ app.post('/register', async (req, res) => {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
 
         const newUser = new User({ 
-            email, 
-            password: hashedPassword, 
-            code,
+            email, password: hashedPassword, code,
             displayName: displayName || email.split('@')[0]
         });
         await newUser.save();
 
         const mailOptions = {
-            from: 'Chat App <psbsj.2020@outlook.com>', // SEU EMAIL VERIFICADO NO BREVO
+            from: 'Chat App <psbsj.2020@outlook.com>',
             to: email,
             subject: 'Seu Código de Verificação',
             html: `<h1>Seu código é: ${code}</h1>`
         };
 
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log(error);
-                return res.status(500).json({ error: 'Erro ao enviar email' });
-            }
+        transporter.sendMail(mailOptions, (error) => {
+            if (error) return res.status(500).json({ error: 'Erro ao enviar email' });
             res.json({ message: 'Código enviado!' });
         });
-
-    } catch (error) {
-        res.status(500).json({ error: 'Erro no servidor' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
 
-// 2. LOGIN
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ email });
         if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
-
-        // Se quiser forçar verificação, descomente a linha abaixo:
-        // if (!user.isVerified) return res.status(400).json({ error: 'Conta não verificada' });
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' });
@@ -218,38 +138,25 @@ app.post('/login', async (req, res) => {
         const token = jwt.sign({ id: user._id }, 'SEGREDO_SUPER_SECRETO', { expiresIn: '1h' });
 
         res.json({ 
-            token, 
-            myId: user._id, 
-            email: user.email,
-            displayName: user.displayName,
-            photoUrl: user.photoUrl 
+            token, myId: user._id, email: user.email,
+            displayName: user.displayName, photoUrl: user.photoUrl,
+            sectors: user.sectors, theme: user.theme 
         });
-    } catch (e) {
-        res.status(500).json({ error: 'Erro no servidor' });
-    }
+    } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
 
-// 3. VERIFICAR CÓDIGO
 app.post('/verify', async (req, res) => {
     const { email, code } = req.body;
     try {
         const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
+        if (!user || user.code !== code) return res.status(400).json({ error: 'Código inválido' });
 
-        if (user.code === code) {
-            user.isVerified = true;
-            user.code = null; // Limpa o código
-            await user.save();
-            res.json({ message: 'Verificado com sucesso!' });
-        } else {
-            res.status(400).json({ error: 'Código inválido' });
-        }
-    } catch (error) {
-        res.status(500).json({ error: 'Erro ao verificar' });
-    }
+        user.isVerified = true; user.code = null;
+        await user.save();
+        res.json({ message: 'Verificado com sucesso!' });
+    } catch (error) { res.status(500).json({ error: 'Erro ao verificar' }); }
 });
 
-// 4. LISTAR USUÁRIOS
 app.get('/users/:myId', async (req, res) => {
     try {
         const users = await User.find({ _id: { $ne: req.params.myId } }).select('-password -code');
@@ -257,7 +164,13 @@ app.get('/users/:myId', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
 
-// 5. LISTAR MENSAGENS
+app.get('/user/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        res.json(user);
+    } catch (e) { res.status(500).json({ error: 'Erro ao buscar perfil' }); }
+});
+
 app.get('/messages/:myId/:otherId', async (req, res) => {
     try {
         const { myId, otherId } = req.params;
@@ -271,67 +184,63 @@ app.get('/messages/:myId/:otherId', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
 
-// 7.5 BUSCAR MEU PRÓPRIO PERFIL (Evita perder setores ao recarregar a página)
-app.get('/user/:id', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        res.json(user);
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao buscar perfil' });
-    }
-});
-
-// 6. BUSCA GLOBAL (NOVA!)
 app.get('/search', async (req, res) => {
     const { query, myId } = req.query;
     if (!query || !myId) return res.json({ users: [], messages: [] });
-
     try {
-        // 1. Buscar Usuários (exceto eu mesmo)
         const users = await User.find({
             _id: { $ne: myId },
-            displayName: { $regex: query, $options: 'i' } // 'i' ignora maiúsculas/minúsculas
+            displayName: { $regex: query, $options: 'i' }
         }).select('displayName photoUrl email');
 
-        // 2. Buscar Mensagens (onde sou remetente ou destinatário)
         const messages = await Message.find({
             $or: [
                 { sender: myId, content: { $regex: query, $options: 'i' } },
                 { receiver: myId, content: { $regex: query, $options: 'i' } }
             ]
-        }).populate('sender receiver', 'displayName photoUrl'); // Traz dados de quem mandou/recebeu
-
+        }).populate('sender receiver', 'displayName photoUrl');
         res.json({ users, messages });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Erro na busca' });
-    }
+    } catch (e) { res.status(500).json({ error: 'Erro na busca' }); }
 });
 
-// 7. UPLOAD (NOVA!)
 app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     res.json({ url: req.file.path, type: req.file.mimetype });
 });
 
-// 8. ATUALIZAR PERFIL (NOVA ROTA!)
 app.put('/update-profile', async (req, res) => {
     const { userId, displayName, photoUrl } = req.body;
     try {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-
         if (displayName) user.displayName = displayName;
         if (photoUrl) user.photoUrl = photoUrl;
-
         await user.save();
         res.json({ message: 'Perfil atualizado!', user });
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao atualizar perfil' });
-    }
+    } catch (e) { res.status(500).json({ error: 'Erro ao atualizar' }); }
 });
 
-// 11. APAGAR CONVERSA INTEIRA
+app.put('/settings', async (req, res) => {
+    const { userId, theme, chatWallpaper, sectors } = req.body;
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        if (theme) user.theme = theme;
+        if (chatWallpaper !== undefined) user.chatWallpaper = chatWallpaper;
+        if (sectors) user.sectors = sectors;
+        await user.save();
+        res.json({ message: 'Configurações salvas!', user });
+    } catch (e) { res.status(500).json({ error: 'Erro ao salvar' }); }
+});
+
+app.delete('/delete-account/:userId', async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.userId);
+        await Message.deleteMany({ sender: req.params.userId });
+        res.json({ message: 'Conta deletada.' });
+    } catch (e) { res.status(500).json({ error: 'Erro ao deletar' }); }
+});
+
 app.delete('/messages/:myId/:otherId', async (req, res) => {
     const { myId, otherId } = req.params;
     try {
@@ -341,44 +250,89 @@ app.delete('/messages/:myId/:otherId', async (req, res) => {
                 { sender: otherId, receiver: myId }
             ]
         });
-        res.json({ message: 'Conversa apagada com sucesso.' });
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao apagar conversa.' });
-    }
+        res.json({ message: 'Conversa apagada.' });
+    } catch (e) { res.status(500).json({ error: 'Erro ao apagar conversa' }); }
 });
 
-// --- SOCKET.IO (ATUALIZADO) ---
+// --- ROTAS DE GRUPO ---
+app.post('/groups', async (req, res) => {
+    const { name, adminId, members } = req.body;
+    try {
+        const allMembers = [...members, adminId];
+        const newGroup = new Group({ name, admin: adminId, members: allMembers });
+        await newGroup.save();
+        res.json(newGroup);
+    } catch (e) { res.status(500).json({ error: 'Erro ao criar grupo' }); }
+});
+
+app.get('/groups/:userId', async (req, res) => {
+    try {
+        const groups = await Group.find({ members: req.params.userId });
+        res.json(groups);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
+
+app.get('/group-messages/:groupId', async (req, res) => {
+    try {
+        const messages = await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp');
+        res.json(messages);
+    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+});
+
+app.put('/groups/add-member', async (req, res) => {
+    const { groupIds, userId } = req.body;
+    try {
+        await Group.updateMany(
+            { _id: { $in: groupIds } },
+            { $addToSet: { members: userId } } 
+        );
+        res.json({ message: 'Adicionado com sucesso!' });
+    } catch (e) { res.status(500).json({ error: 'Erro ao adicionar' }); }
+});
+
+// --- SOCKET.IO (COMPLETO E PROTEGIDO) ---
 let users = {};
 
 io.on('connection', (socket) => {
+    
+    // 1. Entrar e avisar todo mundo que ficou Online
     socket.on('join_room', (userId) => {
         users[userId] = socket.id;
-        socket.join(userId); // Entra na sala pessoal
+        socket.join(userId);
+        io.emit('online_users', Object.keys(users)); 
     });
 
-    // NOVO: Entrar na sala do grupo
     socket.on('join_group', (groupId) => {
         socket.join(groupId);
     });
 
+    // 2. Eventos de Digitando
+    socket.on('typing', (data) => {
+        const receiverSocketId = users[data.receiverId];
+        if (receiverSocketId) io.to(receiverSocketId).emit('typing', { senderId: data.senderId });
+    });
+
+    socket.on('stop_typing', (data) => {
+        const receiverSocketId = users[data.receiverId];
+        if (receiverSocketId) io.to(receiverSocketId).emit('stop_typing', { senderId: data.senderId });
+    });
+
+    // 3. Receber e enviar mensagens
     socket.on('private_message', async (data) => {
         try {
             const { senderId, receiverId, groupId, content, fileUrl, fileType } = data;
             
             const msg = new Message({ 
                 sender: senderId, 
-                receiver: receiverId, // Pode ser null se for grupo
-                groupId: groupId,     // Pode ser null se for privado
+                receiver: receiverId, 
+                groupId: groupId,     
                 content, fileUrl, fileType: fileType || 'text', status: 'sent' 
             });
             await msg.save();
 
-            // Se for GRUPO
             if (groupId) {
-                // Envia para todos na sala do grupo (incluindo quem mandou)
                 io.to(groupId).emit('receive_message', msg);
             } 
-            // Se for PRIVADO
             else {
                 const receiverSocketId = users[receiverId];
                 if (receiverSocketId) io.to(receiverSocketId).emit('receive_message', msg);
@@ -386,8 +340,16 @@ io.on('connection', (socket) => {
             }
         } catch (e) { console.error(e); }
     });
+
+    // 4. Sair e avisar que ficou Offline
+    socket.on('disconnect', () => {
+        const disconnectedUserId = Object.keys(users).find(key => users[key] === socket.id);
+        if (disconnectedUserId) {
+            delete users[disconnectedUserId]; 
+            io.emit('online_users', Object.keys(users)); 
+        }
+    });
 });
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`🚀 Servidor na porta ${PORT}`));
-
