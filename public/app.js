@@ -343,23 +343,76 @@ async function handleFileUpload(input) {
     finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; }
 }
 
+// --- VARIÁVEIS GLOBAIS PARA O ÁUDIO ---
+let globalMediaRecorder = null;
+let recordingTimeout = null;
+
+// --- 1. GRAVAÇÃO DE ÁUDIO ATUALIZADA (Até 30 segundos) ---
 async function startRecording() {
+    // Se já clicou e está gravando, ignora
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
+        globalMediaRecorder = new MediaRecorder(stream);
         const chunks = [];
-        alert('🎙️ Gravando... Clique em OK para ENVIAR.'); 
-        mediaRecorder.start();
-        mediaRecorder.ondataavailable = e => chunks.push(e.data);
-        mediaRecorder.onstop = async () => {
+        
+        // Esconde o menu e avisa na tela
+        toggleMenu('attach-menu');
+        const input = document.getElementById('message-input');
+        input.setAttribute('placeholder', '🎙️ Gravando... (Clique no botão Enviar para parar)');
+        
+        globalMediaRecorder.start();
+        globalMediaRecorder.ondataavailable = e => chunks.push(e.data);
+        
+        globalMediaRecorder.onstop = async () => {
+            input.setAttribute('placeholder', 'Mensagem...'); // Restaura o texto original
+            
             const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' });
             const file = new File([blob], "audio_rec.webm", { type: 'audio/webm' });
             const dataTransfer = new DataTransfer(); dataTransfer.items.add(file);
             document.getElementById('file-input').files = dataTransfer.files;
-            handleFileUpload(document.getElementById('file-input'));
+            
+            handleFileUpload(document.getElementById('file-input')); // Faz o upload
+            
+            stream.getTracks().forEach(t => t.stop()); // Desliga a luz do microfone do celular/PC
+            globalMediaRecorder = null;
         };
-        setTimeout(() => mediaRecorder.stop(), 3000); 
-    } catch (err) { alert('Permissão negada!'); }
+
+        // LIMITE DE TEMPO: 30 SEGUNDOS (30000 ms)
+        recordingTimeout = setTimeout(() => {
+            if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
+                globalMediaRecorder.stop();
+            }
+        }, 30000); 
+        
+    } catch (err) { alert('Permissão de microfone negada!'); }
+}
+
+// --- 2. ENVIAR MENSAGEM (Agora intercepta o áudio) ---
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
+    // MÁGICA AQUI: Se estiver gravando, o botão de enviar serve para PARAR o áudio
+    if (typeof globalMediaRecorder !== 'undefined' && globalMediaRecorder && globalMediaRecorder.state === "recording") {
+        globalMediaRecorder.stop();
+        clearTimeout(recordingTimeout);
+        return;
+    }
+
+    const input = document.getElementById('message-input');
+    const content = textOverride || input.innerHTML; 
+
+    if((!content && !fileUrl) || !currentChatId) return;
+
+    const msgData = { 
+        senderId: myId, 
+        receiverId: isGroupChat ? null : currentChatId,
+        groupId: isGroupChat ? currentChatId : null,
+        content: fileUrl ? 'Arquivo enviado' : content,
+        fileUrl, fileType 
+    };
+
+    socket.emit('private_message', msgData);
+    if(!fileUrl) input.innerHTML = ''; 
 }
 
 // ==========================================
