@@ -290,6 +290,28 @@ app.put('/groups/add-member', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro ao adicionar' }); }
 });
 
+// 16. BUSCAR MENSAGENS NÃO LIDAS
+app.get('/unread/:myId', async (req, res) => {
+    try {
+        const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' });
+        // Extrai apenas os IDs de quem te mandou mensagem e você ainda não leu
+        const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))];
+        res.json(unreadSenders);
+    } catch (e) { res.status(500).json({ error: 'Erro ao buscar não lidas' }); }
+});
+
+// 17. MARCAR COMO LIDA
+app.put('/messages/mark-read', async (req, res) => {
+    const { myId, otherId } = req.body;
+    try {
+        await Message.updateMany(
+            { sender: otherId, receiver: myId, status: 'sent' },
+            { $set: { status: 'read' } }
+        );
+        res.json({ message: 'Mensagens lidas' });
+    } catch (e) { res.status(500).json({ error: 'Erro ao marcar como lida' }); }
+});
+
 // --- SOCKET.IO (COMPLETO E PROTEGIDO) ---
 let users = {};
 
