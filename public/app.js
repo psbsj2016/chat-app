@@ -45,6 +45,7 @@ function backToMain() {
 }
 
 // --- ABRIR CHAT (USUÁRIO OU GRUPO) ---
+// --- 2. ABRIR CHAT (ATUALIZADO PARA MOSTRAR STATUS NO TOPO) ---
 function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id;
     currentChatEmail = email; 
@@ -57,6 +58,20 @@ function openChat(id, name, photo, email, type = 'user') {
     document.getElementById('chat-title').innerText = name;
     document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
     document.getElementById('chat-box').innerHTML = ''; 
+
+    // Lógica da Bolinha no Cabeçalho
+    const headerDot = document.getElementById('chat-header-status');
+    if (isGroupChat) {
+        headerDot.classList.add('hidden'); // Esconde em grupos
+    } else {
+        headerDot.classList.remove('hidden');
+        headerDot.classList.remove('status-online', 'status-offline');
+        if (onlineUsersList.includes(id)) {
+            headerDot.classList.add('status-online');
+        } else {
+            headerDot.classList.add('status-offline');
+        }
+    }
     
     if (isGroupChat) {
         socket.emit('join_group', id);
@@ -185,13 +200,37 @@ function logout() {
 }
 
 // --- CARREGAR CONTATOS, GRUPOS E STATUS ---
+// --- 1. RECEBER STATUS EM TEMPO REAL (MÁGICA INSTANTÂNEA) ---
 socket.on('online_users', (list) => {
     onlineUsersList = list;
-    if(!document.getElementById('main-screen').classList.contains('hidden')) {
-        loadContacts(); 
+
+    // A. Atualiza as bolinhas da lista de contatos instantaneamente
+    const allStatusDots = document.querySelectorAll('.contact-status-dot');
+    allStatusDots.forEach(dot => {
+        const userId = dot.dataset.userid;
+        dot.classList.remove('status-online', 'status-offline');
+        if (onlineUsersList.includes(userId)) {
+            dot.classList.add('status-online');
+        } else {
+            dot.classList.add('status-offline');
+        }
+    });
+
+    // B. Atualiza a bolinha do cabeçalho do chat (se estiver conversando com alguém)
+    if (currentChatId && !isGroupChat) {
+        const headerDot = document.getElementById('chat-header-status');
+        if (headerDot) {
+            headerDot.classList.remove('status-online', 'status-offline');
+            if (onlineUsersList.includes(currentChatId)) {
+                headerDot.classList.add('status-online');
+            } else {
+                headerDot.classList.add('status-offline');
+            }
+        }
     }
 });
 
+// --- 3. CARREGAR CONTATOS (ATUALIZADO COM IDENTIFICADOR NA BOLINHA) ---
 async function loadContacts() {
     if(!myId) return;
     const list = document.getElementById('users-list');
@@ -228,7 +267,7 @@ async function loadContacts() {
         const name = user.displayName || user.email.split('@')[0];
         const email = user.email;
 
-        // Status Online
+        // Status Online Atual
         const isOnline = onlineUsersList.includes(user._id);
         const statusClass = isOnline ? 'status-online' : 'status-offline';
 
@@ -251,9 +290,10 @@ async function loadContacts() {
         clickArea.style.flex = '1';
         clickArea.onclick = () => openChat(user._id, name, photo, email, 'user');
 
+        // AQUI ESTÁ O SEGREDO: adicionamos a classe 'contact-status-dot' e o 'data-userid'
         clickArea.innerHTML = `
             <div class="user-avatar-container">
-                <div class="status-dot ${statusClass}"></div>
+                <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
                 ${sectorLabel}
                 <img src="${photo}" class="avatar-small" style="width:50px; height:50px;">
             </div>
