@@ -271,6 +271,16 @@ app.get('/messages/:myId/:otherId', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
 });
 
+// 7.5 BUSCAR MEU PRÓPRIO PERFIL (Evita perder setores ao recarregar a página)
+app.get('/user/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        res.json(user);
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao buscar perfil' });
+    }
+});
+
 // 6. BUSCA GLOBAL (NOVA!)
 app.get('/search', async (req, res) => {
     const { query, myId } = req.query;

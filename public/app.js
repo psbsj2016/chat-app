@@ -664,18 +664,47 @@ function deleteAccount() {
     }
 }
 
+// ==========================================
+// DAQUI PARA BAIXO: INICIALIZAÇÃO, BOLINHAS E BUSCA
+// ==========================================
+
+// --- MÁGICA DA BOLINHA EM TEMPO REAL ---
+socket.on('online_users', (list) => {
+    onlineUsersList = list;
+
+    // 1. Atualiza as bolinhas da lista de contatos instantaneamente
+    document.querySelectorAll('.contact-status-dot').forEach(dot => {
+        const uid = dot.dataset.userid;
+        dot.classList.remove('status-online', 'status-offline');
+        dot.classList.add(onlineUsersList.includes(uid) ? 'status-online' : 'status-offline');
+    });
+
+    // 2. Atualiza a bolinha do cabeçalho do chat (se estiver aberto)
+    if (currentChatId && !isGroupChat) {
+        const headerDot = document.getElementById('chat-header-status');
+        if (headerDot) {
+            headerDot.classList.remove('status-online', 'status-offline', 'hidden');
+            headerDot.classList.add(onlineUsersList.includes(currentChatId) ? 'status-online' : 'status-offline');
+        }
+    }
+});
+
 // --- BUSCA GLOBAL ---
 let searchTimeout = null;
+
 function handleSearch(query) {
     if (!query.trim()) { loadContacts(); return; }
-    clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300);
+    clearTimeout(searchTimeout); 
+    searchTimeout = setTimeout(() => performSearch(query), 300);
 }
+
 async function performSearch(query) {
     try {
         const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`);
         const data = await res.json(); renderSearchResults(data);
     } catch (e) {}
 }
+
 function renderSearchResults(data) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     if (data.users.length > 0) {
@@ -690,8 +719,11 @@ function renderSearchResults(data) {
             list.appendChild(createSearchItem(chatPartner, msg));
         });
     }
-    if (data.users.length === 0 && data.messages.length === 0) list.innerHTML = '<div style="padding:20px; text-align:center; color:#888">Nenhum resultado encontrado.</div>';
+    if (data.users.length === 0 && data.messages.length === 0) {
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#888">Nenhum resultado encontrado.</div>';
+    }
 }
+
 function createSearchItem(user, msgMatch) {
     const div = document.createElement('div'); div.className = 'user-item';
     div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user');
@@ -703,5 +735,32 @@ function createSearchItem(user, msgMatch) {
     return div;
 }
 
-// INICIALIZAÇÃO
-if(token && myId) { showMainScreen(); } else { showElement('auth-screen'); }
+// --- INICIALIZAÇÃO BLINDADA (EVITA PERDER DADOS) ---
+async function initApp() {
+    if(token && myId) { 
+        try {
+            // RECUPERA SEUS DADOS DA NUVEM ANTES DE CARREGAR A TELA
+            const res = await fetch(`/user/${myId}`);
+            if(res.ok) {
+                const me = await res.json();
+                
+                // Restaura seus setores para não apagar!
+                currentSectors = me.sectors || [];
+                
+                // Restaura seu tema
+                if (me.theme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+            }
+        } catch(e) { console.error("Erro ao recuperar perfil na inicialização"); }
+
+        showMainScreen(); 
+    } else { 
+        showElement('auth-screen'); 
+    }
+}
+
+// Roda ao carregar a página
+initApp();
