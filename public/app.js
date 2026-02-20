@@ -48,8 +48,12 @@ function showMainScreen() {
 }
 
 function backToMain() {
-    currentChatId = null; hideElement('settings-screen'); hideElement('chat-screen');
-    showElement('main-screen'); loadContacts(); 
+    currentChatId = null; 
+    hideElement('settings-screen'); 
+    hideElement('chat-screen');
+    showElement('main-screen'); 
+    // 🚀 Removemos o 'loadContacts()' daqui! 
+    // Agora ele só troca a tela na velocidade da luz, sem precisar baixar tudo de novo.
 }
 
 // ==========================================
