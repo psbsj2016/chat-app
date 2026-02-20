@@ -127,7 +127,17 @@ app.put('/update-profile', async (req, res) => {
     try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {}
 });
 app.put('/settings', async (req, res) => {
-    try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; await u.save(); res.json(u); } catch (e) {}
+    try { 
+        const u = await User.findById(req.body.userId); 
+        if(req.body.theme) u.theme = req.body.theme; 
+        if(req.body.sectors) u.sectors = req.body.sectors; 
+        // Agora o servidor salva o Nome e a Foto também!
+        if(req.body.displayName) u.displayName = req.body.displayName;
+        if(req.body.photoUrl) u.photoUrl = req.body.photoUrl;
+        
+        await u.save(); 
+        res.json(u); 
+    } catch (e) {}
 });
 app.delete('/delete-account/:userId', async (req, res) => { try { await User.findByIdAndDelete(req.params.userId); await Message.deleteMany({ sender: req.params.userId }); res.json({ msg: 'ok' }); } catch (e) {} });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });

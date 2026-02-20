@@ -59,6 +59,13 @@ socket.on('user_profile_updated', (data) => {
     if (myId) loadContacts();
 });
 
+// --- GARANTE QUE O STATUS ONLINE FUNCIONE SEMPRE ---
+socket.on('connect', () => {
+    if (myId) {
+        socket.emit('join_room', myId);
+    }
+});
+
 socket.on('online_users', (list) => {
     onlineUsersList = list;
     document.querySelectorAll('.contact-status-dot').forEach(dot => {
