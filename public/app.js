@@ -50,6 +50,20 @@ socket.on('online_users', (list) => {
     }
 });
 
+// --- ATUALIZAÇÃO DE PERFIL EM TEMPO REAL ---
+socket.on('user_profile_updated', (data) => {
+    // 1. Atualiza a foto e o nome LÁ NO CABEÇALHO se você estiver conversando com a pessoa agora
+    if (currentChatId === data.userId && !isGroupChat) {
+        if (data.displayName) document.getElementById('chat-title').innerText = data.displayName;
+        if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl;
+    }
+    
+    // 2. Recarrega a lista de contatos silenciosamente para atualizar a foto nova para todos
+    if (myId) {
+        loadContacts();
+    }
+});
+
 socket.on('typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) showElement('typing-indicator'); });
 socket.on('stop_typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) hideElement('typing-indicator'); });
 
@@ -405,7 +419,23 @@ function renderSectorsList() { const list = document.getElementById('sectors-lis
 function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); saveProfile({ theme: 'light' }); } }
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
-async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); if(dataToUpdate.displayName) localStorage.setItem('displayName', dataToUpdate.displayName); if(dataToUpdate.photoUrl) localStorage.setItem('photoUrl', dataToUpdate.photoUrl); if(dataToUpdate.theme) localStorage.setItem('theme', dataToUpdate.theme); } catch(e) {} }
+async function saveProfile(dataToUpdate) { 
+    try { 
+        await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); 
+        
+        if(dataToUpdate.displayName) localStorage.setItem('displayName', dataToUpdate.displayName); 
+        if(dataToUpdate.photoUrl) localStorage.setItem('photoUrl', dataToUpdate.photoUrl); 
+        if(dataToUpdate.theme) localStorage.setItem('theme', dataToUpdate.theme); 
+
+        // MÁGICA: Avisa o servidor que você mudou seu perfil!
+        socket.emit('profile_updated', {
+            userId: myId,
+            displayName: localStorage.getItem('displayName'),
+            photoUrl: localStorage.getItem('photoUrl')
+        });
+
+    } catch(e) {} 
+}
 function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/${myId}`, { method: 'DELETE' }).then(() => { logout(); }); } }
 function viewContactProfile() { if(isGroupChat) return; document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; document.getElementById('view-contact-email').innerText = currentChatEmail; showElement('contact-profile-modal'); }
 function closeContactProfile() { hideElement('contact-profile-modal'); }

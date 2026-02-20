@@ -187,6 +187,12 @@ io.on('connection', (socket) => {
         }
     });
 
+     // 4. ATUALIZAÇÃO DE PERFIL EM TEMPO REAL
+    socket.on('profile_updated', (data) => {
+        // Quando alguém muda o perfil, avisa todos os usuários conectados
+        io.emit('user_profile_updated', data);
+    });
+
     socket.on('disconnect', () => {
         const uid = Object.keys(users).find(key => users[key] === socket.id);
         if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); }
