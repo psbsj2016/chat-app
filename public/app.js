@@ -11,6 +11,13 @@ let isGroupChat = false;
 let selectedUserIds = [];
 let typingTimeout = null;
 
+// --- VARIÁVEIS DO ÁUDIO ---
+let globalMediaRecorder = null; 
+let recordingTimeout = null;
+let recordingInterval = null; 
+let recordingSeconds = 0;     
+let pendingAudioFile = null;  
+
 // ==========================================
 // 1. FUNÇÕES AUXILIARES E NAVEGAÇÃO
 // ==========================================
@@ -43,138 +50,13 @@ socket.on('online_users', (list) => {
     }
 });
 
-// --- SENSOR DE DIGITAÇÃO E CANCELAMENTO DE ÁUDIO ---
-const msgInput = document.getElementById('message-input');
-if (msgInput) {
-    msgInput.addEventListener('input', () => {
-        // Se começar a digitar, cancela o áudio pendente e tira a cor laranja do botão
-        if (pendingAudioFile) {
-            pendingAudioFile = null;
-            msgInput.setAttribute('placeholder', 'Mensagem...');
-            const btn = document.querySelector('.send-btn');
-            if(btn) btn.classList.remove('pending-send');
-        }
-
-        if (!currentChatId || isGroupChat) return; 
-        socket.emit('typing', { senderId: myId, receiverId: currentChatId });
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => socket.emit('stop_typing', { senderId: myId, receiverId: currentChatId }), 1500);
-    });
-}
-
-// ==========================================
-// 4. ÁUDIO, MENSAGENS E UPLOADS
-// ==========================================
-
-let globalMediaRecorder = null; 
-let recordingTimeout = null;
-let recordingInterval = null; 
-let recordingSeconds = 0;     
-let pendingAudioFile = null;  
-
-async function startRecording() {
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
-    try { 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
-        globalMediaRecorder = new MediaRecorder(stream); 
-        const chunks = []; 
-        toggleMenu('attach-menu'); 
-        
-        const input = document.getElementById('message-input'); 
-        const btn = document.querySelector('.send-btn');
-
-        recordingSeconds = 0;
-        input.innerText = ''; 
-        input.contentEditable = false; 
-        input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
-        
-        // Botão de parar vermelho
-        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>';
-        btn.classList.remove('pending-send'); // Garante que não está laranja ao gravar
-        
-        recordingInterval = setInterval(() => {
-            recordingSeconds++;
-            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
-            const secs = String(recordingSeconds % 60).padStart(2, '0');
-            input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`);
-        }, 1000);
-
-        globalMediaRecorder.start(); 
-        globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
-        
-        globalMediaRecorder.onstop = async () => { 
-            clearInterval(recordingInterval); 
-            
-            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
-            const secs = String(recordingSeconds % 60).padStart(2, '0');
-            
-            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); 
-            input.contentEditable = true; 
-
-            // ÁUDIO PRONTO: Volta ícone e ACENDE LARANJA PULSANTE
-            btn.innerHTML = '<span class="material-icons">send</span>';
-            btn.classList.add('pending-send'); 
-            
-            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); 
-            pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
-            
-            stream.getTracks().forEach(t => t.stop()); 
-            globalMediaRecorder = null; 
-        }; 
-        
-        recordingTimeout = setTimeout(() => { 
-            if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); 
-        }, 60000); 
-        
-    } catch (err) { alert('Permissão de microfone negada!'); }
-}
-
-function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
-    const btn = document.querySelector('.send-btn');
-
-    // 1. PARA A GRAVAÇÃO se estiver gravando
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        globalMediaRecorder.stop(); 
-        clearTimeout(recordingTimeout); 
-        return; 
-    }
-
-    const input = document.getElementById('message-input'); 
-
-    // 2. ENVIA O ÁUDIO PENDENTE
-    if (pendingAudioFile) {
-        const dataTransfer = new DataTransfer(); 
-        dataTransfer.items.add(pendingAudioFile); 
-        document.getElementById('file-input').files = dataTransfer.files; 
-        
-        pendingAudioFile = null; 
-        input.setAttribute('placeholder', 'Mensagem...'); 
-        
-        // APAGA A COR LARANJA
-        if(btn) btn.classList.remove('pending-send'); 
-        
-        handleFileUpload(document.getElementById('file-input'));
-        return;
-    }
-
-    // 3. ENVIO NORMAL
-    const content = textOverride || input.innerHTML; 
-    if((!content && !fileUrl) || !currentChatId) return;
-
-    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
-    socket.emit('private_message', msgData); 
-    if(!fileUrl) input.innerHTML = ''; 
-}
 socket.on('typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) showElement('typing-indicator'); });
 socket.on('stop_typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) hideElement('typing-indicator'); });
 
 // NOTIFICAÇÃO: A MENSAGEM QUE EU MANDEI FOI LIDA (VV Fica AZUL)
 socket.on('messages_read', (data) => {
     if (data.receiverId === currentChatId) {
-        // Acha todas as mensagens minhas e pinta os ícones de azul
-        document.querySelectorAll('.my-msg .msg-status').forEach(el => {
-            el.classList.add('read');
-        });
+        document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read'));
     }
 });
 
@@ -199,11 +81,8 @@ socket.on('receive_message', (msg) => {
         displayMessage(msg);
     } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) {
         displayMessage(msg);
-        
-        // MÁGICA DO VV AZUL: Assim que entra na minha tela, eu aviso o servidor que li!
-        if(senderIdStr === currentChatId) {
-            socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId });
-        }
+        // MÁGICA DO VV AZUL
+        if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId });
     } else {
         const targetId = msg.groupId ? msg.groupId : senderIdStr;
         const contactDiv = document.getElementById(`contact-${targetId}`);
@@ -213,6 +92,25 @@ socket.on('receive_message', (msg) => {
         }
     }
 });
+
+// --- SENSOR DE DIGITAÇÃO E CANCELAMENTO DE ÁUDIO ---
+const msgInput = document.getElementById('message-input');
+if (msgInput) {
+    msgInput.addEventListener('input', () => {
+        // Cancela áudio pendente ao digitar
+        if (pendingAudioFile) {
+            pendingAudioFile = null;
+            msgInput.setAttribute('placeholder', 'Mensagem...');
+            const btn = document.querySelector('.send-btn');
+            if(btn) btn.classList.remove('pending-send');
+        }
+
+        if (!currentChatId || isGroupChat) return; 
+        socket.emit('typing', { senderId: myId, receiverId: currentChatId });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => socket.emit('stop_typing', { senderId: myId, receiverId: currentChatId }), 1500);
+    });
+}
 
 // ==========================================
 // 3. ABRIR CHAT E CARREGAR CONTATOS
@@ -228,10 +126,7 @@ function openChat(id, name, photo, email, type = 'user') {
     const contactDiv = document.getElementById(`contact-${id}`);
     if (contactDiv) contactDiv.classList.remove('has-unread');
 
-    // AVISA NA HORA QUE O CHAT FOI ABERTO
-    if (!isGroupChat) {
-        socket.emit('mark_as_read', { senderId: id, receiverId: myId });
-    }
+    if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId });
 
     const headerDot = document.getElementById('chat-header-status');
     if (headerDot) {
@@ -282,25 +177,105 @@ async function loadContacts() {
 }
 
 // ==========================================
-// 4. MENSAGENS, MENU DE PRESSÃO LONGA E UPLOADS
+// 4. ÁUDIO, MENSAGENS, MENU LONGO E UPLOADS
 // ==========================================
-async function loadMessages(userId) { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
-async function loadGroupMessages(groupId) { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
+async function startRecording() {
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
+    try { 
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(stream); 
+        const chunks = []; 
+        toggleMenu('attach-menu'); 
+        
+        const input = document.getElementById('message-input'); 
+        const btn = document.querySelector('.send-btn');
+
+        recordingSeconds = 0;
+        input.innerText = ''; 
+        input.contentEditable = false; 
+        input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
+        
+        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>';
+        btn.classList.remove('pending-send'); 
+        
+        recordingInterval = setInterval(() => {
+            recordingSeconds++;
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(recordingSeconds % 60).padStart(2, '0');
+            input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`);
+        }, 1000);
+
+        globalMediaRecorder.start(); 
+        globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
+        
+        globalMediaRecorder.onstop = async () => { 
+            clearInterval(recordingInterval); 
+            
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(recordingSeconds % 60).padStart(2, '0');
+            
+            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); 
+            input.contentEditable = true; 
+
+            btn.innerHTML = '<span class="material-icons">send</span>';
+            btn.classList.add('pending-send'); 
+            
+            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); 
+            pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
+            
+            stream.getTracks().forEach(t => t.stop()); 
+            globalMediaRecorder = null; 
+        }; 
+        
+        recordingTimeout = setTimeout(() => { 
+            if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); 
+        }, 60000); 
+        
+    } catch (err) { alert('Permissão de microfone negada!'); }
+}
 
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); return; }
-    const input = document.getElementById('message-input'); const content = textOverride || input.innerHTML; 
+    const btn = document.querySelector('.send-btn');
+
+    // 1. PARA A GRAVAÇÃO
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
+        globalMediaRecorder.stop(); 
+        clearTimeout(recordingTimeout); 
+        return; 
+    }
+
+    const input = document.getElementById('message-input'); 
+
+    // 2. ENVIA O ÁUDIO PENDENTE
+    if (pendingAudioFile) {
+        const dataTransfer = new DataTransfer(); 
+        dataTransfer.items.add(pendingAudioFile); 
+        document.getElementById('file-input').files = dataTransfer.files; 
+        
+        pendingAudioFile = null; 
+        input.setAttribute('placeholder', 'Mensagem...'); 
+        if(btn) btn.classList.remove('pending-send'); 
+        
+        handleFileUpload(document.getElementById('file-input'));
+        return;
+    }
+
+    // 3. ENVIO NORMAL
+    const content = textOverride || input.innerHTML; 
     if((!content && !fileUrl) || !currentChatId) return;
 
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
-    socket.emit('private_message', msgData);
+    socket.emit('private_message', msgData); 
     if(!fileUrl) input.innerHTML = ''; 
 }
 
+async function loadMessages(userId) { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
+async function loadGroupMessages(groupId) { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
+
 // --- VARIÁVEIS PARA O MENU LONGO ---
 let pressTimer; 
-let currentSelectedMsgElement = null; // Guarda a div da tela para dar destaque
-let selectedMsgData = null;           // Guarda os dados da mensagem (texto, link da foto, etc)
+let currentSelectedMsgElement = null; 
+let selectedMsgData = null;           
 
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
@@ -310,20 +285,14 @@ function displayMessage(msg) {
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
     div.id = `msg-${msg._id}`;
 
-    // MÁGICA DO PRESSIONAR E SEGURAR (Celular)
-    div.addEventListener('touchstart', (e) => {
-        pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600);
-    }, {passive: false});
+    // MÁGICA DO PRESSIONAR E SEGURAR
+    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false});
     div.addEventListener('touchend', () => clearTimeout(pressTimer));
     div.addEventListener('touchmove', () => clearTimeout(pressTimer));
-    
-    // MÁGICA DO PRESSIONAR (PC)
-    div.addEventListener('mousedown', (e) => {
-        pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600);
-    });
+    div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); });
     div.addEventListener('mouseup', () => clearTimeout(pressTimer));
     div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-    div.addEventListener('contextmenu', e => e.preventDefault()); // Bloqueia menu nativo do botão direito
+    div.addEventListener('contextmenu', e => e.preventDefault()); 
 
     let contentHtml = '';
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:11px; color:#008069; font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`;
@@ -332,6 +301,8 @@ function displayMessage(msg) {
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`;
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`;
     else contentHtml += msg.content; 
+
+    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`;
 
     const date = new Date(msg.timestamp || Date.now());
     const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -349,38 +320,26 @@ function displayMessage(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
-// --- FUNÇÕES DO NOVO MENU DA MENSAGEM ---
 function showMessageMenu(e, msgElement, msgObj) {
-    if(navigator.vibrate) navigator.vibrate(50); // Vibra o celular levemente
-    
-    // Tira o destaque da mensagem anterior (se houver)
+    if(navigator.vibrate) navigator.vibrate(50); 
     if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg');
     
     currentSelectedMsgElement = msgElement;
     selectedMsgData = msgObj;
-    
-    // Dá o DESTAQUE (brilho e zoom) na mensagem atual
     currentSelectedMsgElement.classList.add('selected-msg');
     
     const menu = document.getElementById('msg-context-menu');
     const copyBtn = document.getElementById('btn-copy-msg');
     
-    // Oculta "Copiar" se for Foto, Áudio ou PDF
-    if(msgObj.fileUrl && msgObj.fileType !== 'text') {
-        copyBtn.style.display = 'none';
-    } else {
-        copyBtn.style.display = 'flex';
-    }
+    if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } 
+    else { copyBtn.style.display = 'flex'; }
     
-    // Posiciona o menu no dedo do usuário
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
     menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`;
     menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
-    
     showElement('msg-context-menu');
     
-    // Se clicar em qualquer lugar da tela, fecha o menu e tira o destaque
     setTimeout(() => {
         document.addEventListener('click', function closeMenu() {
             hideElement('msg-context-menu');
@@ -388,6 +347,10 @@ function showMessageMenu(e, msgElement, msgObj) {
             document.removeEventListener('click', closeMenu);
         });
     }, 100);
+}
+
+function sendReaction(emoji) {
+    socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null });
 }
 
 function copySelectedMessage() {
@@ -404,20 +367,10 @@ async function openForwardModal() {
     list.innerHTML = '';
     
     users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'user-item';
+        const div = document.createElement('div'); div.className = 'user-item';
         div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span style="font-weight:bold;">${user.displayName || user.email}</span>`;
-        
         div.onclick = () => {
-            // ENCAMINHA O ARQUIVO OU TEXTO EXATO DA MENSAGEM SELECIONADA
-            socket.emit('private_message', { 
-                senderId: myId, 
-                receiverId: user._id, 
-                groupId: null, 
-                content: selectedMsgData.content, 
-                fileUrl: selectedMsgData.fileUrl, 
-                fileType: selectedMsgData.fileType 
-            });
+            socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType });
             alert("Mensagem encaminhada com sucesso!");
             hideElement('forward-modal');
         };
@@ -425,21 +378,17 @@ async function openForwardModal() {
     });
 }
 
+async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
+
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); if (cmd === 'fontName') toggleMenu('attach-menu'); }
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
-async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
-
-// --- VARIÁVEIS DO ÁUDIO ---
-let globalMediaRecorder = null; 
-let recordingTimeout = null;
-let recordingInterval = null; // Para o cronômetro visual
-let recordingSeconds = 0;     // Contador de segundos
-let pendingAudioFile = null;  // Guarda o áudio antes de enviar
-
+// ==========================================
+// 5. SETORES E CONFIGURAÇÕES
+// ==========================================
 function openAddSectorModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor.</span>'; currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked disabled' : ''}> ${sec.name}</label>`; }); showElement('add-sector-modal'); }
 async function submitAddSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length === 0) return alert("Selecione!"); if(!confirm("Confirmar?")) return; checkboxes.forEach(cb => currentSectors[cb.value].members.push(targetContactId)); await saveProfile({ sectors: currentSectors }); alert("Inserido!"); hideElement('add-sector-modal'); loadContacts(); }
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
