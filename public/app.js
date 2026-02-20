@@ -23,7 +23,24 @@ let pendingAudioFile = null;
 // ==========================================
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
 function hideElement(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
-function toggleMenu(menuId) { const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
+function toggleMenu(menuId) { 
+    // 1. Fecha todos os outros menus abertos antes de abrir o novo
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu.id !== menuId) menu.classList.add('hidden');
+    });
+    
+    // 2. Abre/Fecha o menu exato que você clicou
+    const menu = document.getElementById(menuId); 
+    if(menu) menu.classList.toggle('hidden'); 
+}
+
+// 3. MÁGICA GLOBAL: Se clicar em qualquer lugar vazio da tela, fecha os menus abertos!
+document.addEventListener('click', (e) => {
+    // Verifica se o clique NÃO foi em um botão de abrir menu ou dentro de um menu
+    if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu')) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden'));
+    }
+});
 
 function showMainScreen() {
     hideElement('auth-screen'); hideElement('chat-screen'); hideElement('settings-screen');
