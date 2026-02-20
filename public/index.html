@@ -207,6 +207,31 @@
             </div>
         </div>
     </div>
+     
+     <div id="msg-context-menu" class="hidden">
+        <div class="reaction-row">
+            <span onclick="sendReaction('👍')">👍</span>
+            <span onclick="sendReaction('❤️')">❤️</span>
+            <span onclick="sendReaction('😂')">😂</span>
+            <span onclick="sendReaction('😮')">😮</span>
+            <span onclick="sendReaction('🙏')">🙏</span>
+        </div>
+        <div class="menu-item" onclick="copySelectedMessage()">
+            <span class="material-icons">content_copy</span> Copiar
+        </div>
+        <div class="menu-item" onclick="openForwardModal()">
+            <span class="material-icons">shortcut</span> Encaminhar
+        </div>
+    </div>
+
+    <div id="forward-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;">
+            <h3>Encaminhar para...</h3>
+            <div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;">
+                </div>
+            <button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding: 12px; border-radius: 8px;">Cancelar</button>
+        </div>
+    </div>    
 
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="/socket.io/socket.io.js"></script>
