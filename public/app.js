@@ -36,8 +36,29 @@ function backToMain() {
 }
 
 // ==========================================
-// 2. SOCKETS: TEMPO REAL, VV AZUL, MENSAGENS
+// 2. SOCKETS: TEMPO REAL, VV AZUL, MENSAGENS E ATUALIZAÇÕES
 // ==========================================
+
+// MÁGICA DE AUTO-ATUALIZAÇÃO NO CELULAR
+socket.on('check_app_version', (serverVersion) => {
+    const localVersion = localStorage.getItem('appVersion');
+    if (!localVersion) {
+        localStorage.setItem('appVersion', serverVersion);
+    } else if (localVersion !== serverVersion) {
+        localStorage.setItem('appVersion', serverVersion);
+        window.location.href = window.location.pathname + '?v=' + serverVersion;
+    }
+});
+
+// ATUALIZAÇÃO DE PERFIL EM TEMPO REAL
+socket.on('user_profile_updated', (data) => {
+    if (currentChatId === data.userId && !isGroupChat) {
+        if (data.displayName) document.getElementById('chat-title').innerText = data.displayName;
+        if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl;
+    }
+    if (myId) loadContacts();
+});
+
 socket.on('online_users', (list) => {
     onlineUsersList = list;
     document.querySelectorAll('.contact-status-dot').forEach(dot => {
@@ -50,24 +71,10 @@ socket.on('online_users', (list) => {
     }
 });
 
-// --- ATUALIZAÇÃO DE PERFIL EM TEMPO REAL ---
-socket.on('user_profile_updated', (data) => {
-    // 1. Atualiza a foto e o nome LÁ NO CABEÇALHO se você estiver conversando com a pessoa agora
-    if (currentChatId === data.userId && !isGroupChat) {
-        if (data.displayName) document.getElementById('chat-title').innerText = data.displayName;
-        if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl;
-    }
-    
-    // 2. Recarrega a lista de contatos silenciosamente para atualizar a foto nova para todos
-    if (myId) {
-        loadContacts();
-    }
-});
-
 socket.on('typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) showElement('typing-indicator'); });
 socket.on('stop_typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) hideElement('typing-indicator'); });
 
-// NOTIFICAÇÃO: A MENSAGEM QUE EU MANDEI FOI LIDA (VV Fica AZUL)
+// VV Fica AZUL
 socket.on('messages_read', (data) => {
     if (data.receiverId === currentChatId) {
         document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read'));
@@ -95,7 +102,6 @@ socket.on('receive_message', (msg) => {
         displayMessage(msg);
     } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) {
         displayMessage(msg);
-        // MÁGICA DO VV AZUL
         if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId });
     } else {
         const targetId = msg.groupId ? msg.groupId : senderIdStr;
@@ -107,11 +113,10 @@ socket.on('receive_message', (msg) => {
     }
 });
 
-// --- SENSOR DE DIGITAÇÃO E CANCELAMENTO DE ÁUDIO ---
+// SENSOR DE DIGITAÇÃO E CANCELAMENTO DE ÁUDIO
 const msgInput = document.getElementById('message-input');
 if (msgInput) {
     msgInput.addEventListener('input', () => {
-        // Cancela áudio pendente ao digitar
         if (pendingAudioFile) {
             pendingAudioFile = null;
             msgInput.setAttribute('placeholder', 'Mensagem...');
@@ -251,7 +256,6 @@ async function startRecording() {
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     const btn = document.querySelector('.send-btn');
 
-    // 1. PARA A GRAVAÇÃO
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
         globalMediaRecorder.stop(); 
         clearTimeout(recordingTimeout); 
@@ -260,7 +264,6 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
 
     const input = document.getElementById('message-input'); 
 
-    // 2. ENVIA O ÁUDIO PENDENTE
     if (pendingAudioFile) {
         const dataTransfer = new DataTransfer(); 
         dataTransfer.items.add(pendingAudioFile); 
@@ -274,7 +277,6 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
         return;
     }
 
-    // 3. ENVIO NORMAL
     const content = textOverride || input.innerHTML; 
     if((!content && !fileUrl) || !currentChatId) return;
 
@@ -299,7 +301,6 @@ function displayMessage(msg) {
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
     div.id = `msg-${msg._id}`;
 
-    // MÁGICA DO PRESSIONAR E SEGURAR
     div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false});
     div.addEventListener('touchend', () => clearTimeout(pressTimer));
     div.addEventListener('touchmove', () => clearTimeout(pressTimer));
@@ -393,7 +394,6 @@ async function openForwardModal() {
 }
 
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
-
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
@@ -419,23 +419,22 @@ function renderSectorsList() { const list = document.getElementById('sectors-lis
 function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); saveProfile({ theme: 'light' }); } }
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
+
 async function saveProfile(dataToUpdate) { 
     try { 
         await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); 
-        
         if(dataToUpdate.displayName) localStorage.setItem('displayName', dataToUpdate.displayName); 
         if(dataToUpdate.photoUrl) localStorage.setItem('photoUrl', dataToUpdate.photoUrl); 
         if(dataToUpdate.theme) localStorage.setItem('theme', dataToUpdate.theme); 
 
-        // MÁGICA: Avisa o servidor que você mudou seu perfil!
         socket.emit('profile_updated', {
             userId: myId,
             displayName: localStorage.getItem('displayName'),
             photoUrl: localStorage.getItem('photoUrl')
         });
-
     } catch(e) {} 
 }
+
 function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/${myId}`, { method: 'DELETE' }).then(() => { logout(); }); } }
 function viewContactProfile() { if(isGroupChat) return; document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; document.getElementById('view-contact-email').innerText = currentChatEmail; showElement('contact-profile-modal'); }
 function closeContactProfile() { hideElement('contact-profile-modal'); }
@@ -447,5 +446,19 @@ function createSearchItem(user, msgMatch) { const div = document.createElement('
 
 async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado!'); const code = prompt("Código:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } showMainScreen(); } } else { alert('Erro.'); } } catch (e) { } finally { btn.innerText = "Entrar"; btn.disabled = false; } }
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Verificado!"); toggleAuthMode(); } } catch(e) {} }
-async function initApp() { if(token && myId) { try { const res = await fetch(`/user/${myId}`); if(res.ok) { const me = await res.json(); currentSectors = me.sectors || []; if (me.theme === 'dark') document.body.classList.add('dark-mode'); } } catch(e) {} showMainScreen(); } else { showElement('auth-screen'); } }
+
+async function initApp() { 
+    if(token && myId) { 
+        try { 
+            const res = await fetch(`/user/${myId}`); 
+            if(res.ok) { 
+                const me = await res.json(); currentSectors = me.sectors || []; 
+                if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
+            } 
+        } catch(e) {} 
+        showMainScreen(); 
+    } else { 
+        showElement('auth-screen'); 
+    } 
+}
 initApp();

@@ -148,8 +148,19 @@ app.get('/unread/:myId', async (req, res) => {
 // --- O SEGREDO DO TEMPO REAL AQUI ---
 let users = {};
 
+// Cria uma "versão" única toda vez que o Render liga/reinicia o servidor
+const SERVER_VERSION = Date.now().toString();
+
 io.on('connection', (socket) => {
-    socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
+    // MÁGICA: Envia essa versão para o celular assim que ele abre o app
+    socket.emit('check_app_version', SERVER_VERSION);
+
+    socket.on('join_room', (userId) => { 
+        users[userId] = socket.id; 
+        socket.join(userId); 
+        io.emit('online_users', Object.keys(users)); 
+    });
+    // ... resto do seu código continua normal ...
     socket.on('join_group', (groupId) => { socket.join(groupId); });
     socket.on('typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', { senderId: data.senderId }); });
     socket.on('stop_typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', { senderId: data.senderId }); });

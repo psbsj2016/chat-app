@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat PTT</title>
+    
     <link rel="icon" href="favicon.png" type="image/png">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -11,6 +12,8 @@
     
     <link rel="stylesheet" href="style.css?v=2.0">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
 </head>
 <body>
 
@@ -105,7 +108,9 @@
             <div id="message-input" contenteditable="true" placeholder="Mensagem..."></div>
             <button class="send-btn" onclick="sendMessage()"><span class="material-icons">send</span></button>
         </div>
-    </div> <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
+    </div>
+
+    <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
         <div class="main-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
             <span class="header-title">Configurações</span>
@@ -159,7 +164,9 @@
                 <div id="sectors-list"></div>
             </div>
         </div>
-    </div> <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
+    </div>
+
+    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
         <div class="modal-content profile-view-card">
             <div style="text-align: right; width: 100%;">
                 <span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span>
@@ -225,13 +232,11 @@
     <div id="forward-modal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;">
             <h3>Encaminhar para...</h3>
-            <div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;">
-                </div>
+            <div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;"></div>
             <button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding: 12px; border-radius: 8px;">Cancelar</button>
         </div>
     </div>    
 
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=2.0"></script>
 </body>
