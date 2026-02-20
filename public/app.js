@@ -169,7 +169,7 @@ async function loadContacts() {
 }
 
 // ==========================================
-// 4. MENSAGENS, MENU DE PRESSÃO LONGA (NOVO!) E UPLOADS
+// 4. MENSAGENS, MENU DE PRESSÃO LONGA E UPLOADS
 // ==========================================
 async function loadMessages(userId) { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
 async function loadGroupMessages(groupId) { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); msgs.forEach(displayMessage); }
@@ -180,14 +180,14 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     if((!content && !fileUrl) || !currentChatId) return;
 
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
-    socket.emit('private_message', msgData); // ENVIADO INSTANTANEAMENTE
+    socket.emit('private_message', msgData);
     if(!fileUrl) input.innerHTML = ''; 
 }
 
 // --- VARIÁVEIS PARA O MENU LONGO ---
 let pressTimer; 
-let selectedMsgId = null;
-let selectedMsgContent = '';
+let currentSelectedMsgElement = null; // Guarda a div da tela para dar destaque
+let selectedMsgData = null;           // Guarda os dados da mensagem (texto, link da foto, etc)
 
 function displayMessage(msg) {
     const box = document.getElementById('chat-box');
@@ -195,24 +195,22 @@ function displayMessage(msg) {
     const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender;
     const isMe = senderIdStr === myId;
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg');
-    div.id = `msg-${msg._id}`; // ID pra achar depois
+    div.id = `msg-${msg._id}`;
 
-    // MÁGICA DO PRESSIONAR E SEGURAR (Long Press)
+    // MÁGICA DO PRESSIONAR E SEGURAR (Celular)
     div.addEventListener('touchstart', (e) => {
-        pressTimer = window.setTimeout(() => { showMessageMenu(e, msg._id, msg.content, msg.fileUrl); }, 600);
+        pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600);
     }, {passive: false});
     div.addEventListener('touchend', () => clearTimeout(pressTimer));
     div.addEventListener('touchmove', () => clearTimeout(pressTimer));
     
-    // No PC (Click longo)
+    // MÁGICA DO PRESSIONAR (PC)
     div.addEventListener('mousedown', (e) => {
-        pressTimer = window.setTimeout(() => { showMessageMenu(e, msg._id, msg.content, msg.fileUrl); }, 600);
+        pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600);
     });
     div.addEventListener('mouseup', () => clearTimeout(pressTimer));
     div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-    
-    // Bloqueia menu nativo do botão direito do mouse
-    div.addEventListener('contextmenu', e => e.preventDefault());
+    div.addEventListener('contextmenu', e => e.preventDefault()); // Bloqueia menu nativo do botão direito
 
     let contentHtml = '';
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:11px; color:#008069; font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`;
@@ -221,9 +219,6 @@ function displayMessage(msg) {
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`;
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`;
     else contentHtml += msg.content; 
-
-    // Verifica se já tem reação
-    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`;
 
     const date = new Date(msg.timestamp || Date.now());
     const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
@@ -241,42 +236,51 @@ function displayMessage(msg) {
     box.scrollTop = box.scrollHeight;
 }
 
-// --- FUNÇÕES DO NOVO MENU FLUTUANTE DA MENSAGEM ---
-function showMessageMenu(e, msgId, content, fileUrl) {
-    // Vibe suave para saber que funcionou no celular
-    if(navigator.vibrate) navigator.vibrate(50);
+// --- FUNÇÕES DO NOVO MENU DA MENSAGEM ---
+function showMessageMenu(e, msgElement, msgObj) {
+    if(navigator.vibrate) navigator.vibrate(50); // Vibra o celular levemente
     
-    selectedMsgId = msgId;
-    selectedMsgContent = fileUrl || content; // Guarda o que será copiado/encaminhado
+    // Tira o destaque da mensagem anterior (se houver)
+    if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg');
+    
+    currentSelectedMsgElement = msgElement;
+    selectedMsgData = msgObj;
+    
+    // Dá o DESTAQUE (brilho e zoom) na mensagem atual
+    currentSelectedMsgElement.classList.add('selected-msg');
     
     const menu = document.getElementById('msg-context-menu');
+    const copyBtn = document.getElementById('btn-copy-msg');
     
-    // Posiciona o menu perto de onde a pessoa clicou
+    // Oculta "Copiar" se for Foto, Áudio ou PDF
+    if(msgObj.fileUrl && msgObj.fileType !== 'text') {
+        copyBtn.style.display = 'none';
+    } else {
+        copyBtn.style.display = 'flex';
+    }
+    
+    // Posiciona o menu no dedo do usuário
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`; // Evita sair da tela
-    menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+    menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`;
+    menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
     
     showElement('msg-context-menu');
     
-    // Se clicar fora, esconde o menu
+    // Se clicar em qualquer lugar da tela, fecha o menu e tira o destaque
     setTimeout(() => {
         document.addEventListener('click', function closeMenu() {
             hideElement('msg-context-menu');
+            if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg');
             document.removeEventListener('click', closeMenu);
         });
     }, 100);
 }
 
-function sendReaction(emoji) {
-    socket.emit('react_message', { msgId: selectedMsgId, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null });
-}
-
 function copySelectedMessage() {
-    // Remove tags HTML se for texto normal
-    const cleanText = selectedMsgContent.replace(/<[^>]*>?/gm, ''); 
-    navigator.clipboard.writeText(cleanText).then(() => alert("Copiado!"));
+    if(!selectedMsgData || !selectedMsgData.content) return;
+    const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); 
+    navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!"));
 }
 
 async function openForwardModal() {
@@ -289,23 +293,31 @@ async function openForwardModal() {
     users.forEach(user => {
         const div = document.createElement('div');
         div.className = 'user-item';
-        div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span>${user.displayName || user.email}</span>`;
+        div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span style="font-weight:bold;">${user.displayName || user.email}</span>`;
+        
         div.onclick = () => {
-            // Envia a mensagem selecionada para esse usuário!
-            socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgContent.startsWith('http') ? 'Arquivo encaminhado' : selectedMsgContent, fileUrl: selectedMsgContent.startsWith('http') ? selectedMsgContent : null, fileType: 'text' });
-            alert("Encaminhado com sucesso!");
+            // ENCAMINHA O ARQUIVO OU TEXTO EXATO DA MENSAGEM SELECIONADA
+            socket.emit('private_message', { 
+                senderId: myId, 
+                receiverId: user._id, 
+                groupId: null, 
+                content: selectedMsgData.content, 
+                fileUrl: selectedMsgData.fileUrl, 
+                fileType: selectedMsgData.fileType 
+            });
+            alert("Mensagem encaminhada com sucesso!");
             hideElement('forward-modal');
         };
         list.appendChild(div);
     });
 }
 
-// (O Resto do código original continua exatamente igual)
-async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
+async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); if (cmd === 'fontName') toggleMenu('attach-menu'); }
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
+
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 
 let globalMediaRecorder = null; let recordingTimeout = null;

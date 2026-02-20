@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat PTT</title>
-    <link rel="icon" href="favicon.jpeg" type="image/jpeg">
+    <link rel="icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
@@ -209,18 +209,11 @@
         </div>
     </div>
      
-     <div id="msg-context-menu" class="hidden">
-        <div class="reaction-row">
-            <span onclick="sendReaction('👍')">👍</span>
-            <span onclick="sendReaction('❤️')">❤️</span>
-            <span onclick="sendReaction('😂')">😂</span>
-            <span onclick="sendReaction('😮')">😮</span>
-            <span onclick="sendReaction('🙏')">🙏</span>
+    <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;">
+        <div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;">
+            <span class="material-icons">content_copy</span> Copiar Texto
         </div>
-        <div class="menu-item" onclick="copySelectedMessage()">
-            <span class="material-icons">content_copy</span> Copiar
-        </div>
-        <div class="menu-item" onclick="openForwardModal()">
+        <div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;">
             <span class="material-icons">shortcut</span> Encaminhar
         </div>
     </div>
