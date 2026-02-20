@@ -46,6 +46,12 @@ socket.on('online_users', (list) => {
 const msgInput = document.getElementById('message-input');
 if (msgInput) {
     msgInput.addEventListener('input', () => {
+        // BÔNUS: Se tiver um áudio gravado e a pessoa começar a digitar, o áudio é cancelado
+        if (pendingAudioFile) {
+            pendingAudioFile = null;
+            msgInput.setAttribute('placeholder', 'Mensagem...');
+        }
+
         if (!currentChatId || isGroupChat) return; 
         socket.emit('typing', { senderId: myId, receiverId: currentChatId });
         clearTimeout(typingTimeout);
@@ -320,10 +326,102 @@ function triggerUpload(type) { const input = document.getElementById('file-input
 
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 
-let globalMediaRecorder = null; let recordingTimeout = null;
+// --- VARIÁVEIS DO ÁUDIO ---
+let globalMediaRecorder = null; 
+let recordingTimeout = null;
+let recordingInterval = null; // Para o cronômetro visual
+let recordingSeconds = 0;     // Contador de segundos
+let pendingAudioFile = null;  // Guarda o áudio antes de enviar
+
 async function startRecording() {
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
-    try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); input.setAttribute('placeholder', '🎙️ Gravando...'); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { input.setAttribute('placeholder', 'Mensagem...'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); const file = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); const dataTransfer = new DataTransfer(); dataTransfer.items.add(file); document.getElementById('file-input').files = dataTransfer.files; handleFileUpload(document.getElementById('file-input')); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 30000); } catch (err) {}
+    try { 
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(stream); 
+        const chunks = []; 
+        toggleMenu('attach-menu'); 
+        
+        const input = document.getElementById('message-input'); 
+        const btn = document.querySelector('.send-btn');
+
+        // PREPARA A UI PARA GRAVAÇÃO
+        recordingSeconds = 0;
+        input.innerText = ''; // Limpa qualquer texto
+        input.contentEditable = false; // Impede digitação enquanto grava
+        input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
+        
+        // MUDA O BOTÃO DE ENVIAR PARA STOP (Vermelho)
+        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>';
+        
+        // CRONÔMETRO NA TELA
+        recordingInterval = setInterval(() => {
+            recordingSeconds++;
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(recordingSeconds % 60).padStart(2, '0');
+            input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`);
+        }, 1000);
+
+        globalMediaRecorder.start(); 
+        globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
+        
+        globalMediaRecorder.onstop = async () => { 
+            clearInterval(recordingInterval); // Para o cronômetro
+            
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(recordingSeconds % 60).padStart(2, '0');
+            
+            // MUDA O TEXTO AVISANDO QUE ESTÁ PRONTO
+            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); 
+            input.contentEditable = true; // Libera o campo
+
+            // VOLTA O BOTÃO DE ENVIAR AO NORMAL
+            btn.innerHTML = '<span class="material-icons">send</span>';
+            
+            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); 
+            pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
+            
+            stream.getTracks().forEach(t => t.stop()); // Desliga o microfone
+            globalMediaRecorder = null; 
+        }; 
+        
+        // LIMITE AUMENTADO PARA 1 MINUTO (60.000 ms)
+        recordingTimeout = setTimeout(() => { 
+            if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); 
+        }, 60000); 
+        
+    } catch (err) { alert('Permissão de microfone negada!'); }
+}
+
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
+    // 1. SE ESTÁ GRAVANDO: O clique no botão PARA a gravação, mas não envia ainda
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
+        globalMediaRecorder.stop(); 
+        clearTimeout(recordingTimeout); 
+        return; 
+    }
+
+    const input = document.getElementById('message-input'); 
+
+    // 2. SE TEM ÁUDIO PRONTO AGUARDANDO: O clique envia o áudio
+    if (pendingAudioFile) {
+        const dataTransfer = new DataTransfer(); 
+        dataTransfer.items.add(pendingAudioFile); 
+        document.getElementById('file-input').files = dataTransfer.files; 
+        
+        pendingAudioFile = null; // Limpa da memória antes do upload
+        input.setAttribute('placeholder', 'Mensagem...'); // Restaura o campo
+        
+        handleFileUpload(document.getElementById('file-input'));
+        return;
+    }
+
+    // 3. ENVIO NORMAL DE TEXTO OU OUTROS ARQUIVOS
+    const content = textOverride || input.innerHTML; 
+    if((!content && !fileUrl) || !currentChatId) return;
+
+    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
+    socket.emit('private_message', msgData); // ENVIADO INSTANTANEAMENTE
+    if(!fileUrl) input.innerHTML = ''; 
 }
 
 function openAddSectorModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor.</span>'; currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked disabled' : ''}> ${sec.name}</label>`; }); showElement('add-sector-modal'); }
