@@ -2,7 +2,7 @@
 
 /* FIX MOBILE: 100dvh garante que o teclado não quebre o layout */
 body { 
-    background-color: #d1d7db; /* Cor de fundo estilo Web */
+    background-color: #d1d7db;
     height: 100dvh; 
     width: 100%;
     overflow: hidden; 
@@ -45,6 +45,7 @@ body {
 .app-screen { 
     width: 100%; height: 100%; display: flex; flex-direction: column; 
     background: white; position: relative; max-width: 1600px; 
+    overflow: hidden; /* Garante que nada vaze da tela */
 }
 
 /* Cabeçalhos */
@@ -59,15 +60,21 @@ body {
     flex: 1; background: #efeae2; padding: 15px; 
     overflow-y: auto; display: flex; flex-direction: column; gap: 6px; 
     background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+    min-height: 0; /* MÁGICA: Impede que o chat empurre a barra de digitação para fora */
 }
 
 /* Input de Mensagem */
 .input-area { 
-    background: #f0f2f5; padding: 8px 10px; display: flex; align-items: flex-end; gap: 8px; 
+    background: #f0f2f5; 
+    padding: 8px 10px; 
+    padding-bottom: calc(8px + env(safe-area-inset-bottom)); /* Espaço seguro p/ iPhones */
+    display: flex; align-items: flex-end; gap: 8px; 
     min-height: 62px; border-top: 1px solid #ddd;
     position: relative; 
     z-index: 50;
+    flex-shrink: 0; /* MÁGICA: Garante que a caixa nunca seja esmagada/escondida */
 }
+
 #message-input {
     flex: 1; padding: 10px 15px; border-radius: 20px; background: white;
     max-height: 100px; overflow-y: auto; border: 1px solid white; outline: none; font-size: 16px;
@@ -79,6 +86,13 @@ body {
     max-width: 75%; padding: 6px 8px; border-radius: 8px; 
     font-size: 14.2px; position: relative; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); 
     display: flex; flex-direction: column;
+    
+    /* MÁGICA: Força textos grandes a quebrarem e respeitarem o balão */
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap; 
+
     /* Bloqueia menu nativo do celular */
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -272,7 +286,7 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: #25D366; }
 
 /* --- BARRA FLUTUANTE DE FORMATAÇÃO DE TEXTO --- */
 .floating-format-bar {
-    position: fixed; /* Fixed para não bugar com a rolagem */
+    position: fixed;
     z-index: 10000;
     background: #202c33;
     color: white;
