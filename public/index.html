@@ -77,23 +77,6 @@
             <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:#008069">mic</span> Áudio</div>
             
             <div class="menu-separator"></div>
-            <div class="menu-label">Formatação</div>
-            <div class="menu-row">
-                <button class="format-btn" onmousedown="formatDoc('bold', event)"><b>B</b></button>
-                <button class="format-btn" onmousedown="formatDoc('italic', event)"><i>I</i></button>
-                <button class="format-btn" onmousedown="formatDoc('underline', event)"><u>U</u></button>
-                <button class="format-btn" onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button>
-            </div>
-
-            <div class="menu-separator"></div>
-            <div class="menu-label">Fontes</div>
-            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial">Arial</div>
-            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Georgia')" style="font-family: Georgia">Georgia</div>
-            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: Courier New">Monospace</div>
-            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Comic Sans MS')" style="font-family: Comic Sans MS">Comic</div>
-            <div class="menu-item font-item" onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact">Impact</div>
-
-            <div class="menu-separator"></div>
             <div class="menu-item logout" onclick="deleteCurrentChat()">
                 <span class="material-icons">delete_forever</span> 
                 <span style="font-weight: bold;">Apagar Conversa</span>
@@ -236,6 +219,18 @@
             <button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding: 12px; border-radius: 8px;">Cancelar</button>
         </div>
     </div>    
+
+    <div id="text-format-toolbar" class="hidden floating-format-bar">
+        <button onmousedown="formatDoc('bold', event)"><b>B</b></button>
+        <button onmousedown="formatDoc('italic', event)"><i>I</i></button>
+        <button onmousedown="formatDoc('underline', event)"><u>U</u></button>
+        <button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button>
+        <div class="toolbar-sep"></div>
+        <button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button>
+        <button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button>
+        <button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button>
+        <button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=2.0"></script>

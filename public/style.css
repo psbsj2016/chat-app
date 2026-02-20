@@ -269,3 +269,43 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: #25D366; }
     70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); } 
     100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); } 
 }
+
+/* --- BARRA FLUTUANTE DE FORMATAÇÃO DE TEXTO --- */
+.floating-format-bar {
+    position: fixed; /* Fixed para não bugar com a rolagem */
+    z-index: 10000;
+    background: #202c33;
+    color: white;
+    padding: 6px 8px;
+    border-radius: 8px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+    transition: top 0.1s, left 0.1s;
+    animation: zoomIn 0.2s ease;
+}
+
+.floating-format-bar button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 17px;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.floating-format-bar button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.floating-format-bar .toolbar-sep {
+    width: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 4px;
+}

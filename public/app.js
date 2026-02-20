@@ -37,7 +37,7 @@ function toggleMenu(menuId) {
 // 3. MÁGICA GLOBAL: Se clicar em qualquer lugar vazio da tela, fecha os menus abertos!
 document.addEventListener('click', (e) => {
     // Verifica se o clique NÃO foi em um botão de abrir menu ou dentro de um menu
-    if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu')) {
+    if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar')) {
         document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden'));
     }
 });
@@ -52,8 +52,6 @@ function backToMain() {
     hideElement('settings-screen'); 
     hideElement('chat-screen');
     showElement('main-screen'); 
-    // 🚀 Removemos o 'loadContacts()' daqui! 
-    // Agora ele só troca a tela na velocidade da luz, sem precisar baixar tudo de novo.
 }
 
 // ==========================================
@@ -425,7 +423,13 @@ async function handleFileUpload(input) { const file = input.files[0]; if(!file) 
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
-function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); if (cmd === 'fontName') toggleMenu('attach-menu'); }
+
+// --- CORREÇÃO AQUI (FORMAT DOC LIMPO) ---
+function formatDoc(cmd, event, value=null) { 
+    if(event) event.preventDefault(); 
+    document.execCommand(cmd, false, value); 
+}
+
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
 // ==========================================
@@ -467,10 +471,48 @@ function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/
 function viewContactProfile() { if(isGroupChat) return; document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; document.getElementById('view-contact-email').innerText = currentChatEmail; showElement('contact-profile-modal'); }
 function closeContactProfile() { hideElement('contact-profile-modal'); }
 
+// ==========================================
+// MÁGICA DE SELEÇÃO DE TEXTO E FORMATAÇÃO
+// ==========================================
+document.addEventListener('selectionchange', () => {
+    const input = document.getElementById('message-input');
+    const formatBar = document.getElementById('text-format-toolbar');
+    if (!input || !formatBar) return;
+
+    const selection = window.getSelection();
+    
+    // Se o usuário selecionou texto e está DENTRO do campo de mensagem
+    if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        showElement('text-format-toolbar');
+        
+        // Posiciona o menu exatamente no topo do texto selecionado
+        let top = rect.top - formatBar.offsetHeight - 8; 
+        let left = rect.left + (rect.width / 2) - (formatBar.offsetWidth / 2);
+        
+        // Evita que o menu vaze pelas bordas da tela do celular
+        if (left < 10) left = 10;
+        if (left + formatBar.offsetWidth > window.innerWidth - 10) {
+            left = window.innerWidth - formatBar.offsetWidth - 10;
+        }
+        
+        formatBar.style.top = `${top}px`;
+        formatBar.style.left = `${left}px`;
+    } else {
+        // Esconde o menu se desmarcar o texto
+        hideElement('text-format-toolbar');
+    }
+});
+
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
 function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div style="font-weight:bold">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
+
+let isRegistering = false;
+function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Conta' : 'Entrar'; document.getElementById('auth-btn').innerText = isRegistering ? 'Cadastrar' : 'Entrar'; document.getElementById('auth-name').classList.toggle('hidden'); }
 
 async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado!'); const code = prompt("Código:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } showMainScreen(); } } else { alert('Erro.'); } } catch (e) { } finally { btn.innerText = "Entrar"; btn.disabled = false; } }
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Verificado!"); toggleAuthMode(); } } catch(e) {} }
