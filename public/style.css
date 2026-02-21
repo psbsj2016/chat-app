@@ -348,3 +348,15 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: #25D366; }
 
 .floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
 .floating-format-bar .toolbar-sep { width: 1px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
+
+/* --- ESTILO PARA REMOÇÃO DE MEMBRO DO GRUPO --- */
+.candidate-item.selected-remove {
+    background: #ffebee; 
+    border: 1px solid #ff5252;
+}
+.candidate-item.selected-remove::after {
+    content: "🗑"; /* Lixeira */
+    margin-left: auto;
+    color: #ff5252;
+    font-size: 18px;
+}

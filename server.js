@@ -7,7 +7,6 @@ const { Server } = require('socket.io');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
@@ -18,37 +17,24 @@ const io = new Server(server);
 
 app.use(cors());
 app.use(express.json());
-// --- CONFIGURAÇÃO PARA FORÇAR ATUALIZAÇÃO NO CELULAR ---
 app.use(express.static('public', {
-    etag: false,
-    setHeaders: (res, path) => {
+    etag: false, setHeaders: (res, path) => {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
+        res.setHeader('Pragma', 'no-cache'); res.setHeader('Expires', '0');
     }
 }));
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: { folder: 'chat-app-uploads', resource_type: 'auto', transformation: [{ width: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" }] },
-});
+cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+const storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chat-app-uploads', resource_type: 'auto', transformation: [{ width: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" }] }, });
 const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log("✅ MongoDB Conectado!")).catch(err => console.error("Erro MongoDB:", err));
 
 const UserSchema = new mongoose.Schema({
-    email: { type: String, unique: true, required: true },
-    password: { type: String, required: true },
+    email: { type: String, unique: true, required: true }, password: { type: String, required: true },
     displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
-    code: String, isVerified: { type: Boolean, default: false },
-    theme: { type: String, default: 'light' }, chatWallpaper: { type: String, default: '' },
-    sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
+    code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' },
+    chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -59,86 +45,24 @@ const GroupSchema = new mongoose.Schema({
 const Group = mongoose.model('Group', GroupSchema);
 
 const MessageSchema = new mongoose.Schema({
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
-    content: String, fileUrl: String, fileType: { type: String, default: 'text' },
-    status: { type: String, default: 'sent' },
-    reaction: { type: String, default: null }, // NOVO: Para reações
-    timestamp: { type: Date, default: Date.now }
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, content: String, fileUrl: String, fileType: { type: String, default: 'text' },
+    status: { type: String, default: 'sent' }, reaction: { type: String, default: null }, timestamp: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', MessageSchema);
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false }
-});
+const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
-// --- ROTAS (Resumidas para espaço) ---
-app.post('/register', async (req, res) => {
-    const { email, password, displayName } = req.body;
-    try {
-        if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' });
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] });
-        await newUser.save();
-        transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => {
-            if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' });
-        });
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
-});
-
-app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        const user = await User.findOne({ email });
-        if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' });
-        const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' });
-        res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme });
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
-});
-
-app.post('/verify', async (req, res) => {
-    const { email, code } = req.body;
-    try {
-        const user = await User.findOne({ email });
-        if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' });
-        user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' });
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
-});
-
+app.post('/register', async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id)); } catch (e) {} });
-app.get('/messages/:myId/:otherId', async (req, res) => {
-    try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {}
-});
-app.get('/search', async (req, res) => {
-    const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] });
-    try {
-        const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email');
-        const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl');
-        res.json({ users, messages });
-    } catch (e) {}
-});
-
+app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {} });
+app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
-
-app.put('/update-profile', async (req, res) => {
-    try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {}
-});
-app.put('/settings', async (req, res) => {
-    try { 
-        const u = await User.findById(req.body.userId); 
-        if(req.body.theme) u.theme = req.body.theme; 
-        if(req.body.sectors) u.sectors = req.body.sectors; 
-        // Agora o servidor salva o Nome e a Foto também!
-        if(req.body.displayName) u.displayName = req.body.displayName;
-        if(req.body.photoUrl) u.photoUrl = req.body.photoUrl;
-        
-        await u.save(); 
-        res.json(u); 
-    } catch (e) {}
-});
+app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
+app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
 app.delete('/delete-account/:userId', async (req, res) => { try { await User.findByIdAndDelete(req.params.userId); await Message.deleteMany({ sender: req.params.userId }); res.json({ msg: 'ok' }); } catch (e) {} });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
@@ -147,77 +71,45 @@ app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp')); } catch (e) {} });
 app.put('/groups/add-member', async (req, res) => { try { await Group.updateMany({ _id: { $in: req.body.groupIds } }, { $addToSet: { members: req.body.userId } }); res.json({ msg: 'ok' }); } catch (e) {} });
 
-app.get('/unread/:myId', async (req, res) => {
-    try {
-        const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' });
-        const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))];
-        res.json(unreadSenders);
-    } catch (e) {}
-});
+// --- NOVAS ROTAS DE GERENCIAMENTO DE GRUPO ---
+app.put('/groups/:id', async (req, res) => { try { const g = await Group.findById(req.params.id); if(req.body.name) g.name = req.body.name; if(req.body.photoUrl) g.photoUrl = req.body.photoUrl; await g.save(); res.json(g); } catch(e){ res.status(500).json({error: 'Erro'}); } });
+app.put('/groups/:id/add-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $addToSet: { members: { $each: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
+app.put('/groups/:id/remove-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $pull: { members: { $in: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 
-// --- O SEGREDO DO TEMPO REAL AQUI ---
+app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))]; res.json(unreadSenders); } catch (e) {} });
+
 let users = {};
-
-// Cria uma "versão" única toda vez que o Render liga/reinicia o servidor
 const SERVER_VERSION = Date.now().toString();
 
 io.on('connection', (socket) => {
-    // MÁGICA: Envia essa versão para o celular assim que ele abre o app
     socket.emit('check_app_version', SERVER_VERSION);
-
-    socket.on('join_room', (userId) => { 
-        users[userId] = socket.id; 
-        socket.join(userId); 
-        io.emit('online_users', Object.keys(users)); 
-    });
-    // ... resto do seu código continua normal ...
+    socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
     socket.on('typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', { senderId: data.senderId }); });
     socket.on('stop_typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', { senderId: data.senderId }); });
 
-    // 1. MENSAGEM INSTANTÂNEA: Emite na hora, salva depois
     socket.on('private_message', (data) => {
-        const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); // Gera ID falso pra UI reagir logo
-        
-        // ENVIA NA MESMA HORA (Zero Delay)
+        const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 
         if (data.groupId) { io.to(data.groupId).emit('receive_message', msg); } 
-        else {
-            const rSocket = users[data.receiverId];
-            if (rSocket) io.to(rSocket).emit('receive_message', msg);
-            socket.emit('receive_message', msg); // Devolve pra tela do remetente
-        }
-        // SALVA DEPOIS (Sem bloquear a tela)
+        else { const rSocket = users[data.receiverId]; if (rSocket) io.to(rSocket).emit('receive_message', msg); socket.emit('receive_message', msg); }
         msg.save().catch(e => console.log(e));
     });
 
-    // 2. LIDO IMEDIATAMENTE (O VV FICA AZUL NA HORA)
     socket.on('mark_as_read', async (data) => {
         await Message.updateMany({ sender: data.senderId, receiver: data.receiverId, status: 'sent' }, { $set: { status: 'read' } });
-        const senderSocket = users[data.senderId];
-        if (senderSocket) io.to(senderSocket).emit('messages_read', { receiverId: data.receiverId }); // Avisa quem mandou
+        const senderSocket = users[data.senderId]; if (senderSocket) io.to(senderSocket).emit('messages_read', { receiverId: data.receiverId });
     });
 
-    // 3. REAÇÃO INSTANTÂNEA
     socket.on('react_message', async (data) => {
         await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji });
         if(data.groupId) io.to(data.groupId).emit('message_reacted', data);
-        else {
-            const rSocket = users[data.receiverId];
-            if(rSocket) io.to(rSocket).emit('message_reacted', data);
-            socket.emit('message_reacted', data);
-        }
+        else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); }
     });
 
-     // 4. ATUALIZAÇÃO DE PERFIL EM TEMPO REAL
-    socket.on('profile_updated', (data) => {
-        // Quando alguém muda o perfil, avisa todos os usuários conectados
-        io.emit('user_profile_updated', data);
-    });
+    socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
+    socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); // MÁGICA DE ATUALIZAÇÃO DO GRUPO
 
-    socket.on('disconnect', () => {
-        const uid = Object.keys(users).find(key => users[key] === socket.id);
-        if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); }
-    });
+    socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
 });
 
 const PORT = process.env.PORT || 10000;
