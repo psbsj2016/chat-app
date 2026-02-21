@@ -5,10 +5,8 @@ let currentChatId = null;
 let currentChatEmail = ''; 
 
 let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
-
-// MÁGICA: O MOTOR DE CONTAGEM DE MENSAGENS NÃO LIDAS
 let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
-
+let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
 let onlineUsersList = [];
 let targetContactId = null;
 let isGroupChat = false;
@@ -27,10 +25,10 @@ let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
 function hideElement(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
-document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
+document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
-function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); requestNotificationPermission(); }
-function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); showElement('main-screen'); }
+function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('add-contact-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); requestNotificationPermission(); }
+function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); hideElement('add-contact-screen'); showElement('main-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 
 function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 1200); }
@@ -83,7 +81,7 @@ socket.on('stop_typing', (data) => {
         if (msgArea && msgArea.hasAttribute('data-original')) { 
             msgArea.innerHTML = msgArea.getAttribute('data-original'); 
             msgArea.removeAttribute('data-original'); 
-            if(unreadCounts[targetId] > 0) msgArea.style = '';
+            if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = '';
             else msgArea.style = 'color:var(--brand-primary)';
         } 
     } 
@@ -97,11 +95,9 @@ function playNotificationSound(type) { if(type === 'none') return; try { if(!aud
 function requestNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
 function showSystemNotification(title, body) { if ("Notification" in window && Notification.permission === "granted") { const notification = new Notification(title, { body: body, icon: 'favicon.png', badge: 'favicon.png', vibrate: [200, 100, 200] }); notification.onclick = function() { window.focus(); this.close(); }; } }
 
-// Se a pessoa estiver na tela e focada com o chat aberto, o contador zera!
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && currentChatId) {
-        unreadCounts[currentChatId] = 0;
-        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+        unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
         if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId });
     }
 });
@@ -130,12 +126,8 @@ socket.on('receive_message', (msg) => {
     } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId)) && !document.hidden) { 
         displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); 
     } else { 
-        
-        // MÁGICA: Aumenta a contagem de notificação matematicamente!
         unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1;
         localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
-
-        // Puxa a memória de forma super-rápida para repintar a lista e subir quem mandou mensagem
         const cGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
         const cUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
         renderContactsList(cGroups, cUsers);
@@ -144,23 +136,17 @@ socket.on('receive_message', (msg) => {
 
 const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
 
-// MÁGICA: LIMPEZA INSTANTÂNEA E PERMANENTE DO AVISO
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     
-    // ZERA a quantidade
-    unreadCounts[id] = 0;
-    localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
 
-    hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
+    hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('add-contact-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
     
-    // Limpa a tela imediatamente pro retorno já estar liso
     const contactDiv = document.getElementById(`contact-${id}`); 
     if (contactDiv) { 
         contactDiv.classList.remove('has-unread'); 
-        const badge = contactDiv.querySelector('.unread-count-badge');
-        if(badge) badge.remove();
-        
+        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove();
         const msgArea = contactDiv.querySelector('.contact-last-msg'); 
         if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
         if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
@@ -174,29 +160,13 @@ function openChat(id, name, photo, email, type = 'user') {
 async function loadContacts() { 
     if(!myId) return; 
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
-    
-    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
-        cachedGroups.forEach(g => socket.emit('join_group', g._id));
-        renderContactsList(cachedGroups, cachedUsers); 
-    }
-    
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); }
     try { 
-        // Busca da internet o número preciso de mensagens pra gente não perder a conta!
-        const resUnread = await fetch(`/unread/${myId}`); 
-        const serverCounts = await resUnread.json(); 
-        
-        // Sincroniza o celular com a nuvem apenas nos chats (Grupos seguem locais)
-        cachedUsers.forEach(u => {
-            unreadCounts[u._id] = serverCounts[u._id] || 0;
-        });
-        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
-
+        const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); 
+        cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
         const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
         const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
-        
-        localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
-        localStorage.setItem('cacheUsers', JSON.stringify(users));
-        
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users));
         groups.forEach(g => socket.emit('join_group', g._id)); 
         renderContactsList(groups, users);
     } catch(e) {} 
@@ -204,43 +174,82 @@ async function loadContacts() {
 
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
-    
-    // Ordena pelo número de mensagens! (Não lidos vão pro topo)
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
-    
     groups.forEach(group => { 
-        let count = unreadCounts[group._id] || 0;
-        let isUnreadG = count > 0 && currentChatId !== group._id; 
-        let extraGroupClass = isUnreadG ? 'has-unread' : '';
-        let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
-        
+        let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group'); 
-        
-        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; 
-        let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
-
+        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${group.name}</div>${badgeHtml}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
-
     users.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
-    
     users.forEach(user => { 
-        let count = unreadCounts[user._id] || 0;
-        let isUnreadU = count > 0 && currentChatId !== user._id; 
-        let extraClass = isUnreadU ? 'has-unread' : ''; 
-        let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar';
-        let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
-
+        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); 
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); 
-        
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${name}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
-        
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${name}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     });
 }
+
+// ==========================================
+// MÁGICA: A NOVA BUSCA E ADIÇÃO DE CONTATOS
+// ==========================================
+function openAddContactScreen() {
+    hideElement('main-screen'); showElement('add-contact-screen');
+    document.getElementById('exact-search-input').value = '';
+    document.getElementById('exact-search-result').innerHTML = '';
+}
+
+async function executeExactSearch() {
+    const query = document.getElementById('exact-search-input').value.trim();
+    const resultContainer = document.getElementById('exact-search-result');
+    if(!query) { alert('Digite um e-mail ou celular para buscar!'); return; }
+    
+    resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--secondary-text);">Buscando no sistema...</div>';
+    
+    try {
+        const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) });
+        const data = await res.json();
+        
+        if(data.found && data.user) {
+            const u = data.user;
+            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+            const name = u.displayName || u.email.split('@')[0];
+            const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email;
+            const userJson = encodeURIComponent(JSON.stringify(u));
+            
+            resultContainer.innerHTML = `
+                <div class="user-item" style="background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 15px; padding: 15px;" onclick="showStartChatConfirmation('${userJson}')">
+                    <img src="${photo}" class="avatar-small" style="width: 60px; height: 60px;">
+                    <div class="info">
+                        <div class="contact-name" style="font-size: 18px;">${name}</div>
+                        <div class="contact-last-msg" style="color: var(--brand-primary); font-weight: bold;">Encontrado: ${matchedInfo}</div>
+                    </div>
+                    <span class="material-icons" style="color: var(--brand-primary);">chat</span>
+                </div>
+            `;
+        } else { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252; font-weight: bold;">Usuário não encontrado.</div>'; }
+    } catch(e) { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252;">Erro na busca.</div>'; }
+}
+
+function showStartChatConfirmation(userJsonStr) {
+    const u = JSON.parse(decodeURIComponent(userJsonStr));
+    document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0];
+    document.getElementById('start-chat-info').innerText = u.email + (u.phone ? ` | ${u.phone}` : '');
+    
+    document.getElementById('btn-confirm-start-chat').onclick = () => {
+        hideElement('start-chat-modal'); hideElement('add-contact-screen');
+        // Garante que a pessoa vai pra lista principal do celular
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); }
+        openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user');
+    };
+    showElement('start-chat-modal');
+}
+
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
@@ -248,18 +257,7 @@ function openAppearanceSettings() { hideElement('settings-screen'); showElement(
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); requestNotificationPermission(); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; fetchAndSyncProfile(); }
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); document.getElementById('config-email').innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); fetchAndSyncProfile(); }
 
-async function fetchAndSyncProfile() {
-    try { 
-        const res = await fetch(`/user/${myId}`); 
-        if(res.ok) {
-            cachedMe = await res.json(); localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-            currentSectors = cachedMe.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors));
-            const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email;
-            const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado';
-            const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone';
-        }
-    } catch(e){}
-}
+async function fetchAndSyncProfile() { try { const res = await fetch(`/user/${myId}`); if(res.ok) { cachedMe = await res.json(); localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); currentSectors = cachedMe.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; } } catch(e){} }
 
 function changeNotificationSound(val) { localStorage.setItem('notificationSound', val); saveProfile({ notificationSound: val }); playNotificationSound(val); }
 

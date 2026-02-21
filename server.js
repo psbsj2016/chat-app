@@ -62,12 +62,29 @@ app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id)); } catch (e) {} });
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {} });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
+
+// --- MÁGICA: ROTA DE BUSCA EXATA PARA NOVO CONTATO ---
+app.post('/find-contact', async (req, res) => {
+    const { query, myId } = req.body;
+    try {
+        const user = await User.findOne({
+            $and: [
+                { _id: { $ne: myId } },
+                { $or: [{ email: query }, { phone: query }] }
+            ]
+        }).select('-password -code');
+        if (user) { res.json({ found: true, user }); }
+        else { res.json({ found: false }); }
+    } catch (e) {
+        res.status(500).json({ error: 'Erro' });
+    }
+});
+
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
 app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
 app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) {} });
 
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'A senha atual está incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Senha atualizada com sucesso' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
-
 app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'E-mail não encontrado no sistema.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação de Senha - CPTT', html: `<div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; color: #333;"><h2>Recuperação de Senha</h2><p>Você solicitou a redefinição de senha da sua conta.</p><h1 style="color: #1d4ed8; letter-spacing: 5px;">${code}</h1><p>Insira este código no aplicativo para criar sua nova senha.</p></div>` }, (err) => { if(err) return res.status(500).json({error: 'Erro ao enviar o e-mail'}); res.json({ message: 'Código de recuperação enviado!' }); }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Senha redefinida com sucesso!' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 
@@ -84,15 +101,11 @@ app.put('/groups/:id/remove-members', async (req, res) => { try { await Group.fi
 app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(req.params.id).populate('members', 'displayName photoUrl email')); } catch (e) {} });
 app.delete('/groups/:id/:adminId', async (req, res) => { try { const g = await Group.findById(req.params.id); if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); if (g.admin.toString() !== req.params.adminId) { return res.status(403).json({error: 'Sem permissão.'}); } await Message.deleteMany({ groupId: req.params.id }); await Group.findByIdAndDelete(req.params.id); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 
-// --- MÁGICA: SERVIDOR AGORA DEVOLVE A QUANTIDADE DE MENSAGENS E NÃO APENAS QUEM MANDOU ---
 app.get('/unread/:myId', async (req, res) => { 
     try { 
         const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); 
         const counts = {};
-        unreadMsgs.forEach(msg => {
-            const sender = msg.sender.toString();
-            counts[sender] = (counts[sender] || 0) + 1;
-        });
+        unreadMsgs.forEach(msg => { const sender = msg.sender.toString(); counts[sender] = (counts[sender] || 0) + 1; });
         res.json(counts); 
     } catch (e) { res.json({}); } 
 });
