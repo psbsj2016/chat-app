@@ -31,8 +31,21 @@ document.addEventListener('click', (e) => {
     }
 });
 
-function showMainScreen() { hideElement('auth-screen'); hideElement('chat-screen'); hideElement('settings-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); }
-function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('chat-screen'); showElement('main-screen'); }
+function showMainScreen() { 
+    hideElement('auth-screen'); hideElement('chat-screen'); hideElement('settings-screen'); 
+    hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen');
+    showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); 
+}
+
+function backToMain() { 
+    currentChatId = null; 
+    hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('chat-screen'); 
+    showElement('main-screen'); 
+}
+
+function backToSettings() {
+    hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen');
+}
 
 socket.on('check_app_version', (serverVersion) => {
     const localVersion = localStorage.getItem('appVersion');
@@ -92,7 +105,7 @@ if (msgInput) {
 
 function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group');
-    hideElement('main-screen'); hideElement('settings-screen'); showElement('chat-screen'); hideElement('typing-indicator'); 
+    hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); 
     document.getElementById('chat-title').innerText = name;
     document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
     document.getElementById('chat-box').innerHTML = ''; 
@@ -114,8 +127,7 @@ async function loadContacts() {
     const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json();
     const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json();
 
-    const list = document.getElementById('users-list'); 
-    list.innerHTML = ''; 
+    const list = document.getElementById('users-list'); list.innerHTML = ''; 
 
     groups.forEach(group => {
         const div = document.createElement('div'); div.className = 'user-item'; div.id = `contact-${group._id}`; 
@@ -127,18 +139,10 @@ async function loadContacts() {
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); };
         const memberStr = group.members.join(',');
-
-        // --- MÁGICA: O botão "Excluir Grupo" só aparece se você for o Criador (Admin) ---
         const isAdmin = group.admin === myId;
         const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : '';
 
-        menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span>
-            <div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;">
-                <div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div>
-                <div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div>
-                <div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>
-                ${deleteGroupBtn}
-            </div>`;
+        menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`;
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div);
     });
 
@@ -164,153 +168,66 @@ async function loadContacts() {
 }
 
 // ==========================================
-// FUNÇÕES DE GERENCIAMENTO AVANÇADO DE GRUPOS
+// FUNÇÕES DE NAVEGAÇÃO DOS NOVOS MENUS
 // ==========================================
-let targetGroupId = null; let selectedForRemoval = [];
 
-async function deleteGroup(groupId) {
-    hideElement(`group-menu-${groupId}`);
-    if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente para todos os membros.\nTodas as mensagens serão apagadas.\n\nTem certeza absoluta?")) return;
+async function openProfile() { 
+    toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); 
     try {
-        const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' });
-        if (res.ok) {
-            if(currentChatId === groupId) backToMain(); // Sai da tela de chat se estiver lá
-            messageCache[groupId] = [];
-            socket.emit('group_updated'); // Avisa os outros que o grupo sumiu
-            alert("Grupo excluído com sucesso!");
-        } else {
-            alert("Você não tem permissão para excluir este grupo.");
-        }
-    } catch(e) { alert("Erro ao tentar excluir grupo."); }
+        const res = await fetch(`/user/${myId}`); const me = await res.json();
+        document.getElementById('config-name').innerText = me.displayName || me.email;
+        document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado';
+        document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone';
+    } catch(e){}
 }
 
+function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
+
+async function openAppearanceSettings() {
+    hideElement('settings-screen'); showElement('appearance-screen');
+    try {
+        const res = await fetch(`/user/${myId}`); const me = await res.json();
+        document.getElementById('theme-switch').checked = me.theme === 'dark'; 
+        document.getElementById('font-size-select').value = me.fontSize || 'medium';
+    } catch(e){}
+}
+
+async function openAccountSettings() {
+    hideElement('settings-screen'); showElement('account-screen');
+    try {
+        const res = await fetch(`/user/${myId}`); const me = await res.json();
+        document.getElementById('config-email').innerText = me.email;
+        currentSectors = me.sectors || []; renderSectorsList();
+    } catch(e){}
+}
+
+// ==========================================
+// FUNÇÕES DE GERENCIAMENTO GERAL
+// ==========================================
+
+let targetGroupId = null; let selectedForRemoval = [];
+async function deleteGroup(groupId) { hideElement(`group-menu-${groupId}`); if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente para todos os membros.\nTodas as mensagens serão apagadas.\n\nTem certeza absoluta?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { if(currentChatId === groupId) backToMain(); messageCache[groupId] = []; socket.emit('group_updated'); alert("Grupo excluído com sucesso!"); } else { alert("Você não tem permissão para excluir este grupo."); } } catch(e) { alert("Erro ao tentar excluir grupo."); } }
 function openEditGroupModal(id, name, photo) { targetGroupId = id; hideElement(`group-menu-${id}`); document.getElementById('edit-group-name').value = name; document.getElementById('edit-group-photo').src = photo; showElement('edit-group-modal'); }
 async function uploadGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('edit-group-photo').src = data.url; } catch(e){} }
 async function saveGroupProfile() { const name = document.getElementById('edit-group-name').value; const photo = document.getElementById('edit-group-photo').src; if(!name) return; try { await fetch(`/groups/${targetGroupId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, photoUrl: photo})}); hideElement('edit-group-modal'); socket.emit('group_updated'); } catch(e){} }
-
-async function openSpecificAddMember(id, membersStr) {
-    targetGroupId = id; hideElement(`group-menu-${id}`); const existingMembers = membersStr.split(','); const res = await fetch(`/users/${myId}`); const users = await res.json();
-    const list = document.getElementById('specific-add-list'); list.innerHTML = ''; selectedUserIds = [];
-    users.forEach(u => {
-        if(existingMembers.includes(u._id)) return; 
-        const div = document.createElement('div'); div.className = 'candidate-item';
-        div.onclick = () => { if (selectedUserIds.includes(u._id)) { selectedUserIds = selectedUserIds.filter(x => x !== u._id); div.classList.remove('selected'); } else { selectedUserIds.push(u._id); div.classList.add('selected'); } };
-        div.innerHTML = `<img src="${u.photoUrl}"><span>${u.displayName || u.email}</span>`; list.appendChild(div);
-    }); showElement('specific-add-modal');
-}
+async function openSpecificAddMember(id, membersStr) { targetGroupId = id; hideElement(`group-menu-${id}`); const existingMembers = membersStr.split(','); const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('specific-add-list'); list.innerHTML = ''; selectedUserIds = []; users.forEach(u => { if(existingMembers.includes(u._id)) return; const div = document.createElement('div'); div.className = 'candidate-item'; div.onclick = () => { if (selectedUserIds.includes(u._id)) { selectedUserIds = selectedUserIds.filter(x => x !== u._id); div.classList.remove('selected'); } else { selectedUserIds.push(u._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${u.photoUrl}"><span>${u.displayName || u.email}</span>`; list.appendChild(div); }); showElement('specific-add-modal'); }
 async function submitSpecificAdd() { if(selectedUserIds.length === 0) return alert('Selecione alguém'); try { await fetch(`/groups/${targetGroupId}/add-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedUserIds})}); hideElement('specific-add-modal'); alert('Adicionados!'); socket.emit('group_updated'); } catch(e){} }
-
-async function openRemoveMemberModal(id, membersStr) {
-    targetGroupId = id; hideElement(`group-menu-${id}`); const existingMembers = membersStr.split(','); selectedForRemoval = []; updateRemoveBtn();
-    const res = await fetch(`/users/${myId}`); const users = await res.json(); const members = users.filter(u => existingMembers.includes(u._id)); 
-    const list = document.getElementById('remove-members-list'); list.innerHTML = '';
-    members.forEach(u => {
-        const div = document.createElement('div'); div.className = 'candidate-item'; let tTimer;
-        const toggleSelect = () => { if(selectedForRemoval.includes(u._id)) { selectedForRemoval = selectedForRemoval.filter(x => x !== u._id); div.classList.remove('selected-remove'); } else { selectedForRemoval.push(u._id); div.classList.add('selected-remove'); } updateRemoveBtn(); };
-        div.addEventListener('touchstart', (e) => { tTimer = setTimeout(() => { navigator.vibrate && navigator.vibrate(50); toggleSelect(); }, 500); }, {passive:false});
-        div.addEventListener('touchend', () => clearTimeout(tTimer)); div.addEventListener('touchmove', () => clearTimeout(tTimer));
-        div.addEventListener('mousedown', () => { tTimer = setTimeout(() => { toggleSelect(); }, 500); });
-        div.addEventListener('mouseup', () => clearTimeout(tTimer)); div.addEventListener('mouseleave', () => clearTimeout(tTimer));
-        div.addEventListener('contextmenu', e => e.preventDefault());
-        div.addEventListener('click', () => { if(selectedForRemoval.length > 0) toggleSelect(); });
-        div.innerHTML = `<img src="${u.photoUrl}"><span>${u.displayName || u.email}</span>`; list.appendChild(div);
-    }); showElement('remove-members-modal');
-}
+async function openRemoveMemberModal(id, membersStr) { targetGroupId = id; hideElement(`group-menu-${id}`); const existingMembers = membersStr.split(','); selectedForRemoval = []; updateRemoveBtn(); const res = await fetch(`/users/${myId}`); const users = await res.json(); const members = users.filter(u => existingMembers.includes(u._id)); const list = document.getElementById('remove-members-list'); list.innerHTML = ''; members.forEach(u => { const div = document.createElement('div'); div.className = 'candidate-item'; let tTimer; const toggleSelect = () => { if(selectedForRemoval.includes(u._id)) { selectedForRemoval = selectedForRemoval.filter(x => x !== u._id); div.classList.remove('selected-remove'); } else { selectedForRemoval.push(u._id); div.classList.add('selected-remove'); } updateRemoveBtn(); }; div.addEventListener('touchstart', (e) => { tTimer = setTimeout(() => { navigator.vibrate && navigator.vibrate(50); toggleSelect(); }, 500); }, {passive:false}); div.addEventListener('touchend', () => clearTimeout(tTimer)); div.addEventListener('touchmove', () => clearTimeout(tTimer)); div.addEventListener('mousedown', () => { tTimer = setTimeout(() => { toggleSelect(); }, 500); }); div.addEventListener('mouseup', () => clearTimeout(tTimer)); div.addEventListener('mouseleave', () => clearTimeout(tTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); div.addEventListener('click', () => { if(selectedForRemoval.length > 0) toggleSelect(); }); div.innerHTML = `<img src="${u.photoUrl}"><span>${u.displayName || u.email}</span>`; list.appendChild(div); }); showElement('remove-members-modal'); }
 function updateRemoveBtn() { const btn = document.getElementById('btn-execute-remove'); if(selectedForRemoval.length > 0) { btn.classList.remove('hidden'); btn.innerText = `Remover (${selectedForRemoval.length})`; } else { btn.classList.add('hidden'); } }
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
-async function startRecording() {
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
-    try { 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
-        globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); 
-        const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn');
-        recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
-        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); 
-        recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000);
-        globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
-        globalMediaRecorder.onstop = async () => { 
-            clearInterval(recordingInterval); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0');
-            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; 
-            btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); 
-            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
-            stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; 
-        }; 
-        recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); 
-    } catch (err) { alert('Permissão negada!'); }
-}
-
-function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
-    const btn = document.querySelector('.send-btn');
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); return; }
-    const input = document.getElementById('message-input'); 
-    if (pendingAudioFile) {
-        const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; 
-        pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return;
-    }
-    const content = textOverride || input.innerHTML; 
-    if((!content && !fileUrl) || !currentChatId) return;
-    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
-    socket.emit('private_message', msgData); if(!fileUrl) input.innerHTML = ''; 
-}
-
-async function loadMessages(userId) { 
-    if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); }
-    try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); 
-        if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); }
-    } catch (e) {} 
-}
-
-async function loadGroupMessages(groupId) { 
-    if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); }
-    try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); 
-        if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); }
-    } catch (e) {} 
-}
+async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const btn = document.querySelector('.send-btn'); if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); return; } const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } const content = textOverride || input.innerHTML; if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); if(!fileUrl) input.innerHTML = ''; }
+async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
+async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
 let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;           
-
-function displayMessage(msg) {
-    const box = document.getElementById('chat-box'); const div = document.createElement('div');
-    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId;
-    div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`;
-    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false});
-    div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer));
-    div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); });
-    div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-    div.addEventListener('contextmenu', e => e.preventDefault()); 
-
-    let contentHtml = '';
-    if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:11px; color:#008069; font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`;
-    if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`;
-    else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`;
-    else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`;
-    else contentHtml += msg.content; 
-    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`;
-    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:14px; margin-left:2px;">done_all</span>' : ''}</span></div>`;
-    box.appendChild(div); box.scrollTop = box.scrollHeight;
-}
-
-function showMessageMenu(e, msgElement, msgObj) {
-    if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg');
-    currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg');
-    const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg');
-    if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; }
-    let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY;
-    menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu');
-    setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100);
-}
-
+function displayMessage(msg) { const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); let contentHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:11px; color:#008069; font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; else contentHtml += msg.content; if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:14px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; }
+function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
-
-async function openForwardModal() {
-    showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json();
-    const list = document.getElementById('forward-contacts-list'); list.innerHTML = '';
-    users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); });
-}
-
+async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
@@ -326,23 +243,8 @@ async function submitAddGroup() { const checkboxes = document.querySelectorAll('
 async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { document.querySelectorAll('.candidate-item').forEach(item => { item.style.display = item.dataset.name.includes(query.toLowerCase()) ? 'flex' : 'none'; }); }
-
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; if (!name || selectedUserIds.length===0) return; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds }) }); alert("Criado!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
-async function openSettings() { 
-    toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); 
-    try {
-        const res = await fetch(`/user/${myId}`); const me = await res.json();
-        document.getElementById('config-name').innerText = me.displayName || me.email;
-        document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        document.getElementById('config-email').innerText = me.email;
-        document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado';
-        document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone';
-        document.getElementById('theme-switch').checked = me.theme === 'dark'; 
-        document.getElementById('font-size-select').value = me.fontSize || 'medium';
-        currentSectors = me.sectors || []; renderSectorsList();
-    } catch(e){}
-}
 function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
 function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
 function editPhone() { const newPhone = prompt("Seu Telefone:"); if(newPhone !== null) { document.getElementById('config-phone').innerText = newPhone || '...'; saveProfile({ phone: newPhone }); } }

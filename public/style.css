@@ -3,54 +3,36 @@
 /* VARIÁVEIS DE FONTE DINÂMICA */
 :root {
     --primary-color: #008069; --bg-color: #d1d7db; --card-bg: #ffffff; --text-color: #333; --secondary-text: #666; --input-bg: #f0f2f5; --header-text: #fff; --chat-bg-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-    /* Tamanhos Padrão */
-    --chat-font-size: 14.2px; 
-    --contact-name-size: 15px; 
-    --contact-msg-size: 12px; 
-    --input-font-size: 16px; 
+    --chat-font-size: 14.2px; --contact-name-size: 15px; --contact-msg-size: 12px; --input-font-size: 16px; 
 }
 
 body.dark-mode {
     --primary-color: #202c33; --bg-color: #111b21; --card-bg: #202c33; --text-color: #e9edef; --secondary-text: #8696a0; --input-bg: #2a3942; --chat-bg-image: url('https://i.pinimg.com/originals/97/c0/07/97c00759d90d786d9b6096d274ad3e07.png');
 }
 
-/* --- MODO TAMANHO DE LETRA --- */
-body.font-small {
-    --chat-font-size: 12px; --contact-name-size: 13px; --contact-msg-size: 10px; --input-font-size: 14px;
-}
-body.font-medium {
-    --chat-font-size: 16px; --contact-name-size: 17px; --contact-msg-size: 14px; --input-font-size: 18px;
-}
-body.font-large {
-    /* MÁGICA 3X PARA O CHAT, SEM QUEBRAR O LAYOUT GERAL */
-    --chat-font-size: 42px; --contact-name-size: 26px; --contact-msg-size: 20px; --input-font-size: 32px;
-}
+body.font-small { --chat-font-size: 12px; --contact-name-size: 13px; --contact-msg-size: 10px; --input-font-size: 14px; }
+body.font-medium { --chat-font-size: 16px; --contact-name-size: 17px; --contact-msg-size: 14px; --input-font-size: 18px; }
+body.font-large { --chat-font-size: 42px; --contact-name-size: 26px; --contact-msg-size: 20px; --input-font-size: 32px; }
 
 html, body { width: 100%; height: 100%; height: -webkit-fill-available; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); }
 .app-screen { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 100%; max-width: 1600px; display: flex; flex-direction: column; background: var(--card-bg); overflow: hidden; }
 
 .main-header, .chat-header { flex: 0 0 60px; background: var(--primary-color); color: var(--header-text); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10; }
-
 #chat-box { flex: 1 1 auto; background: var(--bg-color); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background-image: var(--chat-bg-image); min-height: 0; }
-
 .input-area { flex: 0 0 auto; background: var(--card-bg); padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; border-top: 1px solid var(--input-bg); z-index: 50; }
-#message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; /* Permite crescer flexível com letra grande */ overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
+#message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
 
-/* --- APLICAÇÃO DINÂMICA NAS MENSAGENS E LISTAS --- */
 .message { 
     max-width: 75%; padding: 6px 8px; border-radius: 8px; position: relative; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); display: flex; flex-direction: column;
     word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; 
-    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-    font-size: var(--chat-font-size); /* <-- Fonte inteligente */
-    line-height: 1.3;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-size: var(--chat-font-size); line-height: 1.3;
 }
-.my-msg { align-self: flex-end; background: #d9fdd3; color: #111; } /* Mantém cor fixa pra não bugar no escuro */
+.my-msg { align-self: flex-end; background: #d9fdd3; color: #111; } 
 .other-msg { align-self: flex-start; background: var(--card-bg); }
 
 .contact-name { font-weight: bold; font-size: var(--contact-name-size); }
 .contact-last-msg { font-size: var(--contact-msg-size); color: var(--secondary-text); margin-top: 2px; }
 
-/* Resto padrão */
 .message.selected-msg { outline: 2px solid #25D366; box-shadow: 0 5px 15px rgba(37, 211, 102, 0.4); transform: scale(1.02); z-index: 100; transition: all 0.2s ease; }
 .message::after { content: ""; clear: both; display: table; }
 .chat-image { max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 6px; margin-bottom: 4px; cursor: pointer; object-fit: contain; }
@@ -103,6 +85,22 @@ emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num
 .group-title { padding: 15px; background: var(--input-bg); font-weight: bold; font-size: 13px; color: var(--secondary-text); text-transform: uppercase; }
 .setting-item { padding: 15px; border-bottom: 1px solid var(--input-bg); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .setting-item:last-child { border-bottom: none; }
+
+/* --- NOVO: BOTÕES COMPRIDOS DO MENU DE CONFIGURAÇÕES --- */
+.settings-menu-btn {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--input-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: var(--card-bg);
+    transition: background 0.2s;
+    font-size: 16px;
+    font-weight: 500;
+}
+.settings-menu-btn:hover { background: var(--input-bg); }
+.settings-menu-btn:last-child { border-bottom: none; }
 
 .user-avatar-container { position: relative; margin-right: 15px; display: inline-block; text-align: center; }
 .sector-badge { display: block; font-size: 10px; font-weight: bold; color: #008069; margin-bottom: 2px; text-transform: uppercase; }

@@ -35,6 +35,7 @@
         </div>
 
         <div id="main-menu" class="dropdown-menu hidden">
+            <div class="menu-item" onclick="openProfile()"><span class="material-icons">account_circle</span> Perfil</div>
             <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
             <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
@@ -91,10 +92,10 @@
         </div>
     </div>
 
-    <div id="settings-screen" class="app-screen hidden" style="background: var(--bg-color);">
+    <div id="profile-screen" class="app-screen hidden" style="background: var(--bg-color);">
         <div class="main-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
-            <span class="header-title">Configurações</span>
+            <span class="header-title">Perfil</span>
             <div style="width: 40px;"></div>
         </div>
 
@@ -128,9 +129,43 @@
                     <span class="material-icons" style="color:#888; font-size:18px;">edit</span>
                 </div>
             </div>
+        </div>
+    </div>
 
+    <div id="settings-screen" class="app-screen hidden" style="background: var(--bg-color);">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
+            <span class="header-title">Configurações</span>
+            <div style="width: 40px;"></div>
+        </div>
+        <div class="settings-content" style="padding: 0; margin-top: 10px;">
+            <div style="border-radius: 10px; overflow: hidden; margin: 0 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div class="settings-menu-btn" onclick="openAppearanceSettings()">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <span class="material-icons" style="color:#54656f;">palette</span> 
+                        Aparência
+                    </div>
+                    <span class="material-icons" style="color:#ccc;">chevron_right</span>
+                </div>
+                <div class="settings-menu-btn" onclick="openAccountSettings()">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <span class="material-icons" style="color:#54656f;">manage_accounts</span> 
+                        Cadastro e Conta
+                    </div>
+                    <span class="material-icons" style="color:#ccc;">chevron_right</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="appearance-screen" class="app-screen hidden" style="background: var(--bg-color);">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToSettings()"><span class="material-icons">arrow_back</span></button>
+            <span class="header-title">Aparência</span>
+            <div style="width: 40px;"></div>
+        </div>
+        <div class="settings-content">
             <div class="settings-group">
-                <div class="group-title">Aparência</div>
                 <div class="setting-item">
                     <span>Tema Escuro</span>
                     <label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label>
@@ -143,10 +178,22 @@
                         <option value="large">Tamanho Grande (3x nas mensagens)</option>
                     </select>
                 </div>
+                <div class="setting-item" onclick="alert('Em breve: Upload de Wallpaper')">
+                    <span>Papel de Parede dos Chats</span>
+                    <span class="action-link">Escolher</span>
+                </div>
             </div>
+        </div>
+    </div>
 
+    <div id="account-screen" class="app-screen hidden" style="background: var(--bg-color);">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToSettings()"><span class="material-icons">arrow_back</span></button>
+            <span class="header-title">Cadastro e Conta</span>
+            <div style="width: 40px;"></div>
+        </div>
+        <div class="settings-content">
             <div class="settings-group">
-                <div class="group-title">Cadastro & Conta</div>
                 <div class="setting-item">
                     <span>E-mail</span>
                     <span id="config-email" style="color:#666; font-size:14px;">Carregando...</span>
@@ -164,27 +211,17 @@
 
     <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
         <div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;">
-            <div style="text-align: right; width: 100%;">
-                <span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span>
-            </div>
+            <div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span></div>
             <img id="view-contact-avatar" src="">
             <h3 id="view-contact-name">Nome</h3>
-            
             <div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
                 <div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;">
                     <span style="font-size: 11px; color:#008069; font-weight: bold; text-transform: uppercase;">Recado</span>
                     <span id="view-contact-bio" style="font-style: italic; font-size: 15px;">...</span>
                 </div>
-                <div class="profile-detail-item">
-                    <span class="material-icons" style="color:#008069;">phone</span>
-                    <span id="view-contact-phone" style="font-weight: bold;">...</span>
-                </div>
-                <div class="profile-detail-item">
-                    <span class="material-icons" style="color:#008069;">email</span>
-                    <span id="view-contact-email">...</span>
-                </div>
+                <div class="profile-detail-item"><span class="material-icons" style="color:#008069;">phone</span><span id="view-contact-phone" style="font-weight: bold;">...</span></div>
+                <div class="profile-detail-item"><span class="material-icons" style="color:#008069;">email</span><span id="view-contact-email">...</span></div>
             </div>
-
             <div id="view-group-details" class="hidden" style="width: 100%; text-align: left;">
                 <p style="font-weight: bold; color: #008069; margin-bottom: 10px;">Membros do Grupo:</p>
                 <div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div>
@@ -195,18 +232,12 @@
     <div id="create-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px;"><div class="search-box" style="margin-bottom: 10px;"><span class="material-icons">search</span><input type="text" placeholder="Buscar contatos..." onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="closeCreateGroup()" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitCreateGroup()" style="background:#008069;">CRIAR GRUPO</button></div></div></div>
     <div id="add-sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Setor</h3><p id="sector-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-sector-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddSector()" style="background:#008069;">Adicionar</button></div></div></div>
     <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p><div id="group-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddGroup()" style="background:#008069;">Adicionar</button></div></div></div>
-    
     <div id="edit-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; align-items: center;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="hideElement('edit-group-modal')">close</span></div><h3 style="margin-bottom: 15px;">Perfil do Grupo</h3><div style="position: relative; margin-bottom: 15px;"><img id="edit-group-photo" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #008069; cursor: pointer;" onclick="document.getElementById('edit-group-file').click()"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: #008069; color: white; border-radius: 50%; padding: 4px; font-size: 14px; pointer-events: none;">edit</span><input type="file" id="edit-group-file" hidden onchange="uploadGroupPhoto(this)"></div><input type="text" id="edit-group-name" placeholder="Nome do Grupo"><button onclick="saveGroupProfile()" style="background:#008069; color:white; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Salvar</button></div></div>
     <div id="specific-add-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Adicionar Membros</h3><p style="font-size:12px; color:#888; margin-bottom: 10px;">Selecione quem deseja adicionar</p><div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="hideElement('specific-add-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSpecificAdd()" style="background:#008069;">Adicionar</button></div></div></div>
     <div id="remove-members-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; position: relative;"><div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:10px;"><h3 style="margin: 0;">Remover Membros</h3><button id="btn-execute-remove" class="hidden" onclick="submitRemoveMembers()" style="background:#ff5252; color:white; padding:8px 15px; border-radius:8px; border:none; font-weight:bold;">Remover</button></div><p style="font-size:12px; color:#888; margin-bottom: 10px;">Segure no contato para selecionar</p><div id="remove-members-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><button onclick="hideElement('remove-members-modal')" style="background:#ccc; color:#333; margin-top: 15px; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Fechar</button></div></div>
-
     <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons">content_copy</span> Copiar Texto</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons">shortcut</span> Encaminhar</div></div>
     <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;"><h3>Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;"></div><button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding:12px; border-radius:8px;">Cancelar</button></div></div>    
-
-    <div id="text-format-toolbar" class="hidden floating-format-bar">
-        <button onmousedown="formatDoc('bold', event)"><b>B</b></button><button onmousedown="formatDoc('italic', event)"><i>I</i></button><button onmousedown="formatDoc('underline', event)"><u>U</u></button><button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button><div class="toolbar-sep"></div>
-        <button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button><button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button><button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button><button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button>
-    </div>
+    <div id="text-format-toolbar" class="hidden floating-format-bar"><button onmousedown="formatDoc('bold', event)"><b>B</b></button><button onmousedown="formatDoc('italic', event)"><i>I</i></button><button onmousedown="formatDoc('underline', event)"><u>U</u></button><button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button><div class="toolbar-sep"></div><button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button><button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button><button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button><button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js?v=2.0"></script>
