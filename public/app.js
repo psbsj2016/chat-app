@@ -330,6 +330,23 @@ function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mo
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
+
+// ==========================================
+// FUNÇÃO DE SAIR (LOGOUT)
+// ==========================================
+function logout() {
+    if (confirm("Tem certeza que deseja sair?")) {
+        // 1. Limpa os dados de acesso do celular
+        localStorage.removeItem('token');
+        localStorage.removeItem('myId');
+        localStorage.removeItem('displayName');
+        localStorage.removeItem('photoUrl');
+        
+        // 2. Recarrega a página (Isso derruba a conexão com o servidor e volta pro Login limpo)
+        window.location.reload();
+    }
+}
+
 function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/${myId}`, { method: 'DELETE' }).then(() => { logout(); }); } }
 
 // --- ATUALIZADO: TELA DE PERFIL MAGNÍFICA E DINÂMICA ---
