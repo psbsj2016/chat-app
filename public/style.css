@@ -1,13 +1,21 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; }
 
-/* FIX MOBILE: 100dvh garante que o teclado não quebre o layout */
-body { 
-    background-color: #d1d7db;
-    height: 100dvh; 
+/* FIX MOBILE DEFINITIVO: Trava a tela para impedir que vaze no celular */
+html, body {
     width: 100%;
-    overflow: hidden; 
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body { 
+    background-color: var(--bg-color, #d1d7db);
+    height: 100dvh; /* Altura dinâmica real do celular */
     display: flex;
     justify-content: center;
+    position: fixed; /* A MÁGICA: Prende o site exato no tamanho da tela visível */
+    top: 0; left: 0; right: 0; bottom: 0;
 }
 
 /* --- MODAL DE CONFIGURAÇÕES (Perfil) --- */
@@ -23,14 +31,8 @@ body {
     display: flex; flex-direction: column; align-items: center; 
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
-.profile-edit {
-    position: relative; margin-bottom: 20px; display: flex; justify-content: center;
-}
-.profile-edit img {
-    width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-    border: 4px solid #008069; cursor: pointer;
-    transition: transform 0.2s;
-}
+.profile-edit { position: relative; margin-bottom: 20px; display: flex; justify-content: center; }
+.profile-edit img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #008069; cursor: pointer; transition: transform 0.2s; }
 .profile-edit img:hover { transform: scale(1.05); filter: brightness(0.9); }
 .profile-edit p { margin-top: 8px; font-size: 11px; color: #888; text-align: center; }
 
@@ -45,34 +47,36 @@ body {
 .app-screen { 
     width: 100%; height: 100%; display: flex; flex-direction: column; 
     background: white; position: relative; max-width: 1600px; 
-    overflow: hidden; /* Garante que nada vaze da tela */
+    overflow: hidden; 
 }
 
 /* Cabeçalhos */
 .main-header, .chat-header {
-    height: 60px; min-height: 60px; background: #008069; color: white; 
+    flex: 0 0 60px; /* Não encolhe, não cresce, fica exato 60px */
+    background: #008069; color: white; 
     display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10;
 }
 
 /* Área do Chat */
 #chat-box { 
-    flex: 1; background: #efeae2; padding: 15px; 
+    flex: 1 1 auto; /* Ocupa todo o espaço livre do meio */
+    background: #efeae2; padding: 15px; 
     overflow-y: auto; display: flex; flex-direction: column; gap: 6px; 
     background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-    min-height: 0; /* MÁGICA: Impede que o chat empurre a barra de digitação para fora */
+    min-height: 0; /* Impede vazamento */
 }
 
-/* Input de Mensagem */
+/* Input de Mensagem (A CORREÇÃO PRINCIPAL AQUI) */
 .input-area { 
+    flex: 0 0 auto; /* MÁGICA 2: PROÍBE a caixa de texto de ser esmagada/escondida */
     background: #f0f2f5; 
     padding: 8px 10px; 
-    padding-bottom: calc(8px + env(safe-area-inset-bottom)); /* Espaço seguro p/ iPhones */
     display: flex; align-items: flex-end; gap: 8px; 
-    min-height: 62px; border-top: 1px solid #ddd;
+    border-top: 1px solid #ddd;
     position: relative; 
     z-index: 50;
-    flex-shrink: 0; /* MÁGICA: Garante que a caixa nunca seja esmagada/escondida */
+    min-height: 60px;
 }
 
 #message-input {
@@ -87,13 +91,11 @@ body {
     font-size: 14.2px; position: relative; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); 
     display: flex; flex-direction: column;
     
-    /* MÁGICA: Força textos grandes a quebrarem e respeitarem o balão */
     word-wrap: break-word;
     word-break: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap; 
 
-    /* Bloqueia menu nativo do celular */
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -103,7 +105,6 @@ body {
 .my-msg { align-self: flex-end; background: #d9fdd3; }
 .other-msg { align-self: flex-start; background: white; }
 
-/* Destaque ao segurar a mensagem */
 .message.selected-msg {
     outline: 2px solid #25D366;
     box-shadow: 0 5px 15px rgba(37, 211, 102, 0.4);
@@ -112,10 +113,8 @@ body {
     transition: all 0.2s ease;
 }
 
-/* Limpar float */
 .message::after { content: ""; clear: both; display: table; }
 
-/* LIMITADOR DE IMAGEM */
 .chat-image {
     max-width: 100%; max-height: 300px; width: auto; height: auto;
     border-radius: 6px; margin-bottom: 4px; cursor: pointer; object-fit: contain; 
@@ -133,7 +132,6 @@ body {
 .user-item:hover { background: #f5f5f5; }
 .user-item img { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
 
-/* Menus e Utilitários */
 .hidden { display: none !important; }
 .icon-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s; }
 .icon-btn:active { background: rgba(0,0,0,0.1); }
@@ -180,7 +178,7 @@ emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num
 :root { --primary-color: #008069; --bg-color: #d1d7db; --card-bg: #ffffff; --text-color: #333; --secondary-text: #666; --input-bg: #f0f2f5; --header-text: #fff; --chat-bg-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
 body.dark-mode { --primary-color: #202c33; --bg-color: #111b21; --card-bg: #202c33; --text-color: #e9edef; --secondary-text: #8696a0; --input-bg: #2a3942; --chat-bg-image: url('https://i.pinimg.com/originals/97/c0/07/97c00759d90d786d9b6096d274ad3e07.png'); }
 
-body { background-color: var(--bg-color); color: var(--text-color); }
+body { color: var(--text-color); }
 .app-screen { background: var(--card-bg); }
 .main-header, .chat-header { background: var(--primary-color); color: var(--header-text); }
 .user-item { border-bottom: 1px solid var(--input-bg); }
@@ -300,26 +298,9 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: #25D366; }
 }
 
 .floating-format-bar button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 17px;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: 0.2s;
+    background: none; border: none; color: white; font-size: 17px; width: 32px; height: 32px;
+    border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;
 }
 
-.floating-format-bar button:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.floating-format-bar .toolbar-sep {
-    width: 1px;
-    background: rgba(255, 255, 255, 0.2);
-    margin: 0 4px;
-}
+.floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
+.floating-format-bar .toolbar-sep { width: 1px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
