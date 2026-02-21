@@ -5,7 +5,10 @@ let currentChatId = null;
 let currentChatEmail = ''; 
 
 let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
-let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
+
+// MÁGICA: O MOTOR DE CONTAGEM DE MENSAGENS NÃO LIDAS
+let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
+
 let onlineUsersList = [];
 let targetContactId = null;
 let isGroupChat = false;
@@ -36,7 +39,6 @@ socket.on('check_app_version', (serverVersion) => { const localVersion = localSt
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
 
-// MÁGICA 1: CONECTAR AOS GRUPOS INVISIVELMENTE NO FUNDO
 socket.on('connect', () => { 
     if (myId) {
         socket.emit('join_room', myId); 
@@ -50,7 +52,6 @@ socket.on('online_users', (list) => { onlineUsersList = list; document.querySele
 function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
-// MÁGICA 2: INDICADOR DE AÇÃO (DIGITANDO/ÁUDIO) PARA GRUPOS NA LISTA
 socket.on('typing', (data) => { 
     if (data.senderId === myId) return; 
     const targetId = data.groupId ? data.groupId : data.senderId; 
@@ -82,7 +83,7 @@ socket.on('stop_typing', (data) => {
         if (msgArea && msgArea.hasAttribute('data-original')) { 
             msgArea.innerHTML = msgArea.getAttribute('data-original'); 
             msgArea.removeAttribute('data-original'); 
-            if(unreadGroups.includes(targetId)) msgArea.style = '';
+            if(unreadCounts[targetId] > 0) msgArea.style = '';
             else msgArea.style = 'color:var(--brand-primary)';
         } 
     } 
@@ -95,6 +96,15 @@ let audioCtx = null;
 function playNotificationSound(type) { if(type === 'none') return; try { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); if (type === 'modern') { osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); } else if (type === 'pop') { osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05); } else if (type === 'bell') { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime); gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); } } catch(e) {} }
 function requestNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
 function showSystemNotification(title, body) { if ("Notification" in window && Notification.permission === "granted") { const notification = new Notification(title, { body: body, icon: 'favicon.png', badge: 'favicon.png', vibrate: [200, 100, 200] }); notification.onclick = function() { window.focus(); this.close(); }; } }
+
+// Se a pessoa estiver na tela e focada com o chat aberto, o contador zera!
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentChatId) {
+        unreadCounts[currentChatId] = 0;
+        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+        if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId });
+    }
+});
 
 socket.on('receive_message', (msg) => { 
     const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
@@ -115,38 +125,47 @@ socket.on('receive_message', (msg) => {
     if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; 
     if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
     
-    if (isGroupChat && groupIdStr === currentChatId) { 
+    if (isGroupChat && groupIdStr === currentChatId && !document.hidden) { 
         displayMessage(msg); 
-    } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { 
+    } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId)) && !document.hidden) { 
         displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); 
     } else { 
-        if (groupIdStr && !unreadGroups.includes(groupIdStr)) {
-            unreadGroups.push(groupIdStr);
-            localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
-        }
+        
+        // MÁGICA: Aumenta a contagem de notificação matematicamente!
+        unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1;
+        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
 
-        const contactDiv = document.getElementById(`contact-${targetId}`); 
-        if (contactDiv) { 
-            contactDiv.classList.add('has-unread'); 
-            const msgArea = contactDiv.querySelector('.contact-last-msg'); 
-            if (msgArea) { 
-                msgArea.innerHTML = 'Nova mensagem!'; 
-                msgArea.removeAttribute('data-original'); 
-                msgArea.style = ''; 
-            } 
-            document.getElementById('users-list').prepend(contactDiv); 
-        } 
+        // Puxa a memória de forma super-rápida para repintar a lista e subir quem mandou mensagem
+        const cGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+        const cUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        renderContactsList(cGroups, cUsers);
     } 
 });
 
 const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
 
+// MÁGICA: LIMPEZA INSTANTÂNEA E PERMANENTE DO AVISO
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    if (isGroupChat) { unreadGroups = unreadGroups.filter(gId => gId !== id); localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } else { let localUnread = JSON.parse(localStorage.getItem('unreadSenders')) || []; localUnread = localUnread.filter(uId => uId !== id); localStorage.setItem('unreadSenders', JSON.stringify(localUnread)); }
+    
+    // ZERA a quantidade
+    unreadCounts[id] = 0;
+    localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
+    
+    // Limpa a tela imediatamente pro retorno já estar liso
     const contactDiv = document.getElementById(`contact-${id}`); 
-    if (contactDiv) { contactDiv.classList.remove('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } }
+    if (contactDiv) { 
+        contactDiv.classList.remove('has-unread'); 
+        const badge = contactDiv.querySelector('.unread-count-badge');
+        if(badge) badge.remove();
+        
+        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
+        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
+    }
+    
     if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
     const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } 
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
@@ -154,41 +173,71 @@ function openChat(id, name, photo, email, type = 'user') {
 
 async function loadContacts() { 
     if(!myId) return; 
-    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; const cachedUnread = JSON.parse(localStorage.getItem('unreadSenders')) || [];
-    if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers, cachedUnread); }
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+    
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
+        cachedGroups.forEach(g => socket.emit('join_group', g._id));
+        renderContactsList(cachedGroups, cachedUsers); 
+    }
+    
     try { 
-        const resUnread = await fetch(`/unread/${myId}`); const unreadSenders = await resUnread.json(); 
+        // Busca da internet o número preciso de mensagens pra gente não perder a conta!
+        const resUnread = await fetch(`/unread/${myId}`); 
+        const serverCounts = await resUnread.json(); 
+        
+        // Sincroniza o celular com a nuvem apenas nos chats (Grupos seguem locais)
+        cachedUsers.forEach(u => {
+            unreadCounts[u._id] = serverCounts[u._id] || 0;
+        });
+        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+
         const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
         const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
-        localStorage.setItem('unreadSenders', JSON.stringify(unreadSenders)); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users));
+        
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
+        localStorage.setItem('cacheUsers', JSON.stringify(users));
+        
         groups.forEach(g => socket.emit('join_group', g._id)); 
-        renderContactsList(groups, users, unreadSenders);
+        renderContactsList(groups, users);
     } catch(e) {} 
 }
 
-function renderContactsList(groups, users, unreadSenders) {
+function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     
-    // MÁGICA 3: ORDENAR OS GRUPOS NÃO LIDOS PARA O TOPO
-    groups.sort((a, b) => unreadGroups.includes(b._id) - unreadGroups.includes(a._id));
+    // Ordena pelo número de mensagens! (Não lidos vão pro topo)
+    groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     
     groups.forEach(group => { 
-        let isUnreadG = unreadGroups.includes(group._id) && currentChatId !== group._id; 
+        let count = unreadCounts[group._id] || 0;
+        let isUnreadG = count > 0 && currentChatId !== group._id; 
         let extraGroupClass = isUnreadG ? 'has-unread' : '';
+        let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
+        
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group'); 
         
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; 
         let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
 
-        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${group.name}</div>${badgeHtml}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
-    users.sort((a, b) => unreadSenders.includes(b._id) - unreadSenders.includes(a._id)); 
+
+    users.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    
     users.forEach(user => { 
-        let isUnreadU = unreadSenders.includes(user._id) && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar';
+        let count = unreadCounts[user._id] || 0;
+        let isUnreadU = count > 0 && currentChatId !== user._id; 
+        let extraClass = isUnreadU ? 'has-unread' : ''; 
+        let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar';
+        let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); 
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); 
+        
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${name}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
+        
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${name}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     });
 }

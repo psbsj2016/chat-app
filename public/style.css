@@ -77,14 +77,26 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .contact-name { font-weight: bold; font-size: var(--contact-name-size); }
 .contact-last-msg { font-size: var(--contact-msg-size); color: var(--secondary-text); margin-top: 2px; }
 
+/* MÁGICA: O CONTADOR DE MENSAGENS */
+.unread-count-badge {
+    background-color: var(--brand-accent);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 7px;
+    border-radius: 12px;
+    min-width: 22px;
+    text-align: center;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
 .message.selected-msg { outline: 2px solid var(--brand-accent); box-shadow: 0 5px 15px rgba(0,0,0, 0.2); transform: scale(1.02); z-index: 100; }
 .message::after { content: ""; clear: both; display: table; }
 
-/* ESTILIZAÇÃO DAS MÍDIAS */
 .chat-image { max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 6px; margin-bottom: 4px; cursor: pointer; object-fit: contain; }
 .chat-video { max-width: 100%; max-height: 300px; width: auto; border-radius: 6px; margin-bottom: 4px; outline: none; background: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); overflow: hidden; }
 
-/* Áudio com overflow aqui, não na mensagem inteira! */
 .chat-audio { max-width: 100%; width: 260px; height: 44px; border-radius: 22px; outline: none; margin: 4px 0; overflow: hidden; }
 .my-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(0, 0, 0, 0.05); }
 .other-msg .chat-audio::-webkit-media-controls-panel { background-color: var(--input-bg); }
@@ -96,9 +108,6 @@ body.dark-mode .other-msg .chat-audio::-webkit-media-controls-panel { background
 .msg-status { font-size: 11.5px; color: #999; display: flex; align-items: center; }
 .msg-status.read .material-icons { color: var(--brand-secondary) !important; }
 
-/* ==========================================
-   NOVO: EFEITO DE UPLOAD (VELOCIDADE DA LUZ)
-========================================== */
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .uploading-msg { opacity: 0.55; pointer-events: none; filter: grayscale(20%); }
 .uploading-icon { animation: spin 1s linear infinite; font-size: 16px; margin-left: 4px; color: var(--brand-primary); }
