@@ -88,40 +88,40 @@ async function submitSector() { const checkboxes = document.querySelectorAll('#s
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 
-// --- MÁGICA 4: O NOVO SISTEMA DE CRIAR GRUPO ---
-async function openCreateGroupModal() { 
-    toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; 
-    document.getElementById('group-name-input').value = ''; 
-    document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
-    const res = await fetch(`/users/${myId}`); const users = await res.json(); 
-    const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; 
-    users.forEach(user => { 
-        const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; 
-        div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; 
-        div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); 
-    }); 
-}
+async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { document.querySelectorAll('.candidate-item').forEach(item => { item.style.display = item.dataset.name.includes(query.toLowerCase()) ? 'flex' : 'none'; }); }
+async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; } catch(e){} }
+async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
-async function uploadNewGroupPhoto(input) { 
-    const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); 
-    try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; } catch(e){} 
+// ==========================================
+// MÁGICA DO PROMPT PRÉ-PREENCHIDO
+// ==========================================
+function editName() { 
+    const curr = document.getElementById('config-name').innerText; 
+    const newName = prompt("Novo nome:", curr); 
+    if(newName !== null && newName.trim() !== '') { 
+        document.getElementById('config-name').innerText = newName; 
+        saveProfile({ displayName: newName }); 
+    } 
+}
+function editBio() { 
+    const curr = document.getElementById('config-bio').innerText; 
+    const newBio = prompt("Seu Recado:", curr === 'Adicionar recado' || curr === '...' ? '' : curr); 
+    if(newBio !== null) { 
+        document.getElementById('config-bio').innerText = newBio || '...'; 
+        saveProfile({ bio: newBio }); 
+    } 
+}
+function editPhone() { 
+    const curr = document.getElementById('config-phone').innerText; 
+    const newPhone = prompt("Seu Telefone:", curr === 'Adicionar telefone' || curr === '...' ? '' : curr); 
+    if(newPhone !== null) { 
+        document.getElementById('config-phone').innerText = newPhone || '...'; 
+        saveProfile({ phone: newPhone }); 
+    } 
 }
 
-async function submitCreateGroup() { 
-    const name = document.getElementById('group-name-input').value; 
-    const photo = document.getElementById('new-group-photo').src;
-    if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); 
-    try { 
-        await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); 
-        alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); 
-    } catch (e) {} 
-}
-
-function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
-function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
-function editPhone() { const newPhone = prompt("Seu Telefone:"); if(newPhone !== null) { document.getElementById('config-phone').innerText = newPhone || '...'; saveProfile({ phone: newPhone }); } }
 function changeFontSize(size) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${size}`); localStorage.setItem('fontSize', size); saveProfile({ fontSize: size }); }
 function createNewSector() { const name = prompt("Nome do Setor:"); if(name) { currentSectors.push({ name, members: [] }); renderSectorsList(); saveProfile({ sectors: currentSectors }); } }
 function renderSectorsList() { const list = document.getElementById('sectors-list'); list.innerHTML = ''; currentSectors.forEach(sec => { const div = document.createElement('div'); div.className = 'setting-item'; div.innerHTML = `<span>${sec.name}</span> <small>${sec.members.length} membros</small>`; list.appendChild(div); }); }
