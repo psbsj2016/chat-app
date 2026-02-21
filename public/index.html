@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat CPTT</title>
-    <link rel="icon" href="favicon.png" type="image/png">
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1d4ed8">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <link rel="icon" href="favicon.png" type="image/png">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
 
@@ -60,21 +63,16 @@
 
     <div id="main-screen" class="app-screen hidden">
         <div class="main-header">
-            
             <div class="header-logo-btn" onclick="openAddContactScreen()" style="margin: 0;">
                 <img src="favicon.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'" class="logo-img-btn">
                 <div class="logo-badge-btn"><span class="material-icons">person_add</span></div>
             </div>
-            
             <div style="flex:1"></div>
-
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="header-title" style="font-weight:600; font-size:21px; letter-spacing: 0.5px;">Chats</span>
                 <button class="icon-btn" onclick="toggleMenu('main-menu')" style="margin: 0; padding: 5px;"><span class="material-icons">menu</span></button>
             </div>
-            
         </div>
-        
         <div id="main-menu" class="dropdown-menu right-menu hidden" style="top: 60px; right: 10px;">
             <div class="menu-item" onclick="openProfile()"><span class="material-icons">account_circle</span> Perfil</div>
             <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
@@ -82,7 +80,6 @@
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
             <div class="menu-item logout" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
         </div>
-        
         <div class="search-container"><div class="search-box"><span class="material-icons">search</span><input type="text" id="search-input" placeholder="Pesquisar..." onkeyup="handleSearch(this.value)"></div></div>
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1;"></div>
     </div>
