@@ -77,22 +77,7 @@ app.put('/groups/:id', async (req, res) => { try { const g = await Group.findByI
 app.put('/groups/:id/add-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $addToSet: { members: { $each: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.put('/groups/:id/remove-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $pull: { members: { $in: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(req.params.id).populate('members', 'displayName photoUrl email')); } catch (e) {} });
-
-// --- NOVA ROTA DE EXCLUIR GRUPO (SOMENTE ADMIN) ---
-app.delete('/groups/:id/:adminId', async (req, res) => { 
-    try { 
-        const g = await Group.findById(req.params.id); 
-        if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); 
-        // Verifica se quem está deletando é o criador do grupo
-        if (g.admin.toString() !== req.params.adminId) {
-            return res.status(403).json({error: 'Sem permissão. Apenas o criador pode excluir.'}); 
-        }
-        await Message.deleteMany({ groupId: req.params.id }); 
-        await Group.findByIdAndDelete(req.params.id); 
-        res.json({msg:'ok'}); 
-    } catch(e){ res.status(500).json({error: 'Erro'}); } 
-});
-
+app.delete('/groups/:id/:adminId', async (req, res) => { try { const g = await Group.findById(req.params.id); if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); if (g.admin.toString() !== req.params.adminId) { return res.status(403).json({error: 'Sem permissão.'}); } await Message.deleteMany({ groupId: req.params.id }); await Group.findByIdAndDelete(req.params.id); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))]; res.json(unreadSenders); } catch (e) {} });
 
 let users = {};
@@ -102,8 +87,25 @@ io.on('connection', (socket) => {
     socket.emit('check_app_version', SERVER_VERSION);
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
-    socket.on('typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', { senderId: data.senderId }); });
-    socket.on('stop_typing', (data) => { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', { senderId: data.senderId }); });
+
+    // --- MAGICA DO DIGITANDO PARA GRUPOS E PRIVADO ---
+    socket.on('typing', (data) => { 
+        if (data.groupId) {
+            socket.to(data.groupId).emit('typing', data); 
+        } else {
+            const r = users[data.receiverId]; 
+            if (r) io.to(r).emit('typing', data); 
+        }
+    });
+
+    socket.on('stop_typing', (data) => { 
+        if (data.groupId) {
+            socket.to(data.groupId).emit('stop_typing', data); 
+        } else {
+            const r = users[data.receiverId]; 
+            if (r) io.to(r).emit('stop_typing', data); 
+        }
+    });
 
     socket.on('private_message', (data) => {
         const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 

@@ -42,10 +42,7 @@ function backToMain() {
     hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('chat-screen'); 
     showElement('main-screen'); 
 }
-
-function backToSettings() {
-    hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen');
-}
+function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen'); }
 
 socket.on('check_app_version', (serverVersion) => {
     const localVersion = localStorage.getItem('appVersion');
@@ -74,8 +71,77 @@ socket.on('online_users', (list) => {
     }
 });
 
-socket.on('typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) showElement('typing-indicator'); });
-socket.on('stop_typing', (data) => { if (data.senderId === currentChatId && !isGroupChat) hideElement('typing-indicator'); });
+// ==========================================
+// MÁGICA: AVISO DE DIGITANDO / GRAVANDO EM TODO LUGAR
+// ==========================================
+function emitTypingStatus(action) {
+    if (!currentChatId) return;
+    const myName = localStorage.getItem('displayName') || 'Alguém';
+    const payload = {
+        senderId: myId,
+        senderName: myName,
+        receiverId: isGroupChat ? null : currentChatId,
+        groupId: isGroupChat ? currentChatId : null,
+        action: action // 'typing' ou 'recording'
+    };
+    socket.emit('typing', payload);
+    
+    clearTimeout(typingTimeout);
+    if (action === 'typing') {
+        typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000);
+    }
+}
+
+function emitStopTypingStatus() {
+    if (!currentChatId) return;
+    socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null });
+}
+
+socket.on('typing', (data) => { 
+    if (data.senderId === myId) return; // Não mostra pra mim mesmo
+
+    const targetId = data.groupId ? data.groupId : data.senderId;
+    const actionText = data.action === 'recording' ? 'gravando áudio...' : 'digitando...';
+    const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : '';
+    const displayHtml = `<span style="color:#25D366; font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`;
+
+    // 1. Atualiza cabeçalho do chat
+    if (currentChatId === targetId) {
+        const ind = document.getElementById('typing-indicator');
+        ind.innerHTML = displayHtml;
+        showElement('typing-indicator');
+    }
+
+    // 2. Atualiza a lista retangular de contatos
+    const contactDiv = document.getElementById(`contact-${targetId}`);
+    if (contactDiv) {
+        const msgArea = contactDiv.querySelector('.contact-last-msg');
+        if (msgArea) {
+            // Guarda a mensagem real para restaurar depois
+            if (!msgArea.hasAttribute('data-original')) {
+                msgArea.setAttribute('data-original', msgArea.innerHTML);
+            }
+            msgArea.innerHTML = displayHtml;
+        }
+    }
+});
+
+socket.on('stop_typing', (data) => { 
+    if (data.senderId === myId) return;
+    const targetId = data.groupId ? data.groupId : data.senderId;
+
+    if (currentChatId === targetId) hideElement('typing-indicator');
+
+    const contactDiv = document.getElementById(`contact-${targetId}`);
+    if (contactDiv) {
+        const msgArea = contactDiv.querySelector('.contact-last-msg');
+        if (msgArea && msgArea.hasAttribute('data-original')) {
+            msgArea.innerHTML = msgArea.getAttribute('data-original');
+            msgArea.removeAttribute('data-original');
+        }
+    }
+});
+
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
@@ -89,7 +155,13 @@ socket.on('receive_message', (msg) => {
     else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } 
     else {
         const targetId = msg.groupId ? msg.groupId : senderIdStr; const contactDiv = document.getElementById(`contact-${targetId}`);
-        if (contactDiv) { contactDiv.classList.add('has-unread'); document.getElementById('users-list').prepend(contactDiv); }
+        if (contactDiv) { 
+            contactDiv.classList.add('has-unread'); 
+            // Atualiza o texto para limpar o "digitando..." travado
+            const msgArea = contactDiv.querySelector('.contact-last-msg');
+            if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); }
+            document.getElementById('users-list').prepend(contactDiv); 
+        }
     }
 });
 
@@ -97,9 +169,8 @@ const msgInput = document.getElementById('message-input');
 if (msgInput) {
     msgInput.addEventListener('input', () => {
         if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); }
-        if (!currentChatId || isGroupChat) return; 
-        socket.emit('typing', { senderId: myId, receiverId: currentChatId }); clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => socket.emit('stop_typing', { senderId: myId, receiverId: currentChatId }), 1500);
+        if (!currentChatId) return; 
+        emitTypingStatus('typing'); // Emite pra grupo e privado
     });
 }
 
@@ -167,10 +238,6 @@ async function loadContacts() {
     });
 }
 
-// ==========================================
-// FUNÇÕES DE NAVEGAÇÃO DOS NOVOS MENUS
-// ==========================================
-
 async function openProfile() { 
     toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); 
     try {
@@ -181,30 +248,9 @@ async function openProfile() {
         document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone';
     } catch(e){}
 }
-
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
-
-async function openAppearanceSettings() {
-    hideElement('settings-screen'); showElement('appearance-screen');
-    try {
-        const res = await fetch(`/user/${myId}`); const me = await res.json();
-        document.getElementById('theme-switch').checked = me.theme === 'dark'; 
-        document.getElementById('font-size-select').value = me.fontSize || 'medium';
-    } catch(e){}
-}
-
-async function openAccountSettings() {
-    hideElement('settings-screen'); showElement('account-screen');
-    try {
-        const res = await fetch(`/user/${myId}`); const me = await res.json();
-        document.getElementById('config-email').innerText = me.email;
-        currentSectors = me.sectors || []; renderSectorsList();
-    } catch(e){}
-}
-
-// ==========================================
-// FUNÇÕES DE GERENCIAMENTO GERAL
-// ==========================================
+async function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('theme-switch').checked = me.theme === 'dark'; document.getElementById('font-size-select').value = me.fontSize || 'medium'; } catch(e){} }
+async function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-email').innerText = me.email; currentSectors = me.sectors || []; renderSectorsList(); } catch(e){} }
 
 let targetGroupId = null; let selectedForRemoval = [];
 async function deleteGroup(groupId) { hideElement(`group-menu-${groupId}`); if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente para todos os membros.\nTodas as mensagens serão apagadas.\n\nTem certeza absoluta?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { if(currentChatId === groupId) backToMain(); messageCache[groupId] = []; socket.emit('group_updated'); alert("Grupo excluído com sucesso!"); } else { alert("Você não tem permissão para excluir este grupo."); } } catch(e) { alert("Erro ao tentar excluir grupo."); } }
@@ -217,8 +263,50 @@ async function openRemoveMemberModal(id, membersStr) { targetGroupId = id; hideE
 function updateRemoveBtn() { const btn = document.getElementById('btn-execute-remove'); if(selectedForRemoval.length > 0) { btn.classList.remove('hidden'); btn.innerText = `Remover (${selectedForRemoval.length})`; } else { btn.classList.add('hidden'); } }
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
-async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
-function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const btn = document.querySelector('.send-btn'); if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); return; } const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } const content = textOverride || input.innerHTML; if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); if(!fileUrl) input.innerHTML = ''; }
+async function startRecording() {
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
+    try { 
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); 
+        const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn');
+        
+        emitTypingStatus('recording'); // 🚀 AVISA QUE ESTÁ GRAVANDO!
+
+        recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
+        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); 
+        recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000);
+        globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
+        globalMediaRecorder.onstop = async () => { 
+            clearInterval(recordingInterval); 
+            emitStopTypingStatus(); // 🚀 AVISA QUE PAROU DE GRAVAR
+
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0');
+            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; 
+            btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); 
+            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
+            stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; 
+        }; 
+        recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); 
+    } catch (err) { alert('Permissão negada!'); }
+}
+
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
+    const btn = document.querySelector('.send-btn');
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; }
+    const input = document.getElementById('message-input'); 
+    if (pendingAudioFile) {
+        const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; 
+        pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return;
+    }
+    const content = textOverride || input.innerHTML; 
+    if((!content && !fileUrl) || !currentChatId) return;
+    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
+    socket.emit('private_message', msgData); 
+    
+    clearTimeout(typingTimeout); emitStopTypingStatus(); // Para o digitando na hora
+    if(!fileUrl) input.innerHTML = ''; 
+}
+
 async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
@@ -228,6 +316,7 @@ function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigato
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
+
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
@@ -248,7 +337,6 @@ async function submitCreateGroup() { const name = document.getElementById('group
 function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
 function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
 function editPhone() { const newPhone = prompt("Seu Telefone:"); if(newPhone !== null) { document.getElementById('config-phone').innerText = newPhone || '...'; saveProfile({ phone: newPhone }); } }
-
 function changeFontSize(size) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${size}`); localStorage.setItem('fontSize', size); saveProfile({ fontSize: size }); }
 function createNewSector() { const name = prompt("Nome do Setor:"); if(name) { currentSectors.push({ name, members: [] }); renderSectorsList(); saveProfile({ sectors: currentSectors }); } }
 function renderSectorsList() { const list = document.getElementById('sectors-list'); list.innerHTML = ''; currentSectors.forEach(sec => { const div = document.createElement('div'); div.className = 'setting-item'; div.innerHTML = `<span>${sec.name}</span> <small>${sec.members.length} membros</small>`; list.appendChild(div); }); }
@@ -261,9 +349,7 @@ function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro de conexão ao tentar excluir a conta."); } } }
 
 async function viewContactProfile() { 
-    showElement('contact-profile-modal'); 
-    document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; 
-    document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; 
+    showElement('contact-profile-modal'); document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; 
     if (isGroupChat) {
         hideElement('view-user-details'); showElement('view-group-details');
         document.getElementById('view-group-members').innerHTML = '<span style="font-size:12px; color:#888;">Carregando membros...</span>';
