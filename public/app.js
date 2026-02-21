@@ -27,7 +27,7 @@ function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-scr
 function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('chat-screen'); showElement('main-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen'); }
 
-function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 3500); }
+function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 1200); }
 
 socket.on('check_app_version', (serverVersion) => { const localVersion = localStorage.getItem('appVersion'); if (!localVersion) { localStorage.setItem('appVersion', serverVersion); } else if (localVersion !== serverVersion) { localStorage.setItem('appVersion', serverVersion); window.location.href = window.location.pathname + '?v=' + serverVersion; } });
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
@@ -90,7 +90,15 @@ async function submitAddGroup() { const checkboxes = document.querySelectorAll('
 
 async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
 function closeCreateGroup() { hideElement('create-group-modal'); }
-function filterGroupContacts(query) { document.querySelectorAll('.candidate-item').forEach(item => { item.style.display = item.dataset.name.includes(query.toLowerCase()) ? 'flex' : 'none'; }); }
+
+// --- MÁGICA: PESQUISA SEM DELAY (150ms) ---
+let searchTimeout = null; 
+function handleSearch(query) { 
+    if (!query.trim()) { loadContacts(); return; } 
+    clearTimeout(searchTimeout); 
+    searchTimeout = setTimeout(() => performSearch(query), 150); 
+}
+
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; } catch(e){} }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
@@ -123,7 +131,6 @@ function closeContactProfile() { hideElement('contact-profile-modal'); }
 
 document.addEventListener('selectionchange', () => { const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); const inputArea = document.querySelector('.input-area'); if (!input || !formatBar || !inputArea) return; const selection = window.getSelection(); if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) { showElement('text-format-toolbar'); const inputRect = inputArea.getBoundingClientRect(); let top = inputRect.top - formatBar.offsetHeight - 12; let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2); formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`; } else { hideElement('text-format-toolbar'); } });
 
-let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
 function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:var(--brand-primary)">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
