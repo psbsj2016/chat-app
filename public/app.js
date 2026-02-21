@@ -18,7 +18,6 @@ let recordingInterval = null;
 let recordingSeconds = 0;     
 let pendingAudioFile = null;  
 
-// MÁGICA DE VELOCIDADE: Cache Local do próprio usuário
 let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
@@ -26,27 +25,9 @@ function hideElement(id) { const el = document.getElementById(id); if(el) el.cla
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
-// ==========================================
-// FUNÇÕES DE NAVEGAÇÃO "ZERO DELAY"
-// ==========================================
-function showMainScreen() { 
-    hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); 
-    showElement('main-screen'); 
-    loadContacts(); // Abre do cache primeiro, depois baixa da internet
-    socket.emit('join_room', myId); 
-    requestNotificationPermission(); 
-}
-
-function backToMain() { 
-    currentChatId = null; 
-    hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); 
-    showElement('main-screen'); 
-}
-
-function backToSettings() { 
-    hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); 
-    showElement('settings-screen'); 
-}
+function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); requestNotificationPermission(); }
+function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); showElement('main-screen'); }
+function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 
 function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 800); }
 
@@ -64,30 +45,7 @@ socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) do
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
 let audioCtx = null;
-function playNotificationSound(type) {
-    if(type === 'none') return;
-    try {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        if (type === 'modern') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-        } else if (type === 'pop') {
-            osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
-        } else if (type === 'bell') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.6);
-        }
-    } catch(e) {}
-}
-
+function playNotificationSound(type) { if(type === 'none') return; try { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); if (type === 'modern') { osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); } else if (type === 'pop') { osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05); osc.start(); osc.stop(audioCtx.currentTime + 0.05); } else if (type === 'bell') { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime); gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); } } catch(e) {} }
 function requestNotificationPermission() { if ("Notification" in window) { if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); } } }
 function showSystemNotification(title, body) { if ("Notification" in window && Notification.permission === "granted") { const notification = new Notification(title, { body: body, icon: 'favicon.png', badge: 'favicon.png', vibrate: [200, 100, 200] }); notification.onclick = function() { window.focus(); this.close(); }; } }
 
@@ -95,8 +53,7 @@ socket.on('receive_message', (msg) => {
     const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
     const targetId = msg.groupId ? msg.groupId : senderIdStr;
     if (senderIdStr !== myId) {
-        const soundPref = localStorage.getItem('notificationSound') || 'modern';
-        playNotificationSound(soundPref);
+        const soundPref = localStorage.getItem('notificationSound') || 'modern'; playNotificationSound(soundPref);
         if (document.hidden || currentChatId !== targetId) {
             let senderName = 'Nova Mensagem'; const contactDiv = document.getElementById(`contact-${targetId}`);
             if (contactDiv) { const nameEl = contactDiv.querySelector('.contact-name'); if (nameEl) senderName = nameEl.innerText; }
@@ -107,7 +64,6 @@ socket.on('receive_message', (msg) => {
     let cacheTargetId = msg.groupId ? msg.groupId : (senderIdStr === myId ? msg.receiver : senderIdStr); 
     if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; 
     if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
-    
     if (isGroupChat && msg.groupId === currentChatId) { displayMessage(msg); } 
     else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } 
     else { const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { contactDiv.classList.add('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); } document.getElementById('users-list').prepend(contactDiv); } } 
@@ -117,27 +73,15 @@ const msgInput = document.getElementById('message-input'); if (msgInput) { msgIn
 
 function openChat(id, name, photo, email, type = 'user') { currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; const contactDiv = document.getElementById(`contact-${id}`); if (contactDiv) contactDiv.classList.remove('has-unread'); if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } }
 
-// MÁGICA: Renderiza 0ms com o Cache e atualiza sem travar a tela
 async function loadContacts() { 
     if(!myId) return; 
-    
-    // 1. CARREGA DA MEMÓRIA INSTANTANEAMENTE (Velocidade da Luz)
-    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
-    if(cachedUsers.length > 0 || cachedGroups.length > 0) {
-        renderContactsList(cachedGroups, cachedUsers, []);
-    }
-
-    // 2. BUSCA DA INTERNET NO FUNDO (Sem o usuário perceber a espera)
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { renderContactsList(cachedGroups, cachedUsers, []); }
     try { 
         const resUnread = await fetch(`/unread/${myId}`); const unreadSenders = await resUnread.json(); 
         const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
         const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
-        
-        // Salva pro próximo clique ser imediato
-        localStorage.setItem('cacheGroups', JSON.stringify(groups));
-        localStorage.setItem('cacheUsers', JSON.stringify(users));
-
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users));
         renderContactsList(groups, users, unreadSenders);
     } catch(e) {} 
 }
@@ -149,31 +93,18 @@ function renderContactsList(groups, users, unreadSenders) {
     users.forEach(user => { const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; let sectorLabel = ''; let extraClass = unreadSenders.includes(user._id) ? 'has-unread' : ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${unreadSenders.includes(user._id) ? 'Nova mensagem!' : 'Toque para conversar'}</div></div>`; const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${name}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); });
 }
 
-// Abertura Imediata usando Memória
-function openProfile() { 
-    toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); 
-    document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; 
-    document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
-    document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; 
-    document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; 
-    fetchAndSyncProfile(); // Atualiza silenciosamente no fundo
-}
-
+function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
 function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; fetchAndSyncProfile(); }
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); requestNotificationPermission(); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; fetchAndSyncProfile(); }
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); document.getElementById('config-email').innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); fetchAndSyncProfile(); }
 
-// Sincronizador Invisível (Roda sem travar a tela)
 async function fetchAndSyncProfile() {
     try { 
         const res = await fetch(`/user/${myId}`); 
         if(res.ok) {
-            cachedMe = await res.json();
-            localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-            currentSectors = cachedMe.sectors || [];
-            localStorage.setItem('cacheSectors', JSON.stringify(currentSectors));
-            // Atualiza sutilmente os dados se já estiver na tela
+            cachedMe = await res.json(); localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+            currentSectors = cachedMe.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors));
             const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email;
             const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado';
             const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone';
@@ -195,17 +126,77 @@ function updateRemoveBtn() { const btn = document.getElementById('btn-execute-re
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
 async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); emitTypingStatus('recording'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); emitStopTypingStatus(); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
+
+// ==========================================
+// MÁGICA: VALIDAÇÃO DE VÍDEO NO CHAT 
+// ==========================================
+async function handleFileUpload(input) { 
+    const file = input.files[0]; if(!file) return; 
+    
+    // VERIFICADOR DE VÍDEO (Max 5 minutos)
+    if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(video.src);
+            if (video.duration > 300) { 
+                alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); 
+                input.value = ''; 
+                return; 
+            }
+            executeUpload(file, 'video');
+        };
+        video.src = URL.createObjectURL(file);
+    } else {
+        let type = 'file'; 
+        if(file.type.startsWith('image')) type = 'image'; 
+        if(file.type.startsWith('audio')) type = 'audio'; 
+        if(file.type === 'application/pdf') type = 'pdf';
+        executeUpload(file, type);
+    }
+}
+
+async function executeUpload(file, type) {
+    const btn = document.querySelector('.send-btn'); 
+    btn.innerHTML = '<span class="material-icons">sync</span>'; 
+    const formData = new FormData(); 
+    formData.append('file', file); 
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        const data = await res.json(); 
+        sendMessage(null, data.url, type); 
+    } catch (e) { 
+        alert("Erro ao enviar arquivo."); 
+    } finally { 
+        btn.innerHTML = '<span class="material-icons">send</span>'; 
+        document.getElementById('file-input').value = ''; 
+    }
+}
+
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const btn = document.querySelector('.send-btn'); if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } const content = textOverride || input.innerHTML; if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerHTML = ''; }
 async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
 let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;           
-function displayMessage(msg) { const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); let contentHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; else contentHtml += msg.content; if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; }
+function displayMessage(msg) { 
+    const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); 
+    let contentHtml = ''; 
+    if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
+    
+    // MÁGICA: TAG DE VÍDEO
+    if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; 
+    else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
+    else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
+    else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
+    else contentHtml += msg.content; 
+    
+    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
+}
 function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
-async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
+
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
@@ -221,7 +212,7 @@ async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('cr
 function closeCreateGroup() { hideElement('create-group-modal'); }
 
 let searchTimeout = null; 
-function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 100); } // Drop de 300ms para 100ms
+function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 100); } 
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
 function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:var(--brand-primary)">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
@@ -243,7 +234,6 @@ async function saveProfile(dataToUpdate) { try { await fetch('/settings', { meth
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro ao excluir a conta."); } } }
 
-// Abre os perfis sincronamente (Instantâneo) com carregamento visual de fundo
 function viewContactProfile(overrideId = null, overrideName = null, overridePhoto = null, overrideIsGroup = null) { 
     const targetId = typeof overrideId === 'string' ? overrideId : currentChatId; const targetName = typeof overrideName === 'string' ? overrideName : document.getElementById('chat-title').innerText; const targetPhoto = typeof overridePhoto === 'string' ? overridePhoto : document.getElementById('chat-avatar').src; const targetIsGroup = overrideIsGroup !== null ? overrideIsGroup : isGroupChat;
     if (!targetId) return; showElement('contact-profile-modal'); document.getElementById('view-contact-name').innerText = targetName; document.getElementById('view-contact-avatar').src = targetPhoto; 
@@ -257,6 +247,8 @@ function viewContactProfile(overrideId = null, overrideName = null, overridePhot
     }
 }
 function closeContactProfile() { hideElement('contact-profile-modal'); }
+
+document.addEventListener('selectionchange', () => { const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); const inputArea = document.querySelector('.input-area'); if (!input || !formatBar || !inputArea) return; const selection = window.getSelection(); if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) { showElement('text-format-toolbar'); const inputRect = inputArea.getBoundingClientRect(); let top = inputRect.top - formatBar.offsetHeight - 12; let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2); formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`; } else { hideElement('text-format-toolbar'); } });
 
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); } }
