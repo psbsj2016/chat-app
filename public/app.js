@@ -183,8 +183,11 @@ async function loadContacts() {
         const div = document.createElement('div'); div.className = 'user-item'; div.id = `contact-${group._id}`; 
         const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1';
+        
+        // MÁGICA: Separando cliques (Nome abre chat, Foto abre perfil)
+        const safeName = group.name.replace(/'/g, "\\'");
         clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group');
-        clickArea.innerHTML = `<div class="user-avatar-container"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="color:#008069">Grupo</div></div>`;
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="color:#008069">Grupo</div></div>`;
 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); };
@@ -203,25 +206,22 @@ async function loadContacts() {
         const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline';
 
         let sectorLabel = ''; let extraClass = unreadSenders.includes(user._id) ? 'has-unread' : ''; 
-        let isSectored = false; // MÁGICA: Verifica se já está em algum setor
+        let isSectored = false; 
 
         currentSectors.forEach(sec => { 
-            if(sec.members.includes(user._id)) { 
-                sectorLabel = `<span class="sector-badge">${sec.name}</span>`; 
-                extraClass += ' sectored'; 
-                isSectored = true;
-            } 
+            if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } 
         });
 
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1';
+        
+        // MÁGICA: Separando cliques (Nome abre chat, Foto abre perfil)
+        const safeName = name.replace(/'/g, "\\'");
         clickArea.onclick = () => openChat(user._id, name, photo, email, 'user');
-        clickArea.innerHTML = `<div class="user-avatar-container"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${unreadSenders.includes(user._id) ? 'Nova mensagem!' : 'Toque para conversar'}</div></div>`;
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${unreadSenders.includes(user._id) ? 'Nova mensagem!' : 'Toque para conversar'}</div></div>`;
 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); };
-        
-        // MÁGICA: Muda o texto do menu se já tiver setor
         const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor';
 
         menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${name}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`;
@@ -292,6 +292,7 @@ function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigato
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
+
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
@@ -299,58 +300,8 @@ function toggleEmojiPicker() { document.getElementById('emoji-picker').classList
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); }
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
-// ==========================================
-// MÁGICA: GERENCIADOR UNIVERSAL DE SETOR
-// ==========================================
-function openSectorModal(userId, name, isRemoving) { 
-    targetContactId = userId; 
-    hideElement(`contact-menu-${userId}`); 
-    document.getElementById('sector-modal-title').innerText = isRemoving ? 'Remover do Setor' : 'Adicionar ao Setor';
-    document.getElementById('sector-target-name').innerText = `Contato: ${name}`; 
-    const list = document.getElementById('sector-checkbox-list'); 
-    list.innerHTML = ''; 
-    
-    if(currentSectors.length === 0) {
-        list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor criado nas Configurações.</span>'; 
-    } else {
-        currentSectors.forEach((sec, idx) => { 
-            const isAlreadyIn = sec.members.includes(userId); 
-            // A caixinha vem marcada se ele já estiver no setor. Desmarcar remove ele!
-            list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''}> ${sec.name}</label>`; 
-        }); 
-    }
-    showElement('sector-modal'); 
-}
-
-async function submitSector() { 
-    const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); 
-    let changed = false;
-    
-    checkboxes.forEach(cb => {
-        const idx = cb.value;
-        const isChecked = cb.checked;
-        const inSector = currentSectors[idx].members.includes(targetContactId);
-        
-        if (isChecked && !inSector) { 
-            // Adiciona se não tava
-            currentSectors[idx].members.push(targetContactId); 
-            changed = true; 
-        } 
-        else if (!isChecked && inSector) { 
-            // Remove se tava e foi desmarcado
-            currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); 
-            changed = true; 
-        }
-    });
-    
-    if (changed) { 
-        await saveProfile({ sectors: currentSectors }); 
-        loadContacts(); 
-        alert("Setor atualizado com sucesso!"); 
-    }
-    hideElement('sector-modal'); 
-}
-
+function openSectorModal(userId, name, isRemoving) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-modal-title').innerText = isRemoving ? 'Remover do Setor' : 'Adicionar ao Setor'; document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) { list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor criado nas Configurações.</span>'; } else { currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''}> ${sec.name}</label>`; }); } showElement('sector-modal'); }
+async function submitSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); let changed = false; checkboxes.forEach(cb => { const idx = cb.value; const isChecked = cb.checked; const inSector = currentSectors[idx].members.includes(targetContactId); if (isChecked && !inSector) { currentSectors[idx].members.push(targetContactId); changed = true; } else if (!isChecked && inSector) { currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); changed = true; } }); if (changed) { await saveProfile({ sectors: currentSectors }); loadContacts(); alert("Setor atualizado com sucesso!"); } hideElement('sector-modal'); }
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 
@@ -369,24 +320,36 @@ function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mo
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
-
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro de conexão ao tentar excluir a conta."); } } }
 
-async function viewContactProfile() { 
-    showElement('contact-profile-modal'); document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; 
-    if (isGroupChat) {
+// ==========================================
+// MÁGICA: PERFIL DINÂMICO ACEITA DADOS DA LISTA OU DO CHAT
+// ==========================================
+async function viewContactProfile(overrideId = null, overrideName = null, overridePhoto = null, overrideIsGroup = null) { 
+    const targetId = typeof overrideId === 'string' ? overrideId : currentChatId;
+    const targetName = typeof overrideName === 'string' ? overrideName : document.getElementById('chat-title').innerText;
+    const targetPhoto = typeof overridePhoto === 'string' ? overridePhoto : document.getElementById('chat-avatar').src;
+    const targetIsGroup = overrideIsGroup !== null ? overrideIsGroup : isGroupChat;
+
+    if (!targetId) return;
+
+    showElement('contact-profile-modal'); 
+    document.getElementById('view-contact-name').innerText = targetName; 
+    document.getElementById('view-contact-avatar').src = targetPhoto; 
+
+    if (targetIsGroup) {
         hideElement('view-user-details'); showElement('view-group-details');
         document.getElementById('view-group-members').innerHTML = '<span style="font-size:12px; color:#888;">Carregando membros...</span>';
         try {
-            const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); let html = '';
+            const res = await fetch(`/group/${targetId}`); const group = await res.json(); let html = '';
             group.members.forEach(m => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--input-bg);"><img src="${m.photoUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;"><span class="contact-name">${m.displayName || m.email}</span></div>`; });
             document.getElementById('view-group-members').innerHTML = html;
         } catch(e) {}
     } else {
         showElement('view-user-details'); hideElement('view-group-details');
         try {
-            const res = await fetch(`/user/${currentChatId}`); const user = await res.json();
+            const res = await fetch(`/user/${targetId}`); const user = await res.json();
             document.getElementById('view-contact-bio').innerText = user.bio || 'Olá! Estou usando o Chat.';
             document.getElementById('view-contact-phone').innerText = user.phone || 'Não informado';
             document.getElementById('view-contact-email').innerText = user.email;
@@ -408,7 +371,7 @@ document.addEventListener('selectionchange', () => {
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
-function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
+function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
 
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Conta' : 'Entrar'; document.getElementById('auth-btn').innerText = isRegistering ? 'Cadastrar' : 'Entrar'; document.getElementById('auth-name').classList.toggle('hidden'); }
