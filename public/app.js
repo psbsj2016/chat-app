@@ -387,15 +387,35 @@ function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/
 function viewContactProfile() { if(isGroupChat) return; document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; document.getElementById('view-contact-email').innerText = currentChatEmail; showElement('contact-profile-modal'); }
 function closeContactProfile() { hideElement('contact-profile-modal'); }
 
+// ==========================================
+// MÁGICA DE SELEÇÃO DE TEXTO E FORMATAÇÃO
+// ==========================================
 document.addEventListener('selectionchange', () => {
-    const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); if (!input || !formatBar) return;
+    const input = document.getElementById('message-input');
+    const formatBar = document.getElementById('text-format-toolbar');
+    const inputArea = document.querySelector('.input-area'); // Pega a área da caixa
+    if (!input || !formatBar || !inputArea) return;
+
     const selection = window.getSelection();
+    
+    // Se o usuário selecionou texto e está DENTRO do campo de mensagem
     if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) {
-        const range = selection.getRangeAt(0); const rect = range.getBoundingClientRect(); showElement('text-format-toolbar');
-        let top = rect.top - formatBar.offsetHeight - 8; let left = rect.left + (rect.width / 2) - (formatBar.offsetWidth / 2);
-        if (left < 10) left = 10; if (left + formatBar.offsetWidth > window.innerWidth - 10) left = window.innerWidth - formatBar.offsetWidth - 10;
-        formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`;
-    } else { hideElement('text-format-toolbar'); }
+        showElement('text-format-toolbar');
+        
+        const inputRect = inputArea.getBoundingClientRect();
+        
+        // MÁGICA CONTRA O MENU NATIVO:
+        // Ancoramos o nosso menu centralizado logo ACIMA da caixa de digitação,
+        // fugindo do menu de Copiar/Colar do celular que fica em cima da palavra.
+        let top = inputRect.top - formatBar.offsetHeight - 12; 
+        let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2);
+        
+        formatBar.style.top = `${top}px`;
+        formatBar.style.left = `${left}px`;
+    } else {
+        // Esconde o menu se desmarcar o texto
+        hideElement('text-format-toolbar');
+    }
 });
 
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
