@@ -5,12 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat CPTT</title>
     <link rel="icon" href="favicon.png" type="image/png">
+    
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="stylesheet" href="style.css?v=2.0">
+    
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+
+    <script>
+        const vParams = new URLSearchParams(window.location.search);
+        const appVer = vParams.get('v') || localStorage.getItem('appVersion') || Date.now();
+        document.write('<link rel="stylesheet" href="style.css?v=' + appVer + '">');
+    </script>
 </head>
 <body>
     <div id="auth-screen" class="app-screen">
@@ -214,6 +221,6 @@
     <div id="text-format-toolbar" class="hidden floating-format-bar"><button onmousedown="formatDoc('bold', event)"><b>B</b></button><button onmousedown="formatDoc('italic', event)"><i>I</i></button><button onmousedown="formatDoc('underline', event)"><u>U</u></button><button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button><div class="toolbar-sep"></div><button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button><button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button><button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button><button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js?v=2.0"></script>
+    <script>document.write('<script src="app.js?v=' + appVer + '"><\/script>');</script>
 </body>
 </html>
