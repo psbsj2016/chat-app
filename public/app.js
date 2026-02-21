@@ -23,9 +23,9 @@ function hideElement(id) { const el = document.getElementById(id); if(el) el.cla
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
-function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); }
-function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('chat-screen'); showElement('main-screen'); }
-function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen'); }
+function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); }
+function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); showElement('main-screen'); }
+function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 
 function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 1200); }
 
@@ -41,7 +41,51 @@ socket.on('typing', (data) => { if (data.senderId === myId) return; const target
 socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) hideElement('typing-indicator'); const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); } } });
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
-socket.on('receive_message', (msg) => { const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; let cacheTargetId = msg.groupId ? msg.groupId : (senderIdStr === myId ? msg.receiver : senderIdStr); if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); if (isGroupChat && msg.groupId === currentChatId) { displayMessage(msg); } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } else { const targetId = msg.groupId ? msg.groupId : senderIdStr; const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { contactDiv.classList.add('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); } document.getElementById('users-list').prepend(contactDiv); } } });
+
+// ==========================================
+// SINTETIZADOR DE ÁUDIO NATIVO (VELOCIDADE DA LUZ)
+// ==========================================
+let audioCtx = null;
+function playNotificationSound(type) {
+    if(type === 'none') return;
+    try {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        if (type === 'modern') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'pop') {
+            osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        } else if (type === 'bell') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.6);
+        }
+    } catch(e) {}
+}
+
+socket.on('receive_message', (msg) => { 
+    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
+    
+    // Toca o som instantâneo se a mensagem for de outra pessoa
+    if (senderIdStr !== myId) {
+        const soundPref = localStorage.getItem('notificationSound') || 'modern';
+        playNotificationSound(soundPref);
+    }
+
+    let cacheTargetId = msg.groupId ? msg.groupId : (senderIdStr === myId ? msg.receiver : senderIdStr); 
+    if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; 
+    if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
+    if (isGroupChat && msg.groupId === currentChatId) { displayMessage(msg); } 
+    else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } 
+    else { const targetId = msg.groupId ? msg.groupId : senderIdStr; const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { contactDiv.classList.add('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); } document.getElementById('users-list').prepend(contactDiv); } } 
+});
 
 const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
 
@@ -52,7 +96,10 @@ async function loadContacts() { if(!myId) return; let unreadSenders = []; try { 
 async function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-name').innerText = me.displayName || me.email; document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone'; } catch(e){} }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
 async function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('theme-switch').checked = me.theme === 'dark'; document.getElementById('font-size-select').value = me.fontSize || 'medium'; } catch(e){} }
+async function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('notification-sound-select').value = me.notificationSound || 'modern'; } catch(e){} }
 async function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-email').innerText = me.email; currentSectors = me.sectors || []; renderSectorsList(); } catch(e){} }
+
+function changeNotificationSound(val) { localStorage.setItem('notificationSound', val); saveProfile({ notificationSound: val }); playNotificationSound(val); }
 
 let targetGroupId = null; let selectedForRemoval = [];
 async function deleteGroup(groupId) { hideElement(`group-menu-${groupId}`); if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente.\nTem certeza absoluta?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { if(currentChatId === groupId) backToMain(); messageCache[groupId] = []; socket.emit('group_updated'); alert("Grupo excluído com sucesso!"); } else { alert("Você não tem permissão para excluir este grupo."); } } catch(e) {} }
@@ -91,13 +138,8 @@ async function submitAddGroup() { const checkboxes = document.querySelectorAll('
 async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
 function closeCreateGroup() { hideElement('create-group-modal'); }
 
-// --- MÁGICA: PESQUISA SEM DELAY (150ms) ---
 let searchTimeout = null; 
-function handleSearch(query) { 
-    if (!query.trim()) { loadContacts(); return; } 
-    clearTimeout(searchTimeout); 
-    searchTimeout = setTimeout(() => performSearch(query), 150); 
-}
+function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 150); }
 
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; } catch(e){} }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
@@ -137,8 +179,8 @@ function createSearchItem(user, msgMatch) { const div = document.createElement('
 
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); } }
-async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha todos os campos!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado para o seu e-mail!'); const code = prompt("Digite o Código que chegou no seu e-mail:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); if (localStorage.getItem('isFirstLogin') === 'true') { localStorage.removeItem('isFirstLogin'); showWelcomeScreen(); } else { showMainScreen(); } } } else { alert(data.error || 'Erro na autenticação.'); } } catch (e) { } finally { btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; } }
+async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha todos os campos!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado para o seu e-mail!'); const code = prompt("Digite o Código que chegou no seu e-mail:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); if (data.notificationSound) localStorage.setItem('notificationSound', data.notificationSound); if (localStorage.getItem('isFirstLogin') === 'true') { localStorage.removeItem('isFirstLogin'); showWelcomeScreen(); } else { showMainScreen(); } } } else { alert(data.error || 'Erro na autenticação.'); } } catch (e) { } finally { btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; } }
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Cadastro verificado com sucesso! Faça login para entrar."); localStorage.setItem('isFirstLogin', 'true'); toggleAuthMode(); } else { alert("Código inválido!"); } } catch(e) {} }
 
-async function initApp() { const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); if(token && myId) { try { const res = await fetch(`/user/${myId}`); if(res.ok) { const me = await res.json(); currentSectors = me.sectors || []; if (me.theme === 'dark') document.body.classList.add('dark-mode'); if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); } } } catch(e) {} showMainScreen(); } else { showElement('auth-screen'); } }
+async function initApp() { const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); if(token && myId) { try { const res = await fetch(`/user/${myId}`); if(res.ok) { const me = await res.json(); currentSectors = me.sectors || []; if (me.theme === 'dark') document.body.classList.add('dark-mode'); if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); } if (me.notificationSound) localStorage.setItem('notificationSound', me.notificationSound); } } catch(e) {} showMainScreen(); } else { showElement('auth-screen'); } }
 initApp();

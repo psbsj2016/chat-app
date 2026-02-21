@@ -30,13 +30,14 @@ const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log("✅ MongoDB Conectado!")).catch(err => console.error("Erro MongoDB:", err));
 
+// --- MÁGICA: Campo de notificationSound adicionado ---
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true }, password: { type: String, required: true },
     displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
     phone: { type: String, default: '' }, bio: { type: String, default: 'Olá! Estou usando o Chat.' },
     code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' },
-    fontSize: { type: String, default: 'medium' }, chatWallpaper: { type: String, default: '' }, 
-    sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
+    fontSize: { type: String, default: 'medium' }, notificationSound: { type: String, default: 'modern' },
+    chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -56,7 +57,7 @@ const Message = mongoose.model('Message', MessageSchema);
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
 app.post('/register', async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id)); } catch (e) {} });
@@ -64,23 +65,12 @@ app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await M
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
 app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
-app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; await u.save(); res.json(u); } catch (e) {} });
+app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) {} });
 
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
-// --- MÁGICA: SERVIDOR AGORA SALVA A FOTO DIRETO NA HORA DE CRIAR O GRUPO ---
-app.post('/groups', async (req, res) => { 
-    try { 
-        const allMembers = [...req.body.members, req.body.adminId].map(String); 
-        const uniqueMembers = [...new Set(allMembers)]; 
-        const photo = req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
-        const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: photo }); 
-        await g.save(); 
-        res.json(g); 
-    } catch (e) {} 
-});
-
+app.post('/groups', async (req, res) => { try { const allMembers = [...req.body.members, req.body.adminId].map(String); const uniqueMembers = [...new Set(allMembers)]; const photo = req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: photo }); await g.save(); res.json(g); } catch (e) {} });
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) {} });
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp')); } catch (e) {} });
 app.put('/groups/add-member', async (req, res) => { try { await Group.updateMany({ _id: { $in: req.body.groupIds } }, { $addToSet: { members: req.body.userId } }); res.json({ msg: 'ok' }); } catch (e) {} });
