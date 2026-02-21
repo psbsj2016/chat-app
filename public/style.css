@@ -55,8 +55,9 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 
 /* BOAS VINDAS */
 #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--brand-primary); z-index: 4000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; background-image: radial-gradient(circle at center, var(--brand-secondary) 0%, var(--brand-primary) 100%); }
-.welcome-logo { width: 120px; margin-bottom: 20px; border-radius:25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);}
+.welcome-logo { width: 120px; animation: pulseLogo 2s infinite; margin-bottom: 20px; border-radius:25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);}
 .welcome-screen p { font-size: 15.5px; }
+@keyframes pulseLogo { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
 /* ESTRUTURA GERAL */
 .main-header, .chat-header { flex: 0 0 60px; background: var(--brand-primary); color: var(--header-text); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10; }
@@ -66,7 +67,16 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .input-area { flex: 0 0 auto; background: var(--card-bg); padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; border-top: 1px solid var(--input-bg); z-index: 50; }
 #message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
 
-.message { max-width: 75%; padding: 7px 10px; border-radius: 12px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-size: var(--chat-font-size); line-height: 1.3; overflow: hidden; }
+/* ==========================================
+   CORREÇÃO: BOLHA DA MENSAGEM LIVRE DE CORTES
+========================================== */
+.message { 
+    max-width: 75%; padding: 8px 12px; border-radius: 12px; position: relative; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; 
+    word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; 
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; 
+    font-size: var(--chat-font-size); line-height: 1.3; 
+}
 .my-msg { align-self: flex-end; background: var(--brand-light); color: var(--text-color); border-bottom-right-radius: 4px; } 
 .other-msg { align-self: flex-start; background: var(--card-bg); border-bottom-left-radius: 4px; }
 
@@ -76,17 +86,22 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .message.selected-msg { outline: 2px solid var(--brand-accent); box-shadow: 0 5px 15px rgba(0,0,0, 0.2); transform: scale(1.02); z-index: 100; }
 .message::after { content: ""; clear: both; display: table; }
 
-/* ESTILIZAÇÃO DAS MÍDIAS (FOTOS E VÍDEOS) */
+/* ESTILIZAÇÃO DAS MÍDIAS */
 .chat-image { max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 6px; margin-bottom: 4px; cursor: pointer; object-fit: contain; }
-.chat-video { max-width: 100%; max-height: 300px; width: auto; border-radius: 6px; margin-bottom: 4px; outline: none; background: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.chat-video { max-width: 100%; max-height: 300px; width: auto; border-radius: 6px; margin-bottom: 4px; outline: none; background: #000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); overflow: hidden; }
 
-.chat-audio { max-width: 100%; width: 260px; height: 44px; border-radius: 22px; outline: none; margin: 4px 0; }
+/* Áudio com overflow aqui, não na mensagem inteira! */
+.chat-audio { max-width: 100%; width: 260px; height: 44px; border-radius: 22px; outline: none; margin: 4px 0; overflow: hidden; }
 .my-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(0, 0, 0, 0.05); }
 .other-msg .chat-audio::-webkit-media-controls-panel { background-color: var(--input-bg); }
 body.dark-mode .my-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(255, 255, 255, 0.1); }
 body.dark-mode .other-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(0, 0, 0, 0.2); }
 
-.msg-info { display: flex; align-items: flex-end; justify-content: flex-end; gap: 4px; margin-top: 2px; float: right; margin-left: 10px; }
+/* CORREÇÃO: HORA ALINHADA NO CANTO INFERIOR SEM CORTAR */
+.msg-info { 
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px; 
+    margin-top: 4px; align-self: flex-end; /* Garante que a hora puxe pra direita abaixo do texto */
+}
 .msg-time { font-size: 11.5px; color: #999; }
 .msg-status { font-size: 11.5px; color: #999; display: flex; align-items: center; }
 .msg-status.read .material-icons { color: var(--brand-secondary) !important; }
