@@ -71,25 +71,13 @@ socket.on('online_users', (list) => {
     }
 });
 
-// ==========================================
-// MÁGICA: AVISO DE DIGITANDO / GRAVANDO EM TODO LUGAR
-// ==========================================
 function emitTypingStatus(action) {
     if (!currentChatId) return;
     const myName = localStorage.getItem('displayName') || 'Alguém';
-    const payload = {
-        senderId: myId,
-        senderName: myName,
-        receiverId: isGroupChat ? null : currentChatId,
-        groupId: isGroupChat ? currentChatId : null,
-        action: action // 'typing' ou 'recording'
-    };
+    const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action };
     socket.emit('typing', payload);
-    
     clearTimeout(typingTimeout);
-    if (action === 'typing') {
-        typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000);
-    }
+    if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); }
 }
 
 function emitStopTypingStatus() {
@@ -98,29 +86,22 @@ function emitStopTypingStatus() {
 }
 
 socket.on('typing', (data) => { 
-    if (data.senderId === myId) return; // Não mostra pra mim mesmo
-
+    if (data.senderId === myId) return; 
     const targetId = data.groupId ? data.groupId : data.senderId;
     const actionText = data.action === 'recording' ? 'gravando áudio...' : 'digitando...';
     const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : '';
     const displayHtml = `<span style="color:#25D366; font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`;
 
-    // 1. Atualiza cabeçalho do chat
     if (currentChatId === targetId) {
         const ind = document.getElementById('typing-indicator');
-        ind.innerHTML = displayHtml;
-        showElement('typing-indicator');
+        ind.innerHTML = displayHtml; showElement('typing-indicator');
     }
 
-    // 2. Atualiza a lista retangular de contatos
     const contactDiv = document.getElementById(`contact-${targetId}`);
     if (contactDiv) {
         const msgArea = contactDiv.querySelector('.contact-last-msg');
         if (msgArea) {
-            // Guarda a mensagem real para restaurar depois
-            if (!msgArea.hasAttribute('data-original')) {
-                msgArea.setAttribute('data-original', msgArea.innerHTML);
-            }
+            if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); }
             msgArea.innerHTML = displayHtml;
         }
     }
@@ -129,7 +110,6 @@ socket.on('typing', (data) => {
 socket.on('stop_typing', (data) => { 
     if (data.senderId === myId) return;
     const targetId = data.groupId ? data.groupId : data.senderId;
-
     if (currentChatId === targetId) hideElement('typing-indicator');
 
     const contactDiv = document.getElementById(`contact-${targetId}`);
@@ -157,7 +137,6 @@ socket.on('receive_message', (msg) => {
         const targetId = msg.groupId ? msg.groupId : senderIdStr; const contactDiv = document.getElementById(`contact-${targetId}`);
         if (contactDiv) { 
             contactDiv.classList.add('has-unread'); 
-            // Atualiza o texto para limpar o "digitando..." travado
             const msgArea = contactDiv.querySelector('.contact-last-msg');
             if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); }
             document.getElementById('users-list').prepend(contactDiv); 
@@ -170,7 +149,7 @@ if (msgInput) {
     msgInput.addEventListener('input', () => {
         if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); }
         if (!currentChatId) return; 
-        emitTypingStatus('typing'); // Emite pra grupo e privado
+        emitTypingStatus('typing'); 
     });
 }
 
@@ -224,7 +203,15 @@ async function loadContacts() {
         const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline';
 
         let sectorLabel = ''; let extraClass = unreadSenders.includes(user._id) ? 'has-unread' : ''; 
-        currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } });
+        let isSectored = false; // MÁGICA: Verifica se já está em algum setor
+
+        currentSectors.forEach(sec => { 
+            if(sec.members.includes(user._id)) { 
+                sectorLabel = `<span class="sector-badge">${sec.name}</span>`; 
+                extraClass += ' sectored'; 
+                isSectored = true;
+            } 
+        });
 
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1';
@@ -233,21 +220,16 @@ async function loadContacts() {
 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); };
-        menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openAddSectorModal('${user._id}', '${name}')">Adicionar ao Setor</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`;
+        
+        // MÁGICA: Muda o texto do menu se já tiver setor
+        const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor';
+
+        menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${name}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${name}')">Adicionar ao Grupo</div></div>`;
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div);
     });
 }
 
-async function openProfile() { 
-    toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); 
-    try {
-        const res = await fetch(`/user/${myId}`); const me = await res.json();
-        document.getElementById('config-name').innerText = me.displayName || me.email;
-        document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado';
-        document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone';
-    } catch(e){}
-}
+async function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-name').innerText = me.displayName || me.email; document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone'; } catch(e){} }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
 async function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('theme-switch').checked = me.theme === 'dark'; document.getElementById('font-size-select').value = me.fontSize || 'medium'; } catch(e){} }
 async function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-email').innerText = me.email; currentSectors = me.sectors || []; renderSectorsList(); } catch(e){} }
@@ -269,17 +251,13 @@ async function startRecording() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
         globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); 
         const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn');
-        
-        emitTypingStatus('recording'); // 🚀 AVISA QUE ESTÁ GRAVANDO!
-
+        emitTypingStatus('recording');
         recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); 
         btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); 
         recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000);
         globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
         globalMediaRecorder.onstop = async () => { 
-            clearInterval(recordingInterval); 
-            emitStopTypingStatus(); // 🚀 AVISA QUE PAROU DE GRAVAR
-
+            clearInterval(recordingInterval); emitStopTypingStatus();
             const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0');
             input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; 
             btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); 
@@ -301,9 +279,7 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     const content = textOverride || input.innerHTML; 
     if((!content && !fileUrl) || !currentChatId) return;
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType };
-    socket.emit('private_message', msgData); 
-    
-    clearTimeout(typingTimeout); emitStopTypingStatus(); // Para o digitando na hora
+    socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
     if(!fileUrl) input.innerHTML = ''; 
 }
 
@@ -316,7 +292,6 @@ function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigato
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
-
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
@@ -324,8 +299,58 @@ function toggleEmojiPicker() { document.getElementById('emoji-picker').classList
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); }
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
-function openAddSectorModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor.</span>'; currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked disabled' : ''}> ${sec.name}</label>`; }); showElement('add-sector-modal'); }
-async function submitAddSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length === 0) return alert("Selecione!"); if(!confirm("Confirmar?")) return; checkboxes.forEach(cb => currentSectors[cb.value].members.push(targetContactId)); await saveProfile({ sectors: currentSectors }); alert("Inserido!"); hideElement('add-sector-modal'); }
+// ==========================================
+// MÁGICA: GERENCIADOR UNIVERSAL DE SETOR
+// ==========================================
+function openSectorModal(userId, name, isRemoving) { 
+    targetContactId = userId; 
+    hideElement(`contact-menu-${userId}`); 
+    document.getElementById('sector-modal-title').innerText = isRemoving ? 'Remover do Setor' : 'Adicionar ao Setor';
+    document.getElementById('sector-target-name').innerText = `Contato: ${name}`; 
+    const list = document.getElementById('sector-checkbox-list'); 
+    list.innerHTML = ''; 
+    
+    if(currentSectors.length === 0) {
+        list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor criado nas Configurações.</span>'; 
+    } else {
+        currentSectors.forEach((sec, idx) => { 
+            const isAlreadyIn = sec.members.includes(userId); 
+            // A caixinha vem marcada se ele já estiver no setor. Desmarcar remove ele!
+            list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''}> ${sec.name}</label>`; 
+        }); 
+    }
+    showElement('sector-modal'); 
+}
+
+async function submitSector() { 
+    const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); 
+    let changed = false;
+    
+    checkboxes.forEach(cb => {
+        const idx = cb.value;
+        const isChecked = cb.checked;
+        const inSector = currentSectors[idx].members.includes(targetContactId);
+        
+        if (isChecked && !inSector) { 
+            // Adiciona se não tava
+            currentSectors[idx].members.push(targetContactId); 
+            changed = true; 
+        } 
+        else if (!isChecked && inSector) { 
+            // Remove se tava e foi desmarcado
+            currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); 
+            changed = true; 
+        }
+    });
+    
+    if (changed) { 
+        await saveProfile({ sectors: currentSectors }); 
+        loadContacts(); 
+        alert("Setor atualizado com sucesso!"); 
+    }
+    hideElement('sector-modal'); 
+}
+
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 
