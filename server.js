@@ -134,7 +134,7 @@ io.on('connection', (socket) => {
 
                 try {
                     // Chama a IA do Python em background
-                    const pyRes = await fetch('https://cptt-bot-ia.onrender.com, {
+                    const pyRes = await fetch('https://cptt-bot-ia.onrender.com/ask', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: data.content })
