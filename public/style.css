@@ -64,7 +64,26 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .input-area { flex: 0 0 auto; background: var(--card-bg); padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; border-top: 1px solid var(--input-bg); z-index: 50; }
 #message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
 
-.message { max-width: 75%; padding: 8px 12px; border-radius: 12px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-size: var(--chat-font-size); line-height: 1.3; overflow: hidden; }
+/* CORREÇÃO APLICADA: REMOVIDO O OVERFLOW HIDDEN DA MENSAGEM */
+.message { 
+    max-width: 75%; 
+    padding: 8px 12px; 
+    border-radius: 12px; 
+    position: relative; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+    display: flex; 
+    flex-direction: column; 
+    word-wrap: break-word; 
+    word-break: break-word; 
+    overflow-wrap: break-word; 
+    white-space: pre-wrap; 
+    -webkit-user-select: none; 
+    user-select: none; 
+    -webkit-touch-callout: none; 
+    font-size: var(--chat-font-size); 
+    line-height: 1.3; 
+}
+
 .my-msg { align-self: flex-end; background: var(--brand-light); color: var(--text-color); border-bottom-right-radius: 4px; } 
 .other-msg { align-self: flex-start; background: var(--card-bg); border-bottom-left-radius: 4px; }
 
@@ -189,9 +208,15 @@ input:checked + .slider:before { transform: translateX(16px); }
 body.dark-mode .user-item.has-unread { background-color: rgba(255,255,255,0.05) !important; }
 body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-secondary); }
 
-/* ==========================================
-   MÁGICA: DESIGN DO BOTÃO DE LOGO COM BADGE
-========================================== */
+#msg-context-menu { position: fixed; z-index: 9999; background: var(--card-bg); border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); padding: 10px; width: 220px; }
+.msg-reaction { position: absolute; bottom: -10px; right: 10px; background: var(--card-bg); border-radius: 10px; padding: 2px 5px; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 2; }
+.send-btn.pending-send { background-color: #ff9800 !important; }
+
+.floating-format-bar { position: fixed; z-index: 10000; background: #202c33; color: white; padding: 6px 8px; border-radius: 8px; display: flex; gap: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
+.floating-format-bar button { background: none; border: none; color: white; font-size: 18.5px; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
+.floating-format-bar .toolbar-sep { width: 1px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
+
 @keyframes pulse-glow {
     0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
     70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
@@ -224,7 +249,6 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
     object-fit: contain;
 }
 
-/* A bolinha indicando a ação de adicionar pessoa */
 .logo-badge-btn {
     position: absolute;
     bottom: -6px;
