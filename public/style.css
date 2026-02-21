@@ -33,7 +33,7 @@ body.font-large { --chat-font-size: 44px; --contact-name-size: 28px; --contact-m
 html, body { width: 100%; height: 100%; height: -webkit-fill-available; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); }
 .app-screen { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 100%; max-width: 1600px; display: flex; flex-direction: column; background: var(--card-bg); overflow: hidden; }
 
-/* LOGIN PREMIUM */
+/* LOGIN PREMIUM - SEM DELAY NENHUM */
 #auth-screen { background: linear-gradient(135deg, var(--brand-light) 0%, #ffffff 100%); display: flex; justify-content: center; align-items: center; z-index: 3000; }
 body.dark-mode #auth-screen { background: linear-gradient(135deg, #111b21 0%, #202c33 100%); }
 .auth-bg-logo { position: absolute; width: 80vw; height: 80vw; max-width: 600px; max-height: 600px; background-image: url('favicon.png'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.04; pointer-events: none; }
@@ -158,7 +158,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
 .modal-content { background: var(--card-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 350px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); color: var(--text-color); }
-.modal-content input[type="text"], .modal-content input[type="password"] { background: var(--input-bg); color: var(--text-color); width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-bg); border-radius: 8px; text-align: center; font-size: 16px; }
+.modal-content input[type="text"], .modal-content input[type="password"], .modal-content input[type="email"] { background: var(--input-bg); color: var(--text-color); width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--input-bg); border-radius: 8px; text-align: center; font-size: 16px; }
 
 .profile-view-card { background: var(--card-bg); padding: 30px; border-radius: 15px; width: 85%; max-width: 350px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
 .profile-view-card img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--brand-primary); margin-bottom: 15px; }
@@ -189,15 +189,59 @@ input:checked + .slider:before { transform: translateX(16px); }
 body.dark-mode .user-item.has-unread { background-color: rgba(255,255,255,0.05) !important; }
 body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-secondary); }
 
-#msg-context-menu { position: fixed; z-index: 9999; background: var(--card-bg); border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); padding: 10px; width: 220px; }
-.msg-reaction { position: absolute; bottom: -10px; right: 10px; background: var(--card-bg); border-radius: 10px; padding: 2px 5px; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 2; }
-.send-btn.pending-send { background-color: #ff9800 !important; }
+/* ==========================================
+   MÁGICA: DESIGN DO BOTÃO DE LOGO COM BADGE
+========================================== */
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
 
-.floating-format-bar { position: fixed; z-index: 10000; background: #202c33; color: white; padding: 6px 8px; border-radius: 8px; display: flex; gap: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
-.floating-format-bar button { background: none; border: none; color: white; font-size: 18.5px; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
-.floating-format-bar .toolbar-sep { width: 1px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
+.header-logo-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-right: 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    animation: pulse-glow 2s infinite;
+    transition: transform 0.1s;
+}
 
-/* HOVER EFFECT LOGO HEADER */
-.header-logo-btn { transition: transform 0.1s ease; }
-.header-logo-btn:active { transform: scale(0.95) !important; }
+.header-logo-btn:active {
+    transform: scale(0.95);
+    background: rgba(255,255,255,0.25);
+}
+
+.logo-img-btn {
+    height: 44px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
+}
+
+/* A bolinha indicando a ação de adicionar pessoa */
+.logo-badge-btn {
+    position: absolute;
+    bottom: -6px;
+    left: -10px;
+    background: var(--brand-accent);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid var(--brand-primary);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+.logo-badge-btn .material-icons {
+    font-size: 16px;
+    font-weight: bold;
+}
