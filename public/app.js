@@ -27,18 +27,7 @@ function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-scr
 function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('chat-screen'); showElement('main-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); showElement('settings-screen'); }
 
-// ==========================================
-// MÁGICA 3: O EFEITO DA TELA DE BOAS VINDAS
-// ==========================================
-function showWelcomeScreen() {
-    hideElement('auth-screen');
-    showElement('welcome-screen');
-    // Deixa a tela de boas vindas rodar por 3.5 segundos antes de abrir os contatos
-    setTimeout(() => {
-        hideElement('welcome-screen');
-        showMainScreen();
-    }, 3500);
-}
+function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 3500); }
 
 socket.on('check_app_version', (serverVersion) => { const localVersion = localStorage.getItem('appVersion'); if (!localVersion) { localStorage.setItem('appVersion', serverVersion); } else if (localVersion !== serverVersion) { localStorage.setItem('appVersion', serverVersion); window.location.href = window.location.pathname + '?v=' + serverVersion; } });
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
@@ -99,10 +88,36 @@ async function submitSector() { const checkboxes = document.querySelectorAll('#s
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 
-async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
+// --- MÁGICA 4: O NOVO SISTEMA DE CRIAR GRUPO ---
+async function openCreateGroupModal() { 
+    toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; 
+    document.getElementById('group-name-input').value = ''; 
+    document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+    const res = await fetch(`/users/${myId}`); const users = await res.json(); 
+    const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; 
+    users.forEach(user => { 
+        const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; 
+        div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; 
+        div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); 
+    }); 
+}
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { document.querySelectorAll('.candidate-item').forEach(item => { item.style.display = item.dataset.name.includes(query.toLowerCase()) ? 'flex' : 'none'; }); }
-async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; if (!name || selectedUserIds.length===0) return; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds }) }); alert("Criado!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
+
+async function uploadNewGroupPhoto(input) { 
+    const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); 
+    try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; } catch(e){} 
+}
+
+async function submitCreateGroup() { 
+    const name = document.getElementById('group-name-input').value; 
+    const photo = document.getElementById('new-group-photo').src;
+    if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); 
+    try { 
+        await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); 
+        alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); 
+    } catch (e) {} 
+}
 
 function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
 function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
@@ -137,91 +152,10 @@ async function performSearch(query) { try { const res = await fetch(`/search?que
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
 function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
 
-// ==========================================
-// MÁGICA 4: CONTROLE DO LOGIN COM TEXTOS DINÂMICOS
-// ==========================================
 let isRegistering = false;
+function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); } }
+async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha todos os campos!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado para o seu e-mail!'); const code = prompt("Digite o Código que chegou no seu e-mail:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); if (localStorage.getItem('isFirstLogin') === 'true') { localStorage.removeItem('isFirstLogin'); showWelcomeScreen(); } else { showMainScreen(); } } } else { alert(data.error || 'Erro na autenticação.'); } } catch (e) { } finally { btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; } }
+async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Cadastro verificado com sucesso! Faça login para entrar."); localStorage.setItem('isFirstLogin', 'true'); toggleAuthMode(); } else { alert("Código inválido!"); } } catch(e) {} }
 
-function toggleAuthMode() { 
-    isRegistering = !isRegistering; 
-    document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; 
-    document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; 
-    document.getElementById('auth-name').classList.toggle('hidden'); 
-    
-    if (isRegistering) {
-        hideElement('auth-toggle-text');
-        showElement('auth-promo-text');
-    } else {
-        showElement('auth-toggle-text');
-        hideElement('auth-promo-text');
-    }
-}
-
-async function handleAuth() { 
-    const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); 
-    if (!email || !password) return alert("Preencha todos os campos!"); 
-    btn.innerText = "Processando..."; btn.disabled = true; 
-    
-    try { 
-        const endpoint = isRegistering ? '/register' : '/login'; 
-        const body = isRegistering ? { email, password, displayName: name } : { email, password }; 
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
-        const data = await res.json(); 
-        
-        if (res.ok) { 
-            if (isRegistering) { 
-                alert('✅ Código enviado para o seu e-mail!'); 
-                const code = prompt("Digite o Código que chegou no seu e-mail:"); 
-                if(code) verifyCodeManual(email, code); 
-            } else { 
-                token = data.token; myId = data.myId; 
-                localStorage.setItem('token', token); localStorage.setItem('myId', myId); 
-                localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); 
-                currentSectors = data.sectors || []; 
-                if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } 
-                const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); 
-                
-                // SE ELE ACABOU DE CADASTRAR, MOSTRA A TELA DE BOAS VINDAS
-                if (localStorage.getItem('isFirstLogin') === 'true') {
-                    localStorage.removeItem('isFirstLogin');
-                    showWelcomeScreen();
-                } else {
-                    showMainScreen(); 
-                }
-            } 
-        } else { alert(data.error || 'Erro na autenticação.'); } 
-    } catch (e) { } 
-    finally { 
-        btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; 
-        btn.disabled = false; 
-    } 
-}
-
-async function verifyCodeManual(email, code) { 
-    try { 
-        const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); 
-        if(res.ok) { 
-            alert("Cadastro verificado com sucesso! Faça login para entrar."); 
-            localStorage.setItem('isFirstLogin', 'true'); // Trava mágica da tela de boas vindas
-            toggleAuthMode(); // Volta pra tela de login normal
-        } else {
-            alert("Código inválido!");
-        }
-    } catch(e) {} 
-}
-
-async function initApp() { 
-    const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
-    if(token && myId) { 
-        try { 
-            const res = await fetch(`/user/${myId}`); 
-            if(res.ok) { 
-                const me = await res.json(); currentSectors = me.sectors || []; 
-                if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
-                if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); }
-            } 
-        } catch(e) {} 
-        showMainScreen(); 
-    } else { showElement('auth-screen'); } 
-}
+async function initApp() { const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); if(token && myId) { try { const res = await fetch(`/user/${myId}`); if(res.ok) { const me = await res.json(); currentSectors = me.sectors || []; if (me.theme === 'dark') document.body.classList.add('dark-mode'); if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); } } } catch(e) {} showMainScreen(); } else { showElement('auth-screen'); } }
 initApp();

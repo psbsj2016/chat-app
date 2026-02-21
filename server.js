@@ -69,7 +69,18 @@ app.put('/settings', async (req, res) => { try { const u = await User.findById(r
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
-app.post('/groups', async (req, res) => { try { const allMembers = [...req.body.members, req.body.adminId].map(String); const uniqueMembers = [...new Set(allMembers)]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers }); await g.save(); res.json(g); } catch (e) {} });
+// --- MÁGICA: SERVIDOR AGORA SALVA A FOTO DIRETO NA HORA DE CRIAR O GRUPO ---
+app.post('/groups', async (req, res) => { 
+    try { 
+        const allMembers = [...req.body.members, req.body.adminId].map(String); 
+        const uniqueMembers = [...new Set(allMembers)]; 
+        const photo = req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+        const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: photo }); 
+        await g.save(); 
+        res.json(g); 
+    } catch (e) {} 
+});
+
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) {} });
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp')); } catch (e) {} });
 app.put('/groups/add-member', async (req, res) => { try { await Group.updateMany({ _id: { $in: req.body.groupIds } }, { $addToSet: { members: req.body.userId } }); res.json({ msg: 'ok' }); } catch (e) {} });
@@ -88,23 +99,14 @@ io.on('connection', (socket) => {
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
 
-    // --- MAGICA DO DIGITANDO PARA GRUPOS E PRIVADO ---
     socket.on('typing', (data) => { 
-        if (data.groupId) {
-            socket.to(data.groupId).emit('typing', data); 
-        } else {
-            const r = users[data.receiverId]; 
-            if (r) io.to(r).emit('typing', data); 
-        }
+        if (data.groupId) { socket.to(data.groupId).emit('typing', data); } 
+        else { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', data); }
     });
 
     socket.on('stop_typing', (data) => { 
-        if (data.groupId) {
-            socket.to(data.groupId).emit('stop_typing', data); 
-        } else {
-            const r = users[data.receiverId]; 
-            if (r) io.to(r).emit('stop_typing', data); 
-        }
+        if (data.groupId) { socket.to(data.groupId).emit('stop_typing', data); } 
+        else { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', data); }
     });
 
     socket.on('private_message', (data) => {
