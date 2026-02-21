@@ -66,7 +66,17 @@ app.put('/settings', async (req, res) => { try { const u = await User.findById(r
 app.delete('/delete-account/:userId', async (req, res) => { try { await User.findByIdAndDelete(req.params.userId); await Message.deleteMany({ sender: req.params.userId }); res.json({ msg: 'ok' }); } catch (e) {} });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
-app.post('/groups', async (req, res) => { try { const g = new Group({ name: req.body.name, admin: req.body.adminId, members: [...req.body.members, req.body.adminId] }); await g.save(); res.json(g); } catch (e) {} });
+app.post('/groups', async (req, res) => { 
+    try { 
+        // Garante que não haja IDs duplicados na hora de criar
+        const allMembers = [...req.body.members, req.body.adminId].map(String);
+        const uniqueMembers = [...new Set(allMembers)];
+        
+        const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers }); 
+        await g.save(); 
+        res.json(g); 
+    } catch (e) {} 
+});
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) {} });
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp')); } catch (e) {} });
 app.put('/groups/add-member', async (req, res) => { try { await Group.updateMany({ _id: { $in: req.body.groupIds } }, { $addToSet: { members: req.body.userId } }); res.json({ msg: 'ok' }); } catch (e) {} });

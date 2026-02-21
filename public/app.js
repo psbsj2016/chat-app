@@ -48,9 +48,7 @@ socket.on('user_profile_updated', (data) => {
     if (myId) loadContacts();
 });
 
-// AVISA PARA RECARREGAR CONTATOS (QUANDO UM GRUPO MUDA)
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
-
 socket.on('connect', () => { if (myId) socket.emit('join_room', myId); });
 
 socket.on('online_users', (list) => {
@@ -108,13 +106,19 @@ function openChat(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); }
 }
 
+// 🚀 A MÁGICA: Blinda contra renderização duplicada!
 async function loadContacts() {
     if(!myId) return;
-    const list = document.getElementById('users-list'); list.innerHTML = '';
     let unreadSenders = [];
     try { const resUnread = await fetch(`/unread/${myId}`); unreadSenders = await resUnread.json(); } catch(e) {}
 
     const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json();
+    const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json();
+
+    // SÓ LIMPA A LISTA DEPOIS QUE TUDO FOI BAIXADO
+    const list = document.getElementById('users-list'); 
+    list.innerHTML = ''; 
+
     groups.forEach(group => {
         const div = document.createElement('div'); div.className = 'user-item'; div.id = `contact-${group._id}`; 
         const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
@@ -123,7 +127,6 @@ async function loadContacts() {
         clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group');
         clickArea.innerHTML = `<div class="user-avatar-container"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="font-weight:bold">${group.name}</div><div style="font-size:12px; color:#008069">Grupo</div></div>`;
 
-        // MENU NOVO DO GRUPO (3 Pontinhos)
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); };
         const memberStr = group.members.join(',');
@@ -137,9 +140,7 @@ async function loadContacts() {
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div);
     });
 
-    const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json();
     users.sort((a, b) => unreadSenders.includes(b._id) - unreadSenders.includes(a._id));
-
     users.forEach(user => {
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         const name = user.displayName || user.email.split('@')[0]; const email = user.email;
@@ -183,7 +184,8 @@ async function saveGroupProfile() {
     if(!name) return;
     try { 
         await fetch(`/groups/${targetGroupId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, photoUrl: photo})}); 
-        socket.emit('group_updated'); hideElement('edit-group-modal'); loadContacts(); 
+        hideElement('edit-group-modal'); 
+        socket.emit('group_updated'); // Delega a atualização apenas pro Sockets
     } catch(e){}
 }
 
@@ -194,7 +196,7 @@ async function openSpecificAddMember(id, membersStr) {
     const list = document.getElementById('specific-add-list'); list.innerHTML = '';
     selectedUserIds = [];
     users.forEach(u => {
-        if(existingMembers.includes(u._id)) return; // Só mostra quem NÃO está no grupo
+        if(existingMembers.includes(u._id)) return; 
         const div = document.createElement('div'); div.className = 'candidate-item';
         div.onclick = () => {
             if (selectedUserIds.includes(u._id)) { selectedUserIds = selectedUserIds.filter(x => x !== u._id); div.classList.remove('selected'); }
@@ -209,7 +211,9 @@ async function submitSpecificAdd() {
     if(selectedUserIds.length === 0) return alert('Selecione alguém');
     try { 
         await fetch(`/groups/${targetGroupId}/add-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedUserIds})}); 
-        socket.emit('group_updated'); hideElement('specific-add-modal'); loadContacts(); alert('Adicionados!');
+        hideElement('specific-add-modal'); 
+        alert('Adicionados!');
+        socket.emit('group_updated');
     } catch(e){}
 }
 
@@ -219,7 +223,7 @@ async function openRemoveMemberModal(id, membersStr) {
     selectedForRemoval = [];
     updateRemoveBtn();
     const res = await fetch(`/users/${myId}`); const users = await res.json();
-    const members = users.filter(u => existingMembers.includes(u._id)); // Só mostra quem JÁ ESTÁ no grupo
+    const members = users.filter(u => existingMembers.includes(u._id)); 
     
     const list = document.getElementById('remove-members-list'); list.innerHTML = '';
     members.forEach(u => {
@@ -232,7 +236,6 @@ async function openRemoveMemberModal(id, membersStr) {
             updateRemoveBtn();
         };
 
-        // LÓGICA DE TOQUE LONGO
         div.addEventListener('touchstart', (e) => { tTimer = setTimeout(() => { navigator.vibrate && navigator.vibrate(50); toggleSelect(); }, 500); }, {passive:false});
         div.addEventListener('touchend', () => clearTimeout(tTimer));
         div.addEventListener('touchmove', () => clearTimeout(tTimer));
@@ -241,11 +244,7 @@ async function openRemoveMemberModal(id, membersStr) {
         div.addEventListener('mouseleave', () => clearTimeout(tTimer));
         div.addEventListener('contextmenu', e => e.preventDefault());
 
-        // Permite clique simples se pelo menos 1 já estiver selecionado
-        div.addEventListener('click', () => {
-            if(selectedForRemoval.length > 0) toggleSelect();
-        });
-
+        div.addEventListener('click', () => { if(selectedForRemoval.length > 0) toggleSelect(); });
         div.innerHTML = `<img src="${u.photoUrl}"><span>${u.displayName || u.email}</span>`; list.appendChild(div);
     });
     showElement('remove-members-modal');
@@ -262,11 +261,12 @@ async function submitRemoveMembers() {
     if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return;
     try { 
         await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); 
-        socket.emit('group_updated'); hideElement('remove-members-modal'); loadContacts(); alert('Removidos!');
+        hideElement('remove-members-modal'); 
+        alert('Removidos!');
+        socket.emit('group_updated');
     } catch(e){}
 }
 
-// (O resto do seu código original continua igual abaixo)
 async function startRecording() {
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") return;
     try { 
@@ -367,13 +367,24 @@ function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); d
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
 function openAddSectorModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) list.innerHTML = '<span style="font-size:12px; color:#999;">Nenhum setor.</span>'; currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked disabled' : ''}> ${sec.name}</label>`; }); showElement('add-sector-modal'); }
-async function submitAddSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length === 0) return alert("Selecione!"); if(!confirm("Confirmar?")) return; checkboxes.forEach(cb => currentSectors[cb.value].members.push(targetContactId)); await saveProfile({ sectors: currentSectors }); alert("Inserido!"); hideElement('add-sector-modal'); loadContacts(); }
+async function submitAddSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length === 0) return alert("Selecione!"); if(!confirm("Confirmar?")) return; checkboxes.forEach(cb => currentSectors[cb.value].members.push(targetContactId)); await saveProfile({ sectors: currentSectors }); alert("Inserido!"); hideElement('add-sector-modal'); }
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
-async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); } catch(e) {} }
+async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
+
 async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; const res = await fetch(`/users/${myId}`); const users = await res.json(); const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { document.querySelectorAll('.candidate-item').forEach(item => { item.style.display = item.dataset.name.includes(query.toLowerCase()) ? 'flex' : 'none'; }); }
-async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; if (!name || selectedUserIds.length===0) return; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds }) }); alert("Criado!"); closeCreateGroup(); loadContacts(); } catch (e) {} }
+
+async function submitCreateGroup() { 
+    const name = document.getElementById('group-name-input').value; 
+    if (!name || selectedUserIds.length===0) return; 
+    try { 
+        await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds }) }); 
+        alert("Criado!"); 
+        closeCreateGroup(); 
+        socket.emit('group_updated');
+    } catch (e) {} 
+}
 
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); document.getElementById('config-name').innerText = localStorage.getItem('displayName'); document.getElementById('config-avatar').src = localStorage.getItem('photoUrl'); document.getElementById('config-email').innerText = localStorage.getItem('userEmail'); document.getElementById('theme-switch').checked = localStorage.getItem('theme') === 'dark'; renderSectorsList(); }
 function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
@@ -387,35 +398,14 @@ function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/
 function viewContactProfile() { if(isGroupChat) return; document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; document.getElementById('view-contact-email').innerText = currentChatEmail; showElement('contact-profile-modal'); }
 function closeContactProfile() { hideElement('contact-profile-modal'); }
 
-// ==========================================
-// MÁGICA DE SELEÇÃO DE TEXTO E FORMATAÇÃO
-// ==========================================
 document.addEventListener('selectionchange', () => {
-    const input = document.getElementById('message-input');
-    const formatBar = document.getElementById('text-format-toolbar');
-    const inputArea = document.querySelector('.input-area'); // Pega a área da caixa
-    if (!input || !formatBar || !inputArea) return;
-
-    const selection = window.getSelection();
-    
-    // Se o usuário selecionou texto e está DENTRO do campo de mensagem
+    const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); const inputArea = document.querySelector('.input-area');
+    if (!input || !formatBar || !inputArea) return; const selection = window.getSelection();
     if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) {
-        showElement('text-format-toolbar');
-        
-        const inputRect = inputArea.getBoundingClientRect();
-        
-        // MÁGICA CONTRA O MENU NATIVO:
-        // Ancoramos o nosso menu centralizado logo ACIMA da caixa de digitação,
-        // fugindo do menu de Copiar/Colar do celular que fica em cima da palavra.
-        let top = inputRect.top - formatBar.offsetHeight - 12; 
-        let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2);
-        
-        formatBar.style.top = `${top}px`;
-        formatBar.style.left = `${left}px`;
-    } else {
-        // Esconde o menu se desmarcar o texto
-        hideElement('text-format-toolbar');
-    }
+        showElement('text-format-toolbar'); const inputRect = inputArea.getBoundingClientRect();
+        let top = inputRect.top - formatBar.offsetHeight - 12; let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2);
+        formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`;
+    } else { hideElement('text-format-toolbar'); }
 });
 
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
