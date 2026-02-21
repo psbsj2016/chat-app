@@ -5,7 +5,7 @@ let currentChatId = null;
 let currentChatEmail = ''; 
 
 let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
-let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; // MÁGICA: Memória de grupos não lidos
+let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
 let onlineUsersList = [];
 let targetContactId = null;
 let isGroupChat = false;
@@ -41,7 +41,6 @@ socket.on('online_users', (list) => { onlineUsersList = list; document.querySele
 function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
-// MÁGICA: INDICADOR DE DIGITANDO NA TELA PRINCIPAL (GRUPOS E PRIVADO)
 socket.on('typing', (data) => { 
     if (data.senderId === myId) return; 
     const targetId = data.groupId ? data.groupId : data.senderId; 
@@ -58,7 +57,7 @@ socket.on('typing', (data) => {
         if (msgArea) { 
             if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } 
             msgArea.innerHTML = displayHtml; 
-            msgArea.style = ''; // Remove cor fixa para pegar o estilo da div digitando
+            msgArea.style = ''; 
         } 
     } 
 });
@@ -110,7 +109,6 @@ socket.on('receive_message', (msg) => {
     } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { 
         displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); 
     } else { 
-        // Salva o alerta de grupo não lido na memória
         if (msg.groupId && !unreadGroups.includes(msg.groupId)) {
             unreadGroups.push(msg.groupId);
             localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
@@ -123,7 +121,7 @@ socket.on('receive_message', (msg) => {
             if (msgArea) { 
                 msgArea.innerHTML = 'Nova mensagem!'; 
                 msgArea.removeAttribute('data-original'); 
-                msgArea.style = ''; // Limpa a cor fixa pra usar a cor de não lido
+                msgArea.style = ''; 
             } 
             document.getElementById('users-list').prepend(contactDiv); 
         } 
@@ -134,22 +132,10 @@ const msgInput = document.getElementById('message-input'); if (msgInput) { msgIn
 
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    
-    // MÁGICA: Limpa o alerta de grupo não lido
-    if (isGroupChat) {
-        unreadGroups = unreadGroups.filter(gId => gId !== id);
-        localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
-    }
-
+    if (isGroupChat) { unreadGroups = unreadGroups.filter(gId => gId !== id); localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); }
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
     const contactDiv = document.getElementById(`contact-${id}`); 
-    if (contactDiv) {
-        contactDiv.classList.remove('has-unread');
-        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
-        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; }
-        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; }
-    }
-    
+    if (contactDiv) { contactDiv.classList.remove('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; } }
     if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
     const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } 
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
@@ -157,26 +143,14 @@ function openChat(id, name, photo, email, type = 'user') {
 
 async function loadContacts() { 
     if(!myId) return; 
-    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
-    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
-    const cachedUnread = JSON.parse(localStorage.getItem('unreadSenders')) || [];
-    
-    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
-        // Conecta ao rádio dos grupos em background instantaneamente
-        cachedGroups.forEach(g => socket.emit('join_group', g._id));
-        renderContactsList(cachedGroups, cachedUsers, cachedUnread); 
-    }
-    
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; const cachedUnread = JSON.parse(localStorage.getItem('unreadSenders')) || [];
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers, cachedUnread); }
     try { 
         const resUnread = await fetch(`/unread/${myId}`); const unreadSenders = await resUnread.json(); 
         const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
         const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
-        
-        localStorage.setItem('unreadSenders', JSON.stringify(unreadSenders));
-        localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
-        localStorage.setItem('cacheUsers', JSON.stringify(users));
-        
-        groups.forEach(g => socket.emit('join_group', g._id)); // Conecta ao rádio dos grupos
+        localStorage.setItem('unreadSenders', JSON.stringify(unreadSenders)); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users));
+        groups.forEach(g => socket.emit('join_group', g._id)); 
         renderContactsList(groups, users, unreadSenders);
     } catch(e) {} 
 }
@@ -185,21 +159,11 @@ function renderContactsList(groups, users, unreadSenders) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     groups.forEach(group => { 
         let extraGroupClass = unreadGroups.includes(group._id) ? 'has-unread' : '';
-        const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; 
-        const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; 
-        const safeName = group.name.replace(/'/g, "\\'"); 
-        clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group'); 
-        
-        let lastMsgText = unreadGroups.includes(group._id) ? 'Nova mensagem!' : 'Grupo';
-        let lastMsgStyle = unreadGroups.includes(group._id) ? '' : 'color:var(--brand-primary)';
-
+        const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group'); 
+        let lastMsgText = unreadGroups.includes(group._id) ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = unreadGroups.includes(group._id) ? '' : 'color:var(--brand-primary)';
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
-        
-        const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; 
-        const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
+        const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
-    
     users.sort((a, b) => unreadSenders.includes(b._id) - unreadSenders.includes(a._id)); 
     users.forEach(user => { 
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
@@ -333,6 +297,49 @@ function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mo
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
+
+// ==========================================
+// MÁGICA: FUNÇÕES DO MODAL DE SENHA
+// ==========================================
+function openChangePasswordModal() { 
+    document.getElementById('cp-current').value = ''; 
+    document.getElementById('cp-new').value = ''; 
+    document.getElementById('cp-confirm').value = ''; 
+    showElement('change-password-modal'); 
+}
+function closeChangePasswordModal() { hideElement('change-password-modal'); }
+
+function togglePasswordVisibility(inputId, iconId) { 
+    const input = document.getElementById(inputId); 
+    const icon = document.getElementById(iconId); 
+    if (input.type === 'password') { 
+        input.type = 'text'; icon.innerText = 'visibility'; icon.style.color = 'var(--brand-primary)'; 
+    } else { 
+        input.type = 'password'; icon.innerText = 'visibility_off'; icon.style.color = '#888'; 
+    } 
+}
+
+async function submitChangePassword() { 
+    const currentPassword = document.getElementById('cp-current').value; 
+    const newPassword = document.getElementById('cp-new').value; 
+    const confirmPassword = document.getElementById('cp-confirm').value; 
+    
+    if (!currentPassword || !newPassword || !confirmPassword) return alert("Preencha todos os campos!"); 
+    if (newPassword !== confirmPassword) return alert("A nova senha e a confirmação não batem!"); 
+    if (newPassword.length < 6) return alert("A nova senha deve ter pelo menos 6 caracteres."); 
+    
+    try { 
+        const res = await fetch('/change-password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, currentPassword, newPassword }) }); 
+        const data = await res.json(); 
+        
+        if (res.ok) { 
+            alert("Senha alterada com sucesso!"); closeChangePasswordModal(); 
+        } else { 
+            alert(data.error || "Erro ao alterar a senha."); 
+        } 
+    } catch (e) { alert("Erro de conexão ao tentar alterar a senha."); } 
+}
+
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro ao excluir a conta."); } } }
 
