@@ -36,7 +36,7 @@ body.font-large { --chat-font-size: 44px; --contact-name-size: 28px; --contact-m
 html, body { width: 100%; height: 100%; height: -webkit-fill-available; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); }
 .app-screen { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 100%; max-width: 1600px; display: flex; flex-direction: column; background: var(--card-bg); overflow: hidden; }
 
-/* LOGIN PREMIUM - SEM DELAY */
+/* LOGIN PREMIUM - SEM DELAY NENHUM */
 #auth-screen { background: linear-gradient(135deg, var(--brand-light) 0%, #ffffff 100%); display: flex; justify-content: center; align-items: center; z-index: 3000; }
 body.dark-mode #auth-screen { background: linear-gradient(135deg, #111b21 0%, #202c33 100%); }
 .auth-bg-logo { position: absolute; width: 80vw; height: 80vw; max-width: 600px; max-height: 600px; background-image: url('favicon.png'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.04; pointer-events: none; }
@@ -55,9 +55,8 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 
 /* BOAS VINDAS */
 #welcome-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--brand-primary); z-index: 4000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; background-image: radial-gradient(circle at center, var(--brand-secondary) 0%, var(--brand-primary) 100%); }
-.welcome-logo { width: 120px; animation: pulseLogo 2s infinite; margin-bottom: 20px; border-radius:25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);}
+.welcome-logo { width: 120px; margin-bottom: 20px; border-radius:25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);}
 .welcome-screen p { font-size: 15.5px; }
-@keyframes pulseLogo { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
 /* ESTRUTURA GERAL */
 .main-header, .chat-header { flex: 0 0 60px; background: var(--brand-primary); color: var(--header-text); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10; }
@@ -67,7 +66,7 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .input-area { flex: 0 0 auto; background: var(--card-bg); padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; border-top: 1px solid var(--input-bg); z-index: 50; }
 #message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
 
-.message { max-width: 75%; padding: 7px 10px; border-radius: 12px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-size: var(--chat-font-size); line-height: 1.3; overflow: hidden; /* Evita que itens dentro vazem */ }
+.message { max-width: 75%; padding: 7px 10px; border-radius: 12px; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-size: var(--chat-font-size); line-height: 1.3; overflow: hidden; }
 .my-msg { align-self: flex-end; background: var(--brand-light); color: var(--text-color); border-bottom-right-radius: 4px; } 
 .other-msg { align-self: flex-start; background: var(--card-bg); border-bottom-left-radius: 4px; }
 
@@ -78,18 +77,8 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .message::after { content: ""; clear: both; display: table; }
 .chat-image { max-width: 100%; max-height: 300px; width: auto; height: auto; border-radius: 6px; margin-bottom: 4px; cursor: pointer; object-fit: contain; }
 
-/* ==========================================
-   MÁGICA: PLAYER DE ÁUDIO DOMADO E ELEGANTE
-========================================== */
-.chat-audio { 
-    max-width: 100%; /* O segredo: nunca vazar do card! */
-    width: 260px; /* Largura ideal */
-    height: 44px; /* Mais fino e moderno */
-    border-radius: 22px; 
-    outline: none; 
-    margin: 4px 0;
-}
-/* Estilizando o interior do player nativo para ele ficar transparente */
+/* PLAYER DE ÁUDIO DOMADO E ELEGANTE */
+.chat-audio { max-width: 100%; width: 260px; height: 44px; border-radius: 22px; outline: none; margin: 4px 0; }
 .my-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(0, 0, 0, 0.05); }
 .other-msg .chat-audio::-webkit-media-controls-panel { background-color: var(--input-bg); }
 body.dark-mode .my-msg .chat-audio::-webkit-media-controls-panel { background-color: rgba(255, 255, 255, 0.1); }
@@ -154,8 +143,8 @@ emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num
 
 .switch { position: relative; display: inline-block; width: 40px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .1s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .1s; border-radius: 50%; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; }
 input:checked + .slider { background-color: var(--brand-primary); }
 input:checked + .slider:before { transform: translateX(16px); }
 
@@ -198,8 +187,7 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
 
 #msg-context-menu { position: fixed; z-index: 9999; background: var(--card-bg); border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); padding: 10px; width: 220px; }
 .msg-reaction { position: absolute; bottom: -10px; right: 10px; background: var(--card-bg); border-radius: 10px; padding: 2px 5px; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 2; }
-.send-btn.pending-send { background-color: #ff9800 !important; animation: pulse-orange 1.5s infinite; }
-@keyframes pulse-orange { 0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); } }
+.send-btn.pending-send { background-color: #ff9800 !important; }
 
 .floating-format-bar { position: fixed; z-index: 10000; background: #202c33; color: white; padding: 6px 8px; border-radius: 8px; display: flex; gap: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
 .floating-format-bar button { background: none; border: none; color: white; font-size: 18.5px; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
