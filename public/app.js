@@ -122,7 +122,7 @@ async function loadContacts() {
         const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1';
         clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group');
-        clickArea.innerHTML = `<div class="user-avatar-container"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="font-weight:bold">${group.name}</div><div style="font-size:12px; color:#008069">Grupo</div></div>`;
+        clickArea.innerHTML = `<div class="user-avatar-container"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="color:#008069">Grupo</div></div>`;
 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); };
@@ -148,7 +148,7 @@ async function loadContacts() {
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1';
         clickArea.onclick = () => openChat(user._id, name, photo, email, 'user');
-        clickArea.innerHTML = `<div class="user-avatar-container"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="font-weight:bold">${name}</div><div style="font-size:12px; color:var(--secondary-text)">${unreadSenders.includes(user._id) ? 'Nova mensagem!' : 'Toque para conversar'}</div></div>`;
+        clickArea.innerHTML = `<div class="user-avatar-container"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${unreadSenders.includes(user._id) ? 'Nova mensagem!' : 'Toque para conversar'}</div></div>`;
 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); };
@@ -158,10 +158,7 @@ async function loadContacts() {
 }
 
 let targetGroupId = null; let selectedForRemoval = [];
-
-function openEditGroupModal(id, name, photo) {
-    targetGroupId = id; hideElement(`group-menu-${id}`); document.getElementById('edit-group-name').value = name; document.getElementById('edit-group-photo').src = photo; showElement('edit-group-modal');
-}
+function openEditGroupModal(id, name, photo) { targetGroupId = id; hideElement(`group-menu-${id}`); document.getElementById('edit-group-name').value = name; document.getElementById('edit-group-photo').src = photo; showElement('edit-group-modal'); }
 async function uploadGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('edit-group-photo').src = data.url; } catch(e){} }
 async function saveGroupProfile() { const name = document.getElementById('edit-group-name').value; const photo = document.getElementById('edit-group-photo').src; if(!name) return; try { await fetch(`/groups/${targetGroupId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, photoUrl: photo})}); hideElement('edit-group-modal'); socket.emit('group_updated'); } catch(e){} }
 
@@ -285,7 +282,7 @@ function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content
 async function openForwardModal() {
     showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json();
     const list = document.getElementById('forward-contacts-list'); list.innerHTML = '';
-    users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span style="font-weight:bold;">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); });
+    users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); });
 }
 
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
@@ -306,7 +303,6 @@ function filterGroupContacts(query) { document.querySelectorAll('.candidate-item
 
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; if (!name || selectedUserIds.length===0) return; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds }) }); alert("Criado!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
-// --- ATUALIZADO: PEGA O TELEFONE E RECADO DO SERVIDOR ---
 async function openSettings() { 
     toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); 
     try {
@@ -317,12 +313,20 @@ async function openSettings() {
         document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado';
         document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone';
         document.getElementById('theme-switch').checked = me.theme === 'dark'; 
+        document.getElementById('font-size-select').value = me.fontSize || 'medium';
         currentSectors = me.sectors || []; renderSectorsList();
     } catch(e){}
 }
 function editName() { const newName = prompt("Novo nome:"); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
 function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
 function editPhone() { const newPhone = prompt("Seu Telefone:"); if(newPhone !== null) { document.getElementById('config-phone').innerText = newPhone || '...'; saveProfile({ phone: newPhone }); } }
+
+function changeFontSize(size) {
+    document.body.classList.remove('font-small', 'font-medium', 'font-large');
+    document.body.classList.add(`font-${size}`);
+    localStorage.setItem('fontSize', size);
+    saveProfile({ fontSize: size });
+}
 
 function createNewSector() { const name = prompt("Nome do Setor:"); if(name) { currentSectors.push({ name, members: [] }); renderSectorsList(); saveProfile({ sectors: currentSectors }); } }
 function renderSectorsList() { const list = document.getElementById('sectors-list'); list.innerHTML = ''; currentSectors.forEach(sec => { const div = document.createElement('div'); div.className = 'setting-item'; div.innerHTML = `<span>${sec.name}</span> <small>${sec.members.length} membros</small>`; list.appendChild(div); }); }
@@ -331,77 +335,33 @@ function triggerProfileUpload() { document.getElementById('profile-file-input').
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
 
-// ==========================================
-// FUNÇÃO DE SAIR (LOGOUT)
-// ==========================================
-function logout() {
-    if (confirm("Tem certeza que deseja sair?")) {
-        // 1. Limpa os dados de acesso do celular
-        localStorage.removeItem('token');
-        localStorage.removeItem('myId');
-        localStorage.removeItem('displayName');
-        localStorage.removeItem('photoUrl');
-        
-        // 2. Recarrega a página (Isso derruba a conexão com o servidor e volta pro Login limpo)
-        window.location.reload();
-    }
-}
+function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); window.location.reload(); } }
+async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro de conexão ao tentar excluir a conta."); } } }
 
-// ==========================================
-// FUNÇÃO DE EXCLUSÃO TOTAL DA CONTA
-// ==========================================
-async function deleteAccount() { 
-    if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { 
-        
-        // Mostra que está carregando
-        document.getElementById('auth-btn').innerText = "Excluindo...";
-        
-        try { 
-            const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); 
-            if (res.ok) { 
-                // Avisa todos os celulares conectados para recarregarem a lista de contatos 
-                // (isso faz seu nome sumir do celular deles na mesma hora)
-                socket.emit('group_updated'); 
-                
-                alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início.");
-                
-                // Puxa a função de sair que já limpa o celular e recarrega a tela pro Login
-                logout(); 
-            } 
-        } catch (e) { 
-            alert("Erro de conexão ao tentar excluir a conta.");
-        } 
-    } 
-}
-
-// --- ATUALIZADO: TELA DE PERFIL MAGNÍFICA E DINÂMICA ---
+// --- TELA DE PERFIL DO CONTATO ---
 async function viewContactProfile() { 
     showElement('contact-profile-modal'); 
     document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; 
     document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; 
 
     if (isGroupChat) {
-        hideElement('view-user-details');
-        showElement('view-group-details');
+        hideElement('view-user-details'); showElement('view-group-details');
         document.getElementById('view-group-members').innerHTML = '<span style="font-size:12px; color:#888;">Carregando membros...</span>';
         try {
-            const res = await fetch(`/group/${currentChatId}`);
-            const group = await res.json();
+            const res = await fetch(`/group/${currentChatId}`); const group = await res.json();
             let html = '';
             group.members.forEach(m => {
-                html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f0f0f0;">
+                html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--input-bg);">
                             <img src="${m.photoUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
-                            <span style="font-weight:bold; color:#333;">${m.displayName || m.email}</span>
+                            <span class="contact-name">${m.displayName || m.email}</span>
                          </div>`;
             });
             document.getElementById('view-group-members').innerHTML = html;
         } catch(e) {}
     } else {
-        showElement('view-user-details');
-        hideElement('view-group-details');
+        showElement('view-user-details'); hideElement('view-group-details');
         try {
-            const res = await fetch(`/user/${currentChatId}`);
-            const user = await res.json();
+            const res = await fetch(`/user/${currentChatId}`); const user = await res.json();
             document.getElementById('view-contact-bio').innerText = user.bio || 'Olá! Estou usando o Chat.';
             document.getElementById('view-contact-phone').innerText = user.phone || 'Não informado';
             document.getElementById('view-contact-email').innerText = user.email;
@@ -423,12 +383,33 @@ document.addEventListener('selectionchange', () => {
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 300); }
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
 function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
-function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div style="font-weight:bold">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
+function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:#008069">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
 
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Conta' : 'Entrar'; document.getElementById('auth-btn').innerText = isRegistering ? 'Cadastrar' : 'Entrar'; document.getElementById('auth-name').classList.toggle('hidden'); }
-async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado!'); const code = prompt("Código:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } showMainScreen(); } } else { alert('Erro.'); } } catch (e) { } finally { btn.innerText = "Entrar"; btn.disabled = false; } }
+async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado!'); const code = prompt("Código:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); showMainScreen(); } } else { alert('Erro.'); } } catch (e) { } finally { btn.innerText = "Entrar"; btn.disabled = false; } }
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Verificado!"); toggleAuthMode(); } } catch(e) {} }
 
-async function initApp() { if(token && myId) { try { const res = await fetch(`/user/${myId}`); if(res.ok) { const me = await res.json(); currentSectors = me.sectors || []; if (me.theme === 'dark') document.body.classList.add('dark-mode'); } } catch(e) {} showMainScreen(); } else { showElement('auth-screen'); } }
+async function initApp() { 
+    const localFont = localStorage.getItem('fontSize') || 'medium';
+    document.body.classList.add(`font-${localFont}`); // Impede a tela de piscar a fonte ao abrir
+    
+    if(token && myId) { 
+        try { 
+            const res = await fetch(`/user/${myId}`); 
+            if(res.ok) { 
+                const me = await res.json(); currentSectors = me.sectors || []; 
+                if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
+                if (me.fontSize) {
+                    document.body.classList.remove('font-small', 'font-medium', 'font-large');
+                    document.body.classList.add(`font-${me.fontSize}`);
+                    localStorage.setItem('fontSize', me.fontSize);
+                }
+            } 
+        } catch(e) {} 
+        showMainScreen(); 
+    } else { 
+        showElement('auth-screen'); 
+    } 
+}
 initApp();

@@ -91,7 +91,7 @@
         </div>
     </div>
 
-    <div id="settings-screen" class="app-screen hidden" style="background: #f0f2f5;">
+    <div id="settings-screen" class="app-screen hidden" style="background: var(--bg-color);">
         <div class="main-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
             <span class="header-title">Configurações</span>
@@ -135,6 +135,14 @@
                     <span>Tema Escuro</span>
                     <label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label>
                 </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 12px; color:#008069; font-weight:bold;">Tamanho da Letra</span>
+                    <select id="font-size-select" onchange="changeFontSize(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 14px;">
+                        <option value="small">Tamanho Pequeno</option>
+                        <option value="medium">Tamanho Médio (Padrão)</option>
+                        <option value="large">Tamanho Grande (3x nas mensagens)</option>
+                    </select>
+                </div>
             </div>
 
             <div class="settings-group">
@@ -165,7 +173,7 @@
             <div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
                 <div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;">
                     <span style="font-size: 11px; color:#008069; font-weight: bold; text-transform: uppercase;">Recado</span>
-                    <span id="view-contact-bio" style="font-style: italic; color:#333; font-size: 15px;">...</span>
+                    <span id="view-contact-bio" style="font-style: italic; font-size: 15px;">...</span>
                 </div>
                 <div class="profile-detail-item">
                     <span class="material-icons" style="color:#008069;">phone</span>
@@ -184,15 +192,7 @@
         </div>
     </div>
 
-    <div id="create-group-modal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;">
-            <h3>Novo Grupo</h3>
-            <input type="text" id="group-name-input" placeholder="Nome do Grupo" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px;">
-            <div class="search-box" style="margin-bottom: 10px;"><span class="material-icons">search</span><input type="text" placeholder="Buscar contatos..." onkeyup="filterGroupContacts(this.value)"></div>
-            <div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div>
-            <div class="modal-actions" style="margin-top: 15px;"><button onclick="closeCreateGroup()" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitCreateGroup()" style="background:#008069;">CRIAR GRUPO</button></div>
-        </div>
-    </div>
+    <div id="create-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" style="width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px;"><div class="search-box" style="margin-bottom: 10px;"><span class="material-icons">search</span><input type="text" placeholder="Buscar contatos..." onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="closeCreateGroup()" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitCreateGroup()" style="background:#008069;">CRIAR GRUPO</button></div></div></div>
     <div id="add-sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Setor</h3><p id="sector-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-sector-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddSector()" style="background:#008069;">Adicionar</button></div></div></div>
     <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:13px; color:#666; margin-bottom:15px;"></p><div id="group-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddGroup()" style="background:#008069;">Adicionar</button></div></div></div>
     
