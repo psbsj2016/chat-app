@@ -23,7 +23,7 @@ function hideElement(id) { const el = document.getElementById(id); if(el) el.cla
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
-function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); }
+function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('chat-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); requestNotificationPermission(); }
 function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); showElement('main-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 
@@ -43,7 +43,7 @@ socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) do
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
 // ==========================================
-// SINTETIZADOR DE ÁUDIO NATIVO (VELOCIDADE DA LUZ)
+// MÁGICA 1: SINTETIZADOR DE ÁUDIO NATIVO
 // ==========================================
 let audioCtx = null;
 function playNotificationSound(type) {
@@ -70,21 +70,72 @@ function playNotificationSound(type) {
     } catch(e) {}
 }
 
+// ==========================================
+// MÁGICA 2: NOTIFICAÇÕES DO CELULAR (WHATSAPP STYLE)
+// ==========================================
+function requestNotificationPermission() {
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+}
+
+function showSystemNotification(title, body) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        const notification = new Notification(title, {
+            body: body,
+            icon: 'favicon.png', // Exibe a logo do app na notificação
+            badge: 'favicon.png',
+            vibrate: [200, 100, 200] // Vibração estilo WhatsApp
+        });
+        
+        // Se clicar na notificação, abre o app
+        notification.onclick = function() {
+            window.focus();
+            this.close();
+        };
+    }
+}
+
 socket.on('receive_message', (msg) => { 
     const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
+    const targetId = msg.groupId ? msg.groupId : senderIdStr;
     
-    // Toca o som instantâneo se a mensagem for de outra pessoa
+    // Toca o som instantâneo e manda a notificação do celular se for de outra pessoa
     if (senderIdStr !== myId) {
         const soundPref = localStorage.getItem('notificationSound') || 'modern';
         playNotificationSound(soundPref);
+
+        // Dispara a notificação de sistema (celular) se o app estiver escondido ou em outro chat
+        if (document.hidden || currentChatId !== targetId) {
+            let senderName = 'Nova Mensagem';
+            const contactDiv = document.getElementById(`contact-${targetId}`);
+            if (contactDiv) {
+                const nameEl = contactDiv.querySelector('.contact-name');
+                if (nameEl) senderName = nameEl.innerText;
+            }
+            // Remove códigos HTML para a notificação ficar limpa
+            let cleanContent = msg.fileUrl ? '📎 Arquivo recebido' : msg.content.replace(/<[^>]*>?/gm, '');
+            showSystemNotification(`CPTT: ${senderName}`, cleanContent);
+        }
     }
 
     let cacheTargetId = msg.groupId ? msg.groupId : (senderIdStr === myId ? msg.receiver : senderIdStr); 
     if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; 
     if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
+    
     if (isGroupChat && msg.groupId === currentChatId) { displayMessage(msg); } 
     else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId))) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } 
-    else { const targetId = msg.groupId ? msg.groupId : senderIdStr; const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { contactDiv.classList.add('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); } document.getElementById('users-list').prepend(contactDiv); } } 
+    else { 
+        const contactDiv = document.getElementById(`contact-${targetId}`); 
+        if (contactDiv) { 
+            contactDiv.classList.add('has-unread'); 
+            const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+            if (msgArea) { msgArea.innerHTML = 'Nova mensagem!'; msgArea.removeAttribute('data-original'); } 
+            document.getElementById('users-list').prepend(contactDiv); 
+        } 
+    } 
 });
 
 const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
@@ -96,7 +147,7 @@ async function loadContacts() { if(!myId) return; let unreadSenders = []; try { 
 async function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-name').innerText = me.displayName || me.email; document.getElementById('config-avatar').src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = me.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = me.phone || 'Adicionar telefone'; } catch(e){} }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
 async function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('theme-switch').checked = me.theme === 'dark'; document.getElementById('font-size-select').value = me.fontSize || 'medium'; } catch(e){} }
-async function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('notification-sound-select').value = me.notificationSound || 'modern'; } catch(e){} }
+async function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); requestNotificationPermission(); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('notification-sound-select').value = me.notificationSound || 'modern'; } catch(e){} }
 async function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); try { const res = await fetch(`/user/${myId}`); const me = await res.json(); document.getElementById('config-email').innerText = me.email; currentSectors = me.sectors || []; renderSectorsList(); } catch(e){} }
 
 function changeNotificationSound(val) { localStorage.setItem('notificationSound', val); saveProfile({ notificationSound: val }); playNotificationSound(val); }
