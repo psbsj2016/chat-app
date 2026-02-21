@@ -305,6 +305,29 @@ async function executeExactSearch() { const query = document.getElementById('exa
 function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURIComponent(userJsonStr)); document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0]; document.getElementById('start-chat-info').innerText = u.email + (u.phone ? ` | ${u.phone}` : ''); document.getElementById('btn-confirm-start-chat').onclick = () => { hideElement('start-chat-modal'); hideElement('add-contact-screen'); const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); } openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user'); }; showElement('start-chat-modal'); }
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
+
+// MÁGICA: ABERTURA INSTANTÂNEA DA IA
+async function openBotChat() {
+    toggleMenu('main-menu');
+    try {
+        const res = await fetch('/bot-info');
+        if (res.ok) {
+            const bot = await res.json();
+            // Salva o bot na lista do celular para sempre!
+            const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+            if(!cachedUsers.find(cu => cu._id === bot._id)) { 
+                cachedUsers.push(bot); 
+                localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); 
+            }
+            openChat(bot._id, bot.displayName, bot.photoUrl, bot.email, 'user');
+        } else {
+            alert("A IA do CPTT não está conectada no momento.");
+        }
+    } catch(e) {
+        alert("Erro de conexão com o cérebro da IA.");
+    }
+}
+
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
 function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; fetchAndSyncProfile(); }
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; fetchAndSyncProfile(); }
