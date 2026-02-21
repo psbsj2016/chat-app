@@ -68,7 +68,29 @@ app.put('/update-profile', async (req, res) => { try { const u = await User.find
 // --- ATUALIZADO: SALVAR TELEFONE E RECADO ---
 app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; await u.save(); res.json(u); } catch (e) {} });
 
-app.delete('/delete-account/:userId', async (req, res) => { try { await User.findByIdAndDelete(req.params.userId); await Message.deleteMany({ sender: req.params.userId }); res.json({ msg: 'ok' }); } catch (e) {} });
+// --- ROTA DE EXCLUSÃO TOTAL DE CONTA ---
+app.delete('/delete-account/:userId', async (req, res) => { 
+    try { 
+        const uId = req.params.userId;
+        
+        // 1. Exclui o cadastro do usuário
+        await User.findByIdAndDelete(uId); 
+        
+        // 2. Exclui TODAS as mensagens (as que ele enviou E as que ele recebeu no privado)
+        await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); 
+        
+        // 3. Remove o usuário de absolutamente TODOS os grupos que ele fazia parte
+        await Group.updateMany(
+            { members: uId }, 
+            { $pull: { members: uId } }
+        );
+        
+        res.json({ msg: 'ok' }); 
+    } catch (e) { 
+        res.status(500).json({ error: 'Erro ao excluir' });
+    } 
+});
+
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
 app.post('/groups', async (req, res) => { try { const allMembers = [...req.body.members, req.body.adminId].map(String); const uniqueMembers = [...new Set(allMembers)]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers }); await g.save(); res.json(g); } catch (e) {} });

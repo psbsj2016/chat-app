@@ -347,7 +347,32 @@ function logout() {
     }
 }
 
-function deleteAccount() { if(confirm("TEM CERTEZA?")) { fetch(`/delete-account/${myId}`, { method: 'DELETE' }).then(() => { logout(); }); } }
+// ==========================================
+// FUNÇÃO DE EXCLUSÃO TOTAL DA CONTA
+// ==========================================
+async function deleteAccount() { 
+    if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { 
+        
+        // Mostra que está carregando
+        document.getElementById('auth-btn').innerText = "Excluindo...";
+        
+        try { 
+            const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); 
+            if (res.ok) { 
+                // Avisa todos os celulares conectados para recarregarem a lista de contatos 
+                // (isso faz seu nome sumir do celular deles na mesma hora)
+                socket.emit('group_updated'); 
+                
+                alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início.");
+                
+                // Puxa a função de sair que já limpa o celular e recarrega a tela pro Login
+                logout(); 
+            } 
+        } catch (e) { 
+            alert("Erro de conexão ao tentar excluir a conta.");
+        } 
+    } 
+}
 
 // --- ATUALIZADO: TELA DE PERFIL MAGNÍFICA E DINÂMICA ---
 async function viewContactProfile() { 
