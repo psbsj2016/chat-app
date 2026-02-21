@@ -20,7 +20,7 @@
         <div class="auth-bg-logo"></div> 
         <div class="auth-glass-card">
             <img src="favicon.png" class="auth-top-logo" alt="CPTT Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
-            <h2 id="auth-title" style="margin-bottom: 25px; font-weight: 800; color: var(--primary-color); font-size: 24px;">Área de Login do CPTT</h2>
+            <h2 id="auth-title" style="margin-bottom: 25px; font-weight: 800; color: var(--brand-primary); font-size: 24px;">Área de Login do CPTT</h2>
             
             <form id="auth-form" onsubmit="event.preventDefault(); handleAuth()">
                 <input type="email" id="auth-email" placeholder="E-mail" required autocomplete="username" class="chic-input">
@@ -33,7 +33,7 @@
             <div id="auth-promo-text" class="hidden" style="font-size:14.5px; color:var(--secondary-text); text-align:center; margin-top:20px; line-height: 1.5;">
                 Você está prestes a criar uma conta de acesso a uma das ferramentas de chat mais fantásticas da atualidade!
                 <br><br>
-                <span onclick="toggleAuthMode()" style="color:var(--primary-color); font-weight:bold; cursor:pointer; font-size:16.5px; text-decoration:underline;">⬅ Voltar para o Login</span>
+                <span onclick="toggleAuthMode()" style="color:var(--brand-primary); font-weight:bold; cursor:pointer; font-size:16.5px; text-decoration:underline;">⬅ Voltar para o Login</span>
             </div>
         </div>
     </div>
@@ -47,7 +47,6 @@
     <div id="main-screen" class="app-screen hidden">
         <div class="main-header">
             <button class="icon-btn" onclick="toggleMenu('main-menu')"><span class="material-icons">menu</span></button>
-            
             <span class="header-title" style="flex:1; margin-left:10px; font-weight:600; font-size:21px;">Conversas</span>
             
             <div style="display: flex; align-items: center; gap: 10px; margin-right: 5px;">
@@ -79,7 +78,7 @@
             <div class="chat-info clickable" onclick="viewContactProfile()" style="display: flex; align-items: center; justify-content: flex-end; flex: 1;">
                 <div class="chat-texts" style="text-align: right;">
                     <span id="chat-title" style="font-size: 18.5px; font-weight: 800; color: white; display: block;">Nome do Contato</span>
-                    <span id="typing-indicator" class="hidden" style="font-size: 12.5px; color: #d9fdd3; font-style: italic;">digitando...</span>
+                    <span id="typing-indicator" class="hidden" style="font-size: 12.5px; color: var(--brand-light); font-style: italic;">digitando...</span>
                 </div>
                 <div style="position: relative; margin-left: 12px; display: flex; align-items: center;">
                     <img id="chat-avatar" src="" class="avatar-small" style="margin: 0; width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
@@ -90,9 +89,9 @@
         </div>
         <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-            <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:#d3396d">image</span> Foto</div>
+            <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:var(--brand-secondary)">image</span> Foto</div>
             <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons" style="color:#e03c31">picture_as_pdf</span> PDF</div>
-            <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:#008069">mic</span> Áudio</div>
+            <div class="menu-item" onclick="startRecording()"><span class="material-icons" style="color:var(--brand-primary)">mic</span> Áudio</div>
             <div class="menu-separator"></div>
             <div class="menu-item logout" onclick="deleteCurrentChat()"><span class="material-icons">delete_forever</span> <span style="font-weight: bold;">Apagar Conversa</span></div>
         </div>
@@ -109,14 +108,14 @@
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button><span class="header-title" style="font-size:21px;">Perfil</span><div style="width: 40px;"></div></div>
         <div class="settings-content">
             <div class="settings-card">
-                <div style="position: relative;"><img id="config-avatar" src="" onclick="triggerProfileUpload()" style="width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #008069;"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: #008069; color: white; border-radius: 50%; padding: 4px; font-size: 16px;">edit</span></div>
+                <div style="position: relative;"><img id="config-avatar" src="" onclick="triggerProfileUpload()" style="width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-primary);"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 16px;">edit</span></div>
                 <div class="profile-info"><h3 id="config-name">Nome</h3><span class="edit-btn" onclick="editName()">✎ Editar Nome</span></div>
                 <input type="file" id="profile-file-input" hidden onchange="uploadProfilePhoto(this)">
             </div>
             <div class="settings-group">
                 <div class="group-title">Perfil Público</div>
-                <div class="setting-item" onclick="editBio()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13.5px; color:#008069; font-weight:bold;">Recado (Mensagem)</span><span id="config-bio" style="font-size: 15.5px; font-style:italic;">Carregando...</span></div><span class="material-icons" style="color:#888; font-size:20px;">edit</span></div>
-                <div class="setting-item" onclick="editPhone()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13.5px; color:#008069; font-weight:bold;">Telefone</span><span id="config-phone" style="font-size: 15.5px; font-weight:bold;">Carregando...</span></div><span class="material-icons" style="color:#888; font-size:20px;">edit</span></div>
+                <div class="setting-item" onclick="editBio()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Recado (Mensagem)</span><span id="config-bio" style="font-size: 15.5px; font-style:italic;">Carregando...</span></div><span class="material-icons" style="color:#888; font-size:20px;">edit</span></div>
+                <div class="setting-item" onclick="editPhone()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Telefone</span><span id="config-phone" style="font-size: 15.5px; font-weight:bold;">Carregando...</span></div><span class="material-icons" style="color:#888; font-size:20px;">edit</span></div>
             </div>
         </div>
     </div>
@@ -137,10 +136,10 @@
             <div class="settings-group">
                 <div class="setting-item"><span>Tema Escuro</span><label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label></div>
                 <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 13.5px; color:#008069; font-weight:bold;">Tamanho da Letra</span>
+                    <span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Tamanho da Letra</span>
                     <select id="font-size-select" onchange="changeFontSize(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 15.5px;"><option value="small">Tamanho Pequeno</option><option value="medium">Tamanho Médio (Padrão)</option><option value="large">Tamanho Grande (3x nas mensagens)</option></select>
                 </div>
-                <div class="setting-item" onclick="alert('Em breve: Upload de Wallpaper')"><span>Papel de Parede dos Chats</span><span class="action-link">Escolher</span></div>
+                <div class="setting-item" onclick="alert('Em breve: Upload de Wallpaper')"><span>Papel de Parede dos Chats</span><span class="action-link" style="color:var(--brand-primary);">Escolher</span></div>
             </div>
         </div>
     </div>
@@ -150,26 +149,26 @@
         <div class="settings-content">
             <div class="settings-group">
                 <div class="setting-item"><span>E-mail</span><span id="config-email" style="color:#666; font-size:15.5px;">Carregando...</span></div>
-                <div class="setting-item" onclick="createNewSector()"><span style="color:#008069; font-weight:bold;">+ Criar Setor de Usuários</span></div>
+                <div class="setting-item" onclick="createNewSector()"><span style="color:var(--brand-primary); font-weight:bold;">+ Criar Setor de Usuários</span></div>
                 <div id="sectors-list"></div>
                 <div class="setting-item" onclick="deleteAccount()"><span style="color:red"><span class="material-icons" style="font-size:20px; vertical-align:middle; color:red">delete_forever</span> Deletar Minha Conta</span></div>
             </div>
         </div>
     </div>
 
-    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()"><div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span></div><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3><div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"><div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;"><span style="font-size: 12.5px; color:#008069; font-weight: bold; text-transform: uppercase;">Recado</span><span id="view-contact-bio" style="font-style: italic; font-size: 16.5px;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:#008069;">phone</span><span id="view-contact-phone" style="font-weight: bold;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:#008069;">email</span><span id="view-contact-email">...</span></div></div><div id="view-group-details" class="hidden" style="width: 100%; text-align: left;"><p style="font-weight: bold; color: #008069; margin-bottom: 10px; font-size:15.5px;">Membros do Grupo:</p><div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div></div></div></div>
+    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()"><div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span></div><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3><div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"><div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;"><span style="font-size: 12.5px; color:var(--brand-primary); font-weight: bold; text-transform: uppercase;">Recado</span><span id="view-contact-bio" style="font-style: italic; font-size: 16.5px;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">phone</span><span id="view-contact-phone" style="font-weight: bold;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">email</span><span id="view-contact-email">...</span></div></div><div id="view-group-details" class="hidden" style="width: 100%; text-align: left;"><p style="font-weight: bold; color: var(--brand-primary); margin-bottom: 10px; font-size:15.5px;">Membros do Grupo:</p><div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div></div></div></div>
     
     <div id="create-group-modal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;">
             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;">
                 <div style="position: relative; flex-shrink: 0;">
-                    <img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-color); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="document.getElementById('new-group-file').click()">
-                    <span class="material-icons" style="position: absolute; bottom: 0; right: -5px; background: var(--primary-color); color: white; border-radius: 50%; padding: 4px; font-size: 15.5px; pointer-events: none; border: 2px solid var(--card-bg);">camera_alt</span>
+                    <img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="document.getElementById('new-group-file').click()">
+                    <span class="material-icons" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 15.5px; pointer-events: none; border: 2px solid var(--card-bg);">camera_alt</span>
                     <input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)">
                 </div>
                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
                     <h3 style="margin: 0 0 5px 0; font-size: 20px; color: var(--text-color); text-align: left;">Novo Grupo</h3>
-                    <input type="text" id="group-name-input" placeholder="Nome do Grupo..." style="width: 100%; padding: 8px 0; border: none; border-bottom: 2px solid var(--input-bg); outline: none; background: transparent; font-size: 16.5px; color: var(--text-color); transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--primary-color)'" onblur="this.style.borderColor='var(--input-bg)'">
+                    <input type="text" id="group-name-input" placeholder="Nome do Grupo..." style="width: 100%; padding: 8px 0; border: none; border-bottom: 2px solid var(--input-bg); outline: none; background: transparent; font-size: 16.5px; color: var(--text-color); transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--brand-primary)'" onblur="this.style.borderColor='var(--input-bg)'">
                 </div>
             </div>
             <div class="search-box" style="margin-bottom: 15px; padding: 6px 15px; border-radius: 20px; background: var(--input-bg); border: 1px solid rgba(0,0,0,0.05);">
@@ -180,15 +179,15 @@
             <div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-bottom: 10px; border-top: 1px solid var(--input-bg); padding-top: 10px;"></div>
             <div class="modal-actions" style="margin-top: auto; display: flex; gap: 15px; width: 100%;">
                 <button onclick="closeCreateGroup()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button>
-                <button onclick="submitCreateGroup()" style="flex: 1; background: linear-gradient(to right, #008069, #00bfa5); color: white; border: none; border-radius: 25px; padding: 12px 0; font-weight: bold; box-shadow: 0 4px 10px rgba(0,128,105,0.3); transition: 0.2s; font-size: 15.5px; cursor: pointer;">Criar Grupo</button>
+                <button onclick="submitCreateGroup()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Criar Grupo</button>
             </div>
         </div>
     </div>
 
-    <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 id="sector-modal-title" style="color:#008069; margin-bottom:5px;">Setor</h3><p id="sector-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('sector-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSector()" style="background:#008069;">Salvar</button></div></div></div>
-    <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:#008069; margin-bottom:5px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="group-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddGroup()" style="background:#008069;">Adicionar</button></div></div></div>
-    <div id="edit-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; align-items: center;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="hideElement('edit-group-modal')">close</span></div><h3 style="margin-bottom: 15px;">Perfil do Grupo</h3><div style="position: relative; margin-bottom: 15px;"><img id="edit-group-photo" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #008069; cursor: pointer;" onclick="document.getElementById('edit-group-file').click()"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: #008069; color: white; border-radius: 50%; padding: 4px; font-size: 16px; pointer-events: none;">edit</span><input type="file" id="edit-group-file" hidden onchange="uploadGroupPhoto(this)"></div><input type="text" id="edit-group-name" placeholder="Nome do Grupo"><button onclick="saveGroupProfile()" style="background:#008069; color:white; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Salvar</button></div></div>
-    <div id="specific-add-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Adicionar Membros</h3><p style="font-size:13.5px; color:#888; margin-bottom: 10px;">Selecione quem deseja adicionar</p><div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="hideElement('specific-add-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSpecificAdd()" style="background:#008069;">Adicionar</button></div></div></div>
+    <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px;">Setor</h3><p id="sector-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('sector-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSector()" style="background:var(--brand-primary); color:white;">Salvar</button></div></div></div>
+    <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:var(--brand-primary); margin-bottom:5px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="group-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddGroup()" style="background:var(--brand-primary); color:white;">Adicionar</button></div></div></div>
+    <div id="edit-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; align-items: center;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="hideElement('edit-group-modal')">close</span></div><h3 style="margin-bottom: 15px;">Perfil do Grupo</h3><div style="position: relative; margin-bottom: 15px;"><img id="edit-group-photo" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('edit-group-file').click()"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 16px; pointer-events: none;">edit</span><input type="file" id="edit-group-file" hidden onchange="uploadGroupPhoto(this)"></div><input type="text" id="edit-group-name" placeholder="Nome do Grupo"><button onclick="saveGroupProfile()" style="background:var(--brand-primary); color:white; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Salvar</button></div></div>
+    <div id="specific-add-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Adicionar Membros</h3><p style="font-size:13.5px; color:#888; margin-bottom: 10px;">Selecione quem deseja adicionar</p><div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="hideElement('specific-add-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSpecificAdd()" style="background:var(--brand-primary); color:white;">Adicionar</button></div></div></div>
     <div id="remove-members-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; position: relative;"><div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:10px;"><h3 style="margin: 0;">Remover Membros</h3><button id="btn-execute-remove" class="hidden" onclick="submitRemoveMembers()" style="background:#ff5252; color:white; padding:8px 15px; border-radius:8px; border:none; font-weight:bold;">Remover</button></div><p style="font-size:13.5px; color:#888; margin-bottom: 10px;">Segure no contato para selecionar</p><div id="remove-members-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><button onclick="hideElement('remove-members-modal')" style="background:#ccc; color:#333; margin-top: 15px; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Fechar</button></div></div>
     <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons">content_copy</span> Copiar Texto</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons">shortcut</span> Encaminhar</div></div>
     <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;"><h3>Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;"></div><button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding:12px; border-radius:8px;">Cancelar</button></div></div>    
