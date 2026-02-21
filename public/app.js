@@ -29,7 +29,7 @@ function showMainScreen() { hideElement('auth-screen'); hideElement('welcome-scr
 function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); showElement('main-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 
-function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 800); }
+function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { hideElement('welcome-screen'); showMainScreen(); }, 1200); }
 
 socket.on('check_app_version', (serverVersion) => { const localVersion = localStorage.getItem('appVersion'); if (!localVersion) { localStorage.setItem('appVersion', serverVersion); } else if (localVersion !== serverVersion) { localStorage.setItem('appVersion', serverVersion); window.location.href = window.location.pathname + '?v=' + serverVersion; } });
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
@@ -127,23 +127,20 @@ async function submitRemoveMembers() { if(selectedForRemoval.length === 0) retur
 
 async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); emitTypingStatus('recording'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); emitStopTypingStatus(); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
 
+function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
+
 // ==========================================
-// MÁGICA: VALIDAÇÃO DE VÍDEO NO CHAT 
+// MÁGICA DE UPLOAD EM TEMPO REAL COM PREVIEW
 // ==========================================
 async function handleFileUpload(input) { 
     const file = input.files[0]; if(!file) return; 
     
-    // VERIFICADOR DE VÍDEO (Max 5 minutos)
     if (file.type.startsWith('video/')) {
         const video = document.createElement('video');
         video.preload = 'metadata';
         video.onloadedmetadata = () => {
             window.URL.revokeObjectURL(video.src);
-            if (video.duration > 300) { 
-                alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); 
-                input.value = ''; 
-                return; 
-            }
+            if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; }
             executeUpload(file, 'video');
         };
         video.src = URL.createObjectURL(file);
@@ -156,19 +153,37 @@ async function handleFileUpload(input) {
     }
 }
 
-async function executeUpload(file, type) {
-    const btn = document.querySelector('.send-btn'); 
-    btn.innerHTML = '<span class="material-icons">sync</span>'; 
-    const formData = new FormData(); 
-    formData.append('file', file); 
+async function executeUpload(file, type) { 
+    const tempId = 'temp-' + Date.now();
+    const localUrl = URL.createObjectURL(file);
+    hideElement('attach-menu');
+    
+    // 1. GERA A BOLHA NO CHAT NA HORA DA SELEÇÃO (Opacidade reduzida indicando upload)
+    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() };
+    displayMessage(tempMsg);
+    
+    const tempDiv = document.getElementById(`msg-${tempId}`);
+    if(tempDiv) {
+        tempDiv.classList.add('uploading-msg');
+        const info = tempDiv.querySelector('.msg-info');
+        if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>';
+    }
+
+    // 2. ENVIA ESCONDIDO EM BACKGROUND
+    const formData = new FormData(); formData.append('file', file);
     try { 
         const res = await fetch('/upload', { method: 'POST', body: formData }); 
         const data = await res.json(); 
-        sendMessage(null, data.url, type); 
+        
+        // Substitui o fantasma pelo arquivo real consolidado no Cloudinary
+        if(tempDiv) tempDiv.remove();
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        socket.emit('private_message', msgData); 
+        clearTimeout(typingTimeout); emitStopTypingStatus(); 
     } catch (e) { 
-        alert("Erro ao enviar arquivo."); 
+        if(tempDiv) tempDiv.remove();
+        alert("Erro ao enviar arquivo. Verifique sua conexão."); 
     } finally { 
-        btn.innerHTML = '<span class="material-icons">send</span>'; 
         document.getElementById('file-input').value = ''; 
     }
 }
@@ -178,30 +193,15 @@ async function loadMessages(userId) { if (messageCache[userId]) { document.getEl
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
 let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;           
-function displayMessage(msg) { 
-    const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); 
-    let contentHtml = ''; 
-    if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
-    
-    // MÁGICA: TAG DE VÍDEO
-    if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; 
-    else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
-    else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
-    else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
-    else contentHtml += msg.content; 
-    
-    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
-}
+function displayMessage(msg) { const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); let contentHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; else contentHtml += msg.content; if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; }
 function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
-
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); }
-function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 
 function openSectorModal(userId, name, isRemoving) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-modal-title').innerText = isRemoving ? 'Remover do Setor' : 'Adicionar ao Setor'; document.getElementById('sector-target-name').innerText = `Contato: ${name}`; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; if(currentSectors.length === 0) { list.innerHTML = '<span style="font-size:13.5px; color:#999;">Nenhum setor criado.</span>'; } else { currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''}> ${sec.name}</label>`; }); } showElement('sector-modal'); }
 async function submitSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); let changed = false; checkboxes.forEach(cb => { const idx = cb.value; const isChecked = cb.checked; const inSector = currentSectors[idx].members.includes(targetContactId); if (isChecked && !inSector) { currentSectors[idx].members.push(targetContactId); changed = true; } else if (!isChecked && inSector) { currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); changed = true; } }); if (changed) { await saveProfile({ sectors: currentSectors }); loadContacts(); alert("Setor atualizado com sucesso!"); } hideElement('sector-modal'); }
