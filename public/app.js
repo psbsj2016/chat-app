@@ -127,11 +127,17 @@ async function loadContacts() {
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions';
         menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); };
         const memberStr = group.members.join(',');
+
+        // --- MÁGICA: O botão "Excluir Grupo" só aparece se você for o Criador (Admin) ---
+        const isAdmin = group.admin === myId;
+        const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : '';
+
         menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span>
             <div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;">
                 <div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div>
                 <div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div>
                 <div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>
+                ${deleteGroupBtn}
             </div>`;
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div);
     });
@@ -157,7 +163,27 @@ async function loadContacts() {
     });
 }
 
+// ==========================================
+// FUNÇÕES DE GERENCIAMENTO AVANÇADO DE GRUPOS
+// ==========================================
 let targetGroupId = null; let selectedForRemoval = [];
+
+async function deleteGroup(groupId) {
+    hideElement(`group-menu-${groupId}`);
+    if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente para todos os membros.\nTodas as mensagens serão apagadas.\n\nTem certeza absoluta?")) return;
+    try {
+        const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' });
+        if (res.ok) {
+            if(currentChatId === groupId) backToMain(); // Sai da tela de chat se estiver lá
+            messageCache[groupId] = [];
+            socket.emit('group_updated'); // Avisa os outros que o grupo sumiu
+            alert("Grupo excluído com sucesso!");
+        } else {
+            alert("Você não tem permissão para excluir este grupo.");
+        }
+    } catch(e) { alert("Erro ao tentar excluir grupo."); }
+}
+
 function openEditGroupModal(id, name, photo) { targetGroupId = id; hideElement(`group-menu-${id}`); document.getElementById('edit-group-name').value = name; document.getElementById('edit-group-photo').src = photo; showElement('edit-group-modal'); }
 async function uploadGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('edit-group-photo').src = data.url; } catch(e){} }
 async function saveGroupProfile() { const name = document.getElementById('edit-group-name').value; const photo = document.getElementById('edit-group-photo').src; if(!name) return; try { await fetch(`/groups/${targetGroupId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, photoUrl: photo})}); hideElement('edit-group-modal'); socket.emit('group_updated'); } catch(e){} }
@@ -286,7 +312,7 @@ async function openForwardModal() {
 }
 
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; const btn = document.querySelector('.send-btn'); btn.innerHTML = '<span class="material-icons">sync</span>'; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; sendMessage(null, data.url, type); } catch (e) { } finally { btn.innerHTML = '<span class="material-icons">send</span>'; input.value = ''; } }
-async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
+async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); }
@@ -321,13 +347,7 @@ function editName() { const newName = prompt("Novo nome:"); if(newName) { docume
 function editBio() { const newBio = prompt("Seu Recado:"); if(newBio !== null) { document.getElementById('config-bio').innerText = newBio || '...'; saveProfile({ bio: newBio }); } }
 function editPhone() { const newPhone = prompt("Seu Telefone:"); if(newPhone !== null) { document.getElementById('config-phone').innerText = newPhone || '...'; saveProfile({ phone: newPhone }); } }
 
-function changeFontSize(size) {
-    document.body.classList.remove('font-small', 'font-medium', 'font-large');
-    document.body.classList.add(`font-${size}`);
-    localStorage.setItem('fontSize', size);
-    saveProfile({ fontSize: size });
-}
-
+function changeFontSize(size) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${size}`); localStorage.setItem('fontSize', size); saveProfile({ fontSize: size }); }
 function createNewSector() { const name = prompt("Nome do Setor:"); if(name) { currentSectors.push({ name, members: [] }); renderSectorsList(); saveProfile({ sectors: currentSectors }); } }
 function renderSectorsList() { const list = document.getElementById('sectors-list'); list.innerHTML = ''; currentSectors.forEach(sec => { const div = document.createElement('div'); div.className = 'setting-item'; div.innerHTML = `<span>${sec.name}</span> <small>${sec.members.length} membros</small>`; list.appendChild(div); }); }
 function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); saveProfile({ theme: 'light' }); } }
@@ -338,24 +358,16 @@ async function saveProfile(dataToUpdate) { try { await fetch('/settings', { meth
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro de conexão ao tentar excluir a conta."); } } }
 
-// --- TELA DE PERFIL DO CONTATO ---
 async function viewContactProfile() { 
     showElement('contact-profile-modal'); 
     document.getElementById('view-contact-name').innerText = document.getElementById('chat-title').innerText; 
     document.getElementById('view-contact-avatar').src = document.getElementById('chat-avatar').src; 
-
     if (isGroupChat) {
         hideElement('view-user-details'); showElement('view-group-details');
         document.getElementById('view-group-members').innerHTML = '<span style="font-size:12px; color:#888;">Carregando membros...</span>';
         try {
-            const res = await fetch(`/group/${currentChatId}`); const group = await res.json();
-            let html = '';
-            group.members.forEach(m => {
-                html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--input-bg);">
-                            <img src="${m.photoUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
-                            <span class="contact-name">${m.displayName || m.email}</span>
-                         </div>`;
-            });
+            const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); let html = '';
+            group.members.forEach(m => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--input-bg);"><img src="${m.photoUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;"><span class="contact-name">${m.displayName || m.email}</span></div>`; });
             document.getElementById('view-group-members').innerHTML = html;
         } catch(e) {}
     } else {
@@ -391,25 +403,17 @@ async function handleAuth() { const email = document.getElementById('auth-email'
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Verificado!"); toggleAuthMode(); } } catch(e) {} }
 
 async function initApp() { 
-    const localFont = localStorage.getItem('fontSize') || 'medium';
-    document.body.classList.add(`font-${localFont}`); // Impede a tela de piscar a fonte ao abrir
-    
+    const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
     if(token && myId) { 
         try { 
             const res = await fetch(`/user/${myId}`); 
             if(res.ok) { 
                 const me = await res.json(); currentSectors = me.sectors || []; 
                 if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
-                if (me.fontSize) {
-                    document.body.classList.remove('font-small', 'font-medium', 'font-large');
-                    document.body.classList.add(`font-${me.fontSize}`);
-                    localStorage.setItem('fontSize', me.fontSize);
-                }
+                if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); }
             } 
         } catch(e) {} 
         showMainScreen(); 
-    } else { 
-        showElement('auth-screen'); 
-    } 
+    } else { showElement('auth-screen'); } 
 }
 initApp();

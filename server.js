@@ -30,14 +30,13 @@ const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log("✅ MongoDB Conectado!")).catch(err => console.error("Erro MongoDB:", err));
 
-// --- ADICIONADO: FONTSIZE ---
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true }, password: { type: String, required: true },
     displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
     phone: { type: String, default: '' }, bio: { type: String, default: 'Olá! Estou usando o Chat.' },
-    code: String, isVerified: { type: Boolean, default: false }, 
-    theme: { type: String, default: 'light' }, fontSize: { type: String, default: 'medium' }, // <-- Nova Conf.
-    chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
+    code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' },
+    fontSize: { type: String, default: 'medium' }, chatWallpaper: { type: String, default: '' }, 
+    sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -64,7 +63,7 @@ app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(re
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {} });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
-
+app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
 app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; await u.save(); res.json(u); } catch (e) {} });
 
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -78,6 +77,21 @@ app.put('/groups/:id', async (req, res) => { try { const g = await Group.findByI
 app.put('/groups/:id/add-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $addToSet: { members: { $each: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.put('/groups/:id/remove-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $pull: { members: { $in: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(req.params.id).populate('members', 'displayName photoUrl email')); } catch (e) {} });
+
+// --- NOVA ROTA DE EXCLUIR GRUPO (SOMENTE ADMIN) ---
+app.delete('/groups/:id/:adminId', async (req, res) => { 
+    try { 
+        const g = await Group.findById(req.params.id); 
+        if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); 
+        // Verifica se quem está deletando é o criador do grupo
+        if (g.admin.toString() !== req.params.adminId) {
+            return res.status(403).json({error: 'Sem permissão. Apenas o criador pode excluir.'}); 
+        }
+        await Message.deleteMany({ groupId: req.params.id }); 
+        await Group.findByIdAndDelete(req.params.id); 
+        res.json({msg:'ok'}); 
+    } catch(e){ res.status(500).json({error: 'Erro'}); } 
+});
 
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))]; res.json(unreadSenders); } catch (e) {} });
 
