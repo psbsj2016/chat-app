@@ -134,24 +134,31 @@ socket.on('receive_message', (msg) => {
     } 
 });
 
-const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
+// ==========================================
+// MÁGICA DESKTOP: ENVIO RÁPIDO COM ENTER
+// ==========================================
+const msgInput = document.getElementById('message-input'); 
+if (msgInput) { 
+    msgInput.addEventListener('input', () => { 
+        if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } 
+        if (!currentChatId) return; emitTypingStatus('typing'); 
+    }); 
+    
+    // Suporte a PC: Enter para enviar, Shift+Enter para pular linha
+    msgInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); 
+            sendMessage();
+        }
+    });
+}
 
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
-
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('add-contact-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
-    
     const contactDiv = document.getElementById(`contact-${id}`); 
-    if (contactDiv) { 
-        contactDiv.classList.remove('has-unread'); 
-        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove();
-        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
-        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
-        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
-    }
-    
+    if (contactDiv) { contactDiv.classList.remove('has-unread'); const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } }
     if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
     const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } 
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
@@ -193,63 +200,9 @@ function renderContactsList(groups, users) {
     });
 }
 
-// ==========================================
-// MÁGICA: A NOVA BUSCA E ADIÇÃO DE CONTATOS
-// ==========================================
-function openAddContactScreen() {
-    hideElement('main-screen'); showElement('add-contact-screen');
-    document.getElementById('exact-search-input').value = '';
-    document.getElementById('exact-search-result').innerHTML = '';
-}
-
-async function executeExactSearch() {
-    const query = document.getElementById('exact-search-input').value.trim();
-    const resultContainer = document.getElementById('exact-search-result');
-    if(!query) { alert('Digite um e-mail ou celular para buscar!'); return; }
-    
-    resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--secondary-text);">Buscando no sistema...</div>';
-    
-    try {
-        const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) });
-        const data = await res.json();
-        
-        if(data.found && data.user) {
-            const u = data.user;
-            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-            const name = u.displayName || u.email.split('@')[0];
-            const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email;
-            const userJson = encodeURIComponent(JSON.stringify(u));
-            
-            resultContainer.innerHTML = `
-                <div class="user-item" style="background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 15px; padding: 15px;" onclick="showStartChatConfirmation('${userJson}')">
-                    <img src="${photo}" class="avatar-small" style="width: 60px; height: 60px;">
-                    <div class="info">
-                        <div class="contact-name" style="font-size: 18px;">${name}</div>
-                        <div class="contact-last-msg" style="color: var(--brand-primary); font-weight: bold;">Encontrado: ${matchedInfo}</div>
-                    </div>
-                    <span class="material-icons" style="color: var(--brand-primary);">chat</span>
-                </div>
-            `;
-        } else { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252; font-weight: bold;">Usuário não encontrado.</div>'; }
-    } catch(e) { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252;">Erro na busca.</div>'; }
-}
-
-function showStartChatConfirmation(userJsonStr) {
-    const u = JSON.parse(decodeURIComponent(userJsonStr));
-    document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0];
-    document.getElementById('start-chat-info').innerText = u.email + (u.phone ? ` | ${u.phone}` : '');
-    
-    document.getElementById('btn-confirm-start-chat').onclick = () => {
-        hideElement('start-chat-modal'); hideElement('add-contact-screen');
-        // Garante que a pessoa vai pra lista principal do celular
-        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-        if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); }
-        openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user');
-    };
-    showElement('start-chat-modal');
-}
-
+function openAddContactScreen() { hideElement('main-screen'); showElement('add-contact-screen'); document.getElementById('exact-search-input').value = ''; document.getElementById('exact-search-result').innerHTML = ''; }
+async function executeExactSearch() { const query = document.getElementById('exact-search-input').value.trim(); const resultContainer = document.getElementById('exact-search-result'); if(!query) { alert('Digite um e-mail ou celular para buscar!'); return; } resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--secondary-text);">Buscando no sistema...</div>'; try { const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) }); const data = await res.json(); if(data.found && data.user) { const u = data.user; const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = u.displayName || u.email.split('@')[0]; const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email; const userJson = encodeURIComponent(JSON.stringify(u)); resultContainer.innerHTML = `<div class="user-item" style="background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 15px; padding: 15px;" onclick="showStartChatConfirmation('${userJson}')"><img src="${photo}" class="avatar-small" style="width: 60px; height: 60px;"><div class="info"><div class="contact-name" style="font-size: 18px;">${name}</div><div class="contact-last-msg" style="color: var(--brand-primary); font-weight: bold;">Encontrado: ${matchedInfo}</div></div><span class="material-icons" style="color: var(--brand-primary);">chat</span></div>`; } else { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252; font-weight: bold;">Usuário não encontrado.</div>'; } } catch(e) { resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252;">Erro na busca.</div>'; } }
+function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURIComponent(userJsonStr)); document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0]; document.getElementById('start-chat-info').innerText = u.email + (u.phone ? ` | ${u.phone}` : ''); document.getElementById('btn-confirm-start-chat').onclick = () => { hideElement('start-chat-modal'); hideElement('add-contact-screen'); const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); } openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user'); }; showElement('start-chat-modal'); }
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
@@ -258,7 +211,6 @@ function openNotificationsSettings() { hideElement('settings-screen'); showEleme
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); document.getElementById('config-email').innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); fetchAndSyncProfile(); }
 
 async function fetchAndSyncProfile() { try { const res = await fetch(`/user/${myId}`); if(res.ok) { cachedMe = await res.json(); localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); currentSectors = cachedMe.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; } } catch(e){} }
-
 function changeNotificationSound(val) { localStorage.setItem('notificationSound', val); saveProfile({ notificationSound: val }); playNotificationSound(val); }
 
 let targetGroupId = null; let selectedForRemoval = [];
@@ -273,52 +225,31 @@ function updateRemoveBtn() { const btn = document.getElementById('btn-execute-re
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
 async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); emitTypingStatus('recording'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); emitStopTypingStatus(); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
-
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
-
-async function handleFileUpload(input) { 
-    const file = input.files[0]; if(!file) return; 
-    if (file.type.startsWith('video/')) {
-        const video = document.createElement('video'); video.preload = 'metadata';
-        video.onloadedmetadata = () => {
-            window.URL.revokeObjectURL(video.src);
-            if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; }
-            executeUpload(file, 'video');
-        };
-        video.src = URL.createObjectURL(file);
-    } else {
-        let type = 'file'; 
-        if(file.type.startsWith('image')) type = 'image'; 
-        if(file.type.startsWith('audio')) type = 'audio'; 
-        if(file.type === 'application/pdf') type = 'pdf';
-        executeUpload(file, type);
-    }
-}
-
-async function executeUpload(file, type) { 
-    const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu');
-    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() };
-    displayMessage(tempMsg);
-    const tempDiv = document.getElementById(`msg-${tempId}`);
-    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; }
-    const formData = new FormData(); formData.append('file', file);
-    try { 
-        const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); 
-        if(tempDiv) tempDiv.remove();
-        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
-        socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
-    } catch (e) { 
-        if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); 
-    } finally { document.getElementById('file-input').value = ''; }
-}
-
+async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.type.startsWith('video/')) { const video = document.createElement('video'); video.preload = 'metadata'; video.onloadedmetadata = () => { window.URL.revokeObjectURL(video.src); if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; } executeUpload(file, 'video'); }; video.src = URL.createObjectURL(file); } else { let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); } }
+async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); } finally { document.getElementById('file-input').value = ''; } }
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const btn = document.querySelector('.send-btn'); if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } const content = textOverride || input.innerHTML; if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerHTML = ''; }
 async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
+// ==========================================
+// MÁGICA DESKTOP: CLIQUE DIREITO DO MOUSE ATIVADO
+// ==========================================
 let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;           
 function displayMessage(msg) { 
-    const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('mousedown', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', e => e.preventDefault()); 
+    const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; 
+    
+    // Controles Touch (Celular)
+    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
+    div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
+    
+    // Controles Desktop (Mouse) - Clique Direito abre o menu na hora!
+    div.addEventListener('contextmenu', (e) => { 
+        e.preventDefault(); 
+        clearTimeout(pressTimer);
+        showMessageMenu(e, div, msg); 
+    }); 
+    
     let contentHtml = ''; 
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
     if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; 
@@ -328,6 +259,7 @@ function displayMessage(msg) {
     else contentHtml += msg.content; 
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
+
 function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }

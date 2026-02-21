@@ -31,9 +31,26 @@ body.font-medium { --chat-font-size: 17.5px; --contact-name-size: 18.5px; --cont
 body.font-large { --chat-font-size: 44px; --contact-name-size: 28px; --contact-msg-size: 22px; --input-font-size: 34px; }
 
 html, body { width: 100%; height: 100%; height: -webkit-fill-available; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); }
-.app-screen { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 100%; max-width: 1600px; display: flex; flex-direction: column; background: var(--card-bg); overflow: hidden; }
 
-/* LOGIN PREMIUM - SEM DELAY NENHUM */
+/* MÁGICA DESKTOP: Centraliza o app no PC como o WhatsApp Web e deixa tela cheia no celular */
+.app-screen { position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: auto; width: 100%; max-width: 1000px; display: flex; flex-direction: column; background: var(--card-bg); overflow: hidden; }
+
+@media (min-width: 1024px) {
+    .app-screen { border-left: 1px solid var(--input-bg); border-right: 1px solid var(--input-bg); box-shadow: 0 0 30px rgba(0,0,0,0.1); }
+    body.dark-mode .app-screen { box-shadow: 0 0 30px rgba(0,0,0,0.5); border-color: #000; }
+}
+
+/* ==========================================
+   MÁGICA SCROLLBAR: Barra de rolagem fininha e elegante para Desktop
+========================================== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-primary); }
+body.dark-mode ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+body.dark-mode ::-webkit-scrollbar-thumb:hover { background: var(--brand-secondary); }
+
+/* LOGIN PREMIUM */
 #auth-screen { background: linear-gradient(135deg, var(--brand-light) 0%, #ffffff 100%); display: flex; justify-content: center; align-items: center; z-index: 3000; }
 body.dark-mode #auth-screen { background: linear-gradient(135deg, #111b21 0%, #202c33 100%); }
 .auth-bg-logo { position: absolute; width: 80vw; height: 80vw; max-width: 600px; max-height: 600px; background-image: url('favicon.png'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.04; pointer-events: none; }
@@ -45,7 +62,18 @@ body.dark-mode .auth-glass-card { background: rgba(32, 44, 51, 0.7); border: 1px
 body.dark-mode .chic-input { background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.1); color: white; }
 body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: var(--brand-secondary); }
 .chic-btn { background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary)); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; font-size: 17.5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-.chic-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+
+/* HOVER INTELIGENTE (Só ativa se for Desktop/Mouse) */
+@media (hover: hover) and (pointer: fine) {
+    .chic-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .user-item:hover { background: var(--input-bg); }
+    .menu-item:hover { background: var(--input-bg); }
+    .candidate-item:hover { background: var(--input-bg); }
+    .settings-menu-btn:hover { background: var(--input-bg); }
+    .format-btn:hover { background: #e0e0e0; border-color: #bbb; }
+    .floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
+}
+
 .chic-btn:disabled { background: #999; transform: none; box-shadow: none; cursor: not-allowed; }
 .auth-top-logo { width: 70px; margin-bottom: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
 .link { color: var(--brand-primary); font-size: 15.5px; cursor: pointer; text-decoration: underline; margin-top: 15px; display: inline-block; }
@@ -64,26 +92,13 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
 .input-area { flex: 0 0 auto; background: var(--card-bg); padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; border-top: 1px solid var(--input-bg); z-index: 50; }
 #message-input { flex: 1; padding: 10px 15px; border-radius: 20px; background: var(--input-bg); color: var(--text-color); max-height: 30vh; overflow-y: auto; border: none; outline: none; font-size: var(--input-font-size); margin-bottom: 2px; line-height: 1.4; }
 
-/* CORREÇÃO APLICADA: REMOVIDO O OVERFLOW HIDDEN DA MENSAGEM */
 .message { 
-    max-width: 75%; 
-    padding: 8px 12px; 
-    border-radius: 12px; 
-    position: relative; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
-    display: flex; 
-    flex-direction: column; 
-    word-wrap: break-word; 
-    word-break: break-word; 
-    overflow-wrap: break-word; 
-    white-space: pre-wrap; 
-    -webkit-user-select: none; 
-    user-select: none; 
-    -webkit-touch-callout: none; 
-    font-size: var(--chat-font-size); 
-    line-height: 1.3; 
+    max-width: 75%; padding: 8px 12px; border-radius: 12px; position: relative; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; flex-direction: column; 
+    word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; 
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; 
+    font-size: var(--chat-font-size); line-height: 1.3; 
 }
-
 .my-msg { align-self: flex-end; background: var(--brand-light); color: var(--text-color); border-bottom-right-radius: 4px; } 
 .other-msg { align-self: flex-start; background: var(--card-bg); border-bottom-left-radius: 4px; }
 
@@ -114,10 +129,10 @@ body.dark-mode .other-msg .chat-audio::-webkit-media-controls-panel { background
 
 .avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; cursor: pointer; }
 .user-item { padding: 12px 15px; border-bottom: 1px solid var(--input-bg); display: flex; align-items: center; cursor: pointer; }
-.user-item:hover { background: var(--input-bg); }
+
 .user-item img { width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
 .hidden { display: none !important; }
-.icon-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; }
+.icon-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; outline: none; }
 .icon-btn:active { background: rgba(0,0,0,0.1); }
 .material-icons { font-size: 26px; color: var(--text-color); }
 .main-header .material-icons, .chat-header .material-icons { color: var(--header-text); }
@@ -127,7 +142,7 @@ body.dark-mode .other-msg .chat-audio::-webkit-media-controls-panel { background
 .right-menu { right: 10px; transform-origin: top right; }
 .left-menu { left: 10px; transform-origin: top left; }
 .menu-item { padding: 16px 20px; display: flex; align-items: center; gap: 15px; cursor: pointer; color: var(--text-color); font-size: 16.5px; font-weight: 500; }
-.menu-item:hover { background: var(--input-bg); }
+
 .menu-item .material-icons { color: #54656f; font-size: 24px; }
 .menu-item.logout { color: #d32f2f; }
 .menu-item.logout .material-icons { color: #d32f2f; }
@@ -136,7 +151,7 @@ body.dark-mode .other-msg .chat-audio::-webkit-media-controls-panel { background
 .menu-label { font-size: 13.5px; color: #888; padding: 0 20px 5px 20px; font-weight: bold; text-transform: uppercase; }
 .menu-row { display: flex; justify-content: space-evenly; padding: 5px 15px; margin-bottom: 5px; }
 .format-btn { width: 40px; height: 40px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 8px; cursor: pointer; font-size: 17.5px; color: #333; display: flex; align-items: center; justify-content: center; }
-.format-btn:hover { background: #e0e0e0; border-color: #bbb; }
+
 .font-item { padding: 10px 20px; font-size: 17.5px; }
 
 emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num-columns: 8; width: 300px; height: 300px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); border-radius: 10px; display: flex; }
@@ -157,8 +172,6 @@ emoji-picker { position: absolute; bottom: 70px; left: 10px; z-index: 100; --num
 .setting-item { padding: 15px; border-bottom: 1px solid var(--input-bg); display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 16px;}
 .setting-item:last-child { border-bottom: none; }
 .settings-menu-btn { padding: 18px 20px; border-bottom: 1px solid var(--input-bg); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--card-bg); font-size: 17.5px; font-weight: 500; }
-.settings-menu-btn:hover { background: var(--input-bg); }
-.settings-menu-btn:last-child { border-bottom: none; }
 
 .user-avatar-container { position: relative; margin-right: 15px; display: inline-block; text-align: center; }
 .sector-badge { display: block; font-size: 11.5px; font-weight: bold; color: var(--brand-primary); margin-bottom: 2px; text-transform: uppercase; }
@@ -185,7 +198,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 .profile-detail-item { background: var(--input-bg); padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px; width: 100%; font-size: 15.5px; }
 
 .candidate-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid var(--input-bg); cursor: pointer; border-radius: 8px; margin-bottom: 5px; font-size: 16px; }
-.candidate-item:hover { background: var(--input-bg); }
+
 .candidate-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
 .candidate-item.selected { background: var(--brand-light); border: 1px solid var(--brand-primary); color: var(--text-color); }
 .candidate-item.selected::after { content: "✔"; margin-left: auto; color: var(--brand-primary); font-weight: bold; }
@@ -214,7 +227,7 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
 
 .floating-format-bar { position: fixed; z-index: 10000; background: #202c33; color: white; padding: 6px 8px; border-radius: 8px; display: flex; gap: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
 .floating-format-bar button { background: none; border: none; color: white; font-size: 18.5px; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.floating-format-bar button:hover { background: rgba(255, 255, 255, 0.2); }
+
 .floating-format-bar .toolbar-sep { width: 1px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
 
 @keyframes pulse-glow {
@@ -224,48 +237,10 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
 }
 
 .header-logo-btn {
-    position: relative;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    margin-right: 8px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.15);
-    padding: 4px 8px;
-    border: 1px solid rgba(255,255,255,0.3);
-    animation: pulse-glow 2s infinite;
-    transition: transform 0.1s;
+    position: relative; display: flex; align-items: center; cursor: pointer; margin-right: 8px; border-radius: 8px; background: rgba(255,255,255,0.15); padding: 4px 8px; border: 1px solid rgba(255,255,255,0.3); animation: pulse-glow 2s infinite; transition: transform 0.1s;
 }
 
-.header-logo-btn:active {
-    transform: scale(0.95);
-    background: rgba(255,255,255,0.25);
-}
-
-.logo-img-btn {
-    height: 44px;
-    width: auto;
-    max-width: 140px;
-    object-fit: contain;
-}
-
-.logo-badge-btn {
-    position: absolute;
-    bottom: -6px;
-    left: -10px;
-    background: var(--brand-accent);
-    color: white;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 2px solid var(--brand-primary);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-}
-
-.logo-badge-btn .material-icons {
-    font-size: 16px;
-    font-weight: bold;
-}
+.header-logo-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.25); }
+.logo-img-btn { height: 44px; width: auto; max-width: 140px; object-fit: contain; }
+.logo-badge-btn { position: absolute; bottom: -6px; left: -10px; background: var(--brand-accent); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; border: 2px solid var(--brand-primary); box-shadow: 0 2px 5px rgba(0,0,0,0.4); }
+.logo-badge-btn .material-icons { font-size: 16px; font-weight: bold; }
