@@ -30,9 +30,11 @@ const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log("✅ MongoDB Conectado!")).catch(err => console.error("Erro MongoDB:", err));
 
+// --- ADICIONADOS: PHONE E BIO ---
 const UserSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true }, password: { type: String, required: true },
     displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' },
+    phone: { type: String, default: '' }, bio: { type: String, default: 'Olá! Estou usando o Chat.' },
     code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' },
     chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }]
 });
@@ -62,29 +64,23 @@ app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await M
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
 app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
-app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
+
+// --- ATUALIZADO: SALVAR TELEFONE E RECADO ---
+app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; await u.save(); res.json(u); } catch (e) {} });
+
 app.delete('/delete-account/:userId', async (req, res) => { try { await User.findByIdAndDelete(req.params.userId); await Message.deleteMany({ sender: req.params.userId }); res.json({ msg: 'ok' }); } catch (e) {} });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });
 
-app.post('/groups', async (req, res) => { 
-    try { 
-        // Garante que não haja IDs duplicados na hora de criar
-        const allMembers = [...req.body.members, req.body.adminId].map(String);
-        const uniqueMembers = [...new Set(allMembers)];
-        
-        const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers }); 
-        await g.save(); 
-        res.json(g); 
-    } catch (e) {} 
-});
+app.post('/groups', async (req, res) => { try { const allMembers = [...req.body.members, req.body.adminId].map(String); const uniqueMembers = [...new Set(allMembers)]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers }); await g.save(); res.json(g); } catch (e) {} });
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) {} });
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl').sort('timestamp')); } catch (e) {} });
 app.put('/groups/add-member', async (req, res) => { try { await Group.updateMany({ _id: { $in: req.body.groupIds } }, { $addToSet: { members: req.body.userId } }); res.json({ msg: 'ok' }); } catch (e) {} });
-
-// --- NOVAS ROTAS DE GERENCIAMENTO DE GRUPO ---
 app.put('/groups/:id', async (req, res) => { try { const g = await Group.findById(req.params.id); if(req.body.name) g.name = req.body.name; if(req.body.photoUrl) g.photoUrl = req.body.photoUrl; await g.save(); res.json(g); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.put('/groups/:id/add-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $addToSet: { members: { $each: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.put('/groups/:id/remove-members', async (req, res) => { try { await Group.findByIdAndUpdate(req.params.id, { $pull: { members: { $in: req.body.userIds } } }); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
+
+// --- NOVA ROTA: PEGAR DADOS ESPECÍFICOS DO GRUPO ---
+app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(req.params.id).populate('members', 'displayName photoUrl email')); } catch (e) {} });
 
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const unreadSenders = [...new Set(unreadMsgs.map(msg => msg.sender.toString()))]; res.json(unreadSenders); } catch (e) {} });
 
@@ -117,7 +113,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
-    socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); // MÁGICA DE ATUALIZAÇÃO DO GRUPO
+    socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
     socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
 });
