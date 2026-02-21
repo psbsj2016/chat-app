@@ -48,7 +48,6 @@
         <div class="main-header">
             <button class="icon-btn" onclick="toggleMenu('main-menu')"><span class="material-icons">menu</span></button>
             <span class="header-title" style="flex:1; margin-left:10px; font-weight:600; font-size:21px;">Conversas</span>
-            
             <div style="display: flex; align-items: center; gap: 10px; margin-right: 5px;">
                 <span style="font-weight: 900; font-size: 17px; letter-spacing: 1px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">CPTT</span>
                 <img src="favicon.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'" style="width: 34px; height: 34px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.25); object-fit: cover;">
@@ -184,13 +183,78 @@
         </div>
     </div>
 
-    <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px;">Setor</h3><p id="sector-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('sector-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSector()" style="background:var(--brand-primary); color:white;">Salvar</button></div></div></div>
-    <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:var(--brand-primary); margin-bottom:5px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:14.5px; color:#666; margin-bottom:15px;"></p><div id="group-checkbox-list" class="checkbox-list"></div><div class="modal-actions" style="margin-top:20px;"><button onclick="hideElement('add-group-modal')" style="background:#ccc;">Cancelar</button><button onclick="submitAddGroup()" style="background:var(--brand-primary); color:white;">Adicionar</button></div></div></div>
-    <div id="edit-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; align-items: center;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="hideElement('edit-group-modal')">close</span></div><h3 style="margin-bottom: 15px;">Perfil do Grupo</h3><div style="position: relative; margin-bottom: 15px;"><img id="edit-group-photo" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('edit-group-file').click()"><span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 16px; pointer-events: none;">edit</span><input type="file" id="edit-group-file" hidden onchange="uploadGroupPhoto(this)"></div><input type="text" id="edit-group-name" placeholder="Nome do Grupo"><button onclick="saveGroupProfile()" style="background:var(--brand-primary); color:white; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Salvar</button></div></div>
-    <div id="specific-add-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3>Adicionar Membros</h3><p style="font-size:13.5px; color:#888; margin-bottom: 10px;">Selecione quem deseja adicionar</p><div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><div class="modal-actions" style="margin-top: 15px;"><button onclick="hideElement('specific-add-modal')" style="background:#ccc; color:#333;">Cancelar</button><button onclick="submitSpecificAdd()" style="background:var(--brand-primary); color:white;">Adicionar</button></div></div></div>
-    <div id="remove-members-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; position: relative;"><div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:10px;"><h3 style="margin: 0;">Remover Membros</h3><button id="btn-execute-remove" class="hidden" onclick="submitRemoveMembers()" style="background:#ff5252; color:white; padding:8px 15px; border-radius:8px; border:none; font-weight:bold;">Remover</button></div><p style="font-size:13.5px; color:#888; margin-bottom: 10px;">Segure no contato para selecionar</p><div id="remove-members-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%;"></div><button onclick="hideElement('remove-members-modal')" style="background:#ccc; color:#333; margin-top: 15px; width:100%; padding:12px; border-radius:8px; border:none; font-weight:bold;">Fechar</button></div></div>
+    <div id="sector-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px;">
+            <h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px; font-size: 20px;">Setor</h3>
+            <p id="sector-target-name" style="font-size:14.5px; color:var(--secondary-text); margin-bottom:20px;"></p>
+            <div id="sector-checkbox-list" class="checkbox-list" style="margin-bottom: 20px; width: 100%;"></div>
+            <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
+                <button onclick="hideElement('sector-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                <button onclick="submitSector()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-group-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px;">
+            <h3 style="color:var(--brand-primary); margin-bottom:5px; font-size: 20px;">Adicionar ao Grupo</h3>
+            <p id="group-target-name" style="font-size:14.5px; color:var(--secondary-text); margin-bottom:20px;"></p>
+            <div id="group-checkbox-list" class="checkbox-list" style="margin-bottom: 20px; width: 100%;"></div>
+            <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
+                <button onclick="hideElement('add-group-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                <button onclick="submitAddGroup()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-group-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px; align-items: center;">
+            <div style="text-align: right; width: 100%;">
+                <span class="material-icons" style="color:#333; cursor:pointer;" onclick="hideElement('edit-group-modal')">close</span>
+            </div>
+            <h3 style="margin-bottom: 15px; font-size: 20px; color: var(--text-color);">Perfil do Grupo</h3>
+            <div style="position: relative; margin-bottom: 15px;">
+                <img id="edit-group-photo" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-primary); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="document.getElementById('edit-group-file').click()">
+                <span class="material-icons" style="position: absolute; bottom: 0; right: 0; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 16px; pointer-events: none; border: 2px solid var(--card-bg);">edit</span>
+                <input type="file" id="edit-group-file" hidden onchange="uploadGroupPhoto(this)">
+            </div>
+            <input type="text" id="edit-group-name" placeholder="Nome do Grupo" style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid var(--input-bg); border-radius: 8px; text-align: center; font-size: 16.5px; background: var(--input-bg); color: var(--text-color); outline: none;">
+            <button onclick="saveGroupProfile()" class="chic-btn" style="margin: 0; border-radius: 25px; padding: 12px 0;">Salvar Alterações</button>
+        </div>
+    </div>
+
+    <div id="specific-add-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;">
+            <h3 style="font-size: 20px; color: var(--brand-primary); margin-bottom: 5px;">Adicionar Membros</h3>
+            <p style="font-size:13.5px; color:var(--secondary-text); margin-bottom: 15px;">Selecione quem deseja adicionar</p>
+            <div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div>
+            <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
+                <button onclick="hideElement('specific-add-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                <button onclick="submitSpecificAdd()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="remove-members-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; position: relative;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:5px;">
+                <h3 style="margin: 0; font-size: 20px; color: var(--text-color);">Remover Membros</h3>
+                <button id="btn-execute-remove" class="hidden chic-btn" onclick="submitRemoveMembers()" style="background: linear-gradient(to right, #ff5252, #d32f2f); margin: 0; padding: 8px 15px; font-size: 14px; width: auto;">Remover</button>
+            </div>
+            <p style="font-size:13.5px; color:var(--secondary-text); margin-bottom: 15px;">Segure no contato para selecionar</p>
+            <div id="remove-members-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div>
+            <button onclick="hideElement('remove-members-modal')" style="background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer; width: 100%;">Fechar</button>
+        </div>
+    </div>
+
     <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons">content_copy</span> Copiar Texto</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons">shortcut</span> Encaminhar</div></div>
-    <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;"><h3>Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-top: 10px;"></div><button onclick="hideElement('forward-modal')" style="background:#ccc; color:#333; margin-top:10px; width:100%; padding:12px; border-radius:8px;">Cancelar</button></div></div>    
+    <div id="forward-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;">
+            <h3 style="font-size: 20px; color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3>
+            <div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div>
+            <button onclick="hideElement('forward-modal')" style="background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer; width: 100%;">Cancelar</button>
+        </div>
+    </div>    
     <div id="text-format-toolbar" class="hidden floating-format-bar"><button onmousedown="formatDoc('bold', event)"><b>B</b></button><button onmousedown="formatDoc('italic', event)"><i>I</i></button><button onmousedown="formatDoc('underline', event)"><u>U</u></button><button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button><div class="toolbar-sep"></div><button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button><button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button><button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button><button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button></div>
 
     <script src="/socket.io/socket.io.js"></script>
