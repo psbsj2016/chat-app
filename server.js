@@ -66,23 +66,49 @@ app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return
 app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
 app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) {} });
 
-// --- MÁGICA: MUDANÇA DE SENHA SEGURA ---
-app.put('/change-password', async (req, res) => {
-    const { userId, currentPassword, newPassword } = req.body;
+app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'A senha atual está incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Senha atualizada com sucesso' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
+
+// --- MÁGICA: ROTAS DE ESQUECI A SENHA ---
+app.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
     try {
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: 'E-mail não encontrado no sistema.' });
         
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
-        if (!isMatch) return res.status(400).json({ error: 'A senha atual está incorreta!' });
-        
-        user.password = await bcrypt.hash(newPassword, 10);
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        user.code = code; 
         await user.save();
-        res.json({ message: 'Senha atualizada com sucesso' });
+        
+        transporter.sendMail({
+            from: 'Chat App <psbsj.2020@outlook.com>',
+            to: email,
+            subject: 'Recuperação de Senha - CPTT',
+            html: `<div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; color: #333;"><h2>Recuperação de Senha</h2><p>Você solicitou a redefinição de senha da sua conta.</p><h1 style="color: #1d4ed8; letter-spacing: 5px;">${code}</h1><p>Insira este código no aplicativo para criar sua nova senha.</p></div>`
+        }, (err) => {
+            if(err) return res.status(500).json({error: 'Erro ao enviar o e-mail'});
+            res.json({ message: 'Código de recuperação enviado!' });
+        });
     } catch (e) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
 });
+
+app.post('/reset-password', async (req, res) => {
+    const { email, code, newPassword } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user || user.code !== code) return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' });
+        
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.code = null; 
+        await user.save();
+        
+        res.json({ message: 'Senha redefinida com sucesso!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+// ------------------------------------------
 
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) {} });

@@ -130,33 +130,12 @@ socket.on('receive_message', (msg) => {
 
 const msgInput = document.getElementById('message-input'); if (msgInput) { msgInput.addEventListener('input', () => { if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('placeholder', 'Mensagem...'); const btn = document.querySelector('.send-btn'); if(btn) btn.classList.remove('pending-send'); } if (!currentChatId) return; emitTypingStatus('typing'); }); }
 
-// ==========================================
-// MÁGICA: LIMPEZA INSTANTÂNEA DE MEMÓRIA DE NÃO LIDOS
-// ==========================================
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    
-    // Zera o cache de não lido do lado do celular no mesmo milissegundo
-    if (isGroupChat) { 
-        unreadGroups = unreadGroups.filter(gId => gId !== id); 
-        localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); 
-    } else {
-        let localUnread = JSON.parse(localStorage.getItem('unreadSenders')) || [];
-        localUnread = localUnread.filter(uId => uId !== id);
-        localStorage.setItem('unreadSenders', JSON.stringify(localUnread));
-    }
-
+    if (isGroupChat) { unreadGroups = unreadGroups.filter(gId => gId !== id); localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } else { let localUnread = JSON.parse(localStorage.getItem('unreadSenders')) || []; localUnread = localUnread.filter(uId => uId !== id); localStorage.setItem('unreadSenders', JSON.stringify(localUnread)); }
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
-    
-    // Zera os visuais
     const contactDiv = document.getElementById(`contact-${id}`); 
-    if (contactDiv) { 
-        contactDiv.classList.remove('has-unread'); 
-        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
-        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
-        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
-    }
-    
+    if (contactDiv) { contactDiv.classList.remove('has-unread'); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } }
     if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
     const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } 
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
@@ -179,24 +158,15 @@ async function loadContacts() {
 function renderContactsList(groups, users, unreadSenders) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     groups.forEach(group => { 
-        // Garante que o chat que eu estou agorinha não pisque "Não lido"
-        let isUnreadG = unreadGroups.includes(group._id) && currentChatId !== group._id;
-        let extraGroupClass = isUnreadG ? 'has-unread' : '';
-        
+        let isUnreadG = unreadGroups.includes(group._id) && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : '';
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(group._id, group.name, photo, 'Grupo', 'group'); 
-        
-        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; 
-        let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
-
+        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${group.name}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div>${deleteGroupBtn}</div>`; div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
     users.sort((a, b) => unreadSenders.includes(b._id) - unreadSenders.includes(a._id)); 
     users.forEach(user => { 
-        let isUnreadU = unreadSenders.includes(user._id) && currentChatId !== user._id;
-        let extraClass = isUnreadU ? 'has-unread' : ''; 
-        let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar';
-
+        let isUnreadU = unreadSenders.includes(user._id) && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar';
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); 
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div class="contact-name">${name}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
@@ -329,6 +299,54 @@ function triggerProfileUpload() { document.getElementById('profile-file-input').
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
 
+// ==========================================
+// MÁGICA: FUNÇÕES DE RECUPERAÇÃO DE SENHA
+// ==========================================
+function openForgotPasswordModal() { 
+    document.getElementById('fp-email').value = document.getElementById('auth-email').value; 
+    document.getElementById('fp-code').value = ''; 
+    document.getElementById('fp-new-pass').value = ''; 
+    showElement('fp-step-1'); hideElement('fp-step-2'); 
+    document.getElementById('fp-instruction').innerText = "Digite seu e-mail para receber o código de recuperação."; 
+    showElement('forgot-password-modal'); 
+}
+function closeForgotPasswordModal() { hideElement('forgot-password-modal'); }
+
+async function requestPasswordReset() { 
+    const email = document.getElementById('fp-email').value; 
+    if (!email) return alert("Digite seu e-mail!"); 
+    try { 
+        const res = await fetch('/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }); 
+        const data = await res.json(); 
+        if (res.ok) { 
+            alert("Código enviado para o seu e-mail!"); 
+            hideElement('fp-step-1'); showElement('fp-step-2'); 
+            document.getElementById('fp-instruction').innerText = "Digite o código recebido e a sua nova senha."; 
+        } else { 
+            alert(data.error || "Erro ao solicitar código."); 
+        } 
+    } catch(e) { alert("Erro de conexão."); } 
+}
+
+async function submitNewPassword() { 
+    const email = document.getElementById('fp-email').value; 
+    const code = document.getElementById('fp-code').value; 
+    const newPassword = document.getElementById('fp-new-pass').value; 
+    if (!code || !newPassword) return alert("Preencha o código e a nova senha!"); 
+    if (newPassword.length < 6) return alert("A nova senha deve ter no mínimo 6 caracteres."); 
+    try { 
+        const res = await fetch('/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code, newPassword }) }); 
+        const data = await res.json(); 
+        if (res.ok) { 
+            alert("Senha redefinida com sucesso! Faça login para entrar."); 
+            closeForgotPasswordModal(); 
+            document.getElementById('auth-pass').value = newPassword; 
+        } else { 
+            alert(data.error || "Código inválido."); 
+        } 
+    } catch(e) { alert("Erro de conexão."); } 
+}
+
 function openChangePasswordModal() { document.getElementById('cp-current').value = ''; document.getElementById('cp-new').value = ''; document.getElementById('cp-confirm').value = ''; showElement('change-password-modal'); }
 function closeChangePasswordModal() { hideElement('change-password-modal'); }
 function togglePasswordVisibility(inputId, iconId) { const input = document.getElementById(inputId); const icon = document.getElementById(iconId); if (input.type === 'password') { input.type = 'text'; icon.innerText = 'visibility'; icon.style.color = 'var(--brand-primary)'; } else { input.type = 'password'; icon.innerText = 'visibility_off'; icon.style.color = '#888'; } }
@@ -354,7 +372,23 @@ function closeContactProfile() { hideElement('contact-profile-modal'); }
 document.addEventListener('selectionchange', () => { const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); const inputArea = document.querySelector('.input-area'); if (!input || !formatBar || !inputArea) return; const selection = window.getSelection(); if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) { showElement('text-format-toolbar'); const inputRect = inputArea.getBoundingClientRect(); let top = inputRect.top - formatBar.offsetHeight - 12; let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2); formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`; } else { hideElement('text-format-toolbar'); } });
 
 let isRegistering = false;
-function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); } }
+function toggleAuthMode() { 
+    isRegistering = !isRegistering; 
+    document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; 
+    document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; 
+    document.getElementById('auth-name').classList.toggle('hidden'); 
+    
+    if (isRegistering) { 
+        hideElement('auth-toggle-text'); 
+        showElement('auth-promo-text'); 
+        hideElement('forgot-pass-text'); // Esconde ao criar conta
+    } else { 
+        showElement('auth-toggle-text'); 
+        hideElement('auth-promo-text'); 
+        showElement('forgot-pass-text'); // Mostra no login
+    } 
+}
+
 async function handleAuth() { const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); if (!email || !password) return alert("Preencha todos os campos!"); btn.innerText = "Processando..."; btn.disabled = true; try { const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); if (res.ok) { if (isRegistering) { alert('✅ Código enviado para o seu e-mail!'); const code = prompt("Digite o Código que chegou no seu e-mail:"); if(code) verifyCodeManual(email, code); } else { token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); if (data.notificationSound) localStorage.setItem('notificationSound', data.notificationSound); if (localStorage.getItem('isFirstLogin') === 'true') { localStorage.removeItem('isFirstLogin'); showWelcomeScreen(); } else { showMainScreen(); } } } else { alert(data.error || 'Erro na autenticação.'); } } catch (e) { } finally { btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; } }
 async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Cadastro verificado com sucesso! Faça login para entrar."); localStorage.setItem('isFirstLogin', 'true'); toggleAuthMode(); } else { alert("Código inválido!"); } } catch(e) {} }
 

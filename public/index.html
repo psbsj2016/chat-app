@@ -18,13 +18,18 @@
         <div class="auth-glass-card">
             <img src="favicon.png" class="auth-top-logo" alt="CPTT Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
             <h2 id="auth-title" style="margin-bottom: 25px; font-weight: 800; color: var(--brand-primary); font-size: 24px;">Área de Login do CPTT</h2>
+            
             <form id="auth-form" onsubmit="event.preventDefault(); handleAuth()">
                 <input type="email" id="auth-email" placeholder="E-mail" required autocomplete="username" class="chic-input">
                 <input type="password" id="auth-pass" placeholder="Senha" required autocomplete="current-password" class="chic-input">
                 <input type="text" id="auth-name" placeholder="Seu Nome de Exibição" class="chic-input hidden">
                 <button id="auth-btn" class="chic-btn">Acessar Chat</button>
             </form>
+            
             <div id="auth-toggle-text" class="link" onclick="toggleAuthMode()">Não tem conta? Crie uma</div>
+            
+            <div id="forgot-pass-text" class="link" onclick="openForgotPasswordModal()" style="font-size: 13.5px; color: #888; display: block;">Esqueci minha senha</div>
+            
             <div id="auth-promo-text" class="hidden" style="font-size:14.5px; color:var(--secondary-text); text-align:center; margin-top:20px; line-height: 1.5;">
                 Você está prestes a criar uma conta de acesso a uma das ferramentas de chat mais fantásticas da atualidade!
                 <br><br>
@@ -73,7 +78,6 @@
             </div>
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons">attach_file</span></button>
         </div>
-        
         <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
             <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons" style="color:var(--brand-secondary)">image</span> Foto</div>
@@ -83,7 +87,6 @@
             <div class="menu-separator"></div>
             <div class="menu-item logout" onclick="deleteCurrentChat()"><span class="material-icons">delete_forever</span> <span style="font-weight: bold;">Apagar Conversa</span></div>
         </div>
-        
         <div id="chat-box"></div>
         <div class="input-area">
             <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons" style="color:#54656f">sentiment_satisfied_alt</span></button>
@@ -125,24 +128,17 @@
         <div class="settings-content">
             <div class="settings-group">
                 <div class="setting-item"><span>Tema Escuro</span><label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label></div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Tamanho da Letra</span>
-                    <select id="font-size-select" onchange="changeFontSize(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 15.5px;"><option value="small">Tamanho Pequeno</option><option value="medium">Tamanho Médio (Padrão)</option><option value="large">Tamanho Grande (3x nas mensagens)</option></select>
-                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Tamanho da Letra</span><select id="font-size-select" onchange="changeFontSize(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 15.5px;"><option value="small">Tamanho Pequeno</option><option value="medium">Tamanho Médio (Padrão)</option><option value="large">Tamanho Grande (3x nas mensagens)</option></select></div>
                 <div class="setting-item" onclick="alert('Em breve: Upload de Wallpaper')"><span>Papel de Parede dos Chats</span><span class="action-link" style="color:var(--brand-primary);">Escolher</span></div>
             </div>
         </div>
     </div>
-
     <div id="notifications-screen" class="app-screen hidden" style="background: var(--bg-color);">
         <div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons">arrow_back</span></button><span class="header-title" style="font-size:21px;">Notificações</span><div style="width: 40px;"></div></div>
         <div class="settings-content">
             <div class="settings-group">
                 <div class="group-title">Sons e Alertas</div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Som de Nova Mensagem</span>
-                    <select id="notification-sound-select" onchange="changeNotificationSound(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 15.5px;"><option value="modern">Moderno (Padrão)</option><option value="pop">Pop (Discreto)</option><option value="bell">Sino (Clássico)</option><option value="none">Silencioso (Sem som)</option></select>
-                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13.5px; color:var(--brand-primary); font-weight:bold;">Som de Nova Mensagem</span><select id="notification-sound-select" onchange="changeNotificationSound(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--input-bg); background: var(--card-bg); color: var(--text-color); outline: none; font-size: 15.5px;"><option value="modern">Moderno (Padrão)</option><option value="pop">Pop (Discreto)</option><option value="bell">Sino (Clássico)</option><option value="none">Silencioso (Sem som)</option></select></div>
             </div>
         </div>
     </div>
@@ -152,12 +148,10 @@
         <div class="settings-content">
             <div class="settings-group">
                 <div class="setting-item"><span>E-mail</span><span id="config-email" style="color:#666; font-size:15.5px;">Carregando...</span></div>
-                
                 <div class="setting-item" onclick="openChangePasswordModal()">
                     <span style="color:var(--text-color); font-weight:bold;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--secondary-text); margin-right:5px;">lock</span> Editar Senha</span>
                     <span class="material-icons" style="color:#ccc;">chevron_right</span>
                 </div>
-                
                 <div class="setting-item" onclick="createNewSector()"><span style="color:var(--brand-primary); font-weight:bold;">+ Criar Setor de Usuários</span></div>
                 <div id="sectors-list"></div>
                 <div class="setting-item" onclick="deleteAccount()"><span style="color:red"><span class="material-icons" style="font-size:20px; vertical-align:middle; color:red">delete_forever</span> Deletar Minha Conta</span></div>
@@ -165,20 +159,39 @@
         </div>
     </div>
 
-    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()"><div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span></div><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3><div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"><div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;"><span style="font-size: 12.5px; color:var(--brand-primary); font-weight: bold; text-transform: uppercase;">Recado</span><span id="view-contact-bio" style="font-style: italic; font-size: 16.5px;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">phone</span><span id="view-contact-phone" style="font-weight: bold;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">email</span><span id="view-contact-email">...</span></div></div><div id="view-group-details" class="hidden" style="width: 100%; text-align: left;"><p style="font-weight: bold; color: var(--brand-primary); margin-bottom: 10px; font-size:15.5px;">Membros do Grupo:</p><div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div></div></div></div>
-    
+    <div id="forgot-password-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 350px; width: 90%;">
+            <h3 style="color:var(--brand-primary); margin-bottom:15px; font-size: 20px;">Recuperar Senha</h3>
+            <p id="fp-instruction" style="font-size:14.5px; color:var(--secondary-text); margin-bottom: 20px;">Digite seu e-mail para receber o código de recuperação.</p>
+            
+            <div id="fp-step-1" style="width: 100%;">
+                <input type="email" id="fp-email" placeholder="Seu E-mail" class="chic-input" style="text-align: left;">
+                <div class="modal-actions" style="display: flex; gap: 15px; width: 100%; margin-top: 10px;">
+                    <button onclick="closeForgotPasswordModal()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                    <button onclick="requestPasswordReset()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Enviar Código</button>
+                </div>
+            </div>
+
+            <div id="fp-step-2" class="hidden" style="width: 100%;">
+                <input type="text" id="fp-code" placeholder="Código de 6 dígitos" class="chic-input" style="text-align: center; letter-spacing: 2px; font-weight: bold;">
+                <input type="password" id="fp-new-pass" placeholder="Criar Nova Senha" class="chic-input" style="text-align: left;">
+                <div class="modal-actions" style="display: flex; gap: 15px; width: 100%; margin-top: 10px;">
+                    <button onclick="closeForgotPasswordModal()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                    <button onclick="submitNewPassword()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Salvar Senha</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="change-password-modal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 350px; width: 90%;">
             <h3 style="color:var(--brand-primary); margin-bottom:15px; font-size: 20px;">Mudar Senha</h3>
-            
             <div style="position: relative; width: 100%; margin-bottom: 10px;">
                 <input type="password" id="cp-current" placeholder="Senha Atual" class="chic-input" style="margin-bottom:0; padding-right:40px; text-align: left;">
                 <span class="material-icons" id="cp-current-eye" onclick="togglePasswordVisibility('cp-current', 'cp-current-eye')" style="position:absolute; right:15px; top:15px; color:#888; cursor:pointer;">visibility_off</span>
             </div>
-            
             <input type="password" id="cp-new" placeholder="Nova Senha" class="chic-input" style="margin-bottom: 10px; text-align: left;">
             <input type="password" id="cp-confirm" placeholder="Confirmar Nova Senha" class="chic-input" style="margin-bottom: 20px; text-align: left;">
-            
             <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
                 <button onclick="closeChangePasswordModal()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; font-size: 15.5px; cursor: pointer;">Cancelar</button>
                 <button onclick="submitChangePassword()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Salvar Senha</button>
@@ -186,6 +199,7 @@
         </div>
     </div>
 
+    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()"><div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;"><div style="text-align: right; width: 100%;"><span class="material-icons" style="color:#333; cursor:pointer;" onclick="closeContactProfile()">close</span></div><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3><div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"><div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;"><span style="font-size: 12.5px; color:var(--brand-primary); font-weight: bold; text-transform: uppercase;">Recado</span><span id="view-contact-bio" style="font-style: italic; font-size: 16.5px;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">phone</span><span id="view-contact-phone" style="font-weight: bold;">...</span></div><div class="profile-detail-item"><span class="material-icons" style="color:var(--brand-primary);">email</span><span id="view-contact-email">...</span></div></div><div id="view-group-details" class="hidden" style="width: 100%; text-align: left;"><p style="font-weight: bold; color: var(--brand-primary); margin-bottom: 10px; font-size:15.5px;">Membros do Grupo:</p><div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div></div></div></div>
     <div id="create-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;"><div style="position: relative; flex-shrink: 0;"><img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onclick="document.getElementById('new-group-file').click()"><span class="material-icons" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 15.5px; pointer-events: none; border: 2px solid var(--card-bg);">camera_alt</span><input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)"></div><div style="flex: 1; display: flex; flex-direction: column; justify-content: center;"><h3 style="margin: 0 0 5px 0; font-size: 20px; color: var(--text-color); text-align: left;">Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo..." style="width: 100%; padding: 8px 0; border: none; border-bottom: 2px solid var(--input-bg); outline: none; background: transparent; font-size: 16.5px; color: var(--text-color); transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--brand-primary)'" onblur="this.style.borderColor='var(--input-bg)'"></div></div><div class="search-box" style="margin-bottom: 15px; padding: 6px 15px; border-radius: 20px; background: var(--input-bg); border: 1px solid rgba(0,0,0,0.05);"><span class="material-icons" style="font-size: 20px; color: #888;">search</span><input type="text" placeholder="Buscar contatos para adicionar..." onkeyup="filterGroupContacts(this.value)" style="font-size: 15.5px;"></div><p style="font-size:13.5px; color:#888; margin-bottom: 10px; text-align: left; width: 100%; font-weight: bold; text-transform: uppercase;">Selecione os Membros</p><div id="group-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; margin-bottom: 10px; border-top: 1px solid var(--input-bg); padding-top: 10px;"></div><div class="modal-actions" style="margin-top: auto; display: flex; gap: 15px; width: 100%;"><button onclick="closeCreateGroup()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button><button onclick="submitCreateGroup()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Criar Grupo</button></div></div></div>
     <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px; font-size: 20px;">Setor</h3><p id="sector-target-name" style="font-size:14.5px; color:var(--secondary-text); margin-bottom:20px;"></p><div id="sector-checkbox-list" class="checkbox-list" style="margin-bottom: 20px; width: 100%;"></div><div class="modal-actions" style="display: flex; gap: 15px; width: 100%;"><button onclick="hideElement('sector-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button><button onclick="submitSector()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Salvar</button></div></div></div>
     <div id="add-group-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px;"><h3 style="color:var(--brand-primary); margin-bottom:5px; font-size: 20px;">Adicionar ao Grupo</h3><p id="group-target-name" style="font-size:14.5px; color:var(--secondary-text); margin-bottom:20px;"></p><div id="group-checkbox-list" class="checkbox-list" style="margin-bottom: 20px; width: 100%;"></div><div class="modal-actions" style="display: flex; gap: 15px; width: 100%;"><button onclick="hideElement('add-group-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button><button onclick="submitAddGroup()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Adicionar</button></div></div></div>
