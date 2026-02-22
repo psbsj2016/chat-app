@@ -1,11 +1,11 @@
 {
   "name": "Chat CPTT",
   "short_name": "CPTT",
-  "description": "Aplicativo de Mensagens CPTT",
-  "start_url": "/",
+  "description": "Aplicativo de Comunicação Premium",
+  "start_url": "/?source=pwa",
   "display": "standalone",
-  "background_color": "#1d4ed8",
-  "theme_color": "#1d4ed8",
+  "background_color": "#0b141a",
+  "theme_color": "#003882",
   "icons": [
     {
       "src": "favicon.png",
