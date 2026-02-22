@@ -1,29 +1,37 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
 
 :root {
-    --brand-primary: #1d4ed8;    
-    --brand-secondary: #06b6d4;  
-    --brand-accent: #10b981;     
-    --brand-light: #eff6ff;      
+    /* AS CORES OFICIAIS DO CPTT */
+    --brand-primary: #003882;    /* Azul Marinho Profundo (borda do logo) */
+    --brand-secondary: #ffb800;  /* Amarelo Ouro (fundo do balão) */
+    --brand-accent: #ff9800;     /* Laranja/Dourado escuro para destaques */
+    --brand-light: #eaf2fd;      /* Azul super clarinho (para suas mensagens) */
     
     --bg-color: #d1d7db; 
     --card-bg: #ffffff; 
     --text-color: #333; 
     --secondary-text: #666; 
     --input-bg: #f0f2f5; 
-    --header-text: #fff; 
+    --header-text: #ffffff; 
     
-    --chat-bg-color: #eaf1f1;
-    --chat-bg-image: linear-gradient(rgba(240, 248, 255, 0.82), rgba(255, 255, 255, 0.92)), url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2000&auto=format&fit=crop');
+    /* Fundo suave combinando com a nova paleta */
+    --chat-bg-color: #e4eaf1;
+    --chat-bg-image: linear-gradient(rgba(228, 234, 241, 0.88), rgba(255, 255, 255, 0.95)), url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2000&auto=format&fit=crop');
     
     --chat-font-size: 15.5px; --contact-name-size: 16.5px; --contact-msg-size: 13.5px; --input-font-size: 17.5px; 
 }
 
 body.dark-mode {
-    --brand-light: #1e3a8a; 
-    --bg-color: #111b21; --card-bg: #202c33; --text-color: #e9edef; --secondary-text: #8696a0; --input-bg: #2a3942; 
+    --brand-light: #00265a;      /* Azul escuro elegante para suas mensagens no modo noturno */
+    
+    --bg-color: #0b141a; 
+    --card-bg: #1f2c34; 
+    --text-color: #e9edef; 
+    --secondary-text: #8696a0; 
+    --input-bg: #2a3942; 
+    
     --chat-bg-color: #0b141a;
-    --chat-bg-image: linear-gradient(rgba(11, 20, 26, 0.85), rgba(11, 20, 26, 0.95)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop');
+    --chat-bg-image: linear-gradient(rgba(11, 20, 26, 0.88), rgba(11, 20, 26, 0.96)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop');
 }
 
 body.font-small { --chat-font-size: 13.5px; --contact-name-size: 15px; --contact-msg-size: 12px; --input-font-size: 15.5px; }
