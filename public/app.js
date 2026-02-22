@@ -17,7 +17,7 @@ let messageCache = {};
 let globalMediaRecorder = null; 
 let recordingTimeout = null;
 let recordingInterval = null; 
-let recordingSeconds = 0;     
+let recordingSeconds = 0;      
 let pendingAudioFile = null;  
 
 let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
@@ -25,7 +25,7 @@ let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
 function hideElement(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
-document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
+document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn') && !e.target.closest('#header-my-avatar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
 // ==========================================
 // MÁGICA: DESTRUIDOR DE CACHE 
@@ -135,13 +135,6 @@ function updateAppBadge() {
     }
 }
 
-function showSystemNotification(title, body) { 
-    if ("Notification" in window && Notification.permission === "granted") { 
-        const notification = new Notification(title, { body: body, icon: 'favicon.png', badge: 'favicon.png', vibrate: [200, 100, 200] }); 
-        notification.onclick = function() { window.focus(); this.close(); }; 
-    } 
-}
-
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
 
@@ -213,12 +206,6 @@ socket.on('receive_message', (msg) => {
     
     if (senderIdStr !== myId) {
         const soundPref = localStorage.getItem('notificationSound') || 'modern'; playNotificationSound(soundPref);
-        if (document.hidden || currentChatId !== targetId) {
-            let senderName = 'Nova Mensagem'; const contactDiv = document.getElementById(`contact-${targetId}`);
-            if (contactDiv) { const nameEl = contactDiv.querySelector('.contact-name'); if (nameEl) senderName = nameEl.innerText; }
-            let cleanContent = msg.fileUrl ? '📎 Arquivo recebido' : msg.content.replace(/<[^>]*>?/gm, '');
-            // showSystemNotification(`CPTT: ${senderName}`, cleanContent); // O Service Worker cuida disso agora
-        }
     }
 
     let cacheTargetId = groupIdStr ? groupIdStr : (senderIdStr === myId ? msg.receiver : senderIdStr); 
@@ -281,6 +268,15 @@ async function loadContacts() {
 
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
+    
+    // MENSAGEM QUANDO NÃO HÁ CONVERSAS (ESTILO MATERIAL 3)
+    if (groups.length === 0 && users.length === 0) {
+        list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);">
+            <h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Para começar, envie uma<br>mensagem para alguém.</h3>
+        </div>`;
+        return;
+    }
+
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -313,7 +309,6 @@ async function openBotChat() {
         const res = await fetch('/bot-info');
         if (res.ok) {
             const bot = await res.json();
-            // Salva o bot na lista do celular para sempre!
             const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
             if(!cachedUsers.find(cu => cu._id === bot._id)) { 
                 cachedUsers.push(bot); 
@@ -333,7 +328,27 @@ function openAppearanceSettings() { hideElement('settings-screen'); showElement(
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; fetchAndSyncProfile(); }
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); document.getElementById('config-email').innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); fetchAndSyncProfile(); }
 
-async function fetchAndSyncProfile() { try { const res = await fetch(`/user/${myId}`); if(res.ok) { cachedMe = await res.json(); localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); currentSectors = cachedMe.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; } } catch(e){} }
+async function fetchAndSyncProfile() { 
+    try { 
+        const res = await fetch(`/user/${myId}`); 
+        if(res.ok) { 
+            cachedMe = await res.json(); 
+            localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); 
+            currentSectors = cachedMe.sectors || []; 
+            localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
+            const elName = document.getElementById('config-name'); 
+            if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
+            const elBio = document.getElementById('config-bio'); 
+            if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
+            const elPhone = document.getElementById('config-phone'); 
+            if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
+            
+            // Atualiza a foto do Header Material 3
+            const headerAvatar = document.getElementById('header-my-avatar');
+            if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        } 
+    } catch(e){} 
+}
 
 let targetGroupId = null; let selectedForRemoval = [];
 async function deleteGroup(groupId) { hideElement(`group-menu-${groupId}`); if(!confirm("⚠️ ATENÇÃO EXTREMA!\n\nVocê está prestes a EXCLUIR ESTE GRUPO de forma permanente.\nTem certeza absoluta?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { if(currentChatId === groupId) backToMain(); messageCache[groupId] = []; socket.emit('group_updated'); alert("Grupo excluído com sucesso!"); } else { alert("Você não tem permissão para excluir este grupo."); } } catch(e) {} }
@@ -346,7 +361,6 @@ async function openRemoveMemberModal(id, membersStr) { targetGroupId = id; hideE
 function updateRemoveBtn() { const btn = document.getElementById('btn-execute-remove'); if(selectedForRemoval.length > 0) { btn.classList.remove('hidden'); btn.innerText = `Remover (${selectedForRemoval.length})`; } else { btn.classList.add('hidden'); } }
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
-// Variáveis globais para o desenho da onda
 let visualizerAnimationId = null;
 let visualizerAudioCtx = null;
 
@@ -369,7 +383,6 @@ async function startRecording() {
         recordingSeconds = 0; 
         input.innerText = ''; 
         
-        // Esconde o input de texto e mostra as ondas
         input.classList.add('hidden');
         recUI.classList.remove('hidden');
         recTimer.innerText = '00:00';
@@ -377,13 +390,10 @@ async function startRecording() {
         btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; 
         btn.classList.remove('pending-send'); 
 
-        // ====================================================
-        // MÁGICA DO VISUALIZADOR DE ÁUDIO 
-        // ====================================================
         visualizerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const source = visualizerAudioCtx.createMediaStreamSource(stream);
         const analyser = visualizerAudioCtx.createAnalyser();
-        analyser.fftSize = 64; // Define a quantidade de barrinhas
+        analyser.fftSize = 64; 
         source.connect(analyser);
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
@@ -391,21 +401,15 @@ async function startRecording() {
         function drawVisualizer() {
             visualizerAnimationId = requestAnimationFrame(drawVisualizer);
             analyser.getByteFrequencyData(dataArray);
-            
-            // Limpa o canvas a cada frame
             canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-            
             const barWidth = (canvas.width / bufferLength) * 1.5;
             let x = 0;
             
             for(let i = 0; i < bufferLength; i++) {
-                // Suaviza a altura da barra
                 const barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
-                const y = (canvas.height - barHeight) / 2; // Centraliza verticalmente
-                
+                const y = (canvas.height - barHeight) / 2; 
                 canvasCtx.fillStyle = 'var(--brand-primary)';
                 canvasCtx.beginPath();
-                // Usa roundRect se suportado (barras arredondadas), se não, usa fillRect normal
                 if(canvasCtx.roundRect) {
                     canvasCtx.roundRect(x, y, barWidth - 2, Math.max(barHeight, 2), 2);
                 } else {
@@ -415,8 +419,7 @@ async function startRecording() {
                 x += barWidth;
             }
         }
-        drawVisualizer(); // Começa a desenhar!
-        // ====================================================
+        drawVisualizer(); 
 
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
@@ -428,17 +431,11 @@ async function startRecording() {
         globalMediaRecorder.start(); 
         globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
         
-        // Quando clicar em parar (ou no botão de enviar durante a gravação)
         globalMediaRecorder.onstop = async () => { 
             clearInterval(recordingInterval); 
-            
-            // Desliga as ondas de áudio para economizar bateria
             cancelAnimationFrame(visualizerAnimationId);
             if (visualizerAudioCtx) visualizerAudioCtx.close();
-            
             emitStopTypingStatus(); 
-            
-            // Volta a interface ao normal
             recUI.classList.add('hidden');
             input.classList.remove('hidden');
             
@@ -469,7 +466,7 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const b
 async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
-let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;           
+let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;            
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; 
     div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
@@ -483,7 +480,45 @@ function displayMessage(msg) {
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
 
-function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const menu = document.getElementById('msg-context-menu'); const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
+function showMessageMenu(e, msgElement, msgObj) { 
+    if(navigator.vibrate) navigator.vibrate(50); 
+    if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); 
+    
+    currentSelectedMsgElement = msgElement; 
+    selectedMsgData = msgObj; 
+    currentSelectedMsgElement.classList.add('selected-msg'); 
+
+    const oldBar = document.querySelector('.reaction-bar');
+    if(oldBar) oldBar.remove();
+
+    const reactionBar = document.createElement('div');
+    reactionBar.className = 'reaction-bar';
+    const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍'];
+    
+    emojis.forEach(emoji => {
+        const span = document.createElement('span');
+        span.className = 'reaction-emoji';
+        span.innerText = emoji;
+        span.onclick = (event) => {
+            event.stopPropagation();
+            sendReaction(emoji); 
+            reactionBar.remove();
+            hideElement('msg-context-menu');
+        };
+        reactionBar.appendChild(span);
+    });
+    msgElement.appendChild(reactionBar);
+
+    const menu = document.getElementById('msg-context-menu'); 
+    const copyBtn = document.getElementById('btn-copy-msg'); 
+    if(msgObj.fileUrl && msgObj.fileType !== 'text') { copyBtn.style.display = 'none'; } else { copyBtn.style.display = 'flex'; } 
+    let x = e.touches ? e.touches[0].clientX : e.clientX; 
+    let y = e.touches ? e.touches[0].clientY : e.clientY; 
+    menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; 
+    menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`; 
+    showElement('msg-context-menu'); 
+    setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); 
+}
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
 async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
@@ -556,7 +591,12 @@ async function verifyCodeManual(email, code) { try { const res = await fetch('/v
 
 async function initApp() { 
     const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
+    
     if(token && myId) { 
+        // Já exibe a foto do perfil no topo se tiver em cache
+        const headerAvatar = document.getElementById('header-my-avatar');
+        if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
+
         try { 
             const res = await fetch(`/user/${myId}`); 
             if(res.ok) { 
@@ -565,6 +605,8 @@ async function initApp() {
                 if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
                 if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); } 
                 if (me.notificationSound) localStorage.setItem('notificationSound', me.notificationSound); 
+                
+                if(headerAvatar) headerAvatar.src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
             } 
         } catch(e) {} 
         checkAndShowPermissions(); 
@@ -583,7 +625,7 @@ async function triggerTurboBroadcast() {
     const statusLabel = document.getElementById('broadcast-status');
 
     if (!title || !message) {
-        statusLabel.style.color = "#ea4335"; // Vermelho erro
+        statusLabel.style.color = "#ea4335"; 
         statusLabel.innerText = "Preencha o título e a mensagem!";
         return;
     }
@@ -591,15 +633,9 @@ async function triggerTurboBroadcast() {
     statusLabel.style.color = "var(--text-color)";
     statusLabel.innerText = "🚀 Acionando motor Go...";
 
-    // ==========================================
-    // MÁGICA: PEGANDO OS USUÁRIOS REAIS DO BANCO
-    // ==========================================
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-    
-    // Mapeia a lista e extrai apenas o ID de cada usuário
     const allUserIDs = cachedUsers.map(user => user._id);
     
-    // Se a lista estiver vazia por algum motivo, avisa o Admin
     if (allUserIDs.length === 0) {
         statusLabel.style.color = "#ea4335";
         statusLabel.innerText = "Nenhum usuário encontrado no sistema!";
@@ -607,7 +643,6 @@ async function triggerTurboBroadcast() {
     } 
 
     try {
-        // Usa o SEU link exato que você acabou de criar no Render!
         const response = await fetch('https://cptt-turbo-go.onrender.com/broadcast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -620,10 +655,8 @@ async function triggerTurboBroadcast() {
 
         if (response.ok) {
             const result = await response.text();
-            statusLabel.style.color = "var(--brand-accent)"; // Verde sucesso
+            statusLabel.style.color = "var(--brand-accent)"; 
             statusLabel.innerText = "✅ " + result;
-            
-            // Limpa os campos após o envio
             document.getElementById('broadcast-title').value = '';
             document.getElementById('broadcast-message').value = '';
         } else {
@@ -636,20 +669,30 @@ async function triggerTurboBroadcast() {
 }
 
 // ==============================================================
+// SISTEMA DE PESQUISA (LUPA DA TELA PRINCIPAL)
+// ==============================================================
+function toggleMainSearch() {
+    const bar = document.getElementById('main-search-bar');
+    if(bar) {
+        bar.classList.toggle('hidden');
+        if(!bar.classList.contains('hidden')) {
+            document.getElementById('search-input').focus();
+        }
+    }
+}
+
+// ==============================================================
 // SISTEMA DE NAVEGAÇÃO INFERIOR (TABS - MATERIAL DESIGN 3)
 // ==============================================================
 function switchTab(tabName, element) {
-    // 1. Tira o brilho de todos e coloca no botão clicado
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     element.classList.add('active');
 
-    // 2. Esconde TODAS as telas principais para limpar a visão
-    hideElement('main-screen');       // Tela principal de conversas (Corrigido!)
-    hideElement('screen-anotacoes');  // Tela de anotações
-    hideElement('screen-jogos');      // Tela de jogos
-    hideElement('chat-screen');       // Tela de bate-papo (se estiver aberta)
+    hideElement('main-screen');       
+    hideElement('screen-anotacoes');  
+    hideElement('screen-jogos');      
+    hideElement('chat-screen');       
 
-    // 3. Mostra apenas a tela solicitada
     if (tabName === 'conversas') {
         showElement('main-screen');
     } else if (tabName === 'anotacoes') {
@@ -659,24 +702,19 @@ function switchTab(tabName, element) {
     }
 }
 
-// 4. O "Olheiro Automático": Faz a barra aparecer sozinha após o login
 const observerMenu = new MutationObserver((mutations) => {
     mutations.forEach((m) => {
         const mainScreen = document.getElementById('main-screen');
         const chatScreen = document.getElementById('chat-screen');
         
-        // Se a tela principal de conversas estiver visível, mostra a barra
         if (mainScreen && !mainScreen.classList.contains('hidden')) {
             showElement('bottom-navigation');
-        } 
-        // Se a tela de bate-papo (conversa privada) estiver aberta, esconde a barra
-        else if (chatScreen && !chatScreen.classList.contains('hidden')) {
+        } else if (chatScreen && !chatScreen.classList.contains('hidden')) {
             hideElement('bottom-navigation');
         }
     });
 });
 
-// Começa a vigiar a tela principal
 const mainScreenEl = document.getElementById('main-screen');
 if(mainScreenEl) {
     observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] });
