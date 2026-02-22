@@ -12,9 +12,6 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 const webpush = require('web-push');
 
-// Importação nativa para resolver o problema de versão do Node.js
-const https = require('https'); 
-
 webpush.setVapidDetails(
   'mailto:psbsj.2020@outlook.com',
   'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY',
@@ -128,51 +125,51 @@ io.on('connection', (socket) => {
             if (rSocket) io.to(rSocket).emit('receive_message', msg); 
             socket.emit('receive_message', msg); 
 
-            // --- MÁGICA REFEITA: COMUNICAÇÃO COM O BOT EM PYTHON À PROVA DE BALAS ---
+            // --- MÁGICA DEDO-DURO: A IA VAI TE CONTAR O ERRO NA TELA! ---
             if (String(data.receiverId) === String(botUserId) && data.content) {
-                // Acende o "Bot está digitando..."
                 socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
 
-                const payloadData = JSON.stringify({ message: data.content });
-                
-                const options = {
-                    hostname: 'cptt-bot-ia.onrender.com', // Link do seu robô
-                    port: 443,
-                    path: '/ask',
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(payloadData)
-                    }
-                };
-
-                const reqHttp = https.request(options, (resHttp) => {
-                    let body = '';
-                    resHttp.on('data', (chunk) => body += chunk);
-                    resHttp.on('end', async () => {
-                        socket.emit('stop_typing', { senderId: botUserId });
-                        try {
-                            const pyData = JSON.parse(body);
-                            const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
-                            await botMsg.save();
-                            socket.emit('receive_message', botMsg);
-                        } catch (err) {
-                            const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: "🤖 Opa! O cérebro da IA retornou uma resposta confusa. Tente novamente!", status: 'sent', _id: new mongoose.Types.ObjectId() });
-                            socket.emit('receive_message', errorMsg);
-                        }
+                try {
+                    const pyRes = await fetch('https://cptt-bot-ia.onrender.com/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: data.content })
                     });
-                });
-
-                reqHttp.on('error', async (error) => {
+                    
+                    const responseText = await pyRes.text();
                     socket.emit('stop_typing', { senderId: botUserId });
-                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: "🤖 O meu cérebro Python está dormindo no servidor ou offline. Tente mandar outro 'Oi' em 1 minuto!", status: 'sent', _id: new mongoose.Types.ObjectId() });
-                    socket.emit('receive_message', errorMsg);
-                });
 
-                reqHttp.write(payloadData);
-                reqHttp.end();
+                    if (!pyRes.ok) {
+                        // Erro gerado pelo servidor do Render
+                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Render recusou a chamada (Erro ${pyRes.status}). Resposta: \n${responseText.substring(0, 200)}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        await errorMsg.save();
+                        socket.emit('receive_message', errorMsg);
+                        return;
+                    }
+
+                    try {
+                        // Tenta ler como JSON perfeitamente
+                        const pyData = JSON.parse(responseText);
+                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        await botMsg.save();
+                        socket.emit('receive_message', botMsg);
+                    } catch (parseError) {
+                        // Deu 200 OK, mas o que voltou não é JSON! Vamos ler:
+                        const cleanError = responseText.replace(/</g, "&lt;").substring(0, 250);
+                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Python não mandou um JSON! Ele mandou isto:\n\n${cleanError}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        await errorMsg.save();
+                        socket.emit('receive_message', errorMsg);
+                    }
+                } catch (netError) {
+                    socket.emit('stop_typing', { senderId: botUserId });
+                    // O erro mais fatal de conexão!
+                    const alertMsg = `🚨 Falha na rede interna do Node.js: "${netError.message}". (Se disser 'fetch is not defined', significa que o Node do seu servidor é muito velho!)`;
+                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: alertMsg, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                    await errorMsg.save();
+                    socket.emit('receive_message', errorMsg);
+                }
             } else {
-                // Push Notification Normal para humanos
+                // Push Notification Normal
                 const receiver = await User.findById(data.receiverId);
                 if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                     const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
