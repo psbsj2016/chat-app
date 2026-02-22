@@ -29,8 +29,8 @@ async def ask_bot(req: MessageRequest):
 
         Mensagem do Usuário: {req.message}"""
         
-        # Chamada blindada e universal para a API (modelo gemini-pro)
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
+        # Chamada blindada e universal para a API (modelo gemini-1.5-flash)
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         headers = {"Content-Type": "application/json"}
