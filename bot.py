@@ -15,60 +15,42 @@ class MessageRequest(BaseModel):
 @app.post("/ask")
 async def ask_bot(req: MessageRequest):
     try:
-        # 1. PERGUNTA AO GOOGLE: "Quais modelos eu tenho permissão para usar?"
-        url_list = f"https://generativelanguage.googleapis.com/v1beta/models?key={API_KEY}"
-        res_list = requests.get(url_list)
-        data_list = res_list.json()
-
-        if 'error' in data_list:
-            return {"reply": f"🚨 Erro na sua Chave API: {data_list['error'].get('message')}"}
-
-        # 2. FILTRA: Pega apenas os nomes dos modelos que servem para gerar texto
-        modelos_permitidos = [m['name'] for m in data_list.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
-
-        if not modelos_permitidos:
-            return {"reply": "🚨 A sua chave é válida, mas o Google não liberou nenhum modelo de texto para ela!"}
-
-        # 3. ESCOLHE: Tenta pegar o 1.5, se não achar pega qualquer Gemini liberado
-        modelo_escolhido = None
-        for m in modelos_permitidos:
-            if 'gemini-1.5-flash' in m:
-                modelo_escolhido = m
-                break
-                
-        if not modelo_escolhido:
-            for m in modelos_permitidos:
-                if 'gemini' in m:
-                    modelo_escolhido = m
-                    break
-                    
-        if not modelo_escolhido:
-            modelo_escolhido = modelos_permitidos[0] # Pega o que tiver!
-
-        # 4. CHAT: Agora faz a chamada usando o modelo exato que o Google mandou usar
-        prompt = f"Você é o CPTT Bot, um assistente virtual prestativo, educado e inteligente integrado a um aplicativo de chat premium. Responda de forma clara e amigável à seguinte mensagem:\n\nUsuário: {req.message}"
+        # A MÁGICA: Aqui nós definimos a dupla personalidade do Bot!
+        prompt = f"""Você é o CPTT Bot, o assistente virtual super inteligente, educado e amigável do aplicativo de chat CPTT.
         
-        # O modelo escolhido já vem com a palavra "models/" na frente
-        url_chat = f"https://generativelanguage.googleapis.com/v1beta/{modelo_escolhido}:generateContent?key={API_KEY}"
+        NOVA DIRETRIZ: Você agora possui um minigame secreto embutido chamado 'Detetive CPTT'.
+        Se o usuário disser algo como "vamos jogar", "jogar detetive", "quero um mistério" ou iniciar uma investigação, VOCÊ DEVE ATIVAR O MODO JOGO IMEDIATAMENTE.
+
+        REGRAS DO MODO DETETIVE:
+        1. Invente um crime ou sumiço misterioso na sede do CPTT (seja criativo e divertido. Ex: O roubo do roteador de Wi-Fi de Ouro, o sumiço do café sagrado dos programadores).
+        2. Apresente o cenário do crime e 3 suspeitos com nomes e personalidades BEM diferentes.
+        3. Diga para o usuário (o Detetive) começar a investigação fazendo perguntas para você (que vai interpretar os suspeitos, as testemunhas e o narrador).
+        4. O Segredo: Apenas um suspeito é o culpado de verdade. Você deve deixar pequenas pistas e contradições escondidas no depoimento do culpado.
+        5. Se o usuário disser que quer "Acusar", peça o nome do suspeito e o motivo. Revele a verdade de forma super dramática (com emojis) e diga se ele venceu ou perdeu!
+
+        Se o usuário NÃO falar de jogo, aja normalmente como um assistente respondendo à mensagem dele.
+
+        Mensagem do Usuário: {req.message}"""
+        
+        # Chamada super blindada e universal para a API
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         headers = {"Content-Type": "application/json"}
         
-        response = requests.post(url_chat, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
         data = response.json()
         
         if 'error' in data:
-            return {"reply": f"🚨 O Google bloqueou no modelo {modelo_escolhido}. Motivo: {data['error'].get('message')}"}
+            return {"reply": f"🚨 O Google barrou a comunicação. Motivo: {data['error'].get('message')}"}
             
         reply_text = data['candidates'][0]['content']['parts'][0]['text']
-        
-        # Vou colocar o nome do modelo no final só para sabermos qual ele usou!
-        return {"reply": f"{reply_text}"}
+        return {"reply": reply_text}
         
     except Exception as e:
         print(f"Erro na IA: {e}")
         return {"reply": f"🚨 Erro interno no Python: {str(e)}"}
 
 if __name__ == "__main__":
-    print("🤖 Cérebro Python CPTT Bot rodando (Modo Auto-Descobrimento Hacker)...")
+    print("🤖 Cérebro Python CPTT Bot rodando com o Módulo Detetive Ativado...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
