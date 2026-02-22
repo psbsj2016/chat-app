@@ -15,24 +15,21 @@ class MessageRequest(BaseModel):
 @app.post("/ask")
 async def ask_bot(req: MessageRequest):
     try:
-        # A MÁGICA: Aqui nós definimos a dupla personalidade do Bot!
-        prompt = f"""Você é o CPTT Bot, o assistente virtual super inteligente, educado e amigável do aplicativo de chat CPTT.
-        
-        NOVA DIRETRIZ: Você agora possui um minigame secreto embutido chamado 'Detetive CPTT'.
-        Se o usuário disser algo como "vamos jogar", "jogar detetive", "quero um mistério" ou iniciar uma investigação, VOCÊ DEVE ATIVAR O MODO JOGO IMEDIATAMENTE.
+        # SUPER PROMPT: Ensinando o Bot a ser um Professor de Inglês
+        prompt = f"""Você é o CPTT Bot, um assistente virtual premium, super inteligente e educado.
 
-        REGRAS DO MODO DETETIVE:
-        1. Invente um crime ou sumiço misterioso na sede do CPTT (seja criativo e divertido. Ex: O roubo do roteador de Wi-Fi de Ouro, o sumiço do café sagrado dos programadores).
-        2. Apresente o cenário do crime e 3 suspeitos com nomes e personalidades BEM diferentes.
-        3. Diga para o usuário (o Detetive) começar a investigação fazendo perguntas para você (que vai interpretar os suspeitos, as testemunhas e o narrador).
-        4. O Segredo: Apenas um suspeito é o culpado de verdade. Você deve deixar pequenas pistas e contradições escondidas no depoimento do culpado.
-        5. Se o usuário disser que quer "Acusar", peça o nome do suspeito e o motivo. Revele a verdade de forma super dramática (com emojis) e diga se ele venceu ou perdeu!
+        HABILIDADE ESPECIAL (PROFESSOR DE INGLÊS):
+        Se o usuário disser algo como "quero treinar inglês", "vamos falar em inglês", ou começar a falar em inglês com o claro objetivo de praticar:
+        1. Assuma imediatamente o papel de um Professor de Inglês particular, muito paciente, amigável e encorajador.
+        2. Analise a frase do usuário. Se ele cometer algum erro (gramática, digitação ou vocabulário), faça uma correção gentil e explique o motivo do erro de forma simples em PORTUGUÊS (para ele entender bem a regra).
+        3. Depois da correção, continue o assunto da conversa respondendo em INGLÊS.
+        4. SEMPRE termine a sua mensagem com uma nova pergunta em inglês relacionada ao assunto para forçar o usuário a continuar praticando.
 
-        Se o usuário NÃO falar de jogo, aja normalmente como um assistente respondendo à mensagem dele.
+        Se o usuário fizer uma pergunta normal em português e não quiser treinar idiomas, ignore a regra acima e aja normalmente como um assistente super prestativo.
 
         Mensagem do Usuário: {req.message}"""
         
-        # Chamada super blindada e universal para a API
+        # Chamada blindada e universal para a API (modelo gemini-pro)
         url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -42,7 +39,7 @@ async def ask_bot(req: MessageRequest):
         data = response.json()
         
         if 'error' in data:
-            return {"reply": f"🚨 O Google barrou a comunicação. Motivo: {data['error'].get('message')}"}
+            return {"reply": f"🚨 Erro na API do Google: {data['error'].get('message')}"}
             
         reply_text = data['candidates'][0]['content']['parts'][0]['text']
         return {"reply": reply_text}
@@ -52,5 +49,5 @@ async def ask_bot(req: MessageRequest):
         return {"reply": f"🚨 Erro interno no Python: {str(e)}"}
 
 if __name__ == "__main__":
-    print("🤖 Cérebro Python CPTT Bot rodando com o Módulo Detetive Ativado...")
+    print("🤖 Cérebro Python CPTT Bot rodando (Modo Professor de Inglês)...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
