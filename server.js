@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Cria uma versão única toda vez que o Render reiniciar o servidor
+const SERVER_VERSION = Date.now().toString();
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
@@ -93,7 +95,12 @@ let users = {};
 const SERVER_VERSION = Date.now().toString();
 
 io.on('connection', (socket) => {
+    console.log('Novo usuário conectado:', socket.id); // Pode ter algo parecido com isso
+
+    // === COLOQUE O DESTRUIDOR DE CACHE AQUI DENTRO ===
+    const SERVER_VERSION = Date.now().toString();
     socket.emit('check_app_version', SERVER_VERSION);
+    // =================================================
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
 
