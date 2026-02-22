@@ -62,8 +62,10 @@
     </div>
 
     <div id="main-screen" class="app-screen hidden">
-        <div class="main-header"
-            <img src="favicon.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'" class="logo-img-btn">
+        <div class="main-header">
+            <div class="header-logo-btn" onclick="openAddContactScreen()" style="margin: 0;">
+                <img src="favicon.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'" class="logo-img-btn">
+                <div class="logo-badge-btn"><span class="material-icons">person_add</span></div>
             </div>
             <div style="flex:1"></div>
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -76,10 +78,6 @@
             <div class="menu-item" onclick="openProfile()"><span class="material-icons">account_circle</span> Perfil</div>
             <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
             <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
-             <div class="menu-item" onclick="document.getElementById('admin-modal').classList.remove('hidden')">
-        <i class="material-icons" style="color: #ff9800;">campaign</i>
-        <span style="color: #ff9800; font-weight: bold;">Aviso Geral (Go)</span>
-    </div>
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
             <div class="menu-item logout" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
         </div>
