@@ -144,13 +144,19 @@
             <div class="menu-item logout" onclick="deleteCurrentChat()"><span class="material-icons">delete_forever</span> <span style="font-weight: bold;">Apagar Conversa</span></div>
         </div>
         <div id="chat-box"></div>
-        <div class="input-area">
+       <div class="input-area">
             <button class="icon-btn" onclick="toggleEmojiPicker()"><span class="material-icons" style="color:#54656f">sentiment_satisfied_alt</span></button>
             <emoji-picker id="emoji-picker" class="hidden"></emoji-picker>
+            
+            <div id="recording-ui" class="hidden" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 20px; padding: 0 15px; margin-bottom: 2px; overflow: hidden;">
+                <span class="material-icons" style="color: #ea4335; animation: pulse-glow 1.5s infinite;">mic</span>
+                <span id="recording-timer" style="font-weight: bold; margin: 0 10px; color: var(--brand-primary); font-size: 15px;">00:00</span>
+                <canvas id="audio-visualizer" width="200" height="30" style="flex: 1; height: 30px; margin-right: 5px;"></canvas>
+            </div>
+
             <div id="message-input" contenteditable="true" placeholder="Mensagem..."></div>
             <button class="send-btn" onclick="sendMessage()"><span class="material-icons">send</span></button>
         </div>
-    </div>
 
     <div id="profile-screen" class="app-screen hidden" style="background: var(--bg-color);">
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button><span class="header-title" style="font-size:21px;">Perfil</span><div style="width: 40px;"></div></div>

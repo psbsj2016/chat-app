@@ -346,7 +346,122 @@ async function openRemoveMemberModal(id, membersStr) { targetGroupId = id; hideE
 function updateRemoveBtn() { const btn = document.getElementById('btn-execute-remove'); if(selectedForRemoval.length > 0) { btn.classList.remove('hidden'); btn.innerText = `Remover (${selectedForRemoval.length})`; } else { btn.classList.add('hidden'); } }
 async function submitRemoveMembers() { if(selectedForRemoval.length === 0) return; if(!confirm("Tem certeza que deseja remover os membros selecionados?")) return; try { await fetch(`/groups/${targetGroupId}/remove-members`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userIds: selectedForRemoval})}); hideElement('remove-members-modal'); alert('Removidos!'); socket.emit('group_updated'); } catch(e){} }
 
-async function startRecording() { if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(stream); const chunks = []; toggleMenu('attach-menu'); const input = document.getElementById('message-input'); const btn = document.querySelector('.send-btn'); emitTypingStatus('recording'); recordingSeconds = 0; input.innerText = ''; input.contentEditable = false; input.setAttribute('placeholder', '🎙️ Gravando áudio (00:00)'); btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; btn.classList.remove('pending-send'); recordingInterval = setInterval(() => { recordingSeconds++; const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎙️ Gravando áudio (${mins}:${secs})`); }, 1000); globalMediaRecorder.start(); globalMediaRecorder.ondataavailable = e => chunks.push(e.data); globalMediaRecorder.onstop = async () => { clearInterval(recordingInterval); emitStopTypingStatus(); const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); const secs = String(recordingSeconds % 60).padStart(2, '0'); input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); input.contentEditable = true; btn.innerHTML = '<span class="material-icons">send</span>'; btn.classList.add('pending-send'); const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); stream.getTracks().forEach(t => t.stop()); globalMediaRecorder = null; }; recordingTimeout = setTimeout(() => { if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); }, 60000); } catch (err) { alert('Permissão negada!'); } }
+// Variáveis globais para o desenho da onda
+let visualizerAnimationId = null;
+let visualizerAudioCtx = null;
+
+async function startRecording() { 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") return; 
+    try { 
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(stream); 
+        const chunks = []; 
+        toggleMenu('attach-menu'); 
+        
+        const input = document.getElementById('message-input'); 
+        const recUI = document.getElementById('recording-ui');
+        const recTimer = document.getElementById('recording-timer');
+        const canvas = document.getElementById('audio-visualizer');
+        const canvasCtx = canvas.getContext('2d');
+        const btn = document.querySelector('.send-btn'); 
+        
+        emitTypingStatus('recording'); 
+        recordingSeconds = 0; 
+        input.innerText = ''; 
+        
+        // Esconde o input de texto e mostra as ondas
+        input.classList.add('hidden');
+        recUI.classList.remove('hidden');
+        recTimer.innerText = '00:00';
+        
+        btn.innerHTML = '<span class="material-icons" style="color: #ea4335;">stop_circle</span>'; 
+        btn.classList.remove('pending-send'); 
+
+        // ====================================================
+        // MÁGICA DO VISUALIZADOR DE ÁUDIO 
+        // ====================================================
+        visualizerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = visualizerAudioCtx.createMediaStreamSource(stream);
+        const analyser = visualizerAudioCtx.createAnalyser();
+        analyser.fftSize = 64; // Define a quantidade de barrinhas
+        source.connect(analyser);
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        function drawVisualizer() {
+            visualizerAnimationId = requestAnimationFrame(drawVisualizer);
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Limpa o canvas a cada frame
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = (canvas.width / bufferLength) * 1.5;
+            let x = 0;
+            
+            for(let i = 0; i < bufferLength; i++) {
+                // Suaviza a altura da barra
+                const barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+                const y = (canvas.height - barHeight) / 2; // Centraliza verticalmente
+                
+                canvasCtx.fillStyle = 'var(--brand-primary)';
+                canvasCtx.beginPath();
+                // Usa roundRect se suportado (barras arredondadas), se não, usa fillRect normal
+                if(canvasCtx.roundRect) {
+                    canvasCtx.roundRect(x, y, barWidth - 2, Math.max(barHeight, 2), 2);
+                } else {
+                    canvasCtx.fillRect(x, y, barWidth - 2, Math.max(barHeight, 2));
+                }
+                canvasCtx.fill();
+                x += barWidth;
+            }
+        }
+        drawVisualizer(); // Começa a desenhar!
+        // ====================================================
+
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); 
+            const secs = String(recordingSeconds % 60).padStart(2, '0'); 
+            recTimer.innerText = `${mins}:${secs}`;
+        }, 1000); 
+        
+        globalMediaRecorder.start(); 
+        globalMediaRecorder.ondataavailable = e => chunks.push(e.data); 
+        
+        // Quando clicar em parar (ou no botão de enviar durante a gravação)
+        globalMediaRecorder.onstop = async () => { 
+            clearInterval(recordingInterval); 
+            
+            // Desliga as ondas de áudio para economizar bateria
+            cancelAnimationFrame(visualizerAnimationId);
+            if (visualizerAudioCtx) visualizerAudioCtx.close();
+            
+            emitStopTypingStatus(); 
+            
+            // Volta a interface ao normal
+            recUI.classList.add('hidden');
+            input.classList.remove('hidden');
+            
+            const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0'); 
+            const secs = String(recordingSeconds % 60).padStart(2, '0'); 
+            input.setAttribute('placeholder', `🎵 Áudio pronto (${mins}:${secs}). Clique no botão para enviar.`); 
+            
+            btn.innerHTML = '<span class="material-icons">send</span>'; 
+            btn.classList.add('pending-send'); 
+            
+            const blob = new Blob(chunks, { type: 'audio/webm; codecs=opus' }); 
+            pendingAudioFile = new File([blob], "audio_rec.webm", { type: 'audio/webm' }); 
+            stream.getTracks().forEach(t => t.stop()); 
+            globalMediaRecorder = null; 
+        }; 
+        
+        recordingTimeout = setTimeout(() => { 
+            if (globalMediaRecorder && globalMediaRecorder.state === "recording") globalMediaRecorder.stop(); 
+        }, 60000); 
+    } catch (err) { 
+        alert('Permissão negada ou microfone não encontrado!'); 
+    } 
+}
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.type.startsWith('video/')) { const video = document.createElement('video'); video.preload = 'metadata'; video.onloadedmetadata = () => { window.URL.revokeObjectURL(video.src); if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; } executeUpload(file, 'video'); }; video.src = URL.createObjectURL(file); } else { let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); } }
 async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); } finally { document.getElementById('file-input').value = ''; } }
