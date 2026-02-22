@@ -331,18 +331,21 @@ body.dark-mode .fab-primary {
 }
 
 /* ==========================================
-   BARRA DE NAVEGAÇÃO INFERIOR (MATERIAL 3)
+   BARRA DE NAVEGAÇÃO INFERIOR (MATERIAL 3 - EXATO DA IMAGEM)
    ========================================== */
 .bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
+    right: 0;
+    margin: 0 auto;
     width: 100%;
+    max-width: 1000px; /* Alinha com a tela no PC */
     background-color: var(--card-bg);
     display: flex;
     justify-content: space-around;
-    padding: 10px 0 15px 0; 
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    padding: 12px 10px 15px 10px; /* Espaço idêntico à foto */
+    border-top: 1px solid var(--input-bg);
     z-index: 1000;
 }
 
@@ -350,29 +353,53 @@ body.dark-mode .fab-primary {
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: var(--secondary-text);
+    color: var(--secondary-text); /* Cor cinza para os inativos */
     cursor: pointer;
-    font-size: 13px;
     flex: 1;
-    transition: all 0.3s ease;
+    transition: 0.2s ease;
 }
 
+.nav-item span {
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-top: 5px;
+}
+
+/* O fundo do ícone */
 .nav-icon {
-    padding: 6px 20px;
-    border-radius: 20px; 
-    margin-bottom: 4px;
+    width: 64px; /* A pílula larguinha da foto */
+    height: 32px;
+    border-radius: 16px; /* Pílula perfeita (Squircle) */
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: 0.3s ease;
 }
 
-.nav-icon .material-icons { font-size: 24px; }
+.nav-icon .material-icons {
+    font-size: 24px;
+}
 
-.nav-item.active { color: var(--brand-primary); font-weight: bold; }
-.nav-item.active .nav-icon { background-color: var(--brand-light); color: var(--brand-primary); }
+/* === ABA ATIVA (O QUE MUDA QUANDO CLICA) === */
+.nav-item.active {
+    color: var(--text-color); /* Texto mais escuro igual "Conversas" na foto */
+}
 
-/* Ajuste no espaço das telas para a barra não cobrir o conteúdo */
+.nav-item.active span {
+    font-weight: bold;
+}
+
+.nav-item.active .nav-icon {
+    background-color: #d3e3fd; /* Azul clarinho clássico do Material Design */
+    color: #041e49; /* Ícone fica azul quase preto */
+}
+
+body.dark-mode .nav-item.active .nav-icon {
+    background-color: var(--brand-primary);
+    color: white;
+}
+
+/* Proteção para os botões flutuantes e listas não sumirem atrás da barra */
 #main-screen, #screen-anotacoes, #screen-jogos {
-    padding-bottom: 75px !important; 
+    padding-bottom: 90px !important; 
 }

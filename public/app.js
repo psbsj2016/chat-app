@@ -682,17 +682,21 @@ function toggleMainSearch() {
 }
 
 // ==============================================================
-// SISTEMA DE NAVEGAÇÃO INFERIOR (TABS - MATERIAL DESIGN 3)
+// SISTEMA DE NAVEGAÇÃO INFERIOR (TABS)
 // ==============================================================
 function switchTab(tabName, element) {
+    // Tira o foco de todos
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    // Coloca o foco no botão clicado
     element.classList.add('active');
 
+    // Esconde todas as telas
     hideElement('main-screen');       
     hideElement('screen-anotacoes');  
     hideElement('screen-jogos');      
     hideElement('chat-screen');       
 
+    // Mostra apenas a aba certa
     if (tabName === 'conversas') {
         showElement('main-screen');
     } else if (tabName === 'anotacoes') {
@@ -702,17 +706,33 @@ function switchTab(tabName, element) {
     }
 }
 
-const observerMenu = new MutationObserver((mutations) => {
-    mutations.forEach((m) => {
-        const mainScreen = document.getElementById('main-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        
-        if (mainScreen && !mainScreen.classList.contains('hidden')) {
-            showElement('bottom-navigation');
-        } else if (chatScreen && !chatScreen.classList.contains('hidden')) {
-            hideElement('bottom-navigation');
-        }
-    });
+// O "Olheiro" para a barra aparecer no lugar certo
+const observerMenu = new MutationObserver(() => {
+    const main = document.getElementById('main-screen');
+    const notes = document.getElementById('screen-anotacoes');
+    const games = document.getElementById('screen-jogos');
+    const chat = document.getElementById('chat-screen');
+    const bottomNav = document.getElementById('bottom-navigation');
+    
+    // Se a tela de chat (conversa) estiver visível, esconde a barra
+    if (chat && !chat.classList.contains('hidden')) {
+        if(bottomNav) bottomNav.style.display = 'none';
+    } 
+    // Se Anotações, Jogos ou Tela Principal estiver visível, mostra a barra!
+    else if ((main && !main.classList.contains('hidden')) || 
+             (notes && !notes.classList.contains('hidden')) || 
+             (games && !games.classList.contains('hidden'))) {
+        if(bottomNav) bottomNav.style.display = 'flex';
+    } 
+    // Na tela de Login, Permissions, etc: esconde a barra
+    else {
+        if(bottomNav) bottomNav.style.display = 'none'; 
+    }
+});
+
+// Começa a vigiar todas as telas
+document.querySelectorAll('.app-screen').forEach(screen => {
+    observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] });
 });
 
 const mainScreenEl = document.getElementById('main-screen');
