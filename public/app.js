@@ -634,3 +634,50 @@ async function triggerTurboBroadcast() {
         statusLabel.innerText = "❌ Erro na comunicação: " + error.message;
     }
 }
+
+// ==============================================================
+// SISTEMA DE NAVEGAÇÃO INFERIOR (TABS - MATERIAL DESIGN 3)
+// ==============================================================
+function switchTab(tabName, element) {
+    // 1. Tira o brilho de todos e coloca no botão clicado
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    element.classList.add('active');
+
+    // 2. Esconde TODAS as telas principais para limpar a visão
+    hideElement('main-screen');       // Tela principal de conversas (Corrigido!)
+    hideElement('screen-anotacoes');  // Tela de anotações
+    hideElement('screen-jogos');      // Tela de jogos
+    hideElement('chat-screen');       // Tela de bate-papo (se estiver aberta)
+
+    // 3. Mostra apenas a tela solicitada
+    if (tabName === 'conversas') {
+        showElement('main-screen');
+    } else if (tabName === 'anotacoes') {
+        showElement('screen-anotacoes');
+    } else if (tabName === 'jogos') {
+        showElement('screen-jogos');
+    }
+}
+
+// 4. O "Olheiro Automático": Faz a barra aparecer sozinha após o login
+const observerMenu = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+        const mainScreen = document.getElementById('main-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        
+        // Se a tela principal de conversas estiver visível, mostra a barra
+        if (mainScreen && !mainScreen.classList.contains('hidden')) {
+            showElement('bottom-navigation');
+        } 
+        // Se a tela de bate-papo (conversa privada) estiver aberta, esconde a barra
+        else if (chatScreen && !chatScreen.classList.contains('hidden')) {
+            hideElement('bottom-navigation');
+        }
+    });
+});
+
+// Começa a vigiar a tela principal
+const mainScreenEl = document.getElementById('main-screen');
+if(mainScreenEl) {
+    observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] });
+}

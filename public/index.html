@@ -229,13 +229,13 @@
     <div id="specific-add-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column;"><h3 style="font-size: 20px; color: var(--brand-primary); margin-bottom: 5px;">Adicionar Membros</h3><p style="font-size:13.5px; color:var(--secondary-text); margin-bottom: 15px;">Selecione quem deseja adicionar</p><div id="specific-add-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><div class="modal-actions" style="display: flex; gap: 15px; width: 100%;"><button onclick="hideElement('specific-add-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer;">Cancelar</button><button onclick="submitSpecificAdd()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Adicionar</button></div></div></div>
     <div id="remove-members-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; position: relative;"><div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:5px;"><h3 style="margin: 0; font-size: 20px; color: var(--text-color);">Remover Membros</h3><button id="btn-execute-remove" class="hidden chic-btn" onclick="submitRemoveMembers()" style="background: linear-gradient(to right, #ff5252, #d32f2f); margin: 0; padding: 8px 15px; font-size: 14px; width: auto;">Remover</button></div><p style="font-size:13.5px; color:var(--secondary-text); margin-bottom: 15px;">Segure no contato para selecionar</p><div id="remove-members-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('remove-members-modal')" style="background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer; width: 100%;">Fechar</button></div></div>
     <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons">content_copy</span> Copiar Texto</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons">shortcut</span> Encaminhar</div></div>
-    <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;"><h3 style="font-size: 20px; color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('forward-modal')" style="background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer; width: 100%;">Cancelar</button></div></div>    
+    <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;"><h3 style="font-size: 20px; color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; text-align: left; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('forward-modal')" style="background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; transition: 0.2s; font-size: 15.5px; cursor: pointer; width: 100%;">Cancelar</button></div></div>   
     <div id="text-format-toolbar" class="hidden floating-format-bar"><button onmousedown="formatDoc('bold', event)"><b>B</b></button><button onmousedown="formatDoc('italic', event)"><i>I</i></button><button onmousedown="formatDoc('underline', event)"><u>U</u></button><button onmousedown="formatDoc('strikeThrough', event)"><s>S</s></button><div class="toolbar-sep"></div><button onmousedown="formatDoc('fontName', event, 'Brush Script MT')" style="font-family: 'Brush Script MT', cursive;" title="Cursiva">C</button><button onmousedown="formatDoc('fontName', event, 'Impact')" style="font-family: Impact, fantasy;" title="Decorativa">D</button><button onmousedown="formatDoc('fontName', event, 'Courier New')" style="font-family: 'Courier New', monospace;" title="Espaçada">E</button><button onmousedown="formatDoc('fontName', event, 'Arial')" style="font-family: Arial, sans-serif;" title="Normal">A</button></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>document.write('<script src="app.js?v=' + appVer + '"><\/script>');</script>
 
-<div id="admin-modal" class="modal-overlay hidden">
+    <div id="admin-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 style="color: var(--brand-accent); margin-bottom: 15px;">⚡ Disparo Turbo Go</h3>
             <p style="font-size: 13px; color: var(--secondary-text); margin-bottom: 15px; text-align: center;">
@@ -253,6 +253,31 @@
             
             <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="chic-btn" style="background: transparent; color: var(--secondary-text); margin-top: 5px; box-shadow: none;">Fechar</button>
         </div>
+    </div>
+            
+    <nav id="bottom-navigation" class="bottom-nav" style="display: none;">
+        <div class="nav-item active" onclick="switchTab('conversas', this)">
+            <div class="nav-icon"><span class="material-icons">chat</span></div>
+            <span>Conversas</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('anotacoes', this)">
+            <div class="nav-icon"><span class="material-icons">sticky_note_2</span></div>
+            <span>Anotações</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('jogos', this)">
+            <div class="nav-icon"><span class="material-icons">sports_esports</span></div>
+            <span>Jogos</span>
+        </div>
+    </nav>
+
+    <div id="screen-anotacoes" class="app-screen hidden" style="display: none; padding-top: 60px; text-align: center;">
+        <h2>Suas Anotações 📝</h2>
+        <p>Área em construção para guardar seus textos e ideias.</p>
+    </div>
+
+    <div id="screen-jogos" class="app-screen hidden" style="display: none; padding-top: 60px; text-align: center;">
+        <h2>Jogos 🎮</h2>
+        <p>Área em construção para os minigames do CPTT.</p>
     </div>
 </body>
 </html>
