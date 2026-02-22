@@ -18,8 +18,8 @@ async def ask_bot(req: MessageRequest):
     try:
         prompt = f"Você é o CPTT Bot, um assistente virtual prestativo, educado e inteligente integrado a um aplicativo de chat premium. Responda de forma clara e amigável à seguinte mensagem:\n\nUsuário: {req.message}"
         
-        # MÁGICA FINAL: Alterado para 'gemini-1.5-flash-latest' para forçar o Google a aceitar!
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={API_KEY}"
+        # A cartada final: Usando a versão v1 estável e o modelo Universal "gemini-pro"
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}"
         
         payload = {
             "contents": [{"parts": [{"text": prompt}]}]
@@ -31,14 +31,13 @@ async def ask_bot(req: MessageRequest):
         
         if 'error' in data:
             error_msg = data['error'].get('message', 'Erro desconhecido do Google')
-            # Se a região for muito restrita e ele ainda reclamar, tente trocar a palavra 'gemini-1.5-flash-latest' na URL ali em cima por 'gemini-pro'
             return {"reply": f"🚨 O Google bloqueou a resposta. Motivo: {error_msg}"}
             
         if 'candidates' not in data:
             debug_info = json.dumps(data, indent=2, ensure_ascii=False)
             return {"reply": f"🚨 O Google mandou uma resposta misteriosa:\n{debug_info}"}
         
-        # Sucesso! Pega a resposta e envia.
+        # Sucesso absoluto!
         reply_text = data['candidates'][0]['content']['parts'][0]['text']
         return {"reply": reply_text}
         
@@ -47,5 +46,5 @@ async def ask_bot(req: MessageRequest):
         return {"reply": f"🚨 Erro interno no Python: {str(e)}"}
 
 if __name__ == "__main__":
-    print("🤖 Cérebro Python CPTT Bot rodando perfeitamente...")
+    print("🤖 Cérebro Python CPTT Bot rodando (Modo Universal)...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
