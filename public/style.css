@@ -230,8 +230,14 @@ body.dark-mode .user-item.has-unread { background-color: rgba(255,255,255,0.05) 
 body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-secondary); }
 
 #msg-context-menu { position: fixed; z-index: 9999; background: var(--card-bg); border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); padding: 10px; width: 220px; }
-.msg-reaction { position: absolute; bottom: -10px; right: 10px; background: var(--card-bg); border-radius: 10px; padding: 2px 5px; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 2; }
 .send-btn.pending-send { background-color: #ff9800 !important; }
+
+/* BARRA DE REAÇÕES PREMIMUM (Tinha sumido!) */
+.reaction-bar { position: absolute; top: -45px; left: 10px; background: var(--card-bg); padding: 5px 10px; border-radius: 25px; display: flex; gap: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1000; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid var(--input-bg); }
+.reaction-emoji { font-size: 22px; cursor: pointer; transition: transform 0.1s ease; }
+.reaction-emoji:hover { transform: scale(1.3); }
+@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.msg-reaction { position: absolute; bottom: -10px; right: 10px; background: var(--card-bg); border-radius: 10px; padding: 2px 5px; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 2; }
 
 .floating-format-bar { position: fixed; z-index: 10000; background: #202c33; color: white; padding: 6px 8px; border-radius: 8px; display: flex; gap: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
 .floating-format-bar button { background: none; border: none; color: white; font-size: 18.5px; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -264,7 +270,7 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
     background-color: var(--card-bg);
     display: flex;
     justify-content: space-around;
-    padding: 10px 0 15px 0; /* Espaço extra para a base do celular */
+    padding: 10px 0 15px 0; 
     box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     z-index: 1000;
 }
@@ -280,26 +286,32 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
     transition: all 0.3s ease;
 }
 
+/* Centralização do Ícone Corrigida */
 .nav-icon {
     padding: 6px 20px;
-    border-radius: 20px; /* A pílula arredondada */
+    border-radius: 20px; 
     margin-bottom: 4px;
-    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.3s ease;
 }
 
-/* O QUE ACONTECE QUANDO A ABA ESTÁ ATIVA */
+.nav-icon .material-icons {
+    font-size: 24px;
+}
+
 .nav-item.active {
-    color: var(--brand-primary); /* Aquele seu azul escuro do logo */
+    color: var(--brand-primary); 
     font-weight: bold;
 }
 
 .nav-item.active .nav-icon {
-    background-color: var(--brand-light); /* O fundo azul clarinho */
+    background-color: var(--brand-light); 
     color: var(--brand-primary);
 }
 
-/* Ajuste no espaço do aplicativo para a barra não cobrir a última mensagem */
-.app-screen {
-    padding-bottom: 80px !important; 
+/* Ajuste no espaço das telas para a barra não cobrir o conteúdo (Corrigido para não quebrar o login) */
+#main-screen, #screen-anotacoes, #screen-jogos {
+    padding-bottom: 75px !important; 
 }
