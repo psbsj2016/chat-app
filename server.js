@@ -136,7 +136,8 @@ io.on('connection', (socket) => {
                 socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
 
                 try {
-                    const pyRes = await fetch('https://cptt-bot-ia.onrender.com/ask', {
+                    // ====== AQUI ESTÁ A CORREÇÃO: O NÚMERO "1" FOI ADICIONADO AO LINK! ======
+                    const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/ask', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: data.content })
