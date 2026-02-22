@@ -397,3 +397,22 @@ body.font-large { font-size: 17px; }
 img {
     max-width: 100%;
 }
+
+/* ====================================================== */
+/* DEIXANDO A LOGO REDONDA (SEM QUEBRAR O LAYOUT)         */
+/* ====================================================== */
+
+/* Arredonda qualquer imagem que seja a logo do CPTT */
+.app-header h1, 
+.auth-logo, 
+.splash-logo, 
+img[src*="M0F3k2X"] {
+    border-radius: 50% !important;
+    background-color: transparent !important;
+}
+
+/* Garante que o quadrado do cabeçalho suma e mostre só o emblema redondo */
+.app-header h1 {
+    border-radius: 50% !important;
+    background-size: contain !important;
+}
