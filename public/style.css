@@ -363,3 +363,37 @@ body.font-large { font-size: 17px; }
 @media (min-width: 451px) {
     #app-container { border-radius: 15px; height: 95vh; }
 }
+
+/* ====================================================== */
+/* CORREÇÃO DE EMERGÊNCIA: TRAVA DE TAMANHO DAS LOGOS     */
+/* ====================================================== */
+
+/* 1. Logo PEQUENO e redondo no cabeçalho lá em cima */
+.app-header img, 
+.header-logo {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* 2. Logo MÉDIO e redondo nas telas de Login e Carregamento */
+.auth-logo, 
+#splash-screen img, 
+.splash-logo {
+    width: 110px !important;
+    height: 110px !important;
+    max-width: 110px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    display: block !important;
+    margin: 0 auto 20px auto !important;
+}
+
+/* 3. Trava Geral: Impede qualquer imagem do app de vazar da tela */
+img {
+    max-width: 100%;
+}
