@@ -476,8 +476,20 @@ async function triggerTurboBroadcast() {
     statusLabel.style.color = "var(--text-color)";
     statusLabel.innerText = "🚀 Acionando motor Go...";
 
-    // Simulando uma lista de vários celulares que receberão o aviso
-    const allUserIDs = ["celular_01", "celular_02", "celular_03", "celular_04", "celular_05"]; 
+    // ==========================================
+    // MÁGICA: PEGANDO OS USUÁRIOS REAIS DO BANCO
+    // ==========================================
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+    
+    // Mapeia a lista e extrai apenas o ID de cada usuário
+    const allUserIDs = cachedUsers.map(user => user._id);
+    
+    // Se a lista estiver vazia por algum motivo, avisa o Admin
+    if (allUserIDs.length === 0) {
+        statusLabel.style.color = "#ea4335";
+        statusLabel.innerText = "Nenhum usuário encontrado no sistema!";
+        return;
+    } 
 
     try {
         // Usa o SEU link exato que você acabou de criar no Render!
