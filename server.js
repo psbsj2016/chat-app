@@ -1,6 +1,4 @@
 require('dotenv').config();
-// Cria uma versão única toda vez que o Render reiniciar o servidor
-const SERVER_VERSION = Date.now().toString();
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
@@ -46,6 +44,10 @@ const Group = mongoose.model('Group', GroupSchema);
 const MessageSchema = new mongoose.Schema({ sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, content: String, fileUrl: String, fileType: { type: String, default: 'text' }, status: { type: String, default: 'sent' }, reaction: { type: String, default: null }, timestamp: { type: Date, default: Date.now } });
 const Message = mongoose.model('Message', MessageSchema);
 
+// === NOVO BANCO DE DADOS: ANOTAÇÕES ===
+const NoteSchema = new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, title: String, content: String, timestamp: { type: Date, default: Date.now } });
+const Note = mongoose.model('Note', NoteSchema);
+
 let botUserId = null;
 async function initializeAIBot() {
     try {
@@ -56,8 +58,7 @@ async function initializeAIBot() {
             await bot.save();
         }
         botUserId = bot._id.toString();
-        console.log("🤖 CPTT Bot IA inicializado:", botUserId);
-    } catch(e) { console.log("Erro ao iniciar Bot", e); }
+    } catch(e) {}
 }
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
@@ -91,15 +92,17 @@ app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(
 app.delete('/groups/:id/:adminId', async (req, res) => { try { const g = await Group.findById(req.params.id); if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); if (g.admin.toString() !== req.params.adminId) { return res.status(403).json({error: 'Sem permissão.'}); } await Message.deleteMany({ groupId: req.params.id }); await Group.findByIdAndDelete(req.params.id); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const counts = {}; unreadMsgs.forEach(msg => { const sender = msg.sender.toString(); counts[sender] = (counts[sender] || 0) + 1; }); res.json(counts); } catch (e) { res.json({}); } });
 
+// === ROTAS DAS ANOTAÇÕES (API) ===
+app.get('/notes/:userId', async (req, res) => { try { res.json(await Note.find({ userId: req.params.userId }).sort('-timestamp')); } catch(e) { res.status(500).json([]); } });
+app.post('/notes', async (req, res) => { try { const note = new Note(req.body); await note.save(); res.json(note); } catch(e) { res.status(500).json({error: 'Erro'}); } });
+app.put('/notes/:id', async (req, res) => { try { await Note.findByIdAndUpdate(req.params.id, req.body); res.json({msg:'ok'}); } catch(e) { res.status(500).json({error:'Erro'}); } });
+app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelete(req.params.id); res.json({msg: 'ok'}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
+
 let users = {};
+const SERVER_VERSION = Date.now().toString();
 
 io.on('connection', (socket) => {
-    console.log('Novo usuário conectado:', socket.id); 
-
-    // === DESTRUIDOR DE CACHE ===
     socket.emit('check_app_version', SERVER_VERSION);
-    // =================================================
-    
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
 
@@ -131,12 +134,10 @@ io.on('connection', (socket) => {
             if (rSocket) io.to(rSocket).emit('receive_message', msg); 
             socket.emit('receive_message', msg); 
 
-            // --- MÁGICA DEDO-DURO: A IA VAI TE CONTAR O ERRO NA TELA! ---
             if (String(data.receiverId) === String(botUserId) && data.content) {
                 socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
 
                 try {
-                    // ====== AQUI ESTÁ A CORREÇÃO: O NÚMERO "1" FOI ADICIONADO AO LINK! ======
                     const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/ask', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -147,7 +148,6 @@ io.on('connection', (socket) => {
                     socket.emit('stop_typing', { senderId: botUserId });
 
                     if (!pyRes.ok) {
-                        // Erro gerado pelo servidor do Render
                         const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Render recusou a chamada (Erro ${pyRes.status}). Resposta: \n${responseText.substring(0, 200)}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await errorMsg.save();
                         socket.emit('receive_message', errorMsg);
@@ -155,13 +155,11 @@ io.on('connection', (socket) => {
                     }
 
                     try {
-                        // Tenta ler como JSON perfeitamente
                         const pyData = JSON.parse(responseText);
                         const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
                         socket.emit('receive_message', botMsg);
                     } catch (parseError) {
-                        // Deu 200 OK, mas o que voltou não é JSON! Vamos ler:
                         const cleanError = responseText.replace(/</g, "&lt;").substring(0, 250);
                         const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Python não mandou um JSON! Ele mandou isto:\n\n${cleanError}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await errorMsg.save();
@@ -169,14 +167,12 @@ io.on('connection', (socket) => {
                     }
                 } catch (netError) {
                     socket.emit('stop_typing', { senderId: botUserId });
-                    // O erro mais fatal de conexão!
-                    const alertMsg = `🚨 Falha na rede interna do Node.js: "${netError.message}". (Se disser 'fetch is not defined', significa que o Node do seu servidor é muito velho!)`;
+                    const alertMsg = `🚨 Falha na rede interna do Node.js: "${netError.message}".`;
                     const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: alertMsg, status: 'sent', _id: new mongoose.Types.ObjectId() });
                     await errorMsg.save();
                     socket.emit('receive_message', errorMsg);
                 }
             } else {
-                // Push Notification Normal
                 const receiver = await User.findById(data.receiverId);
                 if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                     const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });

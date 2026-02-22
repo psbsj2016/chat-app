@@ -422,3 +422,23 @@ body.dark-mode .nav-item.active .nav-icon {
 #main-screen, #screen-anotacoes, #screen-jogos {
     padding-bottom: 90px !important; 
 }
+
+/* ==========================================
+   ANOTAÇÕES (BLOCO DE NOTAS)
+   ========================================== */
+.note-card {
+    background: var(--card-bg);
+    border: 1px solid var(--input-bg);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.note-card:active { transform: scale(0.98); }
+.note-title { font-weight: bold; font-size: 16.5px; color: var(--brand-primary); margin-bottom: 5px; }
+.note-preview { font-size: 14.5px; color: var(--secondary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; line-height: 1.4; }
+.note-date { font-size: 11.5px; color: #999; margin-top: 8px; font-style: italic; }

@@ -101,6 +101,36 @@
         </div>
     </div>
 
+    <div id="screen-anotacoes" class="app-screen hidden" style="background: var(--bg-color);">
+        <div class="material-header" style="background: var(--bg-color);">
+            <span class="header-title" style="font-size:22px; margin-left: 10px; font-weight:800; color: var(--brand-primary);">Anotações</span>
+            <div style="flex:1"></div>
+            <button class="icon-btn" onclick="openNoteModal()"><span class="material-icons" style="color: var(--brand-primary); font-size: 32px;">add_circle</span></button>
+        </div>
+        
+        <div id="notes-list" style="padding: 15px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; gap: 12px;">
+            <div style="text-align:center; color:var(--secondary-text); margin-top:20px;">Carregando suas ideias...</div>
+        </div>
+        
+        <div id="note-modal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 90%; height: 60vh; display: flex; flex-direction: column; padding: 20px;">
+                <h3 style="color:var(--brand-primary); margin-bottom: 15px; text-align: left; width: 100%;">Editar Anotação</h3>
+                <input type="text" id="note-title" placeholder="Título (Opcional)" class="chic-input" style="text-align: left; font-weight: bold; font-size: 18px;">
+                <textarea id="note-content" placeholder="Digite sua ideia aqui..." class="chic-input" style="flex: 1; resize: none; text-align: left; margin-bottom: 15px; padding-top: 15px; line-height: 1.5;"></textarea>
+                <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
+                    <button onclick="hideElement('note-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; cursor: pointer;">Voltar</button>
+                    <button onclick="saveNote()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Salvar na Nuvem</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-jogos" class="app-screen hidden" style="background: var(--bg-color); padding-top: 60px; text-align: center;">
+        <span class="material-icons" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">sports_esports</span>
+        <h2>Jogos 🎮</h2>
+        <p style="color: var(--secondary-text); margin-top: 10px;">Área em construção para os minigames do CPTT.</p>
+    </div>
+
     <div id="add-contact-screen" class="app-screen hidden" style="background: var(--bg-color);">
         <div class="main-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons">arrow_back</span></button>
@@ -284,14 +314,5 @@
         </div>
     </nav>
 
-    <div id="screen-anotacoes" class="app-screen hidden" style="display: none; padding-top: 60px; text-align: center;">
-        <h2>Suas Anotações 📝</h2>
-        <p>Área em construção para guardar seus textos e ideias.</p>
-    </div>
-
-    <div id="screen-jogos" class="app-screen hidden" style="display: none; padding-top: 60px; text-align: center;">
-        <h2>Jogos 🎮</h2>
-        <p>Área em construção para os minigames do CPTT.</p>
-    </div>
 </body>
 </html>
