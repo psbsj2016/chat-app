@@ -92,15 +92,14 @@ app.delete('/groups/:id/:adminId', async (req, res) => { try { const g = await G
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const counts = {}; unreadMsgs.forEach(msg => { const sender = msg.sender.toString(); counts[sender] = (counts[sender] || 0) + 1; }); res.json(counts); } catch (e) { res.json({}); } });
 
 let users = {};
-const SERVER_VERSION = Date.now().toString();
 
 io.on('connection', (socket) => {
-    console.log('Novo usuário conectado:', socket.id); // Pode ter algo parecido com isso
+    console.log('Novo usuário conectado:', socket.id); 
 
-    // === COLOQUE O DESTRUIDOR DE CACHE AQUI DENTRO ===
-    const SERVER_VERSION = Date.now().toString();
+    // === DESTRUIDOR DE CACHE ===
     socket.emit('check_app_version', SERVER_VERSION);
     // =================================================
+    
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
 
