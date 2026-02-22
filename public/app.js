@@ -458,3 +458,52 @@ async function initApp() {
     } 
 }
 initApp();
+
+// ==============================================================
+// CONEXÃO COM O MOTOR GOLANG (DISPARO EM MASSA)
+// ==============================================================
+async function triggerTurboBroadcast() {
+    const title = document.getElementById('broadcast-title').value;
+    const message = document.getElementById('broadcast-message').value;
+    const statusLabel = document.getElementById('broadcast-status');
+
+    if (!title || !message) {
+        statusLabel.style.color = "#ea4335"; // Vermelho erro
+        statusLabel.innerText = "Preencha o título e a mensagem!";
+        return;
+    }
+
+    statusLabel.style.color = "var(--text-color)";
+    statusLabel.innerText = "🚀 Acionando motor Go...";
+
+    // Simulando uma lista de vários celulares que receberão o aviso
+    const allUserIDs = ["celular_01", "celular_02", "celular_03", "celular_04", "celular_05"]; 
+
+    try {
+        // Usa o SEU link exato que você acabou de criar no Render!
+        const response = await fetch('https://cptt-turbo-go.onrender.com/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                body: message,
+                user_ids: allUserIDs
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.text();
+            statusLabel.style.color = "var(--brand-accent)"; // Verde sucesso
+            statusLabel.innerText = "✅ " + result;
+            
+            // Limpa os campos após o envio
+            document.getElementById('broadcast-title').value = '';
+            document.getElementById('broadcast-message').value = '';
+        } else {
+            throw new Error("Servidor Go recusou a chamada.");
+        }
+    } catch (error) {
+        statusLabel.style.color = "#ea4335";
+        statusLabel.innerText = "❌ Erro na comunicação: " + error.message;
+    }
+}

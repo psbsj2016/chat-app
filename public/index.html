@@ -78,6 +78,10 @@
             <div class="menu-item" onclick="openProfile()"><span class="material-icons">account_circle</span> Perfil</div>
             <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
             <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
+             <div class="menu-item" onclick="document.getElementById('admin-modal').classList.remove('hidden')">
+        <i class="material-icons" style="color: #ff9800;">campaign</i>
+        <span style="color: #ff9800; font-weight: bold;">Aviso Geral (Go)</span>
+    </div>
             <div class="menu-item" onclick="openSettings()"><span class="material-icons">settings</span> Configurações</div>
             <div class="menu-item logout" onclick="logout()"><span class="material-icons">logout</span> Sair</div>
         </div>
@@ -224,5 +228,25 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>document.write('<script src="app.js?v=' + appVer + '"><\/script>');</script>
+
+<div id="admin-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="color: var(--brand-accent); margin-bottom: 15px;">⚡ Disparo Turbo Go</h3>
+            <p style="font-size: 13px; color: var(--secondary-text); margin-bottom: 15px; text-align: center;">
+                Envie um aviso para todos os usuários sem travar o Node.js.
+            </p>
+            
+            <input type="text" id="broadcast-title" class="chic-input" placeholder="Título da Mensagem">
+            <textarea id="broadcast-message" class="chic-input" placeholder="Aviso geral para todos os usuários..." style="height: 80px; resize: none;"></textarea>
+            
+            <button onclick="triggerTurboBroadcast()" class="chic-btn" style="background: #ff9800;">
+                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">rocket_launch</span> LANÇAR MENSAGEM
+            </button>
+            
+            <p id="broadcast-status" style="font-size: 13px; margin-top: 10px; font-weight: bold;"></p>
+            
+            <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="chic-btn" style="background: transparent; color: var(--secondary-text); margin-top: 5px; box-shadow: none;">Fechar</button>
+        </div>
+    </div>
 </body>
 </html>
