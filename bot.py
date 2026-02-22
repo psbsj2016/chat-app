@@ -5,11 +5,11 @@ import os
 import uvicorn
 
 # Configuração da Chave de API da Inteligência Artificial (Google Gemini)
-# Obtenha uma chave gratuita em: https://aistudio.google.com/
-API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyD5PCUGntXGgWvMgH_BrsBR-qsNs8pjOxs")
+API_KEY = os.getenv("GEMINI_API_KEY", "COLE_SUA_CHAVE_AQUI")
 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-pro-latest')
+# MÁGICA: Atualizado para o modelo "flash", que é o mais rápido e atual do Google!
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 app = FastAPI()
 
@@ -26,8 +26,8 @@ async def ask_bot(req: MessageRequest):
         return {"reply": response.text}
     except Exception as e:
         print(f"Erro na IA: {e}")
-        return {"reply": "Desculpe, meu cérebro de IA está passando por uma atualização no momento. Tente novamente em alguns segundos! 🤖🔧"}
+        return {"reply": "Desculpe, meu cérebro de IA está passando por uma atualização no momento. Tente novamente em alguns segundos! 🤖"}
 
 if __name__ == "__main__":
-    print("🤖 Cérebro Python CPTT Bot rodando na porta 8000...")
+    print("🤖 Cérebro Python CPTT Bot rodando...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
