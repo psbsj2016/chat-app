@@ -12,6 +12,9 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 const webpush = require('web-push');
 
+// Importação nativa para resolver o problema de versão do Node.js
+const https = require('https'); 
+
 webpush.setVapidDetails(
   'mailto:psbsj.2020@outlook.com',
   'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY',
@@ -32,7 +35,7 @@ const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => {
     console.log("✅ MongoDB Conectado!");
-    initializeAIBot(); // MÁGICA: Cria o Bot automaticamente ao ligar
+    initializeAIBot(); 
 }).catch(err => console.error("Erro MongoDB:", err));
 
 const UserSchema = new mongoose.Schema({ email: { type: String, unique: true, required: true }, password: { type: String, required: true }, displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }, phone: { type: String, default: '' }, bio: { type: String, default: 'Olá! Estou usando o Chat.' }, code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' }, fontSize: { type: String, default: 'medium' }, notificationSound: { type: String, default: 'modern' }, chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }], pushSubscriptions: { type: Array, default: [] } });
@@ -66,7 +69,7 @@ app.post('/login', async (req, res) => { const { email, password } = req.body; t
 app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id)); } catch (e) {} });
-app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId)); } catch(e){} }); // Rota para achar o bot
+app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId)); } catch(e){} }); 
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {} });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); if (user) { res.json({ found: true, user }); } else { res.json({ found: false }); } } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -104,10 +107,8 @@ io.on('connection', (socket) => {
         const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 
         await msg.save(); 
 
-        // Envio nativo pelo Node
         if (data.groupId) { 
             io.to(data.groupId).emit('receive_message', msg);
-            // Push Notification
             const group = await Group.findById(data.groupId);
             if(group) {
                 const members = await User.find({ _id: { $in: group.members, $ne: data.senderId } });
@@ -127,32 +128,49 @@ io.on('connection', (socket) => {
             if (rSocket) io.to(rSocket).emit('receive_message', msg); 
             socket.emit('receive_message', msg); 
 
-            // --- MÁGICA: COMUNICAÇÃO COM O BOT EM PYTHON ---
-            if (data.receiverId === botUserId && data.content) {
-                // Acende o "Bot está digitando..." na tela do usuário
-                io.to(socket.id).emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
+            // --- MÁGICA REFEITA: COMUNICAÇÃO COM O BOT EM PYTHON À PROVA DE BALAS ---
+            if (String(data.receiverId) === String(botUserId) && data.content) {
+                // Acende o "Bot está digitando..."
+                socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
 
-                try {
-                    // Chama a IA do Python em background
-                    const pyRes = await fetch('https://cptt-bot-ia.onrender.com/ask', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: data.content })
+                const payloadData = JSON.stringify({ message: data.content });
+                
+                const options = {
+                    hostname: 'cptt-bot-ia.onrender.com', // Link do seu robô
+                    port: 443,
+                    path: '/ask',
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(payloadData)
+                    }
+                };
+
+                const reqHttp = https.request(options, (resHttp) => {
+                    let body = '';
+                    resHttp.on('data', (chunk) => body += chunk);
+                    resHttp.on('end', async () => {
+                        socket.emit('stop_typing', { senderId: botUserId });
+                        try {
+                            const pyData = JSON.parse(body);
+                            const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
+                            await botMsg.save();
+                            socket.emit('receive_message', botMsg);
+                        } catch (err) {
+                            const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: "🤖 Opa! O cérebro da IA retornou uma resposta confusa. Tente novamente!", status: 'sent', _id: new mongoose.Types.ObjectId() });
+                            socket.emit('receive_message', errorMsg);
+                        }
                     });
-                    const pyData = await pyRes.json();
+                });
 
-                    // Apaga o "digitando..."
-                    io.to(socket.id).emit('stop_typing', { senderId: botUserId });
+                reqHttp.on('error', async (error) => {
+                    socket.emit('stop_typing', { senderId: botUserId });
+                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: "🤖 O meu cérebro Python está dormindo no servidor ou offline. Tente mandar outro 'Oi' em 1 minuto!", status: 'sent', _id: new mongoose.Types.ObjectId() });
+                    socket.emit('receive_message', errorMsg);
+                });
 
-                    // Salva a resposta da IA como nova mensagem e envia
-                    const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
-                    await botMsg.save();
-                    io.to(socket.id).emit('receive_message', botMsg);
-                } catch(err) {
-                    io.to(socket.id).emit('stop_typing', { senderId: botUserId });
-                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: "Desculpe, o Cérebro de IA no Python está offline no momento.", status: 'sent', _id: new mongoose.Types.ObjectId() });
-                    io.to(socket.id).emit('receive_message', errorMsg);
-                }
+                reqHttp.write(payloadData);
+                reqHttp.end();
             } else {
                 // Push Notification Normal para humanos
                 const receiver = await User.findById(data.receiverId);
@@ -174,6 +192,5 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
 });
 
-// Aumenta a porta se necessário, mas mantemos 10000 como padrão no Render
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`🚀 Servidor Node.js na porta ${PORT}`));
