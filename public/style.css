@@ -213,9 +213,28 @@ input:checked + .slider:before { transform: translateX(16px); }
 .candidate-item.selected-remove { background: #ffebee; border: 1px solid #ff5252; color: #111;}
 .candidate-item.selected-remove::after { content: "🗑"; margin-left: auto; color: #ff5252; font-size: 20px; }
 
-.status-dot { position: absolute; top: -2px; left: -2px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--card-bg); z-index: 5; }
-.status-online { background-color: var(--brand-accent); box-shadow: 0 0 5px rgba(0,0,0,0.2); }
-.status-offline { background-color: #ea4335; }
+/* ==========================================
+   BOLINHAS DE STATUS (ONLINE/OFFLINE)
+   ========================================== */
+.status-dot { 
+    position: absolute; 
+    top: -2px; 
+    left: -2px; 
+    width: 14px; 
+    height: 14px; 
+    border-radius: 50%; 
+    border: 2px solid var(--card-bg); 
+    z-index: 5; 
+}
+
+.status-online { 
+    background-color: #25D366; /* Verde clássico (estilo WhatsApp) */
+    box-shadow: 0 0 5px rgba(37, 211, 102, 0.4); 
+}
+
+.status-offline { 
+    background-color: #ea4335; /* Vermelho padrão */
+}
 
 .info { flex: 1; } 
 .contact-actions { position: relative; padding: 10px; border-radius: 50%; }
