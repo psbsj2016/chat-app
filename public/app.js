@@ -88,7 +88,6 @@ function checkAndShowPermissions() {
 function grantAppPermissions() {
     localStorage.setItem('permissionsAsked', 'true');
     
-    // Destrava o Áudio: Dispara um som mudo invisível
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -269,7 +268,7 @@ async function loadContacts() {
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     
-    // MENSAGEM QUANDO NÃO HÁ CONVERSAS (ESTILO MATERIAL 3)
+    // MENSAGEM QUANDO NÃO HÁ CONVERSAS
     if (groups.length === 0 && users.length === 0) {
         list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);">
             <h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Para começar, envie uma<br>mensagem para alguém.</h3>
@@ -302,7 +301,6 @@ function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURI
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 
-// MÁGICA: ABERTURA INSTANTÂNEA DA IA
 async function openBotChat() {
     toggleMenu('main-menu');
     try {
@@ -343,7 +341,6 @@ async function fetchAndSyncProfile() {
             const elPhone = document.getElementById('config-phone'); 
             if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
             
-            // Atualiza a foto do Header Material 3
             const headerAvatar = document.getElementById('header-my-avatar');
             if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         } 
@@ -602,13 +599,18 @@ async function initApp() {
             if(res.ok) { 
                 const me = await res.json(); cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); 
                 currentSectors = me.sectors || []; 
-                if (me.theme === 'dark') document.body.classList.add('dark-mode'); 
-                if (me.fontSize) { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${me.fontSize}`); localStorage.setItem('fontSize', me.fontSize); } 
-                if (me.notificationSound) localStorage.setItem('notificationSound', me.notificationSound); 
+                localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
+                const elName = document.getElementById('config-name'); 
+                if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
+                const elBio = document.getElementById('config-bio'); 
+                if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
+                const elPhone = document.getElementById('config-phone'); 
+                if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
                 
-                if(headerAvatar) headerAvatar.src = me.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                // Atualiza a foto do Header Material 3
+                if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
             } 
-        } catch(e) {} 
+        } catch(e){} 
         checkAndShowPermissions(); 
     } else { 
         showElement('auth-screen'); 
@@ -682,63 +684,48 @@ function toggleMainSearch() {
 }
 
 // ==============================================================
-// SISTEMA DE NAVEGAÇÃO INFERIOR (TABS)
+// SISTEMA DE NAVEGAÇÃO INFERIOR E OLHEIRO
 // ==============================================================
 function switchTab(tabName, element) {
-    // Tira o foco de todos
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    // Coloca o foco no botão clicado
     element.classList.add('active');
 
-    // Esconde todas as telas
     hideElement('main-screen');       
     hideElement('screen-anotacoes');  
     hideElement('screen-jogos');      
     hideElement('chat-screen');       
 
-    // Mostra apenas a aba certa
     if (tabName === 'conversas') {
         showElement('main-screen');
     } else if (tabName === 'anotacoes') {
         showElement('screen-anotacoes');
+        loadNotes(); 
     } else if (tabName === 'jogos') {
         showElement('screen-jogos');
     }
 }
 
-// O "Olheiro" para a barra aparecer no lugar certo
 const observerMenu = new MutationObserver(() => {
+    const chat = document.getElementById('chat-screen');
+    const nav = document.getElementById('bottom-navigation');
     const main = document.getElementById('main-screen');
     const notes = document.getElementById('screen-anotacoes');
     const games = document.getElementById('screen-jogos');
-    const chat = document.getElementById('chat-screen');
-    const bottomNav = document.getElementById('bottom-navigation');
     
-    // Se a tela de chat (conversa) estiver visível, esconde a barra
     if (chat && !chat.classList.contains('hidden')) {
-        if(bottomNav) bottomNav.style.display = 'none';
-    } 
-    // Se Anotações, Jogos ou Tela Principal estiver visível, mostra a barra!
-    else if ((main && !main.classList.contains('hidden')) || 
-             (notes && !notes.classList.contains('hidden')) || 
-             (games && !games.classList.contains('hidden'))) {
-        if(bottomNav) bottomNav.style.display = 'flex';
-    } 
-    // Na tela de Login, Permissions, etc: esconde a barra
-    else {
-        if(bottomNav) bottomNav.style.display = 'none'; 
+        if(nav) nav.style.display = 'none';
+    } else if ((main && !main.classList.contains('hidden')) || 
+               (notes && !notes.classList.contains('hidden')) || 
+               (games && !games.classList.contains('hidden'))) {
+        if(nav) nav.style.display = 'flex';
+    } else {
+        if(nav) nav.style.display = 'none';
     }
 });
 
-// Começa a vigiar todas as telas
 document.querySelectorAll('.app-screen').forEach(screen => {
-    observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] });
+    if(screen) observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] });
 });
-
-const mainScreenEl = document.getElementById('main-screen');
-if(mainScreenEl) {
-    observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] });
-}
 
 // ==============================================================
 // SISTEMA DE ANOTAÇÕES (NOTES)
@@ -834,7 +821,9 @@ async function deleteNote(id) {
     } catch(e) { alert("Erro ao apagar."); }
 }
 
-// --- JOGO DA COBRA ---
+// ==============================================================
+// JOGO DA COBRA (SNAKE CPTT)
+// ==============================================================
 let snake = []; let food = {x:0,y:0}; let dx=10; let dy=0; let gameInterval=null;
 function startSnakeGame() {
     snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; createFood(); 
@@ -853,24 +842,4 @@ function createFood() { food.x = Math.floor(Math.random()*29)*10; food.y = Math.
 function changeSnakeDirection(d) {
     if(d==='UP'&&dy===0){dx=0;dy=-10} if(d==='DOWN'&&dy===0){dx=0;dy=10}
     if(d==='LEFT'&&dx===0){dx=-10;dy=0} if(d==='RIGHT'&&dx===0){dx=10;dy=0}
-}
-
-// ==== ATUALIZE O SEU SWITCH TAB PARA ISSO ====
-function switchTab(tabName, element) {
-    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    element.classList.add('active');
-
-    hideElement('main-screen');       
-    hideElement('screen-anotacoes');  
-    hideElement('screen-jogos');      
-    hideElement('chat-screen');       
-
-    if (tabName === 'conversas') {
-        showElement('main-screen');
-    } else if (tabName === 'anotacoes') {
-        showElement('screen-anotacoes');
-        loadNotes(); // Mágica: Carrega as notas assim que clicar na aba!
-    } else if (tabName === 'jogos') {
-        showElement('screen-jogos');
-    }
 }
