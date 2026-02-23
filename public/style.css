@@ -213,10 +213,28 @@ input:checked + .slider:before { transform: translateX(16px); }
 .candidate-item.selected-remove { background: #ffebee; border: 1px solid #ff5252; color: #111;}
 .candidate-item.selected-remove::after { content: "🗑"; margin-left: auto; color: #ff5252; font-size: 20px; }
 
-/* BOLINHAS DE STATUS (ONLINE/OFFLINE) */
-.status-dot { position: absolute; top: -2px; left: -2px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--card-bg); z-index: 5; }
-.status-online { background-color: #25D366; box-shadow: 0 0 5px rgba(37, 211, 102, 0.4); }
-.status-offline { background-color: #ea4335; }
+/* ==========================================
+   BOLINHAS DE STATUS (ONLINE/OFFLINE)
+   ========================================== */
+.status-dot { 
+    position: absolute; 
+    top: -2px; 
+    left: -2px; 
+    width: 14px; 
+    height: 14px; 
+    border-radius: 50%; 
+    border: 2px solid var(--card-bg); 
+    z-index: 5; 
+}
+
+.status-online { 
+    background-color: #25D366; /* Verde clássico (estilo WhatsApp) */
+    box-shadow: 0 0 5px rgba(37, 211, 102, 0.4); 
+}
+
+.status-offline { 
+    background-color: #ea4335; /* Vermelho padrão */
+}
 
 .info { flex: 1; } 
 .contact-actions { position: relative; padding: 10px; border-radius: 50%; }
@@ -261,41 +279,166 @@ body.dark-mode .user-item.has-unread .info div:first-child { color: var(--brand-
 .logo-badge-btn .material-icons { font-size: 16px; font-weight: bold; }
 
 /* ==========================================
-   CABECALHO E BOTÕES MATERIAL 3 
+   TELA PRINCIPAL: CABEÇALHO MATERIAL 3 
    ========================================== */
-.material-header { display: flex; align-items: center; padding: 10px 15px; background: var(--card-bg); z-index: 10; }
-#header-my-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg); border: 2px solid transparent; transition: 0.2s; }
-.fab-container { position: absolute; bottom: 95px; right: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 100; }
-.fab { display: flex; align-items: center; justify-content: center; border: none; border-radius: 16px; cursor: pointer; transition: transform 0.2s; }
-.fab-secondary { width: 45px; height: 45px; background: var(--input-bg); color: var(--secondary-text); align-self: center; }
-.fab-primary { width: 56px; height: 56px; background: var(--brand-light); color: var(--brand-primary); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+.material-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background: var(--card-bg);
+    z-index: 10;
+}
+
+#header-my-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+    background: var(--input-bg);
+    border: 2px solid transparent;
+    transition: 0.2s;
+}
+
+#header-my-avatar:hover { border-color: var(--brand-primary); }
 
 /* ==========================================
-   BARRA DE NAVEGAÇÃO INFERIOR
+   BOTÕES FLUTUANTES (FAB) 
    ========================================== */
-.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; max-width: 1000px; background-color: var(--card-bg); display: flex; justify-content: space-around; padding: 12px 10px 15px 10px; border-top: 1px solid var(--input-bg); z-index: 1000; }
-.nav-item { display: flex; flex-direction: column; align-items: center; color: var(--secondary-text); cursor: pointer; flex: 1; transition: 0.2s ease; }
-.nav-item span { font-size: 13.5px; font-weight: 500; margin-top: 5px; }
-.nav-icon { width: 64px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; transition: 0.3s ease; }
-.nav-item.active { color: var(--text-color); }
-.nav-item.active .nav-icon { background-color: #d3e3fd; color: #041e49; }
-body.dark-mode .nav-item.active .nav-icon { background-color: var(--brand-primary); color: white; }
+.fab-container {
+    position: absolute;
+    bottom: 95px; /* Fica logo acima da barra inferior */
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 100;
+}
+
+.fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 16px; /* Squircle (Quadrado arredondado) */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fab:active { transform: scale(0.95); }
+
+.fab-secondary {
+    width: 45px;
+    height: 45px;
+    background: var(--input-bg);
+    color: var(--secondary-text);
+    align-self: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.fab-primary {
+    width: 56px;
+    height: 56px;
+    background: var(--brand-light);
+    color: var(--brand-primary);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+body.dark-mode .fab-primary {
+    background: var(--brand-primary);
+    color: white;
+}
 
 /* ==========================================
-   SISTEMA DE ANOTAÇÕES
+   BARRA DE NAVEGAÇÃO INFERIOR (MATERIAL 3 - EXATO DA IMAGEM)
    ========================================== */
-.note-card { background: var(--card-bg); border: 1px solid var(--input-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; }
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1000px; /* Alinha com a tela no PC */
+    background-color: var(--card-bg);
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 10px 15px 10px; /* Espaço idêntico à foto */
+    border-top: 1px solid var(--input-bg);
+    z-index: 1000;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--secondary-text); /* Cor cinza para os inativos */
+    cursor: pointer;
+    flex: 1;
+    transition: 0.2s ease;
+}
+
+.nav-item span {
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-top: 5px;
+}
+
+/* O fundo do ícone */
+.nav-icon {
+    width: 64px; /* A pílula larguinha da foto */
+    height: 32px;
+    border-radius: 16px; /* Pílula perfeita (Squircle) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s ease;
+}
+
+.nav-icon .material-icons {
+    font-size: 24px;
+}
+
+/* === ABA ATIVA (O QUE MUDA QUANDO CLICA) === */
+.nav-item.active {
+    color: var(--text-color); /* Texto mais escuro igual "Conversas" na foto */
+}
+
+.nav-item.active span {
+    font-weight: bold;
+}
+
+.nav-item.active .nav-icon {
+    background-color: #d3e3fd; /* Azul clarinho clássico do Material Design */
+    color: #041e49; /* Ícone fica azul quase preto */
+}
+
+body.dark-mode .nav-item.active .nav-icon {
+    background-color: var(--brand-primary);
+    color: white;
+}
+
+/* Proteção para os botões flutuantes e listas não sumirem atrás da barra */
+#main-screen, #screen-anotacoes, #screen-jogos {
+    padding-bottom: 90px !important; 
+}
+
+/* ==========================================
+   ANOTAÇÕES (BLOCO DE NOTAS)
+   ========================================== */
+.note-card {
+    background: var(--card-bg);
+    border: 1px solid var(--input-bg);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.note-card:active { transform: scale(0.98); }
 .note-title { font-weight: bold; font-size: 16.5px; color: var(--brand-primary); margin-bottom: 5px; }
-.note-preview { font-size: 14.5px; color: var(--secondary-text); line-height: 1.4; }
-
-/* ==========================================
-   ABA DE JOGOS (SNAKE)
-   ========================================== */
-#game-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; padding-bottom: 20px; }
-#snake-canvas { background: var(--input-bg); border: 4px solid var(--brand-primary); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 85vw; height: 85vw; max-width: 300px; max-height: 300px; }
-#game-stats { font-size: 18px; font-weight: bold; color: var(--brand-primary); }
-.touch-controls { display: grid; justify-items: center; gap: 4px; margin-top: 5px; }
-.touch-controls button { width: 54px; height: 54px; border-radius: 50%; border: none; background: var(--brand-light); color: var(--brand-primary); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; }
-.touch-controls button:active { transform: scale(0.9); background: var(--brand-secondary); }
-
-#main-screen, #screen-anotacoes, #screen-jogos { padding-bottom: 90px !important; }
+.note-preview { font-size: 14.5px; color: var(--secondary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; line-height: 1.4; }
+.note-date { font-size: 11.5px; color: #999; margin-top: 8px; font-style: italic; }
