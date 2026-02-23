@@ -73,7 +73,7 @@
             <div class="menu-item" onclick="openBotChat()"><span class="material-icons" style="color:var(--brand-accent)">smart_toy</span> Falar com a IA</div>
             <div class="menu-item" onclick="openProfile()"><span class="material-icons">account_circle</span> Perfil</div>
             <div class="menu-item" onclick="openCreateGroupModal()"><span class="material-icons">group_add</span> Criar Grupo</div>
-            <div class="menu-item" onclick="alert('Em breve: Agendar')"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
+            <div class="menu-item" onclick="openScheduleModal()"><span class="material-icons">schedule_send</span> Agendar Mensagem</div>
             <div class="menu-item" onclick="document.getElementById('admin-modal').classList.remove('hidden')">
                 <i class="material-icons" style="color: #ff9800;">campaign</i>
                 <span style="color: #ff9800; font-weight: bold;">Aviso Geral (Go)</span>
@@ -259,7 +259,6 @@
                     </div>
                     <input type="file" id="wallpaper-file-input" hidden accept="image/*" onchange="uploadWallpaper(this)">
                 </div>
-
             </div>
         </div>
     </div>
@@ -283,6 +282,26 @@
                 <div class="setting-item" onclick="createNewSector()"><span style="color:var(--brand-primary); font-weight:bold;">+ Criar Setor de Usuários</span></div>
                 <div id="sectors-list"></div>
                 <div class="setting-item" onclick="deleteAccount()"><span style="color:red"><span class="material-icons" style="font-size:20px; vertical-align:middle; color:red">delete_forever</span> Deletar Minha Conta</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="schedule-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 350px;">
+            <h3 style="color:var(--brand-primary); margin-bottom:5px; font-size: 20px;">Agendar Mensagem</h3>
+            <p style="font-size:13.5px; color:var(--secondary-text); margin-bottom: 20px; text-align: center;">A mensagem será enviada automaticamente na hora marcada.</p>
+            
+            <select id="schedule-target" class="chic-input" style="text-align: left; padding: 12px; font-size: 15.5px; margin-bottom: 15px; width: 100%;">
+                <option value="">Selecione o Contato...</option>
+            </select>
+            
+            <input type="datetime-local" id="schedule-datetime" class="chic-input" style="text-align: left; padding: 12px; font-size: 15.5px; margin-bottom: 15px; width: 100%;">
+            
+            <textarea id="schedule-text" placeholder="Sua mensagem..." class="chic-input" style="resize:none; height:80px; text-align:left; padding: 12px; font-size: 15.5px; margin-bottom: 20px; width: 100%;"></textarea>
+            
+            <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
+                <button onclick="hideElement('schedule-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid #ccc; border-radius: 25px; padding: 12px 0; font-weight: bold; font-size: 15.5px; cursor: pointer;">Cancelar</button>
+                <button onclick="saveScheduledMessage()" class="chic-btn" style="flex: 1; margin: 0; border-radius: 25px; padding: 12px 0;">Agendar</button>
             </div>
         </div>
     </div>

@@ -88,7 +88,6 @@ function checkAndShowPermissions() {
 function grantAppPermissions() {
     localStorage.setItem('permissionsAsked', 'true');
     
-    // Destrava o Áudio: Dispara um som mudo invisível
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -269,7 +268,6 @@ async function loadContacts() {
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     
-    // MENSAGEM QUANDO NÃO HÁ CONVERSAS (ESTILO MATERIAL 3)
     if (groups.length === 0 && users.length === 0) {
         list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);">
             <h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Para começar, envie uma<br>mensagem para alguém.</h3>
@@ -302,7 +300,6 @@ function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURI
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 
-// MÁGICA: ABERTURA INSTANTÂNEA DA IA
 async function openBotChat() {
     toggleMenu('main-menu');
     try {
@@ -324,17 +321,7 @@ async function openBotChat() {
 }
 
 function openSettings() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('settings-screen'); }
-
-// ====== ATUALIZAÇÃO: ABRE A APARÊNCIA E ATUALIZA O BOTÃO DO WALLPAPER ======
-function openAppearanceSettings() { 
-    hideElement('settings-screen'); 
-    showElement('appearance-screen'); 
-    document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; 
-    document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; 
-    fetchAndSyncProfile(); 
-    updateWallpaperUI(); 
-}
-
+function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; fetchAndSyncProfile(); updateWallpaperUI(); }
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; fetchAndSyncProfile(); }
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); document.getElementById('config-email').innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); fetchAndSyncProfile(); }
 
@@ -356,7 +343,6 @@ async function fetchAndSyncProfile() {
             const headerAvatar = document.getElementById('header-my-avatar');
             if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
-            // ====== ATUALIZAÇÃO: PUXA O WALLPAPER DA NUVEM ======
             if(cachedMe.chatWallpaper) {
                 applyWallpaper(cachedMe.chatWallpaper);
             } else {
@@ -631,11 +617,9 @@ async function initApp() {
     const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
     
     if(token && myId) { 
-        // Já exibe a foto do perfil no topo se tiver em cache
         const headerAvatar = document.getElementById('header-my-avatar');
         if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
 
-        // Já aplica Wallpaper do cache
         if(cachedMe && cachedMe.chatWallpaper) {
             document.body.style.setProperty('--chat-bg-image', `url('${cachedMe.chatWallpaper}')`);
         }
@@ -653,10 +637,8 @@ async function initApp() {
                 const elPhone = document.getElementById('config-phone'); 
                 if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
                 
-                // Atualiza a foto do Header Material 3
                 if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
-                // Mágica do Wallpaper
                 if(cachedMe.chatWallpaper) {
                     applyWallpaper(cachedMe.chatWallpaper);
                 } else {
@@ -671,9 +653,6 @@ async function initApp() {
 }
 initApp();
 
-// ==============================================================
-// CONEXÃO COM O MOTOR GOLANG (DISPARO EM MASSA)
-// ==============================================================
 async function triggerTurboBroadcast() {
     const title = document.getElementById('broadcast-title').value;
     const message = document.getElementById('broadcast-message').value;
@@ -701,11 +680,7 @@ async function triggerTurboBroadcast() {
         const response = await fetch('https://cptt-turbo-go.onrender.com/broadcast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: title,
-                body: message,
-                user_ids: allUserIDs
-            })
+            body: JSON.stringify({ title: title, body: message, user_ids: allUserIDs })
         });
 
         if (response.ok) {
@@ -723,9 +698,6 @@ async function triggerTurboBroadcast() {
     }
 }
 
-// ==============================================================
-// SISTEMA DE PESQUISA (LUPA DA TELA PRINCIPAL)
-// ==============================================================
 function toggleMainSearch() {
     const bar = document.getElementById('main-search-bar');
     if(bar) {
@@ -736,9 +708,6 @@ function toggleMainSearch() {
     }
 }
 
-// ==============================================================
-// SISTEMA DE NAVEGAÇÃO INFERIOR E OLHEIRO
-// ==============================================================
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     element.classList.add('active');
@@ -781,13 +750,8 @@ document.querySelectorAll('.app-screen').forEach(screen => {
 });
 
 const mainScreenEl = document.getElementById('main-screen');
-if(mainScreenEl) {
-    observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] });
-}
+if(mainScreenEl) { observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] }); }
 
-// ==============================================================
-// SISTEMA DE ANOTAÇÕES (NOTES)
-// ==============================================================
 let currentNotes = [];
 let editingNoteId = null;
 
@@ -798,9 +762,7 @@ async function loadNotes() {
         const res = await fetch(`/notes/${myId}`);
         currentNotes = await res.json();
         renderNotes();
-    } catch(e) {
-        list.innerHTML = '<div style="text-align:center; color:#ff5252;">Erro ao carregar anotações.</div>';
-    }
+    } catch(e) { list.innerHTML = '<div style="text-align:center; color:#ff5252;">Erro ao carregar anotações.</div>'; }
 }
 
 function renderNotes() {
@@ -832,223 +794,157 @@ function renderNotes() {
     });
 }
 
-function openNoteModal() {
-    editingNoteId = null;
-    document.getElementById('note-title').value = '';
-    document.getElementById('note-content').value = '';
-    showElement('note-modal');
-}
+function openNoteModal() { editingNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').value = ''; showElement('note-modal'); }
+function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').value = note.content || ''; showElement('note-modal'); }
+async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
+async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
-function viewNote(id) {
-    const note = currentNotes.find(n => n._id === id);
-    if(!note) return;
-    editingNoteId = note._id;
-    document.getElementById('note-title').value = note.title || '';
-    document.getElementById('note-content').value = note.content || '';
-    showElement('note-modal');
-}
-
-async function saveNote() {
-    const title = document.getElementById('note-title').value.trim();
-    const content = document.getElementById('note-content').value.trim();
-    if(!content) return alert('A anotação não pode estar vazia!');
-    
-    const btn = document.querySelector('#note-modal .chic-btn');
-    btn.innerText = 'Salvando...';
-    
-    try {
-        if (editingNoteId) {
-            await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) });
-        } else {
-            await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) });
-        }
-        hideElement('note-modal');
-        loadNotes();
-    } catch(e) { 
-        alert('Erro ao salvar anotação.'); 
-    } finally {
-        btn.innerText = 'Salvar na Nuvem';
-    }
-}
-
-async function deleteNote(id) {
-    if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return;
-    try {
-        await fetch(`/notes/${id}`, { method: 'DELETE' });
-        loadNotes();
-    } catch(e) { alert("Erro ao apagar."); }
-}
-
-// ==============================================================
-// JOGO DA COBRA (SNAKE CPTT)
-// ==============================================================
 let snake = []; let food = {x:0,y:0}; let dx=10; let dy=0; let gameInterval=null;
-function startSnakeGame() {
-    snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; createFood(); 
-    if(gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(gameLoop, 100);
-}
-function gameLoop() {
-    const canvas = document.getElementById('snake-canvas'); const ctx = canvas.getContext('2d');
-    const head = {x: snake[0].x + dx, y: snake[0].y + dy}; snake.unshift(head);
-    if(head.x === food.x && head.y === food.y) { createFood(); document.getElementById('game-score').innerText = snake.length*10; } else snake.pop();
-    if(head.x<0 || head.x>=300 || head.y<0 || head.y>=300) { clearInterval(gameInterval); alert("Fim!"); }
-    ctx.clearRect(0,0,300,300); ctx.fillStyle="#ffb800"; ctx.fillRect(food.x, food.y, 10, 10);
-    ctx.fillStyle="#003882"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10));
-}
+function startSnakeGame() { snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; createFood(); if(gameInterval) clearInterval(gameInterval); gameInterval = setInterval(gameLoop, 100); }
+function gameLoop() { const canvas = document.getElementById('snake-canvas'); const ctx = canvas.getContext('2d'); const head = {x: snake[0].x + dx, y: snake[0].y + dy}; snake.unshift(head); if(head.x === food.x && head.y === food.y) { createFood(); document.getElementById('game-score').innerText = snake.length*10; } else snake.pop(); if(head.x<0 || head.x>=300 || head.y<0 || head.y>=300) { clearInterval(gameInterval); alert("Fim!"); } ctx.clearRect(0,0,300,300); ctx.fillStyle="#ffb800"; ctx.fillRect(food.x, food.y, 10, 10); ctx.fillStyle="#003882"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10)); }
 function createFood() { food.x = Math.floor(Math.random()*29)*10; food.y = Math.floor(Math.random()*29)*10; }
-function changeSnakeDirection(d) {
-    if(d==='UP'&&dy===0){dx=0;dy=-10} if(d==='DOWN'&&dy===0){dx=0;dy=10}
-    if(d==='LEFT'&&dx===0){dx=-10;dy=0} if(d==='RIGHT'&&dx===0){dx=10;dy=0}
-}
+function changeSnakeDirection(d) { if(d==='UP'&&dy===0){dx=0;dy=-10} if(d==='DOWN'&&dy===0){dx=0;dy=10} if(d==='LEFT'&&dx===0){dx=-10;dy=0} if(d==='RIGHT'&&dx===0){dx=10;dy=0} }
 
-
-// ==============================================================
-// CÂMERA RÁPIDA (FAB) E ENCAMINHAMENTO
-// ==============================================================
 let quickCameraFile = null;
+function handleQuickCamera(input) { const file = input.files[0]; if (!file) return; quickCameraFile = file; openQuickSendModal(); }
+async function openQuickSendModal() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Enviar foto para..."; const list = document.getElementById('forward-contacts-list'); list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Carregando contatos...</div>'; try { const [resG, resU] = await Promise.all([fetch(`/groups/${myId}`), fetch(`/users/${myId}`)]); const groups = await resG.json(); const users = await resU.json(); list.innerHTML = ''; groups.forEach(g => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${g.photoUrl}" class="avatar-small"> <span class="contact-name">${g.name} (Grupo)</span>`; div.onclick = () => executeQuickSend(g._id, true); list.appendChild(div); }); users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email.split('@')[0]}</span>`; div.onclick = () => executeQuickSend(user._id, false); list.appendChild(div); }); } catch(e) { list.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Erro ao carregar contatos.</div>'; } }
+async function executeQuickSend(targetId, isGroup) { hideElement('forward-modal'); const btn = document.getElementById('fab-camera-btn'); const originalIcon = btn.innerHTML; btn.innerHTML = '<span class="material-icons uploading-icon" style="color:var(--brand-primary)">sync</span>'; const fd = new FormData(); fd.append('file', quickCameraFile); try { const res = await fetch('/upload', { method: 'POST', body: fd }); const data = await res.json(); socket.emit('private_message', { senderId: myId, receiverId: isGroup ? null : targetId, groupId: isGroup ? targetId : null, content: '📸 Foto enviada', fileUrl: data.url, fileType: 'image' }); quickCameraFile = null; document.getElementById('quick-camera-input').value = ''; alert("✅ Foto enviada com sucesso!"); loadContacts(); } catch (e) { alert("❌ Erro ao enviar a foto."); } finally { btn.innerHTML = originalIcon; } }
 
-function handleQuickCamera(input) {
-    const file = input.files[0];
-    if (!file) return;
-    quickCameraFile = file;
-    openQuickSendModal();
-}
-
-async function openQuickSendModal() {
-    showElement('forward-modal');
-    
-    const h3 = document.querySelector('#forward-modal h3');
-    if(h3) h3.innerText = "Enviar foto para...";
-    
-    const list = document.getElementById('forward-contacts-list');
-    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Carregando contatos...</div>';
-    
-    try {
-        const [resG, resU] = await Promise.all([fetch(`/groups/${myId}`), fetch(`/users/${myId}`)]);
-        const groups = await resG.json();
-        const users = await resU.json();
-        
-        list.innerHTML = '';
-        
-        groups.forEach(g => {
-            const div = document.createElement('div'); div.className = 'user-item';
-            div.innerHTML = `<img src="${g.photoUrl}" class="avatar-small"> <span class="contact-name">${g.name} (Grupo)</span>`;
-            div.onclick = () => executeQuickSend(g._id, true);
-            list.appendChild(div);
-        });
-        
-        users.forEach(user => {
-            const div = document.createElement('div'); div.className = 'user-item';
-            div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email.split('@')[0]}</span>`;
-            div.onclick = () => executeQuickSend(user._id, false);
-            list.appendChild(div);
-        });
-    } catch(e) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Erro ao carregar contatos.</div>';
-    }
-}
-
-async function executeQuickSend(targetId, isGroup) {
-    hideElement('forward-modal');
-    
-    const btn = document.getElementById('fab-camera-btn');
-    const originalIcon = btn.innerHTML;
-    btn.innerHTML = '<span class="material-icons uploading-icon" style="color:var(--brand-primary)">sync</span>';
-    
-    const fd = new FormData();
-    fd.append('file', quickCameraFile);
-    try {
-        const res = await fetch('/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        
-        socket.emit('private_message', {
-            senderId: myId,
-            receiverId: isGroup ? null : targetId,
-            groupId: isGroup ? targetId : null,
-            content: '📸 Foto enviada',
-            fileUrl: data.url,
-            fileType: 'image'
-        });
-        
-        quickCameraFile = null;
-        document.getElementById('quick-camera-input').value = '';
-        alert("✅ Foto enviada com sucesso!");
-        loadContacts();
-    } catch (e) {
-        alert("❌ Erro ao enviar a foto.");
-    } finally {
-        btn.innerHTML = originalIcon;
-    }
-}
+function applyWallpaper(url) { if (url) { document.body.style.setProperty('--chat-bg-image', `url('${url}')`); } }
+function updateWallpaperUI() { const remBtn = document.getElementById('wallpaper-remove-link'); if (!remBtn) return; if (cachedMe && cachedMe.chatWallpaper) { remBtn.classList.remove('hidden'); } else { remBtn.classList.add('hidden'); } }
+function triggerWallpaperUpload() { document.getElementById('wallpaper-file-input').click(); }
+async function uploadWallpaper(input) { const file = input.files[0]; if(!file) return; const btn = document.getElementById('wallpaper-action-link'); if(btn) btn.innerText = "Enviando..."; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: fd }); const data = await res.json(); await saveProfile({ chatWallpaper: data.url }); cachedMe.chatWallpaper = data.url; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); applyWallpaper(data.url); updateWallpaperUI(); alert("Papel de parede atualizado com sucesso!"); } catch (e) { alert("Erro ao enviar a imagem. Verifique a internet."); } finally { if(btn) btn.innerText = "Escolher"; input.value = ''; } }
+async function removeWallpaper() { if(!confirm("Deseja remover sua imagem e voltar ao fundo padrão do CPTT?")) return; try { await saveProfile({ chatWallpaper: '' }); cachedMe.chatWallpaper = ''; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); document.body.style.removeProperty('--chat-bg-image'); updateWallpaperUI(); } catch(e) { alert("Erro ao remover o papel de parede."); } }
 
 
 // ==============================================================
-// MOTOR: PAPEL DE PAREDE (WALLPAPER)
+// SISTEMA DE AGENDAMENTO DE MENSAGENS (CRON INTERNO)
 // ==============================================================
-function applyWallpaper(url) {
-    if (url) {
-        document.body.style.setProperty('--chat-bg-image', `url('${url}')`);
+
+function openScheduleModal() {
+    toggleMenu('main-menu');
+    const select = document.getElementById('schedule-target');
+    select.innerHTML = '<option value="">Selecione o Destinatário...</option>';
+    
+    const cGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+    const cUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+    
+    if (cGroups.length > 0) {
+        const groupOptGroup = document.createElement('optgroup');
+        groupOptGroup.label = "Meus Grupos";
+        cGroups.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = `group_${g._id}`;
+            opt.innerText = g.name;
+            groupOptGroup.appendChild(opt);
+        });
+        select.appendChild(groupOptGroup);
+    }
+    
+    if (cUsers.length > 0) {
+        const userOptGroup = document.createElement('optgroup');
+        userOptGroup.label = "Contatos";
+        cUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = `user_${u._id}`;
+            opt.innerText = u.displayName || u.email.split('@')[0];
+            userOptGroup.appendChild(opt);
+        });
+        select.appendChild(userOptGroup);
+    }
+    
+    document.getElementById('schedule-datetime').value = '';
+    document.getElementById('schedule-text').value = '';
+    
+    showElement('schedule-modal');
+}
+
+function saveScheduledMessage() {
+    const targetVal = document.getElementById('schedule-target').value;
+    const datetimeVal = document.getElementById('schedule-datetime').value;
+    const textVal = document.getElementById('schedule-text').value.trim();
+    
+    if (!targetVal || !datetimeVal || !textVal) {
+        return alert("⚠️ Preencha todos os campos para agendar!");
+    }
+    
+    const isGroup = targetVal.startsWith('group_');
+    const targetId = targetVal.replace('group_', '').replace('user_', '');
+    const timeToSent = new Date(datetimeVal).getTime();
+    
+    if (timeToSent <= Date.now()) {
+        return alert("⚠️ A data e hora devem ser no futuro!");
+    }
+    
+    const scheduleObj = {
+        id: 'sched_' + Date.now(),
+        targetId,
+        isGroup,
+        text: textVal,
+        time: timeToSent
+    };
+    
+    let schedules = JSON.parse(localStorage.getItem('scheduledMsgs')) || [];
+    schedules.push(scheduleObj);
+    localStorage.setItem('scheduledMsgs', JSON.stringify(schedules));
+    
+    alert("✅ Mensagem agendada com sucesso!\n\n(Nota: O aplicativo vai efetuar o disparo automático desde que esteja aberto no momento da data, ou assim que for reaberto após o prazo).");
+    hideElement('schedule-modal');
+}
+
+// O Motor que verifica os agendamentos pendentes
+function checkAndSendScheduledMessages() {
+    let schedules = JSON.parse(localStorage.getItem('scheduledMsgs')) || [];
+    if (schedules.length === 0) return;
+    
+    const now = Date.now();
+    let pending = [];
+    let toSend = [];
+    
+    schedules.forEach(s => {
+        if (s.time <= now) {
+            toSend.push(s);
+        } else {
+            pending.push(s);
+        }
+    });
+    
+    if (toSend.length > 0) {
+        toSend.forEach(s => {
+            // Emite pelo socket
+            socket.emit('private_message', { 
+                senderId: myId, 
+                receiverId: s.isGroup ? null : s.targetId, 
+                groupId: s.isGroup ? s.targetId : null, 
+                content: s.text, 
+                fileUrl: null, 
+                fileType: 'text' 
+            });
+            
+            // Se o utilizador estiver com o chat aberto exatamente nessa conversa, exibe o balão
+            if (currentChatId === s.targetId) {
+                const tempMsg = { 
+                    _id: 'auto_' + Date.now() + Math.random(), 
+                    sender: myId, 
+                    receiver: s.isGroup ? null : s.targetId, 
+                    groupId: s.isGroup ? s.targetId : null, 
+                    content: s.text, 
+                    fileType: 'text', 
+                    status: 'sent', 
+                    timestamp: new Date() 
+                };
+                displayMessage(tempMsg);
+            }
+        });
+        
+        // Remove as que foram enviadas
+        localStorage.setItem('scheduledMsgs', JSON.stringify(pending));
+        playNotificationSound('pop'); // Toca o sonzinho de alerta interno para o utilizador saber que disparou
     }
 }
 
-function updateWallpaperUI() {
-    const remBtn = document.getElementById('wallpaper-remove-link');
-    if (!remBtn) return;
-    
-    if (cachedMe && cachedMe.chatWallpaper) {
-        remBtn.classList.remove('hidden');
-    } else {
-        remBtn.classList.add('hidden');
-    }
-}
+// Inicia a verificação a cada 10 segundos
+setInterval(checkAndSendScheduledMessages, 10000);
 
-function triggerWallpaperUpload() { 
-    document.getElementById('wallpaper-file-input').click(); 
-}
-
-async function uploadWallpaper(input) {
-    const file = input.files[0]; 
-    if(!file) return;
-    
-    const btn = document.getElementById('wallpaper-action-link');
-    if(btn) btn.innerText = "Enviando...";
-    
-    const fd = new FormData(); 
-    fd.append('file', file);
-    
-    try {
-        const res = await fetch('/upload', { method: 'POST', body: fd });
-        const data = await res.json();
-        
-        await saveProfile({ chatWallpaper: data.url });
-        
-        cachedMe.chatWallpaper = data.url;
-        localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-        
-        applyWallpaper(data.url);
-        updateWallpaperUI();
-        
-        alert("Papel de parede atualizado com sucesso!");
-    } catch (e) {
-        alert("Erro ao enviar a imagem. Verifique a internet.");
-    } finally {
-        if(btn) btn.innerText = "Escolher";
-        input.value = '';
-    }
-}
-
-async function removeWallpaper() {
-    if(!confirm("Deseja remover sua imagem e voltar ao fundo padrão do CPTT?")) return;
-    
-    try {
-        await saveProfile({ chatWallpaper: '' });
-        cachedMe.chatWallpaper = '';
-        localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-        
-        document.body.style.removeProperty('--chat-bg-image');
-        updateWallpaperUI();
-    } catch(e) {
-        alert("Erro ao remover o papel de parede.");
-    }
-}
+// Faz uma verificação rápida 2 segundos após abrir o App (para disparar coisas atrasadas)
+setTimeout(checkAndSendScheduledMessages, 2000);
