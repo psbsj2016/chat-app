@@ -977,3 +977,39 @@ async function saveScheduledMessage() {
         alert("❌ Erro de conexão com a nuvem.");
     }
 }
+
+// ==============================================================
+// LÓGICA DO MENU LATERAL (DRAWER) E FAB EXPANSÍVEL - CHATPTT
+// ==============================================================
+
+function toggleDrawer() {
+    const drawer = document.getElementById('side-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    
+    // Atualiza info se estiver abrindo
+    if (!drawer.classList.contains('active')) {
+        document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
+        document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
+        const av = document.getElementById('drawer-avatar');
+        av.src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    }
+
+    drawer.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
+
+function toggleFab() {
+    const wrapper = document.querySelector('.fab-wrapper');
+    const options = document.getElementById('fab-options');
+    
+    wrapper.classList.toggle('active');
+    options.classList.toggle('active');
+}
+
+// Fecha o FAB se clicar fora dele
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.fab-wrapper');
+    if (wrapper && wrapper.classList.contains('active') && !e.target.closest('.fab-wrapper')) {
+        toggleFab();
+    }
+});
