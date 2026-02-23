@@ -88,6 +88,7 @@ function checkAndShowPermissions() {
 function grantAppPermissions() {
     localStorage.setItem('permissionsAsked', 'true');
     
+    // Destrava o Áudio: Dispara um som mudo invisível
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -268,7 +269,7 @@ async function loadContacts() {
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
     
-    // MENSAGEM QUANDO NÃO HÁ CONVERSAS
+    // MENSAGEM QUANDO NÃO HÁ CONVERSAS (ESTILO MATERIAL 3)
     if (groups.length === 0 && users.length === 0) {
         list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);">
             <h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Para começar, envie uma<br>mensagem para alguém.</h3>
@@ -301,6 +302,7 @@ function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURI
 
 function openProfile() { toggleMenu('main-menu'); hideElement('main-screen'); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; fetchAndSyncProfile(); }
 
+// MÁGICA: ABERTURA INSTANTÂNEA DA IA
 async function openBotChat() {
     toggleMenu('main-menu');
     try {
@@ -341,6 +343,7 @@ async function fetchAndSyncProfile() {
             const elPhone = document.getElementById('config-phone'); 
             if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
             
+            // Atualiza a foto do Header Material 3
             const headerAvatar = document.getElementById('header-my-avatar');
             if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         } 
@@ -518,7 +521,31 @@ function showMessageMenu(e, msgElement, msgObj) {
 }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
-async function openForwardModal() { showElement('forward-modal'); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Mensagem encaminhada com sucesso!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
+
+// --- ALTERAÇÃO AQUI: RESET DO TEXTO NO ENCAMINHAR ---
+async function openForwardModal() { 
+    showElement('forward-modal'); 
+    
+    // Reseta o texto caso tenha vindo da Câmera Rápida
+    const h3 = document.querySelector('#forward-modal h3');
+    if(h3) h3.innerText = "Encaminhar para...";
+
+    const resUsers = await fetch(`/users/${myId}`); 
+    const users = await resUsers.json(); 
+    const list = document.getElementById('forward-contacts-list'); 
+    list.innerHTML = ''; 
+    users.forEach(user => { 
+        const div = document.createElement('div'); div.className = 'user-item'; 
+        div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; 
+        div.onclick = () => { 
+            socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); 
+            alert("Mensagem encaminhada com sucesso!"); 
+            hideElement('forward-modal'); 
+        }; 
+        list.appendChild(div); 
+    }); 
+}
+
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
@@ -727,6 +754,11 @@ document.querySelectorAll('.app-screen').forEach(screen => {
     if(screen) observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] });
 });
 
+const mainScreenEl = document.getElementById('main-screen');
+if(mainScreenEl) {
+    observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] });
+}
+
 // ==============================================================
 // SISTEMA DE ANOTAÇÕES (NOTES)
 // ==============================================================
@@ -842,4 +874,92 @@ function createFood() { food.x = Math.floor(Math.random()*29)*10; food.y = Math.
 function changeSnakeDirection(d) {
     if(d==='UP'&&dy===0){dx=0;dy=-10} if(d==='DOWN'&&dy===0){dx=0;dy=10}
     if(d==='LEFT'&&dx===0){dx=-10;dy=0} if(d==='RIGHT'&&dx===0){dx=10;dy=0}
+}
+
+
+// ==============================================================
+// CÂMERA RÁPIDA (FAB) E ENCAMINHAMENTO
+// ==============================================================
+let quickCameraFile = null;
+
+// Acionado assim que o usuário tira a foto na tela principal
+function handleQuickCamera(input) {
+    const file = input.files[0];
+    if (!file) return;
+    quickCameraFile = file;
+    openQuickSendModal();
+}
+
+// Abre a lista de contatos para enviar a foto
+async function openQuickSendModal() {
+    showElement('forward-modal');
+    
+    // Troca o título do modal
+    const h3 = document.querySelector('#forward-modal h3');
+    if(h3) h3.innerText = "Enviar foto para...";
+    
+    const list = document.getElementById('forward-contacts-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Carregando contatos...</div>';
+    
+    try {
+        const [resG, resU] = await Promise.all([fetch(`/groups/${myId}`), fetch(`/users/${myId}`)]);
+        const groups = await resG.json();
+        const users = await resU.json();
+        
+        list.innerHTML = '';
+        
+        // Coloca os Grupos na lista
+        groups.forEach(g => {
+            const div = document.createElement('div'); div.className = 'user-item';
+            div.innerHTML = `<img src="${g.photoUrl}" class="avatar-small"> <span class="contact-name">${g.name} (Grupo)</span>`;
+            div.onclick = () => executeQuickSend(g._id, true);
+            list.appendChild(div);
+        });
+        
+        // Coloca os Contatos na lista
+        users.forEach(user => {
+            const div = document.createElement('div'); div.className = 'user-item';
+            div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email.split('@')[0]}</span>`;
+            div.onclick = () => executeQuickSend(user._id, false);
+            list.appendChild(div);
+        });
+    } catch(e) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Erro ao carregar contatos.</div>';
+    }
+}
+
+// Dispara a foto para o servidor e avisa via socket
+async function executeQuickSend(targetId, isGroup) {
+    hideElement('forward-modal');
+    
+    // Animação de "carregando" no botão da câmera
+    const btn = document.getElementById('fab-camera-btn');
+    const originalIcon = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons uploading-icon" style="color:var(--brand-primary)">sync</span>';
+    
+    const fd = new FormData();
+    fd.append('file', quickCameraFile);
+    try {
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        
+        // Envia a mensagem com a imagem pelo sistema do chat
+        socket.emit('private_message', {
+            senderId: myId,
+            receiverId: isGroup ? null : targetId,
+            groupId: isGroup ? targetId : null,
+            content: '📸 Foto enviada',
+            fileUrl: data.url,
+            fileType: 'image'
+        });
+        
+        quickCameraFile = null;
+        document.getElementById('quick-camera-input').value = '';
+        alert("✅ Foto enviada com sucesso!");
+        loadContacts();
+    } catch (e) {
+        alert("❌ Erro ao enviar a foto.");
+    } finally {
+        btn.innerHTML = originalIcon;
+    }
 }
