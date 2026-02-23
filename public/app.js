@@ -88,6 +88,7 @@ function checkAndShowPermissions() {
 function grantAppPermissions() {
     localStorage.setItem('permissionsAsked', 'true');
     
+    // Destrava o Áudio: Dispara um som mudo invisível
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -818,7 +819,7 @@ async function removeWallpaper() { if(!confirm("Deseja remover sua imagem e volt
 
 
 // ==============================================================
-// SISTEMA DE AGENDAMENTO DE MENSAGENS (CRON INTERNO)
+// SISTEMA DE AGENDAMENTO DE MENSAGENS (CRON NA NUVEM)
 // ==============================================================
 
 function openScheduleModal() {
@@ -859,7 +860,7 @@ function openScheduleModal() {
     showElement('schedule-modal');
 }
 
-function saveScheduledMessage() {
+async function saveScheduledMessage() {
     const targetVal = document.getElementById('schedule-target').value;
     const datetimeVal = document.getElementById('schedule-datetime').value;
     const textVal = document.getElementById('schedule-text').value.trim();
@@ -876,75 +877,26 @@ function saveScheduledMessage() {
         return alert("⚠️ A data e hora devem ser no futuro!");
     }
     
-    const scheduleObj = {
-        id: 'sched_' + Date.now(),
-        targetId,
-        isGroup,
-        text: textVal,
-        time: timeToSent
-    };
-    
-    let schedules = JSON.parse(localStorage.getItem('scheduledMsgs')) || [];
-    schedules.push(scheduleObj);
-    localStorage.setItem('scheduledMsgs', JSON.stringify(schedules));
-    
-    alert("✅ Mensagem agendada com sucesso!\n\n(Nota: O aplicativo vai efetuar o disparo automático desde que esteja aberto no momento da data, ou assim que for reaberto após o prazo).");
-    hideElement('schedule-modal');
-}
-
-// O Motor que verifica os agendamentos pendentes
-function checkAndSendScheduledMessages() {
-    let schedules = JSON.parse(localStorage.getItem('scheduledMsgs')) || [];
-    if (schedules.length === 0) return;
-    
-    const now = Date.now();
-    let pending = [];
-    let toSend = [];
-    
-    schedules.forEach(s => {
-        if (s.time <= now) {
-            toSend.push(s);
-        } else {
-            pending.push(s);
-        }
-    });
-    
-    if (toSend.length > 0) {
-        toSend.forEach(s => {
-            // Emite pelo socket
-            socket.emit('private_message', { 
-                senderId: myId, 
-                receiverId: s.isGroup ? null : s.targetId, 
-                groupId: s.isGroup ? s.targetId : null, 
-                content: s.text, 
-                fileUrl: null, 
-                fileType: 'text' 
-            });
-            
-            // Se o utilizador estiver com o chat aberto exatamente nessa conversa, exibe o balão
-            if (currentChatId === s.targetId) {
-                const tempMsg = { 
-                    _id: 'auto_' + Date.now() + Math.random(), 
-                    sender: myId, 
-                    receiver: s.isGroup ? null : s.targetId, 
-                    groupId: s.isGroup ? s.targetId : null, 
-                    content: s.text, 
-                    fileType: 'text', 
-                    status: 'sent', 
-                    timestamp: new Date() 
-                };
-                displayMessage(tempMsg);
-            }
+    try {
+        const res = await fetch('/schedule-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                senderId: myId,
+                targetId: targetId,
+                isGroup: isGroup,
+                content: textVal,
+                time: timeToSent
+            })
         });
-        
-        // Remove as que foram enviadas
-        localStorage.setItem('scheduledMsgs', JSON.stringify(pending));
-        playNotificationSound('pop'); // Toca o sonzinho de alerta interno para o utilizador saber que disparou
+
+        if (res.ok) {
+            alert("✅ Mensagem agendada no Servidor!\n\nEla será enviada mesmo que você feche o aplicativo ou fique sem internet.");
+            hideElement('schedule-modal');
+        } else {
+            alert("❌ Erro ao processar o agendamento.");
+        }
+    } catch (e) {
+        alert("❌ Erro de conexão com a nuvem.");
     }
 }
-
-// Inicia a verificação a cada 10 segundos
-setInterval(checkAndSendScheduledMessages, 10000);
-
-// Faz uma verificação rápida 2 segundos após abrir o App (para disparar coisas atrasadas)
-setTimeout(checkAndSendScheduledMessages, 2000);

@@ -44,9 +44,12 @@ const Group = mongoose.model('Group', GroupSchema);
 const MessageSchema = new mongoose.Schema({ sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, content: String, fileUrl: String, fileType: { type: String, default: 'text' }, status: { type: String, default: 'sent' }, reaction: { type: String, default: null }, timestamp: { type: Date, default: Date.now } });
 const Message = mongoose.model('Message', MessageSchema);
 
-// === NOVO BANCO DE DADOS: ANOTAÇÕES ===
 const NoteSchema = new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, title: String, content: String, timestamp: { type: Date, default: Date.now } });
 const Note = mongoose.model('Note', NoteSchema);
+
+// === NOVO: BANCO DE DADOS PARA MENSAGENS AGENDADAS NA NUVEM ===
+const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
+const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
 
 let botUserId = null;
 async function initializeAIBot() {
@@ -75,7 +78,7 @@ app.get('/search', async (req, res) => { const { query, myId } = req.query; if (
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); if (user) { res.json({ found: true, user }); } else { res.json({ found: false }); } } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/upload', upload.single('file'), (req, res) => { if (!req.file) return res.status(400).json({ error: 'Erro' }); res.json({ url: req.file.path, type: req.file.mimetype }); });
 app.put('/update-profile', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; await u.save(); res.json(u); } catch (e) {} });
-app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.fontSize) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) {} });
+app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if(req.body.theme) u.theme = req.body.theme; if(req.body.sectors) u.sectors = req.body.sectors; if(req.body.displayName) u.displayName = req.body.displayName; if(req.body.photoUrl) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.chatWallpaper !== undefined) u.chatWallpaper = req.body.chatWallpaper; if(req.body.fontSize) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) {} });
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'A senha atual está incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Senha atualizada com sucesso' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'E-mail não encontrado no sistema.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação de Senha - CPTT', html: `<div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; color: #333;"><h2>Recuperação de Senha</h2><p>Você solicitou a redefinição de senha da sua conta.</p><h1 style="color: #1d4ed8; letter-spacing: 5px;">${code}</h1><p>Insira este código no aplicativo para criar sua nova senha.</p></div>` }, (err) => { if(err) return res.status(500).json({error: 'Erro ao enviar o e-mail'}); res.json({ message: 'Código de recuperação enviado!' }); }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Senha redefinida com sucesso!' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
@@ -92,11 +95,22 @@ app.get('/group/:id', async (req, res) => { try { res.json(await Group.findById(
 app.delete('/groups/:id/:adminId', async (req, res) => { try { const g = await Group.findById(req.params.id); if (!g) return res.status(404).json({error: 'Grupo não encontrado'}); if (g.admin.toString() !== req.params.adminId) { return res.status(403).json({error: 'Sem permissão.'}); } await Message.deleteMany({ groupId: req.params.id }); await Group.findByIdAndDelete(req.params.id); res.json({msg:'ok'}); } catch(e){ res.status(500).json({error: 'Erro'}); } });
 app.get('/unread/:myId', async (req, res) => { try { const unreadMsgs = await Message.find({ receiver: req.params.myId, status: 'sent' }); const counts = {}; unreadMsgs.forEach(msg => { const sender = msg.sender.toString(); counts[sender] = (counts[sender] || 0) + 1; }); res.json(counts); } catch (e) { res.json({}); } });
 
-// === ROTAS DAS ANOTAÇÕES (API) ===
 app.get('/notes/:userId', async (req, res) => { try { res.json(await Note.find({ userId: req.params.userId }).sort('-timestamp')); } catch(e) { res.status(500).json([]); } });
 app.post('/notes', async (req, res) => { try { const note = new Note(req.body); await note.save(); res.json(note); } catch(e) { res.status(500).json({error: 'Erro'}); } });
 app.put('/notes/:id', async (req, res) => { try { await Note.findByIdAndUpdate(req.params.id, req.body); res.json({msg:'ok'}); } catch(e) { res.status(500).json({error:'Erro'}); } });
 app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelete(req.params.id); res.json({msg: 'ok'}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
+
+// === ROTA PARA RECEBER O AGENDAMENTO ===
+app.post('/schedule-message', async (req, res) => {
+    try {
+        const { senderId, targetId, isGroup, content, time } = req.body;
+        const newSchedule = new ScheduledMsg({ senderId, targetId, isGroup, content, scheduledTime: new Date(time) });
+        await newSchedule.save();
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
 
 let users = {};
 const SERVER_VERSION = Date.now().toString();
@@ -191,6 +205,63 @@ io.on('connection', (socket) => {
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
     socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
 });
+
+// ==========================================
+// O "CRON JOB" DO SERVIDOR (Motor Temporal)
+// ==========================================
+setInterval(async () => {
+    try {
+        const now = new Date();
+        const pendings = await ScheduledMsg.find({ status: 'pending', scheduledTime: { $lte: now } });
+        
+        for (const s of pendings) {
+            s.status = 'sent';
+            await s.save();
+
+            const msg = new Message({ 
+                sender: s.senderId, 
+                receiver: s.isGroup ? null : s.targetId, 
+                groupId: s.isGroup ? s.targetId : null, 
+                content: s.content, 
+                fileType: 'text', 
+                status: 'sent', 
+                _id: new mongoose.Types.ObjectId() 
+            });
+            await msg.save();
+
+            if (s.isGroup) {
+                io.to(s.targetId).emit('receive_message', msg);
+                const group = await Group.findById(s.targetId);
+                if(group) {
+                    const members = await User.find({ _id: { $in: group.members, $ne: s.senderId } });
+                    const senderUser = await User.findById(s.senderId);
+                    const senderName = senderUser ? senderUser.displayName : 'Alguém';
+                    members.forEach(async member => {
+                        if (member.pushSubscriptions && member.pushSubscriptions.length > 0) {
+                            const unreadCount = await Message.countDocuments({ receiver: member._id, status: 'sent' });
+                            const payload = JSON.stringify({ title: `Grupo ${group.name}`, body: `${senderName}: ${s.content.replace(/<[^>]*>?/gm, '')}`, unreadCount: unreadCount + 1 });
+                            member.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
+                        }
+                    });
+                }
+            } else {
+                const rSocket = users[s.targetId]; 
+                if (rSocket) io.to(rSocket).emit('receive_message', msg); 
+                const sSocket = users[s.senderId];
+                if (sSocket) io.to(sSocket).emit('receive_message', msg);
+
+                const receiver = await User.findById(s.targetId);
+                if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
+                    const unreadCount = await Message.countDocuments({ receiver: s.targetId, status: 'sent' });
+                    const senderUser = await User.findById(s.senderId);
+                    const senderName = senderUser ? senderUser.displayName : 'Mensagem Agendada';
+                    const payload = JSON.stringify({ title: `CPTT: ${senderName}`, body: s.content.replace(/<[^>]*>?/gm, ''), unreadCount });
+                    receiver.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
+                }
+            }
+        }
+    } catch(e) { console.error("Erro no Cron:", e); }
+}, 10000); 
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`🚀 Servidor Node.js na porta ${PORT}`));
