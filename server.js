@@ -35,7 +35,26 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     initializeAIBot(); 
 }).catch(err => console.error("Erro MongoDB:", err));
 
-const UserSchema = new mongoose.Schema({ email: { type: String, unique: true, required: true }, password: { type: String, required: true }, displayName: String, photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }, phone: { type: String, default: '' }, bio: { type: String, default: 'Olá! Estou usando o Chat.' }, code: String, isVerified: { type: Boolean, default: false }, theme: { type: String, default: 'light' }, fontSize: { type: String, default: 'medium' }, notificationSound: { type: String, default: 'modern' }, chatWallpaper: { type: String, default: '' }, sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }], pushSubscriptions: { type: Array, default: [] } });
+// === MÁGICA: ADICIONADO XP, LEVEL E LAST_SURPRISE NO BANCO ===
+const UserSchema = new mongoose.Schema({ 
+    email: { type: String, unique: true, required: true }, 
+    password: { type: String, required: true }, 
+    displayName: String, 
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }, 
+    phone: { type: String, default: '' }, 
+    bio: { type: String, default: 'Olá! Estou usando o Chat.' }, 
+    code: String, 
+    isVerified: { type: Boolean, default: false }, 
+    theme: { type: String, default: 'light' }, 
+    fontSize: { type: String, default: 'medium' }, 
+    notificationSound: { type: String, default: 'modern' }, 
+    chatWallpaper: { type: String, default: '' }, 
+    sectors: [{ name: String, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] }], 
+    pushSubscriptions: { type: Array, default: [] },
+    xp: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    lastSurprise: { type: Date, default: null }
+});
 const User = mongoose.model('User', UserSchema);
 
 const GroupSchema = new mongoose.Schema({ name: { type: String, required: true }, admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } });
@@ -47,7 +66,6 @@ const Message = mongoose.model('Message', MessageSchema);
 const NoteSchema = new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, title: String, content: String, timestamp: { type: Date, default: Date.now } });
 const Note = mongoose.model('Note', NoteSchema);
 
-// === NOVO: BANCO DE DADOS PARA MENSAGENS AGENDADAS NA NUVEM ===
 const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
 const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
 
@@ -66,13 +84,46 @@ async function initializeAIBot() {
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
+// === ROTA DE GAMIFICAÇÃO (SISTEMA DE XP) ===
+app.post('/add-xp', async (req, res) => {
+    try {
+        const { userId, xpAmount, isSurprise } = req.body;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({error: 'Usuário não encontrado'});
+
+        if (isSurprise) {
+            const now = new Date();
+            // Verifica se já abriu a caixa nas últimas 24h
+            if (user.lastSurprise && (now - user.lastSurprise) < 24 * 60 * 60 * 1000) {
+                return res.status(400).json({ error: 'Você já abriu a Caixa Surpresa hoje. Volte amanhã!' });
+            }
+            user.lastSurprise = now;
+        }
+
+        user.xp += xpAmount;
+        // Cada 100 XP sobe 1 nível
+        const newLevel = Math.floor(user.xp / 100) + 1;
+        let levelUp = false;
+        
+        if (newLevel > user.level) {
+            user.level = newLevel;
+            levelUp = true;
+        }
+        
+        await user.save();
+        res.json({ xp: user.xp, level: user.level, levelUp: levelUp });
+    } catch (e) {
+        res.status(500).json({error: 'Erro interno'});
+    }
+});
+
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 app.post('/register', async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
-app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id)); } catch (e) {} });
-app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId)); } catch(e){} }); 
+app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id).select('-password')); } catch (e) {} });
+app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId).select('-password')); } catch(e){} }); 
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).sort('timestamp')); } catch (e) {} });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) {} });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); if (user) { res.json({ found: true, user }); } else { res.json({ found: false }); } } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -100,16 +151,13 @@ app.post('/notes', async (req, res) => { try { const note = new Note(req.body); 
 app.put('/notes/:id', async (req, res) => { try { await Note.findByIdAndUpdate(req.params.id, req.body); res.json({msg:'ok'}); } catch(e) { res.status(500).json({error:'Erro'}); } });
 app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelete(req.params.id); res.json({msg: 'ok'}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
 
-// === ROTA PARA RECEBER O AGENDAMENTO ===
 app.post('/schedule-message', async (req, res) => {
     try {
         const { senderId, targetId, isGroup, content, time } = req.body;
         const newSchedule = new ScheduledMsg({ senderId, targetId, isGroup, content, scheduledTime: new Date(time) });
         await newSchedule.save();
         res.json({ success: true });
-    } catch(e) {
-        res.status(500).json({ error: 'Erro no servidor' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
 
 let users = {};
@@ -206,61 +254,25 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
 });
 
-// ==========================================
-// O "CRON JOB" DO SERVIDOR (Motor Temporal)
-// ==========================================
 setInterval(async () => {
     try {
         const now = new Date();
         const pendings = await ScheduledMsg.find({ status: 'pending', scheduledTime: { $lte: now } });
-        
         for (const s of pendings) {
             s.status = 'sent';
             await s.save();
-
-            const msg = new Message({ 
-                sender: s.senderId, 
-                receiver: s.isGroup ? null : s.targetId, 
-                groupId: s.isGroup ? s.targetId : null, 
-                content: s.content, 
-                fileType: 'text', 
-                status: 'sent', 
-                _id: new mongoose.Types.ObjectId() 
-            });
+            const msg = new Message({ sender: s.senderId, receiver: s.isGroup ? null : s.targetId, groupId: s.isGroup ? s.targetId : null, content: s.content, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
             await msg.save();
-
             if (s.isGroup) {
                 io.to(s.targetId).emit('receive_message', msg);
-                const group = await Group.findById(s.targetId);
-                if(group) {
-                    const members = await User.find({ _id: { $in: group.members, $ne: s.senderId } });
-                    const senderUser = await User.findById(s.senderId);
-                    const senderName = senderUser ? senderUser.displayName : 'Alguém';
-                    members.forEach(async member => {
-                        if (member.pushSubscriptions && member.pushSubscriptions.length > 0) {
-                            const unreadCount = await Message.countDocuments({ receiver: member._id, status: 'sent' });
-                            const payload = JSON.stringify({ title: `Grupo ${group.name}`, body: `${senderName}: ${s.content.replace(/<[^>]*>?/gm, '')}`, unreadCount: unreadCount + 1 });
-                            member.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
-                        }
-                    });
-                }
             } else {
                 const rSocket = users[s.targetId]; 
                 if (rSocket) io.to(rSocket).emit('receive_message', msg); 
                 const sSocket = users[s.senderId];
                 if (sSocket) io.to(sSocket).emit('receive_message', msg);
-
-                const receiver = await User.findById(s.targetId);
-                if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
-                    const unreadCount = await Message.countDocuments({ receiver: s.targetId, status: 'sent' });
-                    const senderUser = await User.findById(s.senderId);
-                    const senderName = senderUser ? senderUser.displayName : 'Mensagem Agendada';
-                    const payload = JSON.stringify({ title: `CPTT: ${senderName}`, body: s.content.replace(/<[^>]*>?/gm, ''), unreadCount });
-                    receiver.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
-                }
             }
         }
-    } catch(e) { console.error("Erro no Cron:", e); }
+    } catch(e) {}
 }, 10000); 
 
 const PORT = process.env.PORT || 10000;

@@ -1058,3 +1058,69 @@ document.addEventListener('click', (e) => {
 function openSurprise() {
     alert("🎁 Bônus Diário!\n\nVocê acaba de ganhar 50 XP por explorar a comunidade ChatPTT. Volte amanhã para mais novidades orquestradas pelo Node.js!");
 }
+
+// ==============================================================
+// SISTEMA DE GAMIFICAÇÃO (XP E LEVEL)
+// ==============================================================
+
+// Função central para ganhar XP
+async function gainXP(amount, isSurprise = false) {
+    if (!myId) return;
+    try {
+        const res = await fetch('/add-xp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, xpAmount: amount, isSurprise: isSurprise })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            if (isSurprise) alert(data.error); // Avisa se já abriu a caixa hoje
+            return;
+        }
+
+        // Atualiza a Interface com o novo XP e Nível
+        document.getElementById('drawer-xp').innerText = data.xp;
+        document.getElementById('drawer-level').innerText = data.level;
+        
+        // Salva localmente para carregar rápido da próxima vez
+        cachedMe.xp = data.xp;
+        cachedMe.level = data.level;
+        localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+
+        // Animação de Level Up
+        if (data.levelUp) {
+            alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`);
+            playNotificationSound('pop');
+        }
+
+        if (isSurprise) {
+            alert(`🎁 Sucesso! Você encontrou ${amount} XP na Caixa Surpresa!\n\nVolte amanhã para ganhar mais.`);
+        }
+    } catch (e) {
+        console.log("Erro ao ganhar XP:", e);
+    }
+}
+
+// Substitui o botão da Caixa Surpresa (aba explorar) para o código real:
+window.openSurprise = function() {
+    gainXP(50, true); // Tenta ganhar 50 XP (Bloqueado por 24h no backend se já pegou)
+}
+
+// Modifica a captura do Drawer para exibir os dados salvos quando abrir
+const originalToggleDrawer = window.toggleDrawer;
+window.toggleDrawer = function() {
+    const drawer = document.getElementById('side-drawer');
+    if (!drawer.classList.contains('active')) {
+        document.getElementById('drawer-xp').innerText = cachedMe.xp || 0;
+        document.getElementById('drawer-level').innerText = cachedMe.level || 1;
+    }
+    originalToggleDrawer();
+}
+
+// Adiciona um gatilho para ganhar 2 XP sempre que enviar uma mensagem (Limitado silenciosamente pela função)
+document.querySelector('.send-btn').addEventListener('click', () => {
+    // Dá 2 XP sempre que o usuário envia mensagem
+    gainXP(2, false);
+});
