@@ -20,6 +20,8 @@ let recordingInterval = null;
 let recordingSeconds = 0;      
 let pendingAudioFile = null;  
 
+let messageToReply = null; // <- NOVA VARIÁVEL PARA O SISTEMA DE RESPOSTA
+
 let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
@@ -241,6 +243,7 @@ function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
     updateAppBadge();
+    cancelReply(); // Cancela qualquer resposta ativa ao mudar de chat
     
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('add-contact-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
     const contactDiv = document.getElementById(`contact-${id}`); 
@@ -465,14 +468,43 @@ async function startRecording() {
 function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.type.startsWith('video/')) { const video = document.createElement('video'); video.preload = 'metadata'; video.onloadedmetadata = () => { window.URL.revokeObjectURL(video.src); if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; } executeUpload(file, 'video'); }; video.src = URL.createObjectURL(file); } else { let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); } }
 async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); } finally { document.getElementById('file-input').value = ''; } }
-function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const btn = document.querySelector('.send-btn'); if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } const content = textOverride || input.innerHTML; if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerHTML = ''; }
+
+// === ATUALIZADO: ENVIO COM CITAÇÃO (REPLY) ===
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') { 
+    const btn = document.querySelector('.send-btn'); 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } 
+    const input = document.getElementById('message-input'); 
+    if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('placeholder', 'Mensagem...'); if(btn) btn.classList.remove('pending-send'); handleFileUpload(document.getElementById('file-input')); return; } 
+    
+    let content = textOverride || input.innerHTML; 
+    
+    // MÁGICA DA CITAÇÃO:
+    if(messageToReply && !fileUrl && !textOverride) {
+        content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content;
+        cancelReply();
+    }
+
+    if((!content && !fileUrl) || !currentChatId) return; 
+    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; 
+    socket.emit('private_message', msgData); 
+    clearTimeout(typingTimeout); emitStopTypingStatus(); 
+    if(!fileUrl) input.innerHTML = ''; 
+}
+
 async function loadMessages(userId) { if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; msgs.forEach(displayMessage); } } catch (e) {} }
 
 let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null;            
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; 
-    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
+    
+    // Suporte a Long Press e DUPLO CLIQUE para Responder
+    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
+    div.addEventListener('touchend', () => clearTimeout(pressTimer)); 
+    div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
+    div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
+    div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); }); // Atalho Rápido para Computador
+
     let contentHtml = ''; 
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
     if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; 
@@ -480,8 +512,48 @@ function displayMessage(msg) {
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
     else contentHtml += msg.content; 
+    
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
+
+// === SISTEMA DE RESPOSTA E CITAÇÃO ===
+function initReply() {
+    if (!selectedMsgData) return;
+    const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato');
+    
+    let txt = selectedMsgData.content;
+    if(selectedMsgData.fileType === 'image') txt = '📸 Imagem';
+    else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio';
+    else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo';
+    else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF';
+    else {
+        // Remove a citação antiga se estiver respondendo a uma resposta
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = txt;
+        const qMsg = tempDiv.querySelector('.quoted-msg');
+        if(qMsg) qMsg.remove();
+        txt = tempDiv.innerText.trim();
+    }
+
+    document.getElementById('reply-preview-name').innerText = senderName;
+    document.getElementById('reply-preview-text').innerText = txt;
+    
+    messageToReply = {
+        name: senderName,
+        text: txt,
+        id: selectedMsgData._id
+    };
+    
+    showElement('reply-preview');
+    hideElement('msg-context-menu');
+    document.getElementById('message-input').focus();
+}
+
+function cancelReply() {
+    messageToReply = null;
+    hideElement('reply-preview');
+}
+
 
 function showMessageMenu(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
@@ -523,7 +595,17 @@ function showMessageMenu(e, msgElement, msgObj) {
     setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); 
 }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
-function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const cleanText = selectedMsgData.content.replace(/<[^>]*>?/gm, ''); navigator.clipboard.writeText(cleanText).then(() => alert("Texto copiado!")); }
+
+// === CÓPIA INTELIGENTE (Ignora Citações ao copiar) ===
+function copySelectedMessage() { 
+    if(!selectedMsgData || !selectedMsgData.content) return; 
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = selectedMsgData.content;
+    const qMsg = tempDiv.querySelector('.quoted-msg');
+    if(qMsg) qMsg.remove();
+    navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!"));
+    hideElement('msg-context-menu');
+}
 
 async function openForwardModal() { 
     showElement('forward-modal'); 
@@ -816,11 +898,6 @@ function updateWallpaperUI() { const remBtn = document.getElementById('wallpaper
 function triggerWallpaperUpload() { document.getElementById('wallpaper-file-input').click(); }
 async function uploadWallpaper(input) { const file = input.files[0]; if(!file) return; const btn = document.getElementById('wallpaper-action-link'); if(btn) btn.innerText = "Enviando..."; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: fd }); const data = await res.json(); await saveProfile({ chatWallpaper: data.url }); cachedMe.chatWallpaper = data.url; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); applyWallpaper(data.url); updateWallpaperUI(); alert("Papel de parede atualizado com sucesso!"); } catch (e) { alert("Erro ao enviar a imagem. Verifique a internet."); } finally { if(btn) btn.innerText = "Escolher"; input.value = ''; } }
 async function removeWallpaper() { if(!confirm("Deseja remover sua imagem e voltar ao fundo padrão do CPTT?")) return; try { await saveProfile({ chatWallpaper: '' }); cachedMe.chatWallpaper = ''; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); document.body.style.removeProperty('--chat-bg-image'); updateWallpaperUI(); } catch(e) { alert("Erro ao remover o papel de parede."); } }
-
-
-// ==============================================================
-// SISTEMA DE AGENDAMENTO DE MENSAGENS (CRON NA NUVEM)
-// ==============================================================
 
 function openScheduleModal() {
     toggleMenu('main-menu');
