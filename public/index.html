@@ -432,7 +432,33 @@
     
     <div id="change-password-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px;">Alterar Senha</h3><input type="password" id="cp-current" placeholder="Senha Atual" class="chic-input"><input type="password" id="cp-new" placeholder="Nova Senha" class="chic-input"><input type="password" id="cp-confirm" placeholder="Confirmar Nova Senha" class="chic-input"><div style="display:flex; gap:10px; width:100%;"><button onclick="closeChangePasswordModal()" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button><button onclick="submitChangePassword()" class="chic-btn">Salvar</button></div></div></div>
 
-    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()"><div class="modal-content profile-view-card" style="max-height: 85vh; overflow-y: auto;"><div style="text-align: right; width: 100%;"><span class="material-icons-round" style="color:var(--secondary-text); cursor:pointer;" onclick="closeContactProfile()">close</span></div><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3><div id="view-user-details" style="width: 100%; display: flex; flex-direction: column; gap: 10px;"><div class="profile-detail-item" style="flex-direction: column; align-items: flex-start; text-align: left; gap: 5px;"><span style="font-size: 12px; color:var(--brand-primary); font-weight: 700; text-transform: uppercase;">Bio</span><span id="view-contact-bio" style="font-size: 15px; font-weight:500;">...</span></div><div class="profile-detail-item"><span class="material-icons-round" style="color:var(--brand-primary);">phone</span><span id="view-contact-phone" style="font-weight: 600;">...</span></div><div class="profile-detail-item"><span class="material-icons-round" style="color:var(--brand-primary);">email</span><span id="view-contact-email">...</span></div></div><div id="view-group-details" class="hidden" style="width: 100%; text-align: left;"><p style="font-weight: 700; color: var(--secondary-text); margin-bottom: 10px; font-size:13px; text-transform:uppercase;">Membros:</p><div id="view-group-members" style="display: flex; flex-direction: column; gap: 10px;"></div></div></div></div>
+   <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
+    <div class="modal-content profile-view-card">
+        <div style="width: 100%; display: flex; justify-content: flex-end;">
+            <button class="icon-btn" onclick="closeContactProfile()" style="padding: 0;">
+                <span class="material-icons-round" style="font-size: 20px;">close</span>
+            </button>
+        </div>
+        <img id="view-contact-avatar" src="">
+        <h3 id="view-contact-name">Nome</h3>
+        
+        <div id="view-user-details" style="width: 100%;">
+            <div class="profile-detail-item">
+                <span class="material-icons-round">info</span>
+                <span id="view-contact-bio" style="font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</span>
+            </div>
+            <div class="profile-detail-item">
+                <span class="material-icons-round">phone</span>
+                <b id="view-contact-phone">...</b>
+            </div>
+        </div>
+
+        <div id="view-group-details" class="hidden" style="width: 100%; max-height: 150px; overflow-y: auto;">
+            <p style="font-size: 11px; font-weight: 800; color: var(--secondary-text); text-transform: uppercase; margin-bottom: 5px;">Membros</p>
+            <div id="view-group-members"></div>
+        </div>
+    </div>
+</div>
 
     <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content"><h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px;">Setor</h3><p id="sector-target-name" style="font-size:14px; color:var(--secondary-text); margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list" style="margin-bottom: 15px; width: 100%;"></div><div style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('sector-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button><button onclick="submitSector()" class="chic-btn">Salvar</button></div></div></div>
     

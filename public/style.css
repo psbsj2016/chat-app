@@ -282,3 +282,59 @@ input:checked + .slider:before { transform: translateX(18px); }
 emoji-picker { position: absolute; bottom: 80px; left: 10px; z-index: 100; --num-columns: 8; width: 320px; height: 320px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
 .checkbox-item { display: flex; align-items: center; gap: 12px; background: var(--input-bg); padding: 14px 16px; border-radius: 12px; cursor: pointer; font-weight: 600; }
 .checkbox-item input { transform: scale(1.4); accent-color: var(--brand-primary); }
+
+/* MODAL DE PERFIL MINIMALISTA */
+.profile-view-card {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 28px; /* Bordas bem arredondadas estilo startup */
+    width: 85%;
+    max-width: 300px; /* Tamanho pequeno e fixo */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.1);
+    animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* FOTO DE PERFIL PEQUENA NO MODAL */
+.profile-view-card img {
+    width: 80px; /* Reduzido de 120px para 80px */
+    height: 80px;
+    border-radius: 22px; /* Estilo Squircle moderno */
+    object-fit: cover;
+    border: 3px solid var(--brand-primary);
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.profile-view-card h3 {
+    font-size: 18px; /* Texto mais discreto */
+    font-weight: 800;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+/* ITENS DE DETALHE COMPACTOS */
+.profile-detail-item {
+    background: var(--input-bg);
+    padding: 8px 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    font-size: 13px; /* Fonte menor para não poluir */
+    margin-bottom: 6px;
+}
+
+.profile-detail-item .material-icons-round {
+    font-size: 18px;
+    color: var(--brand-primary);
+}
