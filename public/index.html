@@ -91,7 +91,7 @@
             <div id="fab-options" class="fab-options-container">
                 <button class="mini-fab" onclick="openAddContactScreen(); toggleFab()"><span class="material-icons-round">chat</span> <span>Nova Conversa</span></button>
                 <button class="mini-fab" onclick="document.getElementById('quick-camera-input').click(); toggleFab()"><span class="material-icons-round">photo_camera</span> <span>Foto Rápida</span></button>
-                <button class="mini-fab" onclick="switchTab('anotacoes', document.querySelectorAll('.nav-item')[1]); openNoteModal(); toggleFab()"><span class="material-icons-round">edit_note</span> <span>Nova Anotação</span></button>
+                <button class="mini-fab" onclick="switchTab('anotacoes', document.querySelectorAll('.nav-item')[2]); openNoteModal(); toggleFab()"><span class="material-icons-round">edit_note</span> <span>Nova Anotação</span></button>
                 <button class="mini-fab" onclick="openCreateGroupModal(); toggleFab()"><span class="material-icons-round">group_add</span> <span>Criar Grupo</span></button>
             </div>
             <button class="fab main-fab" id="main-fab-btn" onclick="toggleFab()">
@@ -99,6 +99,123 @@
             </button>
         </div>
     </div>
+
+    <div id="screen-explorar" class="app-screen hidden">
+        <div class="explore-header">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+                <h2 style="font-size: 28px; font-weight: 800; color: var(--text-color); letter-spacing: -1px;">Explorar</h2>
+                <img src="favicon.png" style="width:36px; border-radius:12px;" onerror="this.style.display='none'">
+            </div>
+            <div class="search-box" style="box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                <span class="material-icons-round">search</span>
+                <input type="text" placeholder="Buscar pessoas, jogos, grupos...">
+            </div>
+        </div>
+
+        <div class="explore-content">
+            
+            <div class="explore-section">
+                <h3 class="explore-section-title">⭐ Para você <span class="badge-tech">Python AI</span></h3>
+                <div class="explore-card para-voce-card">
+                    <div style="flex:1;">
+                        <h4 style="font-size:16px; margin-bottom:4px; font-weight:700;">Conheça a Comunidade Dev</h4>
+                        <p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;">Baseado nos seus interesses recentes.</p>
+                        <button class="chic-btn mini-btn" style="width: auto; padding: 6px 15px; font-size:13px;">Participar</button>
+                    </div>
+                    <span class="material-icons-round" style="font-size:40px; color:var(--brand-secondary); opacity:0.8;">hub</span>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title">🔥 Destaques</h3>
+                <div class="explore-hscroll">
+                    <div class="explore-card mini-square bg-gradient-1">
+                        <span class="material-icons-round">campaign</span>
+                        <h4>Nova IA</h4>
+                    </div>
+                    <div class="explore-card mini-square bg-gradient-2" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3])">
+                        <span class="material-icons-round">emoji_events</span>
+                        <h4>Torneio</h4>
+                    </div>
+                    <div class="explore-card mini-square bg-gradient-3">
+                        <span class="material-icons-round">verified</span>
+                        <h4>Update</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title">🤖 Cérebro Artificial <span class="badge-tech">Python Engine</span></h3>
+                <div class="explore-card ai-card" onclick="openBotChat(); switchTab('conversas', document.querySelectorAll('.nav-item')[0]);">
+                    <div style="flex:1;">
+                        <h4 style="font-size:18px; margin-bottom:4px; font-weight:700; color:white;">Assistente ChatPTT</h4>
+                        <p style="font-size:13.5px; color:rgba(255,255,255,0.8); margin-bottom:10px; line-height:1.4;">Crie ideias, resuma textos ou pergunte qualquer coisa.</p>
+                        <div style="display:flex; gap:8px;">
+                            <span class="chip">Gerar Ideias</span>
+                            <span class="chip">Responder</span>
+                        </div>
+                    </div>
+                    <span class="material-icons-round" style="font-size:50px; color:white; opacity:0.9;">smart_toy</span>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 class="explore-section-title" style="margin-bottom:0;">🎮 Jogos Rápidos</h3>
+                    <span style="font-size:12px; color:var(--brand-primary); font-weight:700; cursor:pointer;" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3])">Ver todos</span>
+                </div>
+                <div style="margin-top:10px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="explore-card action-card" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3]); startSnakeGame()">
+                        <span class="material-icons-round" style="color:#22C55E;">sports_esports</span>
+                        <h4>Jogar Snake</h4>
+                        <p>Solo Game</p>
+                    </div>
+                    <div class="explore-card action-card" onclick="alert('Sistema Real-Time em Go em breve!')">
+                        <span class="material-icons-round" style="color:var(--brand-secondary);">swords</span>
+                        <h4>Desafiar</h4>
+                        <p>Multiplayer</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title">👥 Social Connect <span class="badge-tech">Go WebSockets</span></h3>
+                <div class="explore-card" style="padding:0; overflow:hidden;">
+                    <div class="social-list-item" onclick="openAddContactScreen()">
+                        <div class="icon-circle" style="background:var(--brand-light); color:var(--brand-primary);"><span class="material-icons-round">person_add</span></div>
+                        <div style="flex:1;"><b>Encontrar Amigos</b><br><span style="font-size:12px; color:var(--secondary-text);">Busca global</span></div>
+                        <span class="material-icons-round" style="font-size:20px; color:#ccc;">chevron_right</span>
+                    </div>
+                    <div class="social-list-item" style="border-top:1px solid var(--input-bg);" onclick="openCreateGroupModal()">
+                        <div class="icon-circle" style="background:#E0F2FE; color:#06B6D4;"><span class="material-icons-round">groups</span></div>
+                        <div style="flex:1;"><b>Criar Comunidade</b><br><span style="font-size:12px; color:var(--secondary-text);">Grupos temáticos</span></div>
+                        <span class="material-icons-round" style="font-size:20px; color:#ccc;">chevron_right</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title">🎯 Missões Diárias</h3>
+                <div class="explore-card mission-card">
+                    <div class="mission-icon"><span class="material-icons-round">chat</span></div>
+                    <div style="flex:1;">
+                        <h4 style="font-size:14.5px;">Enviar 3 Mensagens</h4>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 33%;"></div></div>
+                    </div>
+                    <div class="reward-badge">+10 XP</div>
+                </div>
+            </div>
+
+            <div style="padding: 20px 0 40px 0; text-align:center;">
+                <button class="surprise-btn" onclick="openSurprise()">
+                    <span class="material-icons-round">redeem</span> 
+                    <span>Abrir Caixa Surpresa</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
 
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer">
@@ -335,6 +452,10 @@
         <div class="nav-item active" onclick="switchTab('conversas', this)">
             <div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div>
             <span>Chat</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('explorar', this)">
+            <div class="nav-icon"><span class="material-icons-round">explore</span></div>
+            <span>Explorar</span>
         </div>
         <div class="nav-item" onclick="switchTab('anotacoes', this)">
             <div class="nav-icon"><span class="material-icons-round">note_alt</span></div>

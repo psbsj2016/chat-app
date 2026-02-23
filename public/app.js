@@ -791,17 +791,21 @@ function toggleMainSearch() {
     }
 }
 
+// ==== ATUALIZE O SEU SWITCH TAB PARA ISSO ====
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    element.classList.add('active');
+    if(element) element.classList.add('active');
 
     hideElement('main-screen');       
     hideElement('screen-anotacoes');  
     hideElement('screen-jogos');      
+    hideElement('screen-explorar');   
     hideElement('chat-screen');       
 
     if (tabName === 'conversas') {
         showElement('main-screen');
+    } else if (tabName === 'explorar') {
+        showElement('screen-explorar');
     } else if (tabName === 'anotacoes') {
         showElement('screen-anotacoes');
         loadNotes(); 
@@ -810,18 +814,21 @@ function switchTab(tabName, element) {
     }
 }
 
+// Atualize o observerMenu para não esconder a barra na tela explorar
 const observerMenu = new MutationObserver(() => {
     const chat = document.getElementById('chat-screen');
     const nav = document.getElementById('bottom-navigation');
     const main = document.getElementById('main-screen');
     const notes = document.getElementById('screen-anotacoes');
     const games = document.getElementById('screen-jogos');
+    const explorar = document.getElementById('screen-explorar');
     
     if (chat && !chat.classList.contains('hidden')) {
         if(nav) nav.style.display = 'none';
     } else if ((main && !main.classList.contains('hidden')) || 
                (notes && !notes.classList.contains('hidden')) || 
-               (games && !games.classList.contains('hidden'))) {
+               (games && !games.classList.contains('hidden')) ||
+               (explorar && !explorar.classList.contains('hidden'))) {
         if(nav) nav.style.display = 'flex';
     } else {
         if(nav) nav.style.display = 'none';
@@ -1013,3 +1020,41 @@ document.addEventListener('click', (e) => {
         toggleFab();
     }
 });
+
+// ==============================================================
+// LÓGICA DO MENU LATERAL E FAB - CHATPTT
+// ==============================================================
+
+function toggleDrawer() {
+    const drawer = document.getElementById('side-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    
+    if (!drawer.classList.contains('active')) {
+        document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
+        document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
+        const av = document.getElementById('drawer-avatar');
+        av.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    }
+
+    drawer.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
+
+function toggleFab() {
+    const wrapper = document.querySelector('.fab-wrapper');
+    const options = document.getElementById('fab-options');
+    
+    if(wrapper) wrapper.classList.toggle('active');
+    if(options) options.classList.toggle('active');
+}
+
+document.addEventListener('click', (e) => {
+    const wrapper = document.querySelector('.fab-wrapper');
+    if (wrapper && wrapper.classList.contains('active') && !e.target.closest('.fab-wrapper')) {
+        toggleFab();
+    }
+});
+
+function openSurprise() {
+    alert("🎁 Bônus Diário!\n\nVocê acaba de ganhar 50 XP por explorar a comunidade ChatPTT. Volte amanhã para mais novidades orquestradas pelo Node.js!");
+}
