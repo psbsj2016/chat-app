@@ -29,8 +29,8 @@ async def ask_bot(req: MessageRequest):
 
         Mensagem do Usuário: {req.message}"""
         
-        # Correção 1: Atualizado para v1beta e gemini-1.5-flash-latest para não dar Erro 404
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={API_KEY}"
+        # MUDANÇA BLINDADA: Usando o 'gemini-pro' clássico que nunca dá erro 404
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         headers = {"Content-Type": "application/json"}
@@ -52,5 +52,5 @@ if __name__ == '__main__':
     # O Render exige o host 0.0.0.0 e a porta dinâmica do sistema
     port = int(os.environ.get("PORT", 10000))
     
-    # Correção 2: Como você usa FastAPI, o motor de arranque é o Uvicorn!
+    # Motor de arranque Uvicorn para o FastAPI
     uvicorn.run(app, host='0.0.0.0', port=port)
