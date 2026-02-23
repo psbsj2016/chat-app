@@ -1,37 +1,50 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
 
 :root {
-    /* AS CORES OFICIAIS DO CPTT */
-    --brand-primary: #003882;    /* Azul Marinho Profundo (borda do logo) */
-    --brand-secondary: #ffb800;  /* Amarelo Ouro (fundo do balão) */
-    --brand-accent: #ff9800;     /* Laranja/Dourado escuro para destaques */
-    --brand-light: #eaf2fd;      /* Azul super clarinho (para suas mensagens) */
+    /* PALETA "NEON PULSE" - CPTT PREMIUM */
+    --brand-primary: #6366F1;    /* Índigo Elétrico (Base tecnológica e elegante) */
+    --brand-secondary: #FF5A5F;  /* Rosa Coral (Diversão, jogos e notificações) */
+    --brand-accent: #FF5A5F;     /* Usado para destaques vivos */
+    --brand-light: #EEF2FF;      /* Índigo muito claro (para hover e seleções) */
     
-    --bg-color: #d1d7db; 
-    --card-bg: #ffffff; 
-    --text-color: #333; 
-    --secondary-text: #666; 
-    --input-bg: #f0f2f5; 
-    --header-text: #ffffff; 
+    --bg-color: #F8FAFC;         /* Fundo suave off-white */
+    --card-bg: #FFFFFF;          /* Branco puro para os cards */
+    --text-color: #0F172A;       /* Texto principal (Quase preto, Slate) */
+    --secondary-text: #64748B;   /* Texto secundário moderno */
+    --input-bg: #F1F5F9;         /* Fundo da caixa de texto e pesquisa */
+    --header-text: #FFFFFF; 
     
-    /* Fundo suave combinando com a nova paleta */
-    --chat-bg-color: #e4eaf1;
-    --chat-bg-image: linear-gradient(rgba(228, 234, 241, 0.88), rgba(255, 255, 255, 0.95)), url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2000&auto=format&fit=crop');
+    /* Fundo dos Chats */
+    --chat-bg-color: #E2E8F0;
+    --chat-bg-image: none; /* Deixamos liso por defeito para destacar o Wallpaper se o utilizador colocar */
     
-    --chat-font-size: 15.5px; --contact-name-size: 16.5px; --contact-msg-size: 13.5px; --input-font-size: 17.5px; 
+    /* Variáveis dos Balões de Chat */
+    --my-msg-bg: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    --my-msg-text: #FFFFFF;
+    --other-msg-bg: #FFFFFF;
+    --other-msg-text: #0F172A;
+
+    --chat-font-size: 15.5px; 
+    --contact-name-size: 16.5px; 
+    --contact-msg-size: 13.5px; 
+    --input-font-size: 16.5px; 
 }
 
 body.dark-mode {
-    --brand-light: #00265a;      /* Azul escuro elegante para suas mensagens no modo noturno */
+    --brand-primary: #818CF8;    /* Índigo mais claro para destacar no fundo escuro */
+    --brand-light: #3730A3;      /* Índigo profundo para seleções */
     
-    --bg-color: #0b141a; 
-    --card-bg: #1f2c34; 
-    --text-color: #e9edef; 
-    --secondary-text: #8696a0; 
-    --input-bg: #2a3942; 
+    --bg-color: #0F172A;         /* Fundo super escuro (Slate 900) */
+    --card-bg: #1E293B;          /* Fundo dos menus e cards (Slate 800) */
+    --text-color: #F8FAFC;       /* Texto branco gelo */
+    --secondary-text: #94A3B8;   /* Texto cinza azulado */
+    --input-bg: #334155;         /* Fundo de caixas de texto */
     
-    --chat-bg-color: #0b141a;
-    --chat-bg-image: linear-gradient(rgba(11, 20, 26, 0.88), rgba(11, 20, 26, 0.96)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop');
+    --chat-bg-color: #020617;
+    
+    /* Variáveis dos Balões de Chat - Dark */
+    --other-msg-bg: #1E293B;
+    --other-msg-text: #F8FAFC;
 }
 
 body.font-small { --chat-font-size: 13.5px; --contact-name-size: 15px; --contact-msg-size: 12px; --input-font-size: 15.5px; }
@@ -107,8 +120,23 @@ body.dark-mode .chic-input:focus { background: rgba(0,0,0,0.4); border-color: va
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; 
     font-size: var(--chat-font-size); line-height: 1.3; 
 }
-.my-msg { align-self: flex-end; background: var(--brand-light); color: var(--text-color); border-bottom-right-radius: 4px; } 
-.other-msg { align-self: flex-start; background: var(--card-bg); border-bottom-left-radius: 4px; }
+/* Minha Mensagem (Direita) - Canto reto no final */
+.my-msg { 
+    align-self: flex-end; 
+    background: var(--my-msg-bg); 
+    color: var(--my-msg-text); 
+    border-radius: 18px 18px 4px 18px; 
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25); /* Sombra colorida neon */
+} 
+
+/* Mensagem dos Outros (Esquerda) - Canto reto no inicio */
+.other-msg { 
+    align-self: flex-start; 
+    background: var(--other-msg-bg); 
+    color: var(--other-msg-text); 
+    border-radius: 18px 18px 18px 4px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
 
 .contact-name { font-weight: bold; font-size: var(--contact-name-size); }
 .contact-last-msg { font-size: var(--contact-msg-size); color: var(--secondary-text); margin-top: 2px; }
