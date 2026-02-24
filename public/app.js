@@ -276,7 +276,6 @@ function renderContactsList(groups, users) {
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${group.name}</div>${badgeHtml}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`group-menu-${group._id}`); }; const memberStr = group.members.join(','); const isAdmin = group.admin === myId; const deleteGroupBtn = isAdmin ? `<div class="menu-separator"></div><div class="menu-item logout" onclick="event.stopPropagation(); deleteGroup('${group._id}')"><span class="material-icons">delete_forever</span> <span style="font-weight:bold;">Excluir Grupo</span></div>` : ''; 
-        // Adicionando a opção de Denunciar para Grupos (opcional)
         menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div><div class="menu-separator"></div><div class="menu-item" style="color: #F59E0B;" onclick="event.stopPropagation(); reportContact('${group._id}')"><span class="material-icons-round">flag</span> Denunciar Grupo</div>${deleteGroupBtn}</div>`; 
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
@@ -288,7 +287,6 @@ function renderContactsList(groups, users) {
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); 
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${name}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
         const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; 
-        // AQUI FORAM INJETADOS OS BOTÕES DE DENUNCIAR E BLOQUEAR
         menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:180px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${safeName}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${safeName}')">Adicionar ao Grupo</div><div class="menu-separator"></div><div class="menu-item" style="color: #F59E0B;" onclick="event.stopPropagation(); reportContact('${user._id}')"><span class="material-icons-round">flag</span> Denunciar</div><div class="menu-item" style="color: #EF4444;" onclick="event.stopPropagation(); blockContact('${user._id}', '${safeName}')"><span class="material-icons-round">block</span> Bloquear</div></div>`; 
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     });
@@ -472,7 +470,6 @@ function triggerUpload(type) { const input = document.getElementById('file-input
 async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.type.startsWith('video/')) { const video = document.createElement('video'); video.preload = 'metadata'; video.onloadedmetadata = () => { window.URL.revokeObjectURL(video.src); if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; } executeUpload(file, 'video'); }; video.src = URL.createObjectURL(file); } else { let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); } }
 async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); } finally { document.getElementById('file-input').value = ''; } }
 
-// === ATUALIZADO: ENVIO COM CITAÇÃO (REPLY) ===
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { 
     const btn = document.querySelector('.send-btn'); 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } 
@@ -481,7 +478,6 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     
     let content = textOverride || input.innerHTML; 
     
-    // MÁGICA DA CITAÇÃO:
     if(messageToReply && !fileUrl && !textOverride) {
         content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content;
         cancelReply();
@@ -507,11 +503,17 @@ function displayMessage(msg) {
     div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
     div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
     
-    // === 🛡️ PROTOCOLO AEGIS: INJEÇÃO DE AVISOS NO CHAT ===
     let securityWarningHtml = '';
-    let displayContent = msg.content;
+    let displayContent = msg.content || '';
+    let quotedHtml = '';
 
-    // Se a IA do Python marcou como perigosa
+    // FIX BUG 1: Oculta o HTML da Citação para que o EscapeHTML não quebre a caixa de resposta
+    const quoteMatch = displayContent.match(/(<div class="quoted-msg"[\s\S]*?<\/div>)([\s\S]*)/);
+    if (quoteMatch) {
+        quotedHtml = quoteMatch[1];
+        displayContent = quoteMatch[2] || '';
+    }
+
     if (msg.securityFlags && msg.securityFlags.risk_level) {
         let warningText = "Mensagem suspeita detectada.";
         let icon = "warning";
@@ -540,8 +542,7 @@ function displayMessage(msg) {
     else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
-    // CORREÇÃO: Aplicar o HTML do aviso e sanitizar o texto
-    else contentHtml += securityWarningHtml + escapeHTML(displayContent); 
+    else contentHtml += securityWarningHtml + quotedHtml + escapeHTML(displayContent); 
     
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
@@ -581,7 +582,6 @@ function cancelReply() {
     messageToReply = null;
     hideElement('reply-preview');
 }
-
 
 function showMessageMenu(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
@@ -656,7 +656,6 @@ async function openForwardModal() {
     }); 
 }
 
-// === 🛡️ PROTOCOLO AEGIS: BLOQUEIO E DENÚNCIA ===
 async function blockContact(targetId, targetName) {
     if(!confirm(`🚫 Tem certeza que deseja BLOQUEAR ${targetName}?\nVocê não receberá mais mensagens dessa pessoa.`)) return;
     try {
@@ -683,6 +682,9 @@ async function reportContact(targetId, msgId = null) {
 }
 
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
+
+function closeContactProfile() { hideElement('contact-profile-modal'); }
+
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
 function formatDoc(cmd, event, value=null) { if(event) event.preventDefault(); document.execCommand(cmd, false, value); }
@@ -722,20 +724,6 @@ async function submitChangePassword() { const currentPassword = document.getElem
 
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); localStorage.removeItem('permissionsAsked'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA, todas as suas conversas privadas e removerá você de todos os grupos permanentemente.\n\nVocê tem certeza absoluta que deseja sumir do sistema?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída e todos os seus dados foram apagados. Voltando ao início."); logout(); } } catch (e) { alert("Erro ao excluir a conta."); } } }
-
-function viewContactProfile(overrideId = null, overrideName = null, overridePhoto = null, overrideIsGroup = null) { 
-    const targetId = typeof overrideId === 'string' ? overrideId : currentChatId; const targetName = typeof overrideName === 'string' ? overrideName : document.getElementById('chat-title').innerText; const targetPhoto = typeof overridePhoto === 'string' ? overridePhoto : document.getElementById('chat-avatar').src; const targetIsGroup = overrideIsGroup !== null ? overrideIsGroup : isGroupChat;
-    if (!targetId) return; showElement('contact-profile-modal'); document.getElementById('view-contact-name').innerText = targetName; document.getElementById('view-contact-avatar').src = targetPhoto; 
-    if (targetIsGroup) {
-        hideElement('view-user-details'); showElement('view-group-details'); document.getElementById('view-group-members').innerHTML = '<span style="font-size:13.5px; color:#888;">Carregando...</span>';
-        fetch(`/group/${targetId}`).then(res => res.json()).then(group => { let html = ''; group.members.forEach(m => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--input-bg);"><img src="${m.photoUrl}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;"><span class="contact-name">${m.displayName || m.email}</span></div>`; }); document.getElementById('view-group-members').innerHTML = html; }).catch(()=>{});
-    } else {
-        showElement('view-user-details'); hideElement('view-group-details');
-        document.getElementById('view-contact-bio').innerText = 'Carregando...'; document.getElementById('view-contact-phone').innerText = 'Carregando...';
-        fetch(`/user/${targetId}`).then(res => res.json()).then(user => { document.getElementById('view-contact-bio').innerText = user.bio || 'Olá! Estou usando o Chat.'; document.getElementById('view-contact-phone').innerText = user.phone || 'Não informado'; document.getElementById('view-contact-email').innerText = user.email; }).catch(()=>{});
-    }
-}
-function closeContactProfile() { hideElement('contact-profile-modal'); }
 
 document.addEventListener('selectionchange', () => { const input = document.getElementById('message-input'); const formatBar = document.getElementById('text-format-toolbar'); const inputArea = document.querySelector('.input-area'); if (!input || !formatBar || !inputArea) return; const selection = window.getSelection(); if (selection.rangeCount > 0 && !selection.isCollapsed && input.contains(selection.anchorNode)) { showElement('text-format-toolbar'); const inputRect = inputArea.getBoundingClientRect(); let top = inputRect.top - formatBar.offsetHeight - 12; let left = (window.innerWidth / 2) - (formatBar.offsetWidth / 2); formatBar.style.top = `${top}px`; formatBar.style.left = `${left}px`; } else { hideElement('text-format-toolbar'); } });
 
@@ -844,6 +832,7 @@ function toggleMainSearch() {
     }
 }
 
+// FIX BUG 2: Oculta a tela de pesquisa ("Encontrar Alguém") corretamente ao mudar de aba
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     if(element) element.classList.add('active');
@@ -853,6 +842,9 @@ function switchTab(tabName, element) {
     hideElement('screen-jogos');      
     hideElement('screen-explorar');   
     hideElement('chat-screen');        
+    hideElement('add-contact-screen'); // CORREÇÃO AQUI
+    hideElement('profile-screen');
+    hideElement('settings-screen');
 
     if (tabName === 'conversas') {
         showElement('main-screen');
@@ -939,496 +931,3 @@ function openNoteModal() { editingNoteId = null; document.getElementById('note-t
 function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').value = note.content || ''; showElement('note-modal'); }
 async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
-
-// ==============================================================
-// 🐍 JOGO 1: SNAKE NEON REALISTA (CORRIGIDO BUG DO SINTAXE)
-// ==============================================================
-let snake = []; 
-let food = {x:0, y:0, img: null}; 
-let dx=10; let dy=0; let gameInterval=null;
-let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
-
-const GRID_SIZE = 10; // ⚠️ AQUI ESTAVA O SEU BUG: Tinha um espaço! "GRID_ size"
-const CANVAS_SIZE = 400; 
-
-const foodImagesSrc = [
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png',
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', 
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f439.png', 
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1fab2.png', 
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  
-];
-const foodImages = [];
-foodImagesSrc.forEach(src => {
-    const img = new Image();
-    img.src = src;
-    foodImages.push(img);
-});
-
-function startSnakeGame() { 
-    snake = [{x:200, y:200}, {x:190, y:200}, {x:180, y:200}]; 
-    dx=GRID_SIZE; dy=0; snakeScore=0; snakeSpeed=150;
-    isPlayingSnake = true;
-    document.getElementById('game-score').innerText = '0';
-    updateSnakeLevel();
-    createFood(); 
-    if(gameInterval) clearInterval(gameInterval); 
-    gameInterval = setInterval(gameLoop, snakeSpeed); 
-    document.getElementById('btn-start-game').innerText = "Reiniciar Jogo";
-}
-
-function updateSnakeLevel() {
-    let level = snakeScore + 1;
-    let fase = "Fácil";
-    let color = "#22C55E";
-    let novaVelocidade = 150;
-
-    if(level >= 11 && level <= 20) {
-        fase = "Médio";
-        color = "#F59E0B";
-        novaVelocidade = 90;
-    } else if (level >= 21) {
-        fase = "Difícil";
-        color = "#EF4444";
-        novaVelocidade = 50;
-    }
-
-    const display = document.getElementById('snake-level-display');
-    display.innerHTML = `Nível: ${level} | Fase: <span style="color:${color}">${fase}</span>`;
-    display.style.color = color;
-    display.style.background = color + "20";
-
-    if(novaVelocidade !== snakeSpeed) {
-        snakeSpeed = novaVelocidade;
-        if(gameInterval) {
-            clearInterval(gameInterval);
-            gameInterval = setInterval(gameLoop, snakeSpeed);
-        }
-    }
-}
-
-function gameLoop() { 
-    const canvas = document.getElementById('snake-canvas'); 
-    const ctx = canvas.getContext('2d'); 
-    
-    // Limpar a tela
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
-    snake.unshift(head); 
-    
-    // Comeu a presa?
-    if(Math.abs(head.x - food.x) < GRID_SIZE && Math.abs(head.y - food.y) < GRID_SIZE) { 
-        createFood(); 
-        snakeScore++;
-        document.getElementById('game-score').innerText = snakeScore * 10; 
-        updateSnakeLevel();
-    } else {
-        snake.pop(); 
-    }
-    
-    // Colisão
-    if(head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE || snakeCollision(head)) { 
-        clearInterval(gameInterval); 
-        isPlayingSnake = false;
-        alert(`💥 Game Over!\n\nVocê chegou ao Nível ${snakeScore + 1}.\nGanhou +${snakeScore} XP!`); 
-        if(snakeScore > 0) gainXP(snakeScore, false);
-        return;
-    } 
-
-    // 1. Desenhar a Presa (Animalzinho)
-    if(food.img && food.img.complete) {
-        ctx.drawImage(food.img, food.x - 2, food.y - 2, 14, 14);
-    } else {
-        ctx.fillStyle = "red";
-        ctx.fillRect(food.x, food.y, GRID_SIZE, GRID_SIZE);
-    }
-    
-    // 2. Desenhar a Cobra Orgânica e Realista
-    snake.forEach((p, index) => {
-        const isHead = index === 0;
-        const radius = isHead ? GRID_SIZE / 1.6 : GRID_SIZE / 2.2;
-        const centerX = p.x + GRID_SIZE / 2;
-        const centerY = p.y + GRID_SIZE / 2;
-
-        ctx.beginPath();
-        ctx.fillStyle = isHead ? "#34D399" : "var(--brand-primary)";
-
-        if (isHead) {
-            // A Mágica do Rosto: Qual é o ângulo do movimento?
-            let angle = Math.atan2(dy, dx);
-            
-            // A Mágica da Mordida: Está perto da comida?
-            // Calcula a distância entre a cabeça e a comida
-            let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
-            let isMouthOpen = distToFood <= GRID_SIZE * 3; // Abre a boca se estiver a 3 blocos de distância
-
-            if (isMouthOpen) {
-                // Desenha a cabeça com a boca aberta (Pac-Man style)
-                ctx.arc(centerX, centerY, radius, angle + 0.25 * Math.PI, angle + 1.75 * Math.PI);
-                ctx.lineTo(centerX, centerY);
-            } else {
-                // Cabeça fechada normal
-                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            }
-            ctx.fill();
-            ctx.closePath();
-
-            // --- DESENHAR OS OLHOS ---
-            ctx.fillStyle = "white"; // Fundo do olho
-            let eyeOffset = radius * 0.55; 
-            
-            // Posição dos dois olhos baseada no ângulo de movimento
-            let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
-            let eyeY1 = centerY + Math.sin(angle - Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
-            let eyeX2 = centerX + Math.cos(angle + Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
-            let eyeY2 = centerY + Math.sin(angle + Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
-
-            ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 2.5, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 2.5, 0, Math.PI*2); ctx.fill();
-
-            // --- DESENHAR AS PUPILAS ---
-            ctx.fillStyle = "black";
-            // Pupilas sempre a olhar ligeiramente para a frente
-            ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1, eyeY1 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1, eyeY2 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
-
-            // Efeito Brilho Neon na cabeça
-            ctx.shadowColor = "#34D399";
-            ctx.shadowBlur = 10;
-        } else {
-            // Corpo da Cobra (Bolinhas menores)
-            ctx.shadowBlur = 0;
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.closePath();
-        }
-    });
-    ctx.shadowBlur = 0; // Limpa o brilho para a próxima renderização
-}
-
-// ==============================================================
-// ⭕❌ JOGO 2: JOGO DA VELHA
-// ==============================================================
-let tttBoard = ['', '', '', '', '', '', '', '', ''];
-let tttActive = true;
-
-function playTTT(index) {
-    if(!tttActive || tttBoard[index] !== '') return;
-    tttBoard[index] = 'X';
-    renderTTT();
-    if(!checkTTTWin()) {
-        document.getElementById('ttt-status').innerText = "Bot pensando...";
-        tttActive = false; 
-        setTimeout(botMoveTTT, 600);
-    }
-}
-
-function botMoveTTT() {
-    let empty = [];
-    for(let i=0; i<9; i++) if(tttBoard[i] === '') empty.push(i);
-    if(empty.length > 0) {
-        let move = empty[Math.floor(Math.random() * empty.length)];
-        tttBoard[move] = 'O';
-        renderTTT();
-        if(!checkTTTWin()) {
-            document.getElementById('ttt-status').innerText = "Sua vez (X)!";
-            tttActive = true;
-        }
-    }
-}
-
-function renderTTT() {
-    const cells = document.querySelectorAll('.ttt-cell');
-    cells.forEach((cell, i) => {
-        cell.innerText = tttBoard[i];
-        cell.className = 'ttt-cell ' + (tttBoard[i] === 'X' ? 'x' : (tttBoard[i] === 'O' ? 'o' : ''));
-    });
-}
-
-function checkTTTWin() {
-    const wins = [
-        [0,1,2], [3,4,5], [6,7,8], 
-        [0,3,6], [1,4,7], [2,5,8], 
-        [0,4,8], [2,4,6]           
-    ];
-    for(let combo of wins) {
-        const [a,b,c] = combo;
-        if(tttBoard[a] && tttBoard[a] === tttBoard[b] && tttBoard[a] === tttBoard[c]) {
-            tttActive = false;
-            if(tttBoard[a] === 'X') {
-                document.getElementById('ttt-status').innerHTML = "<span style='color:#22C55E'>🏆 Você Venceu! +10 XP</span>";
-                gainXP(10, false);
-            } else {
-                document.getElementById('ttt-status').innerHTML = "<span style='color:#EF4444'>🤖 O Bot Venceu!</span>";
-            }
-            return true;
-        }
-    }
-    if(!tttBoard.includes('')) {
-        tttActive = false;
-        document.getElementById('ttt-status').innerText = "⚖️ Deu Velha (Empate)!";
-        return true;
-    }
-    return false;
-}
-
-function resetTTT() {
-    tttBoard = ['', '', '', '', '', '', '', '', ''];
-    tttActive = true;
-    document.getElementById('ttt-status').innerText = "Sua vez (X)!";
-    renderTTT();
-}
-
-function toggleDrawer() {
-    const drawer = document.getElementById('side-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    
-    if (!drawer.classList.contains('active')) {
-        document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
-        document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
-        const av = document.getElementById('drawer-avatar');
-        av.src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        document.getElementById('drawer-xp').innerText = cachedMe.xp || 0;
-        document.getElementById('drawer-level').innerText = cachedMe.level || 1;
-    }
-
-    drawer.classList.toggle('active');
-    overlay.classList.toggle('active');
-}
-
-function toggleFab() {
-    const wrapper = document.querySelector('.fab-wrapper');
-    const options = document.getElementById('fab-options');
-    if(wrapper) wrapper.classList.toggle('active');
-    if(options) options.classList.toggle('active');
-}
-
-function openSurprise() {
-    gainXP(50, true); 
-}
-
-async function gainXP(amount, isSurprise = false) {
-    if (!myId) return;
-    try {
-        const res = await fetch('/add-xp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: myId, xpAmount: amount, isSurprise: isSurprise })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            if (isSurprise) alert(data.error); 
-            return;
-        }
-        document.getElementById('drawer-xp').innerText = data.xp;
-        document.getElementById('drawer-level').innerText = data.level;
-        cachedMe.xp = data.xp;
-        cachedMe.level = data.level;
-        localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-
-        if (data.levelUp) {
-            alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`);
-            playNotificationSound('pop');
-        }
-
-        if (isSurprise) {
-            alert(`🎁 Sucesso! Você encontrou ${amount} XP na Caixa Surpresa!\n\nVolte amanhã para ganhar mais.`);
-        }
-    } catch (e) {
-        console.log("Erro ao ganhar XP:", e);
-    }
-}
-
-document.querySelector('.send-btn').addEventListener('click', () => {
-    gainXP(2, false);
-});
-
-function renderDailyMission(sent, completed) {
-    const countSpan = document.getElementById('mission-count');
-    const progressFill = document.getElementById('mission-progress-fill');
-    const badge = document.getElementById('mission-badge');
-    const title = document.getElementById('mission-title');
-    const iconBg = document.getElementById('mission-icon-bg');
-    const icon = document.getElementById('mission-icon');
-
-    if (!countSpan) return; 
-
-    if (completed) {
-        countSpan.innerText = "3";
-        progressFill.style.width = "100%";
-        progressFill.style.background = "#10B981"; 
-        badge.innerText = "Concluída";
-        badge.style.background = "#D1FAE5";
-        badge.style.color = "#059669";
-        title.innerText = "Missão Concluída! 🎉";
-        iconBg.style.background = "#D1FAE5";
-        icon.style.color = "#059669";
-        icon.innerText = "check_circle";
-    } else {
-        countSpan.innerText = sent;
-        progressFill.style.width = `${(sent / 3) * 100}%`;
-        progressFill.style.background = "var(--brand-secondary)";
-        badge.innerText = "+10 XP";
-        badge.style.background = "#FEF3C7";
-        badge.style.color = "#D97706";
-        title.innerHTML = `Enviar 3 Mensagens (<span id="mission-count">${sent}</span>/3)`;
-        iconBg.style.background = "#FEF3C7";
-        icon.style.color = "#F59E0B";
-        icon.innerText = "chat";
-    }
-}
-
-socket.on('mission_update', (data) => {
-    cachedMe.dailyMessagesSent = data.sent;
-    cachedMe.dailyMissionCompleted = data.completed;
-    
-    if (data.completed) {
-        cachedMe.xp = data.xp;
-        cachedMe.level = data.level;
-        document.getElementById('drawer-xp').innerText = data.xp;
-        document.getElementById('drawer-level').innerText = data.level;
-        
-        setTimeout(() => alert("🎯 MISSÃO DIÁRIA CONCLUÍDA!\nVocê acaba de ganhar +10 XP!"), 500);
-        if (data.levelUp) setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500);
-        playNotificationSound('pop');
-    }
-    
-    localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-    renderDailyMission(data.sent, data.completed);
-});
-
-const originalFetchAndSync = window.fetchAndSyncProfile;
-window.fetchAndSyncProfile = async function() {
-    if (originalFetchAndSync) await originalFetchAndSync();
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (cachedMe.lastActiveDate !== todayStr) {
-        cachedMe.dailyMessagesSent = 0;
-        cachedMe.dailyMissionCompleted = false;
-    }
-    renderDailyMission(cachedMe.dailyMessagesSent || 0, cachedMe.dailyMissionCompleted || false);
-};
-
-window.backToMain = function() {
-    currentChatId = null;
-    hideElement('settings-screen');
-    hideElement('profile-screen');
-    hideElement('appearance-screen');
-    hideElement('account-screen');
-    hideElement('notifications-screen');
-    hideElement('chat-screen');
-    hideElement('add-contact-screen');
-    
-    const navItems = document.querySelectorAll('.nav-item');
-    if (navItems.length > 0) {
-        switchTab('conversas', navItems[0]);
-    } else {
-        showElement('main-screen');
-    }
-    updateAppBadge();
-};
-
-// ==============================================================
-// 🍅 MODO FOCO (POMODORO) - LÓGICA DE TEMPO E RECOMPENSA
-// ==============================================================
-let focusInterval = null;
-let focusTimeLeft = 25 * 60; // 25 minutos em segundos
-
-function startFocusMode() {
-    hideElement('focus-card-idle');
-    showElement('focus-card-active');
-    document.getElementById('focus-card-active').classList.add('active-focus');
-    
-    focusTimeLeft = 25 * 60; // Reseta para 25 minutos
-    updateFocusDisplay();
-    
-    if(focusInterval) clearInterval(focusInterval);
-    focusInterval = setInterval(() => {
-        focusTimeLeft--;
-        updateFocusDisplay();
-        
-        if(focusTimeLeft <= 0) {
-            completeFocusMode();
-        }
-    }, 1000);
-
-    // Opcional: Emite um status para o servidor avisar que está ocupado
-    if(socket && myId) {
-        socket.emit('profile_updated', { userId: myId, isFocused: true });
-    }
-}
-
-function updateFocusDisplay() {
-    let m = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
-    let s = (focusTimeLeft % 60).toString().padStart(2, '0');
-    document.getElementById('focus-timer-display').innerText = `${m}:${s}`;
-}
-
-function cancelFocusMode() {
-    if(confirm("🛑 Tem certeza que deseja quebrar o seu foco?\nVocê perderá os 50 XP de recompensa!")) {
-        clearInterval(focusInterval);
-        hideElement('focus-card-active');
-        document.getElementById('focus-card-active').classList.remove('active-focus');
-        showElement('focus-card-idle');
-        
-        if(socket && myId) {
-            socket.emit('profile_updated', { userId: myId, isFocused: false });
-        }
-    }
-}
-
-function completeFocusMode() {
-    clearInterval(focusInterval);
-    hideElement('focus-card-active');
-    document.getElementById('focus-card-active').classList.remove('active-focus');
-    showElement('focus-card-idle');
-    
-    if(socket && myId) {
-        socket.emit('profile_updated', { userId: myId, isFocused: false });
-    }
-    
-    setTimeout(() => {
-        alert("🍅 FOCO CONCLUÍDO COM SUCESSO!\n\nA sua mente agradece. Você foi altamente produtivo por 25 minutos e acaba de ganhar +50 XP!");
-        gainXP(50, false); 
-        playNotificationSound('pop');
-    }, 500);
-}
-
-// ==============================================================
-// 🪄 SISTEMA FRONTEND: GERADOR DE JOGOS IA
-// ==============================================================
-function requestAIGame() {
-    const prompt = document.getElementById('ai-game-prompt').value.trim();
-    if (!prompt) return alert("Digite o tipo de jogo que deseja!");
-    
-    const btn = document.getElementById('btn-create-game');
-    btn.innerText = "🤖 Compilando Código...";
-    btn.disabled = true;
-
-    socket.emit('request_ai_game', { prompt: prompt });
-}
-
-socket.on('ai_game_ready', (data) => {
-    const btn = document.getElementById('btn-create-game');
-    btn.innerText = "Gerar Jogo";
-    btn.disabled = false;
-    
-    // Injeta o código HTML gerado no iFrame usando srcdoc
-    const iframe = document.getElementById('ai-game-frame');
-    iframe.srcdoc = data.code;
-    
-    showElement('ai-game-modal');
-    gainXP(100, false); // Ganha muito XP por criar um jogo!
-});
-
-socket.on('ai_game_error', (data) => {
-    const btn = document.getElementById('btn-create-game');
-    btn.innerText = "Gerar Jogo";
-    btn.disabled = false;
-    alert("Erro na IA: " + data.error);
-});
-
-function closeAIGame() {
-    hideElement('ai-game-modal');
-    document.getElementById('ai-game-frame').srcdoc = ''; // Limpa a memória
-}
