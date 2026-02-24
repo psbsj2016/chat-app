@@ -889,11 +889,179 @@ function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!n
 async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
+// ==============================================================
+// 🐍 JOGO 1: SNAKE COM SISTEMA DE FASES E DIFICULDADE
+// ==============================================================
 let snake = []; let food = {x:0,y:0}; let dx=10; let dy=0; let gameInterval=null;
-function startSnakeGame() { snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; createFood(); if(gameInterval) clearInterval(gameInterval); gameInterval = setInterval(gameLoop, 100); }
-function gameLoop() { const canvas = document.getElementById('snake-canvas'); const ctx = canvas.getContext('2d'); const head = {x: snake[0].x + dx, y: snake[0].y + dy}; snake.unshift(head); if(head.x === food.x && head.y === food.y) { createFood(); document.getElementById('game-score').innerText = snake.length*10; } else snake.pop(); if(head.x<0 || head.x>=300 || head.y<0 || head.y>=300) { clearInterval(gameInterval); alert("Fim!"); } ctx.clearRect(0,0,300,300); ctx.fillStyle="#ffb800"; ctx.fillRect(food.x, food.y, 10, 10); ctx.fillStyle="#003882"; snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10)); }
+let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
+
+function startSnakeGame() { 
+    snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; snakeScore=0; snakeSpeed=150;
+    isPlayingSnake = true;
+    document.getElementById('game-score').innerText = '0';
+    updateSnakeLevel();
+    createFood(); 
+    if(gameInterval) clearInterval(gameInterval); 
+    gameInterval = setInterval(gameLoop, snakeSpeed); 
+    document.getElementById('btn-start-game').innerText = "Reiniciar Jogo";
+}
+
+function updateSnakeLevel() {
+    let level = snakeScore + 1;
+    let fase = "Fácil";
+    let color = "#22C55E"; // Verde
+    let novaVelocidade = 150;
+
+    // A Mágica das Fases
+    if(level >= 11 && level <= 20) {
+        fase = "Médio";
+        color = "#F59E0B"; // Laranja/Amarelo
+        novaVelocidade = 90; // Acelera!
+    } else if (level >= 21) {
+        fase = "Difícil";
+        color = "#EF4444"; // Vermelho
+        novaVelocidade = 50; // Super Rápido!
+    }
+
+    const display = document.getElementById('snake-level-display');
+    display.innerHTML = `Nível: ${level} | Fase: <span style="color:${color}">${fase}</span>`;
+    display.style.color = color;
+    display.style.background = color + "20"; // Fundo transparente da cor atual
+
+    // Se a velocidade mudou, atualiza o motor
+    if(novaVelocidade !== snakeSpeed) {
+        snakeSpeed = novaVelocidade;
+        if(gameInterval) {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, snakeSpeed);
+        }
+    }
+}
+
+function gameLoop() { 
+    const canvas = document.getElementById('snake-canvas'); 
+    const ctx = canvas.getContext('2d'); 
+    const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
+    snake.unshift(head); 
+    
+    // Comeu a maçã
+    if(head.x === food.x && head.y === food.y) { 
+        createFood(); 
+        snakeScore++;
+        document.getElementById('game-score').innerText = snakeScore * 10; 
+        updateSnakeLevel(); // Verifica se passou de fase!
+    } else {
+        snake.pop(); 
+    }
+    
+    // Bateu na parede ou no próprio corpo
+    if(head.x < 0 || head.x >= 300 || head.y < 0 || head.y >= 300 || snakeCollision(head)) { 
+        clearInterval(gameInterval); 
+        isPlayingSnake = false;
+        alert(`💥 Game Over!\n\nVocê chegou ao Nível ${snakeScore + 1}.\nGanhou +${snakeScore} XP!`); 
+        if(snakeScore > 0) gainXP(snakeScore, false); // Envia o XP pro Banco
+        return;
+    } 
+    
+    // Desenhar
+    ctx.clearRect(0,0,300,300); 
+    ctx.fillStyle="#06B6D4"; // Cor da maçã (Ciano Neon)
+    ctx.fillRect(food.x, food.y, 10, 10); 
+    
+    ctx.fillStyle="var(--brand-primary)"; // Cor da cobra
+    snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10)); 
+}
+
+function snakeCollision(head) {
+    for(let i=1; i<snake.length; i++){ if(head.x === snake[i].x && head.y === snake[i].y) return true; }
+    return false;
+}
 function createFood() { food.x = Math.floor(Math.random()*29)*10; food.y = Math.floor(Math.random()*29)*10; }
-function changeSnakeDirection(d) { if(d==='UP'&&dy===0){dx=0;dy=-10} if(d==='DOWN'&&dy===0){dx=0;dy=10} if(d==='LEFT'&&dx===0){dx=-10;dy=0} if(d==='RIGHT'&&dx===0){dx=10;dy=0} }
+function changeSnakeDirection(d) { 
+    if(!isPlayingSnake) return;
+    if(d==='UP' && dy===0) {dx=0; dy=-10} 
+    if(d==='DOWN' && dy===0) {dx=0; dy=10} 
+    if(d==='LEFT' && dx===0) {dx=-10; dy=0} 
+    if(d==='RIGHT' && dx===0) {dx=10; dy=0} 
+}
+
+// ==============================================================
+// ⭕❌ JOGO 2: JOGO DA VELHA (CONTRA A IA)
+// ==============================================================
+let tttBoard = ['', '', '', '', '', '', '', '', ''];
+let tttActive = true;
+
+function playTTT(index) {
+    if(!tttActive || tttBoard[index] !== '') return;
+    tttBoard[index] = 'X';
+    renderTTT();
+    
+    if(!checkTTTWin()) {
+        document.getElementById('ttt-status').innerText = "Bot pensando...";
+        tttActive = false; // Bloqueia clique enquanto o bot joga
+        setTimeout(botMoveTTT, 600);
+    }
+}
+
+function botMoveTTT() {
+    let empty = [];
+    for(let i=0; i<9; i++) if(tttBoard[i] === '') empty.push(i);
+    
+    if(empty.length > 0) {
+        let move = empty[Math.floor(Math.random() * empty.length)];
+        tttBoard[move] = 'O';
+        renderTTT();
+        
+        if(!checkTTTWin()) {
+            document.getElementById('ttt-status').innerText = "Sua vez (X)!";
+            tttActive = true;
+        }
+    }
+}
+
+function renderTTT() {
+    const cells = document.querySelectorAll('.ttt-cell');
+    cells.forEach((cell, i) => {
+        cell.innerText = tttBoard[i];
+        cell.className = 'ttt-cell ' + (tttBoard[i] === 'X' ? 'x' : (tttBoard[i] === 'O' ? 'o' : ''));
+    });
+}
+
+function checkTTTWin() {
+    const wins = [
+        [0,1,2], [3,4,5], [6,7,8], // linhas
+        [0,3,6], [1,4,7], [2,5,8], // colunas
+        [0,4,8], [2,4,6]           // diagonais
+    ];
+    
+    for(let combo of wins) {
+        const [a,b,c] = combo;
+        if(tttBoard[a] && tttBoard[a] === tttBoard[b] && tttBoard[a] === tttBoard[c]) {
+            tttActive = false;
+            if(tttBoard[a] === 'X') {
+                document.getElementById('ttt-status').innerHTML = "<span style='color:#22C55E'>🏆 Você Venceu! +10 XP</span>";
+                gainXP(10, false);
+            } else {
+                document.getElementById('ttt-status').innerHTML = "<span style='color:#EF4444'>🤖 O Bot Venceu!</span>";
+            }
+            return true;
+        }
+    }
+    
+    if(!tttBoard.includes('')) {
+        tttActive = false;
+        document.getElementById('ttt-status').innerText = "⚖️ Deu Velha (Empate)!";
+        return true;
+    }
+    return false;
+}
+
+function resetTTT() {
+    tttBoard = ['', '', '', '', '', '', '', '', ''];
+    tttActive = true;
+    document.getElementById('ttt-status').innerText = "Sua vez (X)!";
+    renderTTT();
+}
 
 let quickCameraFile = null;
 function handleQuickCamera(input) { const file = input.files[0]; if (!file) return; quickCameraFile = file; openQuickSendModal(); }

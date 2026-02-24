@@ -358,3 +358,26 @@ emoji-picker { position: absolute; bottom: 80px; left: 10px; z-index: 100; --num
 .contact-list, #notes-list, #game-container, .settings-content {
     padding-bottom: 120px !important; /* Garante que nenhuma lista fique presa no fundo */
 }
+
+/* ==========================================
+   ÁREA DE JOGOS: D-PAD & JOGO DA VELHA
+   ========================================== */
+
+/* Novo Controle Ergonômico da Cobrinha (D-Pad) */
+.d-pad { position: relative; width: 180px; height: 180px; margin: 0 auto; }
+.d-btn { position: absolute; width: 60px; height: 60px; border-radius: 20px; border: none; background: var(--brand-light); color: var(--brand-primary); display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); cursor: pointer; transition: 0.1s; }
+.d-btn:active { transform: scale(0.9); background: var(--brand-primary); color: white; }
+.d-btn .material-icons-round { font-size: 36px; }
+
+/* Posições Perfeitas para os dedos */
+.d-up { top: 0; left: 50%; transform: translateX(-50%); }
+.d-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+.d-left { top: 50%; left: 0; transform: translateY(-50%); }
+.d-right { top: 50%; right: 0; transform: translateY(-50%); }
+
+/* Tabuleiro Moderno do Jogo da Velha */
+.ttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 260px; margin: 0 auto; }
+.ttt-cell { background: var(--input-bg); aspect-ratio: 1; border-radius: 18px; display: flex; justify-content: center; align-items: center; font-size: 55px; font-weight: 900; cursor: pointer; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s; user-select: none; }
+.ttt-cell:active { transform: scale(0.95); }
+.ttt-cell.x { color: var(--brand-secondary); text-shadow: 0 4px 10px rgba(6, 182, 212, 0.3); }
+.ttt-cell.o { color: var(--brand-accent); text-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); }
