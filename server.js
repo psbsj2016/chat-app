@@ -335,25 +335,58 @@ io.on('connection', (socket) => {
                 if (rSocket) io.to(rSocket).emit('receive_message', msg); 
                 socket.emit('receive_message', msg); 
 
+                // === 🧠 CÉREBRO DA IA DIRETO NO NODE.JS ===
                 if (String(data.receiverId) === String(botUserId) && data.content) {
                     socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
                     try {
-                        const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/chat', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ message: data.content })
-                        });
-                        const pyData = await pyRes.json();
+                        const apiKey = process.env.HF_API_KEY;
+                        let replyText = "";
+
+                        if (!apiKey) {
+                            replyText = "⚠️ O meu cérebro está desligado. O comandante precisa adicionar a chave 'HF_API_KEY' no painel do Render!";
+                        } else {
+                            // Conecta direto ao super-modelo Mistral Open-Source
+                            const hfRes = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3', {
+                                method: 'POST',
+                                headers: { 
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiKey}` 
+                                },
+                                body: JSON.stringify({ 
+                                    inputs: `<s>[INST] Você é o CPTT Bot, a Inteligência Artificial oficial do aplicativo ChatPTT. Responda sempre em português, de forma amigável, curta e direta. Mensagem do usuário: ${data.content} [/INST]`,
+                                    parameters: { max_new_tokens: 300, temperature: 0.7 }
+                                })
+                            });
+
+                            const hfData = await hfRes.json();
+                            
+                            if (hfData.error) {
+                                // Modelos grátis às vezes precisam de 10s para acordar
+                                if (hfData.error.includes('loading')) {
+                                    replyText = "Estou a acordar! 🥱 O meu modelo neural está a carregar. Tente enviar a mensagem de novo em 15 segundos.";
+                                } else {
+                                    replyText = `🚨 Erro nos circuitos: ${hfData.error}`;
+                                }
+                            } else if (Array.isArray(hfData) && hfData[0].generated_text) {
+                                // Limpa as instruções para enviar só a resposta limpa
+                                replyText = hfData[0].generated_text.split('[/INST]')[1].trim();
+                            } else {
+                                replyText = "Não entendi. Pode repetir?";
+                            }
+                        }
+
                         socket.emit('stop_typing', { senderId: botUserId });
-                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply || pyData.error, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
                         socket.emit('receive_message', botMsg);
                     } catch (netError) {
                         socket.emit('stop_typing', { senderId: botUserId });
-                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Python Offline: "${netError.message}"`, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Conexão Neural falhou: ${netError.message}`, status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await errorMsg.save();
                         socket.emit('receive_message', errorMsg);
                     }
-                } else {
+                }
+                     else {
                     const receiver = await User.findById(data.receiverId);
                     if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                         const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
