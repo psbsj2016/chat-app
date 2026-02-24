@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jogo da Velha Neon</title>
+    <style>
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
+        .status { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #06b6d4; text-shadow: 0 0 10px rgba(6,182,212,0.5); }
+        .board { display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); gap: 5px; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 15px; box-shadow: 0 0 30px rgba(139, 92, 246, 0.3); }
+        .cell { background: #111; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 60px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .cell:active { transform: scale(0.95); }
+        .cell.x { color: #EF4444; text-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+        .cell.o { color: #34D399; text-shadow: 0 0 15px rgba(52, 211, 153, 0.8); }
+        .reset-btn { margin-top: 30px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border: none; color: white; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; display: none; }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">Sua vez (X)!</div>
+    <div class="board" id="board">
+        <div class="cell" onclick="play(0)"></div><div class="cell" onclick="play(1)"></div><div class="cell" onclick="play(2)"></div>
+        <div class="cell" onclick="play(3)"></div><div class="cell" onclick="play(4)"></div><div class="cell" onclick="play(5)"></div>
+        <div class="cell" onclick="play(6)"></div><div class="cell" onclick="play(7)"></div><div class="cell" onclick="play(8)"></div>
+    </div>
+    <button class="reset-btn" id="reset-btn" onclick="resetGame()">JOGAR NOVAMENTE</button>
+
+    <script>
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let active = true;
+        const cells = document.querySelectorAll('.cell');
+        const status = document.getElementById('status');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function play(index) {
+            if(!active || board[index] !== '') return;
+            board[index] = 'X'; updateBoard();
+            if(!checkWin()) {
+                status.innerText = "IA pensando..."; status.style.color = "#888";
+                active = false; setTimeout(botMove, 600);
+            }
+        }
+
+        function botMove() {
+            let empty = [];
+            for(let i=0; i<9; i++) if(board[i] === '') empty.push(i);
+            if(empty.length > 0) {
+                let move = empty[Math.floor(Math.random() * empty.length)];
+                board[move] = 'O'; updateBoard();
+                if(!checkWin()) {
+                    status.innerText = "Sua vez (X)!"; status.style.color = "#06b6d4"; active = true;
+                }
+            }
+        }
+
+        function updateBoard() {
+            cells.forEach((cell, i) => {
+                cell.innerText = board[i];
+                cell.className = 'cell ' + (board[i] === 'X' ? 'x' : (board[i] === 'O' ? 'o' : ''));
+            });
+        }
+
+        function checkWin() {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            for(let combo of wins) {
+                const [a,b,c] = combo;
+                if(board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    active = false; resetBtn.style.display = 'block';
+                    if(board[a] === 'X') {
+                        status.innerHTML = "🏆 Você Venceu! +10 XP"; status.style.color = "#34D399";
+                        if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(10);
+                    } else {
+                        status.innerHTML = "🤖 A IA Venceu!"; status.style.color = "#EF4444";
+                    }
+                    return true;
+                }
+            }
+            if(!board.includes('')) {
+                active = false; resetBtn.style.display = 'block';
+                status.innerText = "⚖️ Deu Velha (Empate)!"; status.style.color = "#F59E0B";
+                return true;
+            }
+            return false;
+        }
+
+        function resetGame() {
+            board = ['', '', '', '', '', '', '', '', '']; active = true;
+            resetBtn.style.display = 'none';
+            status.innerText = "Sua vez (X)!"; status.style.color = "#06b6d4";
+            updateBoard();
+        }
+    </script>
+</body>
+</html>
