@@ -12,10 +12,6 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 const webpush = require('web-push');
 
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-
 webpush.setVapidDetails(
   'mailto:psbsj.2020@outlook.com',
   'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY',
@@ -26,28 +22,58 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.set('trust proxy', 1);
+// ==============================================================
+// 🛡️ PROTOCOLO AEGIS NATIVO (SEGURANÇA SEM PACOTES EXTRAS)
+// ==============================================================
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+});
 
-app.use(helmet({ contentSecurityPolicy: false })); 
-app.use(mongoSanitize()); 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static('public', { etag: false, setHeaders: (res, path) => { res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); res.setHeader('Pragma', 'no-cache'); res.setHeader('Expires', '0'); } }));
 
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 50, 
-    message: { error: 'Muitas tentativas de login. Tente novamente mais tarde.' }
+// Sanitização de Banco de Dados (Anti-Injeção)
+const sanitizeNoSQL = (obj) => {
+    if (typeof obj !== 'object' || obj === null) return;
+    Object.keys(obj).forEach(key => {
+        if (key.includes('$')) delete obj[key];
+        else sanitizeNoSQL(obj[key]);
+    });
+};
+app.use((req, res, next) => {
+    if (req.body) sanitizeNoSQL(req.body);
+    if (req.query) sanitizeNoSQL(req.query);
+    if (req.params) sanitizeNoSQL(req.params);
+    next();
 });
+
+// Limitador de Taxa de Requisições (Anti-Brute Force Nativo)
+const loginAttempts = {};
+const rateLimiter = (req, res, next) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const now = Date.now();
+    if (!loginAttempts[ip]) { loginAttempts[ip] = { count: 1, first: now }; } 
+    else {
+        if (now - loginAttempts[ip].first > 15 * 60 * 1000) { loginAttempts[ip] = { count: 1, first: now }; } 
+        else {
+            loginAttempts[ip].count++;
+            if (loginAttempts[ip].count > 30) return res.status(429).json({ error: 'Muitas tentativas. Bloqueio ativo. Aguarde 15 minutos.' });
+        }
+    }
+    next();
+};
 
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
 const storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chat-app-uploads', resource_type: 'auto' } });
-const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // Limite de 50MB
 
 mongoose.connect(process.env.MONGO_URI).then(() => {
-    console.log("✅ MongoDB Conectado e Aegis Ativado!");
+    console.log("✅ MongoDB Conectado e Aegis Nativo Ativado!");
     initializeAIBot(); 
-}).catch(err => console.error("Erro Crítico no MongoDB:", err));
+}).catch(err => console.error("Erro MongoDB:", err));
 
 const UserSchema = new mongoose.Schema({ 
     email: { type: String, unique: true, required: true }, 
@@ -71,7 +97,7 @@ const UserSchema = new mongoose.Schema({
     dailyMissionCompleted: { type: Boolean, default: false },
     lastActiveDate: { type: String, default: '' },
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    unlockedItems: [{ type: String }] // NOVO: Armazena as compras do Mercado Neon
+    unlockedItems: [{ type: String }] // NOVO: Itens da Loja Neon
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -105,10 +131,11 @@ async function initializeAIBot() {
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
-app.post('/register', loginLimiter, async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
-app.post('/login', loginLimiter, async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
+// === ROTAS ===
+app.post('/register', rateLimiter, async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
+app.post('/login', rateLimiter, async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 
-// ROTA NOVO: COMPRAR ITENS NA LOJA
+// === ROTA DO MERCADO NEON ===
 app.post('/buy-item', async (req, res) => {
     try {
         const { userId, itemId, cost } = req.body;
@@ -136,7 +163,10 @@ app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(bo
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+
+// Rota de Upload Tratada
 app.post('/upload', (req, res) => { upload.single('file')(req, res, function (err) { if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'O arquivo ultrapassou o limite de 50MB.' }); } else if (err) { return res.status(500).json({ error: 'A Nuvem rejeitou este formato.' }); } if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); res.json({ url: req.file.path, type: req.file.mimetype }); }); });
+
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Ok!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -159,6 +189,7 @@ app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelet
 app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 
+// === WEBSOCKETS (CHAT E IA) ===
 let users = {};
 io.on('connection', (socket) => {
     socket.emit('check_app_version', Date.now().toString());
@@ -190,10 +221,9 @@ io.on('connection', (socket) => {
             const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', securityFlags: null, _id: new mongoose.Types.ObjectId() }); 
             await msg.save(); 
             
-            // Popula os dados do remetente (com unlockedItems) para renderizar a medalha VIP de imediato
             const populatedMsg = await Message.findById(msg._id).populate('sender', 'displayName photoUrl unlockedItems');
-
             const senderUser = await User.findById(data.senderId);
+
             if (senderUser) {
                 const todayStr = new Date().toISOString().split('T')[0];
                 if (senderUser.lastActiveDate !== todayStr) { senderUser.dailyMessagesSent = 0; senderUser.dailyMissionCompleted = false; senderUser.lastActiveDate = todayStr; }
@@ -228,7 +258,7 @@ io.on('connection', (socket) => {
                 if (rSocket) io.to(rSocket).emit('receive_message', populatedMsg); 
                 socket.emit('receive_message', populatedMsg); 
 
-                // === 🧠 CÉREBRO DA IA DIRETO NO NODE.JS ===
+                // 🧠 CÉREBRO DA IA NATIVA 
                 if (String(data.receiverId) === String(botUserId) && data.content) {
                     socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
                     try {
@@ -236,13 +266,13 @@ io.on('connection', (socket) => {
                         let replyText = "";
 
                         if (!apiKey) {
-                            replyText = "⚠️ O meu cérebro está desligado. O comandante precisa adicionar a chave 'HF_API_KEY' no painel do Render!";
+                            replyText = "⚠️ Cérebro desligado. Adicione a chave 'HF_API_KEY' no Render!";
                         } else {
                             const hfRes = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                                 body: JSON.stringify({ 
-                                    inputs: `<s>[INST] Você é o CPTT Bot, a Inteligência Artificial oficial do aplicativo ChatPTT. Responda sempre em português, de forma amigável, curta e direta. Mensagem do usuário: ${data.content} [/INST]`,
+                                    inputs: `<s>[INST] Você é o CPTT Bot, a Inteligência Artificial oficial do aplicativo ChatPTT. Responda em português, de forma amigável, curta e direta. Usuário diz: ${data.content} [/INST]`,
                                     parameters: { max_new_tokens: 300, temperature: 0.7 }
                                 })
                             });
