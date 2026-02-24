@@ -191,8 +191,10 @@ app.post('/subscribe', async (req, res) => { const { userId, subscription } = re
 
 // === WEBSOCKETS (CHAT E IA) ===
 let users = {};
+const SERVER_VERSION = Date.now().toString(); // Gera a versão apenas UMA VEZ ao ligar o servidor
+
 io.on('connection', (socket) => {
-    socket.emit('check_app_version', Date.now().toString());
+    socket.emit('check_app_version', SERVER_VERSION); // Envia a mesma versão sempre
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
 
