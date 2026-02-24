@@ -1004,7 +1004,7 @@ async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta 
 let snake = []; 
 let food = {x:0, y:0, img: null}; 
 let dx=10; let dy=0; let gameInterval=null;
-let snakeScore = 0; let snakeSpeed = 100; let isPlayingSnake = false;
+let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
 
 const GRID_SIZE = 10; 
 const CANVAS_SIZE = 400; 
@@ -1038,7 +1038,7 @@ function startSnakeGame() {
 function updateSnakeLevel() {
     let level = snakeScore + 1;
     let fase = "Fácil";
-    let color = "#FFFFFF";
+    let color = "#22C55E";
     let novaVelocidade = 150;
 
     if(level >= 11 && level <= 20) {
