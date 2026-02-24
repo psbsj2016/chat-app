@@ -452,13 +452,14 @@
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Perfil</span><div style="width: 40px;"></div></div>
         <div class="settings-content">
             <div class="settings-card" style="flex-direction: column; text-align: center; padding: 30px 15px;">
-                <div style="position: relative; display:inline-block; margin-bottom: 15px; width: 100px; height: 100px;">
-                <div id="profile-photo-spinner" class="hidden" style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border: 4px solid transparent; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite; z-index: 5;"></div>
-                
-                <img id="config-avatar" src="" onclick="viewMyProfilePhoto()" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--brand-primary); position: relative; z-index: 2; cursor: pointer; transition: 0.2s;">
-                
-                <span class="material-icons-round" onclick="triggerProfileUpload()" style="position: absolute; bottom: -5px; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 8px; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; z-index: 10; transition: 0.2s;">edit</span>
-                
+                <div id="photo-viewer-modal" class="modal-overlay hidden" onclick="hideElement('photo-viewer-modal')" style="z-index: 9999; background: rgba(0,0,0,0.85);">
+        <div style="position: relative; width: 90%; max-width: 350px; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+            <img id="viewer-photo" src="" style="width: 100%; height: auto; max-height: 60vh; object-fit: contain; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <button class="icon-btn" onclick="hideElement('photo-viewer-modal')" style="position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.2);"><span class="material-icons-round" style="color: white;">close</span></button>
+        </div>
+    </div>
+                <h3 id="config-name" style="font-size: 24px; margin-bottom: 5px;">Nome</h3>
+                <span class="edit-btn" onclick="editName()" style="font-weight:600;">Editar Nome</span>
                 <input type="file" id="profile-file-input" hidden onchange="uploadProfilePhoto(this)">
             </div>
             <div class="settings-group">
@@ -575,13 +576,6 @@
     <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%;"><h3 style="color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('forward-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button></div></div>   
     
     <div id="admin-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color: var(--brand-accent); margin-bottom: 15px;">⚡ Aviso Geral</h3><input type="text" id="broadcast-title" class="chic-input" placeholder="Título"><textarea id="broadcast-message" class="chic-input" placeholder="Aviso..." style="height: 80px; resize: none;"></textarea><button onclick="triggerTurboBroadcast()" class="chic-btn" style="background: var(--brand-accent);"><span class="material-icons-round" style="font-size: 18px;">rocket_launch</span> Lançar</button><p id="broadcast-status" style="font-size: 13px; margin-top: 10px; font-weight: bold;"></p><button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Fechar</button></div></div>
-
-   <div id="photo-viewer-modal" class="modal-overlay hidden" onclick="hideElement('photo-viewer-modal')" style="z-index: 9999; background: rgba(0,0,0,0.85);">
-        <div style="position: relative; width: 90%; max-width: 350px; display: flex; justify-content: center; align-items: center; flex-direction: column;">
-            <img id="viewer-photo" src="" style="width: 100%; height: auto; max-height: 60vh; object-fit: contain; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-            <button class="icon-btn" onclick="hideElement('photo-viewer-modal')" style="position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.2);"><span class="material-icons-round" style="color: white;">close</span></button>
-        </div>
-    </div>
 
     <nav id="bottom-navigation" class="bottom-nav" style="display: none;">
         <div class="nav-item active" onclick="switchTab('conversas', this)">
