@@ -100,17 +100,17 @@
         </div>
     </div>
 
-    <div id="screen-explorar" class="app-screen hidden">
-        <div class="explore-header">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
-                <h2 style="font-size: 28px; font-weight: 800; color: var(--text-color); letter-spacing: -1px;">Explorar</h2>
-                <img src="favicon.png" style="width:36px; border-radius:12px;" onerror="this.style.display='none'">
+    <div class="explore-section">
+                <h3 class="explore-section-title">🎯 Missão Diária <span class="badge-tech">Node Engine</span></h3>
+                <div class="explore-card mission-card" id="daily-mission-card">
+                    <div class="mission-icon" id="mission-icon-bg"><span class="material-icons-round" id="mission-icon">chat</span></div>
+                    <div style="flex:1;">
+                        <h4 style="font-size:14.5px;" id="mission-title">Enviar 3 Mensagens (<span id="mission-count">0</span>/3)</h4>
+                        <div class="progress-bar"><div class="progress-fill" id="mission-progress-fill" style="width: 0%; transition: width 0.5s ease;"></div></div>
+                    </div>
+                    <div class="reward-badge" id="mission-badge">+10 XP</div>
+                </div>
             </div>
-            <div class="search-box" style="box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
-                <span class="material-icons-round">search</span>
-                <input type="text" placeholder="Buscar pessoas, jogos, grupos...">
-            </div>
-        </div>
 
         <div class="explore-content">
             

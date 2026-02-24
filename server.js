@@ -35,7 +35,7 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     initializeAIBot(); 
 }).catch(err => console.error("Erro MongoDB:", err));
 
-// === MÁGICA: ADICIONADO XP, LEVEL E LAST_SURPRISE NO BANCO ===
+// === SCHEMA ATUALIZADO COM AS MISSÕES ===
 const UserSchema = new mongoose.Schema({ 
     email: { type: String, unique: true, required: true }, 
     password: { type: String, required: true }, 
@@ -53,7 +53,10 @@ const UserSchema = new mongoose.Schema({
     pushSubscriptions: { type: Array, default: [] },
     xp: { type: Number, default: 0 },
     level: { type: Number, default: 1 },
-    lastSurprise: { type: Date, default: null }
+    lastSurprise: { type: Date, default: null },
+    dailyMessagesSent: { type: Number, default: 0 },
+    dailyMissionCompleted: { type: Boolean, default: false },
+    lastActiveDate: { type: String, default: '' }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -84,7 +87,6 @@ async function initializeAIBot() {
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
-// === ROTA DE GAMIFICAÇÃO (SISTEMA DE XP) ===
 app.post('/add-xp', async (req, res) => {
     try {
         const { userId, xpAmount, isSurprise } = req.body;
@@ -93,7 +95,6 @@ app.post('/add-xp', async (req, res) => {
 
         if (isSurprise) {
             const now = new Date();
-            // Verifica se já abriu a caixa nas últimas 24h
             if (user.lastSurprise && (now - user.lastSurprise) < 24 * 60 * 60 * 1000) {
                 return res.status(400).json({ error: 'Você já abriu a Caixa Surpresa hoje. Volte amanhã!' });
             }
@@ -101,7 +102,6 @@ app.post('/add-xp', async (req, res) => {
         }
 
         user.xp += xpAmount;
-        // Cada 100 XP sobe 1 nível
         const newLevel = Math.floor(user.xp / 100) + 1;
         let levelUp = false;
         
@@ -119,7 +119,7 @@ app.post('/add-xp', async (req, res) => {
 
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 app.post('/register', async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id).select('-password')); } catch (e) {} });
@@ -175,6 +175,58 @@ io.on('connection', (socket) => {
         const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 
         await msg.save(); 
 
+        // === MÁGICA: VERIFICAÇÃO DA MISSÃO DIÁRIA EM TEMPO REAL ===
+        try {
+            const senderUser = await User.findById(data.senderId);
+            if (senderUser) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                
+                // Se for um novo dia, reseta a missão
+                if (senderUser.lastActiveDate !== todayStr) {
+                    senderUser.dailyMessagesSent = 0;
+                    senderUser.dailyMissionCompleted = false;
+                    senderUser.lastActiveDate = todayStr;
+                }
+                
+                if (!senderUser.dailyMissionCompleted) {
+                    senderUser.dailyMessagesSent += 1;
+                    
+                    if (senderUser.dailyMessagesSent >= 3) {
+                        senderUser.dailyMissionCompleted = true;
+                        senderUser.xp += 10; // PRÊMIO
+                        
+                        // Verifica Level Up
+                        const newLevel = Math.floor(senderUser.xp / 100) + 1;
+                        let levelUp = false;
+                        if (newLevel > senderUser.level) {
+                            senderUser.level = newLevel;
+                            levelUp = true;
+                        }
+                        await senderUser.save();
+                        
+                        // Emite evento para a tela do usuário brilhar!
+                        socket.emit('mission_update', {
+                            sent: senderUser.dailyMessagesSent,
+                            completed: true,
+                            xp: senderUser.xp,
+                            level: senderUser.level,
+                            levelUp: levelUp
+                        });
+                    } else {
+                        await senderUser.save();
+                        socket.emit('mission_update', {
+                            sent: senderUser.dailyMessagesSent,
+                            completed: false
+                        });
+                    }
+                } else if (senderUser.lastActiveDate !== todayStr) {
+                     senderUser.lastActiveDate = todayStr;
+                     await senderUser.save();
+                }
+            }
+        } catch(err) { console.error("Erro no processamento da missão", err); }
+
+        // Continua o fluxo normal de envio de mensagens
         if (data.groupId) { 
             io.to(data.groupId).emit('receive_message', msg);
             const group = await Group.findById(data.groupId);

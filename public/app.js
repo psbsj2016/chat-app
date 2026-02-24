@@ -1124,3 +1124,81 @@ document.querySelector('.send-btn').addEventListener('click', () => {
     // Dá 2 XP sempre que o usuário envia mensagem
     gainXP(2, false);
 });
+
+// ==============================================================
+// MOTOR DE MISSÕES DIÁRIAS (UI e Sockets)
+// ==============================================================
+
+// Função para desenhar a barra de progresso
+function renderDailyMission(sent, completed) {
+    const countSpan = document.getElementById('mission-count');
+    const progressFill = document.getElementById('mission-progress-fill');
+    const badge = document.getElementById('mission-badge');
+    const title = document.getElementById('mission-title');
+    const iconBg = document.getElementById('mission-icon-bg');
+    const icon = document.getElementById('mission-icon');
+
+    if (!countSpan) return; // Se a tela não carregou, ignora
+
+    if (completed) {
+        countSpan.innerText = "3";
+        progressFill.style.width = "100%";
+        progressFill.style.background = "#10B981"; // Verde Sucesso
+        badge.innerText = "Concluída";
+        badge.style.background = "#D1FAE5";
+        badge.style.color = "#059669";
+        title.innerText = "Missão Concluída! 🎉";
+        iconBg.style.background = "#D1FAE5";
+        icon.style.color = "#059669";
+        icon.innerText = "check_circle";
+    } else {
+        countSpan.innerText = sent;
+        progressFill.style.width = `${(sent / 3) * 100}%`;
+        progressFill.style.background = "var(--brand-secondary)";
+        badge.innerText = "+10 XP";
+        badge.style.background = "#FEF3C7";
+        badge.style.color = "#D97706";
+        title.innerHTML = `Enviar 3 Mensagens (<span id="mission-count">${sent}</span>/3)`;
+        iconBg.style.background = "#FEF3C7";
+        icon.style.color = "#F59E0B";
+        icon.innerText = "chat";
+    }
+}
+
+// Ouve as ordens do Servidor sobre a missão
+socket.on('mission_update', (data) => {
+    cachedMe.dailyMessagesSent = data.sent;
+    cachedMe.dailyMissionCompleted = data.completed;
+    
+    if (data.completed) {
+        cachedMe.xp = data.xp;
+        cachedMe.level = data.level;
+        document.getElementById('drawer-xp').innerText = data.xp;
+        document.getElementById('drawer-level').innerText = data.level;
+        
+        // Efeito uau!
+        setTimeout(() => alert("🎯 MISSÃO DIÁRIA CONCLUÍDA!\nVocê acaba de ganhar +10 XP!"), 500);
+        
+        if (data.levelUp) {
+            setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500);
+        }
+        playNotificationSound('pop');
+    }
+    
+    localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+    renderDailyMission(data.sent, data.completed);
+});
+
+// Interceptador para carregar a missão logo que o app abre
+const originalFetchAndSync = window.fetchAndSyncProfile;
+window.fetchAndSyncProfile = async function() {
+    if (originalFetchAndSync) await originalFetchAndSync();
+    
+    // Verifica se virou o dia na interface
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (cachedMe.lastActiveDate !== todayStr) {
+        cachedMe.dailyMessagesSent = 0;
+        cachedMe.dailyMissionCompleted = false;
+    }
+    renderDailyMission(cachedMe.dailyMessagesSent || 0, cachedMe.dailyMissionCompleted || false);
+};
