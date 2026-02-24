@@ -381,3 +381,26 @@ emoji-picker { position: absolute; bottom: 80px; left: 10px; z-index: 100; --num
 .ttt-cell:active { transform: scale(0.95); }
 .ttt-cell.x { color: var(--brand-secondary); text-shadow: 0 4px 10px rgba(6, 182, 212, 0.3); }
 .ttt-cell.o { color: var(--brand-accent); text-shadow: 0 4px 10px rgba(139, 92, 246, 0.3); }
+
+/* ==========================================
+   ATUALIZAÇÃO VISUAL SNAKE
+   ========================================== */
+
+/* Canvas Responsivo e Estável */
+#snake-canvas {
+    width: 100%;             /* Ocupa a largura disponível */
+    max-width: 400px;        /* Mas não passa de 400px visuais */
+    height: auto;            /* Mantém a proporção quadrada */
+    background: #111827;     /* Fundo mais escuro para contraste neon */
+    border: 2px solid #374151; /* Borda sutil */
+    /* Tenta evitar seleção e arrasto acidental no canvas */
+    user-select: none; 
+    touch-action: none;
+}
+
+/* Trava de movimento no D-Pad */
+.d-btn {
+    /* Impede que toques rápidos no botão deem zoom ou rolem a tela */
+    touch-action: none; 
+    -webkit-tap-highlight-color: transparent; /* Remove o flash cinza ao tocar no mobile */
+}

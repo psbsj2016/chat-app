@@ -890,13 +890,34 @@ async function saveNote() { const title = document.getElementById('note-title').
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
 // ==============================================================
-// 🐍 JOGO 1: SNAKE COM SISTEMA DE FASES E DIFICULDADE
+// 🐍 JOGO 1: SNAKE NEON REALISTA (ATUALIZADO)
 // ==============================================================
-let snake = []; let food = {x:0,y:0}; let dx=10; let dy=0; let gameInterval=null;
+let snake = []; 
+let food = {x:0, y:0, img: null}; // Comida agora tem imagem
+let dx=10; let dy=0; let gameInterval=null;
 let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
+const GRID_ size = 10;
+const CANVAS_SIZE = 400; // Atualizado para 400
+
+// Pré-carregar imagens das presas (usando emojis de alta qualidade via CDN)
+const foodImagesSrc = [
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png', // Ratinho
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', // Sapinho
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f439.png', // Hamster
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1fab2.png', // Besouro
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  // Joaninha
+];
+const foodImages = [];
+foodImagesSrc.forEach(src => {
+    const img = new Image();
+    img.src = src;
+    foodImages.push(img);
+});
 
 function startSnakeGame() { 
-    snake = [{x:150, y:150}, {x:140, y:150}]; dx=10; dy=0; snakeScore=0; snakeSpeed=150;
+    // Posição inicial ajustada para o centro do novo canvas 400x400
+    snake = [{x:200, y:200}, {x:190, y:200}, {x:180, y:200}]; 
+    dx=GRID_size; dy=0; snakeScore=0; snakeSpeed=150;
     isPlayingSnake = true;
     document.getElementById('game-score').innerText = '0';
     updateSnakeLevel();
@@ -909,26 +930,24 @@ function startSnakeGame() {
 function updateSnakeLevel() {
     let level = snakeScore + 1;
     let fase = "Fácil";
-    let color = "#22C55E"; // Verde
+    let color = "#22C55E";
     let novaVelocidade = 150;
 
-    // A Mágica das Fases
     if(level >= 11 && level <= 20) {
         fase = "Médio";
-        color = "#F59E0B"; // Laranja/Amarelo
-        novaVelocidade = 90; // Acelera!
+        color = "#F59E0B";
+        novaVelocidade = 90;
     } else if (level >= 21) {
         fase = "Difícil";
-        color = "#EF4444"; // Vermelho
-        novaVelocidade = 50; // Super Rápido!
+        color = "#EF4444";
+        novaVelocidade = 50;
     }
 
     const display = document.getElementById('snake-level-display');
     display.innerHTML = `Nível: ${level} | Fase: <span style="color:${color}">${fase}</span>`;
     display.style.color = color;
-    display.style.background = color + "20"; // Fundo transparente da cor atual
+    display.style.background = color + "20";
 
-    // Se a velocidade mudou, atualiza o motor
     if(novaVelocidade !== snakeSpeed) {
         snakeSpeed = novaVelocidade;
         if(gameInterval) {
@@ -941,48 +960,91 @@ function updateSnakeLevel() {
 function gameLoop() { 
     const canvas = document.getElementById('snake-canvas'); 
     const ctx = canvas.getContext('2d'); 
+    
+    // Limpar a tela (agora com o tamanho certo)
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
     const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
     snake.unshift(head); 
     
-    // Comeu a maçã
-    if(head.x === food.x && head.y === food.y) { 
+    // Comeu a presa?
+    // Usamos uma margem de tolerância pequena para facilitar comer a imagem
+    if(Math.abs(head.x - food.x) < GRID_size && Math.abs(head.y - food.y) < GRID_size) { 
         createFood(); 
         snakeScore++;
         document.getElementById('game-score').innerText = snakeScore * 10; 
-        updateSnakeLevel(); // Verifica se passou de fase!
+        updateSnakeLevel();
     } else {
         snake.pop(); 
     }
     
-    // Bateu na parede ou no próprio corpo
-    if(head.x < 0 || head.x >= 300 || head.y < 0 || head.y >= 300 || snakeCollision(head)) { 
+    // Colisão (Bordas 400x400 ou corpo)
+    if(head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE || snakeCollision(head)) { 
         clearInterval(gameInterval); 
         isPlayingSnake = false;
         alert(`💥 Game Over!\n\nVocê chegou ao Nível ${snakeScore + 1}.\nGanhou +${snakeScore} XP!`); 
-        if(snakeScore > 0) gainXP(snakeScore, false); // Envia o XP pro Banco
+        if(snakeScore > 0) gainXP(snakeScore, false);
         return;
     } 
     
-    // Desenhar
-    ctx.clearRect(0,0,300,300); 
-    ctx.fillStyle="#06B6D4"; // Cor da maçã (Ciano Neon)
-    ctx.fillRect(food.x, food.y, 10, 10); 
+    // --- DESENHO REALISTA ---
+
+    // 1. Desenhar a Presa (Animalzinho)
+    if(food.img && food.img.complete) {
+        // Desenha a imagem um pouco maior que o grid (14x14) e centralizada para "saltar"
+        ctx.drawImage(food.img, food.x - 2, food.y - 2, 14, 14);
+    } else {
+        // Fallback se a imagem não carregou: quadrado vermelho
+        ctx.fillStyle = "red";
+        ctx.fillRect(food.x, food.y, GRID_size, GRID_size);
+    }
     
-    ctx.fillStyle="var(--brand-primary)"; // Cor da cobra
-    snake.forEach(p => ctx.fillRect(p.x, p.y, 10, 10)); 
+    // 2. Desenhar a Cobra Orgânica (Círculos)
+    snake.forEach((p, index) => {
+        ctx.beginPath();
+        // A cabeça é um pouco maior e mais brilhante
+        const radius = index === 0 ? GRID_size / 1.8 : GRID_size / 2;
+        ctx.fillStyle = index === 0 ? "#34D399" : "var(--brand-primary)"; // Cabeça mais clara
+        
+        // Desenha um círculo no centro do bloco
+        ctx.arc(p.x + GRID_size/2, p.y + GRID_size/2, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.closePath();
+
+        // Adiciona um brilho sutil na cabeça
+        if(index === 0) {
+             ctx.shadowColor = "#34D399";
+             ctx.shadowBlur = 10;
+        } else {
+             ctx.shadowBlur = 0;
+        }
+    });
+    ctx.shadowBlur = 0; // Reset do brilho para o resto
 }
 
 function snakeCollision(head) {
-    for(let i=1; i<snake.length; i++){ if(head.x === snake[i].x && head.y === snake[i].y) return true; }
+    // Começa de i=1 porque a cabeça (i=0) sempre "colide" com ela mesma na lógica
+    for(let i=4; i<snake.length; i++){ 
+        if(head.x === snake[i].x && head.y === snake[i].y) return true; 
+    }
     return false;
 }
-function createFood() { food.x = Math.floor(Math.random()*29)*10; food.y = Math.floor(Math.random()*29)*10; }
+
+function createFood() { 
+    // Garante que a comida cai alinhada ao grid de 10 em 10 numa área de 400x400
+    food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_size)) * GRID_size; 
+    food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_size)) * GRID_size;
+    // Escolhe uma imagem aleatória do array pré-carregado
+    food.img = foodImages[Math.floor(Math.random() * foodImages.length)];
+}
+
 function changeSnakeDirection(d) { 
     if(!isPlayingSnake) return;
-    if(d==='UP' && dy===0) {dx=0; dy=-10} 
-    if(d==='DOWN' && dy===0) {dx=0; dy=10} 
-    if(d==='LEFT' && dx===0) {dx=-10; dy=0} 
-    if(d==='RIGHT' && dx===0) {dx=10; dy=0} 
+    // Lógica anti-reversa (não pode ir para a direita se já está indo para a esquerda, etc.)
+    if(d==='UP' && dy===0) {dx=0; dy=-GRID_size} 
+    if(d==='DOWN' && dy===0) {dx=0; dy=GRID_size} 
+    if(d==='LEFT' && dx===0) {dx=-GRID_size; dy=0} 
+    if(d==='RIGHT' && dx===0) {dx=GRID_size; dy=0} 
 }
 
 // ==============================================================
