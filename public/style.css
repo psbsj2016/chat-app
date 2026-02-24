@@ -410,3 +410,86 @@ emoji-picker { position: absolute; bottom: 80px; left: 10px; z-index: 100; --num
 .focus-card-idle { flex-direction: row; align-items: center; justify-content: space-between; }
 .active-focus { background: #FEF2F2 !important; border-color: #EF4444 !important; animation: pulseFocus 2s infinite; }
 @keyframes pulseFocus { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+/* ==========================================
+   NOVA BARRA DE BUSCA MÁGICA (TELA EXPLORAR)
+   ========================================== */
+.explore-magic-search {
+    display: flex;
+    align-items: center;
+    background: var(--input-bg);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    padding: 4px 15px; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* O Efeito Hover e Foco (O Brilho) */
+.explore-magic-search:focus-within {
+    background: var(--card-bg);
+    border-color: var(--brand-primary);
+    box-shadow: 0 10px 30px rgba(79, 70, 229, 0.15);
+    transform: translateY(-2px); /* Efeito flutuante */
+}
+
+/* Ícone da Lupa */
+.explore-magic-search .search-icon {
+    color: var(--secondary-text);
+    font-size: 24px;
+    transition: 0.3s;
+}
+
+/* Quando focado, a Lupa acende! */
+.explore-magic-search:focus-within .search-icon {
+    color: var(--brand-primary);
+}
+
+/* O Campo de Texto */
+.explore-magic-search input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    outline: none;
+    font-size: 15px;
+    color: var(--text-color);
+    font-weight: 600;
+    margin: 0 12px;
+    padding: 12px 0;
+}
+
+.explore-magic-search input::placeholder {
+    color: var(--secondary-text);
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* O Botão de Filtro Premium à Direita */
+.search-filter-btn {
+    background: var(--card-bg);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--secondary-text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+body.dark-mode .search-filter-btn {
+    border-color: rgba(255,255,255,0.1);
+}
+
+.search-filter-btn:active {
+    transform: scale(0.9);
+    background: var(--brand-light);
+    color: var(--brand-primary);
+}
+
+.search-filter-btn .material-icons-round {
+    font-size: 20px;
+}
