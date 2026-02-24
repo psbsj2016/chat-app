@@ -559,8 +559,62 @@ function changeFontSize(size) { document.body.classList.remove('font-small', 'fo
 function createNewSector() { const name = prompt("Nome do Setor:"); if(name) { currentSectors.push({ name, members: [] }); renderSectorsList(); saveProfile({ sectors: currentSectors }); } }
 function renderSectorsList() { const list = document.getElementById('sectors-list'); list.innerHTML = ''; currentSectors.forEach(sec => { const div = document.createElement('div'); div.className = 'setting-item'; div.innerHTML = `<span style="color:var(--brand-primary); font-weight:bold;">${sec.name}</span> <small>${sec.members.length} membros</small>`; list.appendChild(div); }); }
 function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); saveProfile({ theme: 'light' }); } }
-function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
-async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); document.getElementById('config-avatar').src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) {} }
+// === MÁGICA: VISUALIZAÇÃO E UPLOAD DO PERFIL ===
+function viewMyProfilePhoto() {
+    const src = document.getElementById('config-avatar').src;
+    document.getElementById('viewer-photo').src = src;
+    showElement('photo-viewer-modal');
+}
+
+// === MÁGICA: VISUALIZAÇÃO E UPLOAD DO PERFIL ===
+function viewMyProfilePhoto() {
+    const src = document.getElementById('config-avatar').src;
+    document.getElementById('viewer-photo').src = src;
+    showElement('photo-viewer-modal');
+}
+
+async function uploadProfilePhoto(input) { 
+    const file = input.files[0]; 
+    if(!file) return; 
+
+    // 1. Mensagem de Confirmação
+    if(!confirm("Deseja substituir a sua foto de perfil por esta nova imagem?")) {
+        input.value = ''; // Reseta o seletor se o utilizador cancelar
+        return;
+    }
+
+    const avatarImg = document.getElementById('config-avatar');
+    const spinner = document.getElementById('profile-photo-spinner');
+    
+    // 2. Preview Imediato (Troca a foto na hora usando a memória do telemóvel)
+    const localUrl = URL.createObjectURL(file);
+    avatarImg.src = localUrl;
+    
+    // 3. Ativa o Movimento Circular de Carregamento
+    if(spinner) spinner.classList.remove('hidden');
+    avatarImg.style.borderColor = 'transparent'; // Esconde a borda fixa para o spinner brilhar
+
+    const formData = new FormData(); 
+    formData.append('file', file); 
+    
+    try { 
+        // 4. Envia em background
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        const data = await res.json(); 
+        
+        // 5. Salva no banco de dados e notifica os contactos
+        avatarImg.src = data.url; 
+        saveProfile({ photoUrl: data.url }); 
+    } catch (e) { 
+        alert("Erro ao enviar a foto para a nuvem. Verifique a internet.");
+    } finally {
+        // 6. Desativa a animação independentemente de dar erro ou sucesso
+        if(spinner) spinner.classList.add('hidden');
+        avatarImg.style.borderColor = 'var(--brand-primary)'; // Devolve a borda
+        input.value = '';
+    } 
+}
+
 async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
 
 function openChangePasswordModal() { document.getElementById('cp-current').value = ''; document.getElementById('cp-new').value = ''; document.getElementById('cp-confirm').value = ''; showElement('change-password-modal'); }
