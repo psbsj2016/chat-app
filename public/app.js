@@ -292,11 +292,76 @@ function renderContactsList(groups, users) {
     });
 }
 
+// === LÓGICA DE ESCAPE HTML SEGURO ===
 function escapeHTML(str) {
     if (!str) return '';
     return str.replace(/[&<>'"]/g, tag => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[tag]));
+}
+
+// === NOVO SISTEMA DE UPLOAD (Anti-Bugs de Vídeos e Arquivos Pesados) ===
+function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
+
+async function handleFileUpload(input) { 
+    const file = input.files[0]; 
+    if(!file) return; 
+    
+    // Novo bloqueio de estabilidade (Máximo 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+        alert("⚠️ O ficheiro é muito pesado! O limite máximo é de 50MB.");
+        input.value = '';
+        return;
+    }
+
+    // Leitura simplificada para não travar o mobile
+    let type = 'file'; 
+    if(file.type.startsWith('image/')) type = 'image'; 
+    else if(file.type.startsWith('video/')) type = 'video'; 
+    else if(file.type.startsWith('audio/')) type = 'audio'; 
+    else if(file.type === 'application/pdf') type = 'pdf'; 
+    
+    executeUpload(file, type); 
+}
+
+async function executeUpload(file, type) { 
+    const tempId = 'temp-' + Date.now(); 
+    const localUrl = URL.createObjectURL(file); 
+    hideElement('attach-menu'); 
+    
+    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
+    displayMessage(tempMsg); 
+    
+    const tempDiv = document.getElementById(`msg-${tempId}`); 
+    if(tempDiv) { 
+        tempDiv.classList.add('uploading-msg'); 
+        const info = tempDiv.querySelector('.msg-info'); 
+        if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; 
+    } 
+    
+    const formData = new FormData(); 
+    formData.append('file', file); 
+    
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        
+        if (!res.ok) {
+            const errData = await res.json().catch(()=>({}));
+            throw new Error(errData.error || "O servidor da Nuvem recusou o ficheiro.");
+        }
+        
+        const data = await res.json(); 
+        if(tempDiv) tempDiv.remove(); 
+        
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        socket.emit('private_message', msgData); 
+        clearTimeout(typingTimeout); emitStopTypingStatus(); 
+    } catch (e) { 
+        if(tempDiv) tempDiv.remove(); 
+        alert("❌ Falha no envio: " + (e.message || "Tente novamente mais tarde.")); 
+    } finally { 
+        document.getElementById('file-input').value = ''; 
+    } 
 }
 
 function openAddContactScreen() { hideElement('main-screen'); showElement('add-contact-screen'); document.getElementById('exact-search-input').value = ''; document.getElementById('exact-search-result').innerHTML = ''; }
@@ -466,10 +531,8 @@ async function startRecording() {
         alert('Permissão negada ou microfone não encontrado!'); 
     } 
 }
-function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
-async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.type.startsWith('video/')) { const video = document.createElement('video'); video.preload = 'metadata'; video.onloadedmetadata = () => { window.URL.revokeObjectURL(video.src); if (video.duration > 300) { alert("⚠️ O vídeo deve ter no máximo 5 minutos!"); input.value = ''; return; } executeUpload(file, 'video'); }; video.src = URL.createObjectURL(file); } else { let type = 'file'; if(file.type.startsWith('image')) type = 'image'; if(file.type.startsWith('audio')) type = 'audio'; if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); } }
-async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("Erro ao enviar arquivo. Verifique sua conexão."); } finally { document.getElementById('file-input').value = ''; } }
 
+// === ENVIO COM CITAÇÃO (REPLY) ===
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { 
     const btn = document.querySelector('.send-btn'); 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { globalMediaRecorder.stop(); clearTimeout(recordingTimeout); emitStopTypingStatus(); return; } 
@@ -478,6 +541,7 @@ function sendMessage(textOverride=null, fileUrl=null, fileType='text') {
     
     let content = textOverride || input.innerHTML; 
     
+    // MÁGICA DA CITAÇÃO:
     if(messageToReply && !fileUrl && !textOverride) {
         content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content;
         cancelReply();
@@ -503,6 +567,7 @@ function displayMessage(msg) {
     div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
     div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
     
+    // === 🛡️ PROTOCOLO AEGIS: INJEÇÃO DE AVISOS NO CHAT ===
     let securityWarningHtml = '';
     let displayContent = msg.content || '';
     let quotedHtml = '';
@@ -514,6 +579,7 @@ function displayMessage(msg) {
         displayContent = quoteMatch[2] || '';
     }
 
+    // Se a IA do Python marcou como perigosa
     if (msg.securityFlags && msg.securityFlags.risk_level) {
         let warningText = "Mensagem suspeita detectada.";
         let icon = "warning";
@@ -542,6 +608,7 @@ function displayMessage(msg) {
     else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
+    // CORREÇÃO: Aplicar o HTML do aviso e sanitizar o texto, sem estragar a citação
     else contentHtml += securityWarningHtml + quotedHtml + escapeHTML(displayContent); 
     
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
@@ -622,6 +689,7 @@ function showMessageMenu(e, msgElement, msgObj) {
     showElement('msg-context-menu'); 
     setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); 
 }
+
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
 function copySelectedMessage() { 
@@ -656,6 +724,7 @@ async function openForwardModal() {
     }); 
 }
 
+// === 🛡️ PROTOCOLO AEGIS: BLOQUEIO E DENÚNCIA ===
 async function blockContact(targetId, targetName) {
     if(!confirm(`🚫 Tem certeza que deseja BLOQUEAR ${targetName}?\nVocê não receberá mais mensagens dessa pessoa.`)) return;
     try {
@@ -832,7 +901,7 @@ function toggleMainSearch() {
     }
 }
 
-// FIX BUG 2: Oculta a tela de pesquisa ("Encontrar Alguém") corretamente ao mudar de aba
+// FIX: A tela "Encontrar Alguém" agora desaparece ao trocar de aba
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     if(element) element.classList.add('active');
@@ -842,7 +911,7 @@ function switchTab(tabName, element) {
     hideElement('screen-jogos');      
     hideElement('screen-explorar');   
     hideElement('chat-screen');        
-    hideElement('add-contact-screen'); // CORREÇÃO AQUI
+    hideElement('add-contact-screen'); 
     hideElement('profile-screen');
     hideElement('settings-screen');
 
@@ -932,13 +1001,378 @@ function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!n
 async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
+let snake = []; 
+let food = {x:0, y:0, img: null}; 
+let dx=10; let dy=0; let gameInterval=null;
+let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
+
+const GRID_SIZE = 10; 
+const CANVAS_SIZE = 400; 
+
+const foodImagesSrc = [
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png',
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f439.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1fab2.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  
+];
+const foodImages = [];
+foodImagesSrc.forEach(src => {
+    const img = new Image();
+    img.src = src;
+    foodImages.push(img);
+});
+
+function startSnakeGame() { 
+    snake = [{x:200, y:200}, {x:190, y:200}, {x:180, y:200}]; 
+    dx=GRID_SIZE; dy=0; snakeScore=0; snakeSpeed=150;
+    isPlayingSnake = true;
+    document.getElementById('game-score').innerText = '0';
+    updateSnakeLevel();
+    createFood(); 
+    if(gameInterval) clearInterval(gameInterval); 
+    gameInterval = setInterval(gameLoop, snakeSpeed); 
+    document.getElementById('btn-start-game').innerText = "Reiniciar Jogo";
+}
+
+function updateSnakeLevel() {
+    let level = snakeScore + 1;
+    let fase = "Fácil";
+    let color = "#22C55E";
+    let novaVelocidade = 150;
+
+    if(level >= 11 && level <= 20) {
+        fase = "Médio";
+        color = "#F59E0B";
+        novaVelocidade = 90;
+    } else if (level >= 21) {
+        fase = "Difícil";
+        color = "#EF4444";
+        novaVelocidade = 50;
+    }
+
+    const display = document.getElementById('snake-level-display');
+    display.innerHTML = `Nível: ${level} | Fase: <span style="color:${color}">${fase}</span>`;
+    display.style.color = color;
+    display.style.background = color + "20";
+
+    if(novaVelocidade !== snakeSpeed) {
+        snakeSpeed = novaVelocidade;
+        if(gameInterval) {
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, snakeSpeed);
+        }
+    }
+}
+
+function gameLoop() { 
+    const canvas = document.getElementById('snake-canvas'); 
+    const ctx = canvas.getContext('2d'); 
+    
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
+    snake.unshift(head); 
+    
+    if(Math.abs(head.x - food.x) < GRID_SIZE && Math.abs(head.y - food.y) < GRID_SIZE) { 
+        createFood(); 
+        snakeScore++;
+        document.getElementById('game-score').innerText = snakeScore * 10; 
+        updateSnakeLevel();
+    } else {
+        snake.pop(); 
+    }
+    
+    if(head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE || snakeCollision(head)) { 
+        clearInterval(gameInterval); 
+        isPlayingSnake = false;
+        alert(`💥 Game Over!\n\nVocê chegou ao Nível ${snakeScore + 1}.\nGanhou +${snakeScore} XP!`); 
+        if(snakeScore > 0) gainXP(snakeScore, false);
+        return;
+    } 
+
+    if(food.img && food.img.complete) {
+        ctx.drawImage(food.img, food.x - 2, food.y - 2, 14, 14);
+    } else {
+        ctx.fillStyle = "red";
+        ctx.fillRect(food.x, food.y, GRID_SIZE, GRID_SIZE);
+    }
+    
+    snake.forEach((p, index) => {
+        const isHead = index === 0;
+        const radius = isHead ? GRID_SIZE / 1.6 : GRID_SIZE / 2.2;
+        const centerX = p.x + GRID_SIZE / 2;
+        const centerY = p.y + GRID_SIZE / 2;
+
+        ctx.beginPath();
+        ctx.fillStyle = isHead ? "#34D399" : "var(--brand-primary)";
+
+        if (isHead) {
+            let angle = Math.atan2(dy, dx);
+            let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
+            let isMouthOpen = distToFood <= GRID_SIZE * 3; 
+
+            if (isMouthOpen) {
+                ctx.arc(centerX, centerY, radius, angle + 0.25 * Math.PI, angle + 1.75 * Math.PI);
+                ctx.lineTo(centerX, centerY);
+            } else {
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            }
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = "white"; 
+            let eyeOffset = radius * 0.55; 
+            let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+            let eyeY1 = centerY + Math.sin(angle - Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+            let eyeX2 = centerX + Math.cos(angle + Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+            let eyeY2 = centerY + Math.sin(angle + Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+
+            ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 2.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 2.5, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = "black";
+            ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1, eyeY1 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1, eyeY2 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
+
+            ctx.shadowColor = "#34D399";
+            ctx.shadowBlur = 10;
+        } else {
+            ctx.shadowBlur = 0;
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+        }
+    });
+    ctx.shadowBlur = 0; 
+}
+
+function snakeCollision(head) {
+    for(let i=4; i<snake.length; i++){ 
+        if(head.x === snake[i].x && head.y === snake[i].y) return true; 
+    }
+    return false;
+}
+
+function createFood() { 
+    food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE; 
+    food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE;
+    food.img = foodImages[Math.floor(Math.random() * foodImages.length)];
+}
+
+function changeSnakeDirection(d) { 
+    if(!isPlayingSnake) return;
+    if(d==='UP' && dy===0) {dx=0; dy=-GRID_SIZE} 
+    if(d==='DOWN' && dy===0) {dx=0; dy=GRID_SIZE} 
+    if(d==='LEFT' && dx===0) {dx=-GRID_SIZE; dy=0} 
+    if(d==='RIGHT' && dx===0) {dx=GRID_SIZE; dy=0} 
+}
+
+let tttBoard = ['', '', '', '', '', '', '', '', ''];
+let tttActive = true;
+
+function playTTT(index) {
+    if(!tttActive || tttBoard[index] !== '') return;
+    tttBoard[index] = 'X';
+    renderTTT();
+    if(!checkTTTWin()) {
+        document.getElementById('ttt-status').innerText = "Bot pensando...";
+        tttActive = false; 
+        setTimeout(botMoveTTT, 600);
+    }
+}
+
+function botMoveTTT() {
+    let empty = [];
+    for(let i=0; i<9; i++) if(tttBoard[i] === '') empty.push(i);
+    if(empty.length > 0) {
+        let move = empty[Math.floor(Math.random() * empty.length)];
+        tttBoard[move] = 'O';
+        renderTTT();
+        if(!checkTTTWin()) {
+            document.getElementById('ttt-status').innerText = "Sua vez (X)!";
+            tttActive = true;
+        }
+    }
+}
+
+function renderTTT() {
+    const cells = document.querySelectorAll('.ttt-cell');
+    cells.forEach((cell, i) => {
+        cell.innerText = tttBoard[i];
+        cell.className = 'ttt-cell ' + (tttBoard[i] === 'X' ? 'x' : (tttBoard[i] === 'O' ? 'o' : ''));
+    });
+}
+
+function checkTTTWin() {
+    const wins = [
+        [0,1,2], [3,4,5], [6,7,8], 
+        [0,3,6], [1,4,7], [2,5,8], 
+        [0,4,8], [2,4,6]           
+    ];
+    for(let combo of wins) {
+        const [a,b,c] = combo;
+        if(tttBoard[a] && tttBoard[a] === tttBoard[b] && tttBoard[a] === tttBoard[c]) {
+            tttActive = false;
+            if(tttBoard[a] === 'X') {
+                document.getElementById('ttt-status').innerHTML = "<span style='color:#22C55E'>🏆 Você Venceu! +10 XP</span>";
+                gainXP(10, false);
+            } else {
+                document.getElementById('ttt-status').innerHTML = "<span style='color:#EF4444'>🤖 O Bot Venceu!</span>";
+            }
+            return true;
+        }
+    }
+    if(!tttBoard.includes('')) {
+        tttActive = false;
+        document.getElementById('ttt-status').innerText = "⚖️ Deu Velha (Empate)!";
+        return true;
+    }
+    return false;
+}
+
+function resetTTT() {
+    tttBoard = ['', '', '', '', '', '', '', '', ''];
+    tttActive = true;
+    document.getElementById('ttt-status').innerText = "Sua vez (X)!";
+    renderTTT();
+}
+
+function toggleDrawer() {
+    const drawer = document.getElementById('side-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    
+    if (!drawer.classList.contains('active')) {
+        document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
+        document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
+        const av = document.getElementById('drawer-avatar');
+        av.src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        document.getElementById('drawer-xp').innerText = cachedMe.xp || 0;
+        document.getElementById('drawer-level').innerText = cachedMe.level || 1;
+    }
+
+    drawer.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
+
+function toggleFab() {
+    const wrapper = document.querySelector('.fab-wrapper');
+    const options = document.getElementById('fab-options');
+    if(wrapper) wrapper.classList.toggle('active');
+    if(options) options.classList.toggle('active');
+}
+
+function openSurprise() {
+    gainXP(50, true); 
+}
+
+async function gainXP(amount, isSurprise = false) {
+    if (!myId) return;
+    try {
+        const res = await fetch('/add-xp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, xpAmount: amount, isSurprise: isSurprise })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (isSurprise) alert(data.error); 
+            return;
+        }
+        document.getElementById('drawer-xp').innerText = data.xp;
+        document.getElementById('drawer-level').innerText = data.level;
+        cachedMe.xp = data.xp;
+        cachedMe.level = data.level;
+        localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+
+        if (data.levelUp) {
+            alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`);
+            playNotificationSound('pop');
+        }
+
+        if (isSurprise) {
+            alert(`🎁 Sucesso! Você encontrou ${amount} XP na Caixa Surpresa!\n\nVolte amanhã para ganhar mais.`);
+        }
+    } catch (e) {
+        console.log("Erro ao ganhar XP:", e);
+    }
+}
+
+document.querySelector('.send-btn').addEventListener('click', () => {
+    gainXP(2, false);
+});
+
+function renderDailyMission(sent, completed) {
+    const countSpan = document.getElementById('mission-count');
+    const progressFill = document.getElementById('mission-progress-fill');
+    const badge = document.getElementById('mission-badge');
+    const title = document.getElementById('mission-title');
+    const iconBg = document.getElementById('mission-icon-bg');
+    const icon = document.getElementById('mission-icon');
+
+    if (!countSpan) return; 
+
+    if (completed) {
+        countSpan.innerText = "3";
+        progressFill.style.width = "100%";
+        progressFill.style.background = "#10B981"; 
+        badge.innerText = "Concluída";
+        badge.style.background = "#D1FAE5";
+        badge.style.color = "#059669";
+        title.innerText = "Missão Concluída! 🎉";
+        iconBg.style.background = "#D1FAE5";
+        icon.style.color = "#059669";
+        icon.innerText = "check_circle";
+    } else {
+        countSpan.innerText = sent;
+        progressFill.style.width = `${(sent / 3) * 100}%`;
+        progressFill.style.background = "var(--brand-secondary)";
+        badge.innerText = "+10 XP";
+        badge.style.background = "#FEF3C7";
+        badge.style.color = "#D97706";
+        title.innerHTML = `Enviar 3 Mensagens (<span id="mission-count">${sent}</span>/3)`;
+        iconBg.style.background = "#FEF3C7";
+        icon.style.color = "#F59E0B";
+        icon.innerText = "chat";
+    }
+}
+
+socket.on('mission_update', (data) => {
+    cachedMe.dailyMessagesSent = data.sent;
+    cachedMe.dailyMissionCompleted = data.completed;
+    
+    if (data.completed) {
+        cachedMe.xp = data.xp;
+        cachedMe.level = data.level;
+        document.getElementById('drawer-xp').innerText = data.xp;
+        document.getElementById('drawer-level').innerText = data.level;
+        
+        setTimeout(() => alert("🎯 MISSÃO DIÁRIA CONCLUÍDA!\nVocê acaba de ganhar +10 XP!"), 500);
+        if (data.levelUp) setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500);
+        playNotificationSound('pop');
+    }
+    
+    localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+    renderDailyMission(data.sent, data.completed);
+});
+
+const originalFetchAndSync = window.fetchAndSyncProfile;
+window.fetchAndSyncProfile = async function() {
+    if (originalFetchAndSync) await originalFetchAndSync();
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (cachedMe.lastActiveDate !== todayStr) {
+        cachedMe.dailyMessagesSent = 0;
+        cachedMe.dailyMissionCompleted = false;
+    }
+    renderDailyMission(cachedMe.dailyMessagesSent || 0, cachedMe.dailyMissionCompleted || false);
+};
+
 // ==============================================================
-// 🔄 FIX: NAVEGAÇÃO GLOBAL (BOTÃO VOLTAR)
+// 🔄 FIX: NAVEGAÇÃO GLOBAL (BOTÃO VOLTAR E LIMPEZA DE TELAS)
 // ==============================================================
 window.backToMain = function() {
     currentChatId = null;
     
-    // Esconde todas as telas secundárias
     hideElement('settings-screen');
     hideElement('profile-screen');
     hideElement('appearance-screen');
@@ -947,7 +1381,6 @@ window.backToMain = function() {
     hideElement('chat-screen');
     hideElement('add-contact-screen');
     
-    // Força a aba "Conversas" a acender e sincronizar
     const navItems = document.querySelectorAll('.nav-item');
     if (navItems.length > 0) {
         switchTab('conversas', navItems[0]);
@@ -957,3 +1390,100 @@ window.backToMain = function() {
     
     updateAppBadge();
 };
+
+let focusInterval = null;
+let focusTimeLeft = 25 * 60; 
+
+function startFocusMode() {
+    hideElement('focus-card-idle');
+    showElement('focus-card-active');
+    document.getElementById('focus-card-active').classList.add('active-focus');
+    
+    focusTimeLeft = 25 * 60; 
+    updateFocusDisplay();
+    
+    if(focusInterval) clearInterval(focusInterval);
+    focusInterval = setInterval(() => {
+        focusTimeLeft--;
+        updateFocusDisplay();
+        
+        if(focusTimeLeft <= 0) {
+            completeFocusMode();
+        }
+    }, 1000);
+
+    if(socket && myId) {
+        socket.emit('profile_updated', { userId: myId, isFocused: true });
+    }
+}
+
+function updateFocusDisplay() {
+    let m = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
+    let s = (focusTimeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('focus-timer-display').innerText = `${m}:${s}`;
+}
+
+function cancelFocusMode() {
+    if(confirm("🛑 Tem certeza que deseja quebrar o seu foco?\nVocê perderá os 50 XP de recompensa!")) {
+        clearInterval(focusInterval);
+        hideElement('focus-card-active');
+        document.getElementById('focus-card-active').classList.remove('active-focus');
+        showElement('focus-card-idle');
+        
+        if(socket && myId) {
+            socket.emit('profile_updated', { userId: myId, isFocused: false });
+        }
+    }
+}
+
+function completeFocusMode() {
+    clearInterval(focusInterval);
+    hideElement('focus-card-active');
+    document.getElementById('focus-card-active').classList.remove('active-focus');
+    showElement('focus-card-idle');
+    
+    if(socket && myId) {
+        socket.emit('profile_updated', { userId: myId, isFocused: false });
+    }
+    
+    setTimeout(() => {
+        alert("🍅 FOCO CONCLUÍDO COM SUCESSO!\n\nA sua mente agradece. Você foi altamente produtivo por 25 minutos e acaba de ganhar +50 XP!");
+        gainXP(50, false); 
+        playNotificationSound('pop');
+    }, 500);
+}
+
+function requestAIGame() {
+    const prompt = document.getElementById('ai-game-prompt').value.trim();
+    if (!prompt) return alert("Digite o tipo de jogo que deseja!");
+    
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "🤖 Compilando Código...";
+    btn.disabled = true;
+
+    socket.emit('request_ai_game', { prompt: prompt });
+}
+
+socket.on('ai_game_ready', (data) => {
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "Gerar Jogo";
+    btn.disabled = false;
+    
+    const iframe = document.getElementById('ai-game-frame');
+    iframe.srcdoc = data.code;
+    
+    showElement('ai-game-modal');
+    gainXP(100, false); 
+});
+
+socket.on('ai_game_error', (data) => {
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "Gerar Jogo";
+    btn.disabled = false;
+    alert("Erro na IA: " + data.error);
+});
+
+function closeAIGame() {
+    hideElement('ai-game-modal');
+    document.getElementById('ai-game-frame').srcdoc = ''; 
+}
