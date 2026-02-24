@@ -335,14 +335,109 @@ function renderSearchResults(data) { const list = document.getElementById('users
 function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:var(--brand-primary)">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; if (!name || selectedUserIds.length===0) return alert("Insira o nome e adicione membros!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); alert("Grupo Criado com Sucesso!"); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
-// === CORREÇÃO: NAVEGAÇÃO DOS MENUS DE CONFIGURAÇÃO ===
+// ==============================================================
+// 🔍 BUSCA DE CONTATOS (UI PREMIUM)
+// ==============================================================
+async function executeExactSearch() { 
+    const query = document.getElementById('exact-search-input').value.trim(); 
+    const resultContainer = document.getElementById('exact-search-result'); 
+    
+    if(!query) { 
+        alert('Digite um e-mail ou celular para buscar!'); 
+        return; 
+    } 
+    
+    // Animação de Carregamento Premium
+    resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--brand-secondary);"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size: 30px;">sync</span><br><b style="font-size:13px;">Buscando nos satélites...</b></div>'; 
+    
+    try { 
+        const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) }); 
+        const data = await res.json(); 
+        
+        if(data.found && data.user) { 
+            const u = data.user; 
+            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+            const name = u.displayName || u.email.split('@')[0]; 
+            const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email; 
+            const userJson = encodeURIComponent(JSON.stringify(u)); 
+            
+            // Renderiza o Cartão de Contacto Encontrado
+            resultContainer.innerHTML = `
+            <div class="explore-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; cursor: pointer; transition: 0.3s; border: 2px solid var(--brand-primary); background: rgba(79, 70, 229, 0.05);" onclick="showStartChatConfirmation('${userJson}')">
+                <img src="${photo}" style="width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary);">
+                <div style="flex: 1; text-align: left;">
+                    <div style="font-size: 18px; font-weight: 800; color: var(--text-color);">${name}</div>
+                    <div style="font-size: 13px; color: var(--brand-secondary); font-weight: 700;">Encontrado: ${matchedInfo}</div>
+                </div>
+                <div style="background: var(--brand-primary); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(79,70,229,0.4);">
+                    <span class="material-icons-round" style="color: white;">chat</span>
+                </div>
+            </div>`; 
+        } else { 
+            resultContainer.innerHTML = '<div class="explore-card" style="text-align:center; padding: 20px; color: #ff5252; font-weight: bold; border-color: rgba(239, 68, 68, 0.3);"><span class="material-icons-round" style="font-size: 30px; margin-bottom: 10px;">person_off</span><br>Alvo não localizado no sistema.</div>'; 
+        } 
+    } catch(e) { 
+        resultContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #ff5252; font-weight:bold;">Erro de comunicação. Tente novamente.</div>'; 
+    } 
+}
+
+function showStartChatConfirmation(userJsonStr) { 
+    const u = JSON.parse(decodeURIComponent(userJsonStr)); 
+    document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+    document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0]; 
+    document.getElementById('start-chat-info').innerText = u.email + (u.phone ? ` | ${u.phone}` : ''); 
+    
+    document.getElementById('btn-confirm-start-chat').onclick = () => { 
+        hideElement('start-chat-modal'); 
+        
+        // Cacheia o usuário para ele aparecer na lista imediatamente
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+        if(!cachedUsers.find(cu => cu._id === u._id)) { 
+            cachedUsers.push(u); 
+            localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); 
+        } 
+        openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user'); 
+    }; 
+    
+    showElement('start-chat-modal'); 
+}
+
+// ==============================================================
+// 🛠️ MOTOR DE NAVEGAÇÃO E LIMPEZA DE TELAS
+// ==============================================================
 function hideAllTabs() {
     hideElement('main-screen');        
     hideElement('screen-anotacoes');  
     hideElement('screen-jogos');      
     hideElement('screen-explorar');   
     hideElement('chat-screen');
+    hideElement('add-contact-screen'); 
+    hideElement('profile-screen');
+    hideElement('settings-screen');
+    hideElement('appearance-screen');
+    hideElement('account-screen');
+    hideElement('notifications-screen');
 }
+
+function openAddContactScreen() { 
+    hideAllTabs();
+    showElement('add-contact-screen'); 
+    document.getElementById('exact-search-input').value = ''; 
+    document.getElementById('exact-search-result').innerHTML = ''; 
+}
+
+window.backToMain = function() {
+    currentChatId = null;
+    hideAllTabs();
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    if (navItems.length > 0) {
+        switchTab('conversas', navItems[0]);
+    } else {
+        showElement('main-screen');
+    }
+    updateAppBadge();
+};
 
 function openProfile() { 
     hideAllTabs();

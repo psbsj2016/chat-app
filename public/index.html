@@ -407,15 +407,43 @@
     </div>
 
     <div id="add-contact-screen" class="app-screen hidden">
-        <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Nova Conversa</span><div style="width: 40px;"></div></div>
-        <div class="settings-content">
-            <div class="settings-group" style="padding: 25px 20px; text-align: center;">
-                <span class="material-icons-round" style="font-size:40px; color:var(--brand-secondary); margin-bottom: 10px;">person_search</span>
-                <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 20px;">Encontrar Alguém</h3>
-                <input type="text" id="exact-search-input" placeholder="E-mail ou Celular exato..." class="chic-input" style="text-align: center;">
-                <button onclick="executeExactSearch()" class="chic-btn">Buscar</button>
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
+            <span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
+            <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
+                <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;">
+                    <span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span>
+                </div>
+                <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
+                <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o e-mail ou número de telemóvel exato para encontrar o seu contacto na rede.</p>
+                
+                <div style="position: relative; margin-bottom: 20px;">
+                    <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">alternate_email</span>
+                    <input type="text" id="exact-search-input" placeholder="E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
+                </div>
+                
+                <button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;">
+                    <span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato
+                </button>
             </div>
-            <div id="exact-search-result" style="margin-top: 20px;"></div>
+            
+            <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <div id="start-chat-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content profile-view-card" style="text-align: center;">
+            <img id="start-chat-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; border: 3px solid var(--brand-primary); object-fit: cover;">
+            <h3 id="start-chat-name" style="margin-bottom: 5px; font-size: 22px; font-weight: 800;">Nome</h3>
+            <p id="start-chat-info" style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px;">info@email.com</p>
+            <div style="display:flex; gap:10px; width:100%;">
+                <button onclick="hideElement('start-chat-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text); border: 1px solid var(--input-bg);">Cancelar</button>
+                <button id="btn-confirm-start-chat" class="chic-btn">Enviar Mensagem</button>
+            </div>
         </div>
     </div>
 
