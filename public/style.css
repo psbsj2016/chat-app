@@ -536,3 +536,67 @@ body.dark-mode .security-alert {
 }
 
 .blocked-msg { opacity: 0.5; font-style: italic; }
+
+/* ==========================================
+   LOJA NEON (MERCADO DE RECOMPENSAS)
+   ========================================== */
+.store-card { 
+    min-width: 140px; 
+    text-align: center; 
+    padding: 15px; 
+    border: 2px solid transparent; 
+}
+.store-card h4 { 
+    font-size: 15px; 
+    font-weight: 800; 
+    margin: 8px 0 2px 0; 
+}
+.store-card p { 
+    font-size: 12px; 
+    color: var(--secondary-text); 
+    margin-bottom: 12px; 
+}
+.store-btn { 
+    background: var(--input-bg); 
+    color: var(--brand-primary); 
+    padding: 8px; 
+    width: 100%; 
+    font-size: 13px; 
+    margin:0; 
+}
+.store-btn:active { 
+    background: var(--brand-primary); 
+    color: white; 
+}
+
+/* TEMA COMPRADO: MATRIX */
+body.theme-matrix {
+    --bg-color: #000000;
+    --card-bg: #0D1117;
+    --text-color: #10B981;
+    --secondary-text: #047857;
+    --input-bg: #064E3B;
+    --chat-bg-color: #000000;
+    --my-msg-bg: #10B981;
+    --my-msg-text: #000000;
+    --brand-primary: #10B981;
+    --brand-secondary: #059669;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+/* TEMA COMPRADO: CYBERPUNK */
+body.bubble-cyber {
+    --my-msg-bg: linear-gradient(135deg, #FF007A 0%, #7928CA 100%);
+    --my-msg-text: #FFFFFF;
+    --brand-primary: #FF007A;
+    --brand-secondary: #7928CA;
+}
+
+/* SELO VIP */
+.vip-badge-icon { 
+    color: #F59E0B; 
+    font-size: 18px; 
+    vertical-align: middle; 
+    margin-left: 4px; 
+    filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4));
+}
