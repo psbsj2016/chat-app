@@ -3,109 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snake Neon</title>
+    <title>Snake Neon 3D</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; user-select: none; }
-        canvas { box-shadow: 0 0 20px rgba(6, 182, 212, 0.5); border-radius: 10px; border: 2px solid #06b6d4; background: #111; }
-        .hud { display: flex; justify-content: space-between; width: 300px; margin-bottom: 20px; font-weight: bold; font-size: 18px; }
-        .d-pad { display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 10px; margin-top: 30px; }
-        .d-btn { background: rgba(255,255,255,0.1); border: none; border-radius: 50%; color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; }
-        .d-btn:active { background: #06b6d4; }
-        .d-up { grid-column: 2; grid-row: 1; }
-        .d-left { grid-column: 1; grid-row: 2; }
-        .d-right { grid-column: 3; grid-row: 2; }
-        .d-down { grid-column: 2; grid-row: 3; }
-        .start-btn { position: absolute; background: #06b6d4; color: black; padding: 15px 30px; font-weight: bold; border: none; border-radius: 30px; font-size: 18px; cursor: pointer; z-index: 10; }
+        /* Bloqueia totalmente o zoom e o arrasto da tela para os botões funcionarem perfeitos */
+        * { box-sizing: border-box; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        
+        body { 
+            margin: 0; background: #09090b; color: white; font-family: 'Inter', sans-serif; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+            height: 100vh; overflow: hidden; 
+        }
+        
+        /* O HUD (Placar) Superior */
+        .hud { 
+            display: flex; justify-content: space-between; width: 95%; max-width: 400px; 
+            padding: 15px 10px; font-weight: 900; font-size: 16px; letter-spacing: 1px; 
+        }
+        
+        /* A Tela de Jogo (Maior) */
+        canvas { 
+            box-shadow: 0 0 40px rgba(52, 211, 153, 0.15); 
+            border-radius: 12px; 
+            border: 2px solid #34D399; 
+            background: #111; 
+            width: 95vw;
+            height: 95vw;
+            max-width: 400px;
+            max-height: 400px;
+            display: block;
+        }
+        
+        /* Layout de Consola Portátil (2 Mãos) */
+        .controls-wrapper {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 450px;
+            flex: 1;
+            padding: 20px;
+            align-items: center;
+        }
+        
+        .d-pad-half { display: grid; gap: 15px; }
+        
+        /* Mão Esquerda: Esquerda e Direita */
+        .left-hand { grid-template-columns: 70px 70px; grid-template-rows: 70px; }
+        /* Mão Direita: Cima e Baixo (Empilhados) */
+        .right-hand { grid-template-columns: 70px; grid-template-rows: 70px 70px; justify-content: end;}
+        
+        .d-btn { 
+            background: rgba(255,255,255,0.08); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 20px; 
+            color: white; 
+            font-size: 36px; 
+            display: flex; justify-content: center; align-items: center;
+            transition: 0.1s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+        .d-btn:active { 
+            background: #34D399; transform: scale(0.9); box-shadow: 0 0 20px #34D399; color: black; 
+        }
+        .d-btn .material-icons-round { font-size: 40px; }
+        
+        .start-btn { 
+            position: absolute; top: 40%; background: #34D399; color: black; 
+            padding: 15px 30px; font-weight: 900; border: none; border-radius: 30px; 
+            font-size: 18px; cursor: pointer; z-index: 10; 
+            box-shadow: 0 10px 30px rgba(52,211,153,0.4); text-transform: uppercase; 
+        }
     </style>
 </head>
 <body>
 
     <div class="hud">
-        <span>SCORE: <span id="score" style="color: #06b6d4;">0</span></span>
-        <span id="level" style="color: #10b981;">FÁCIL</span>
+        <span>SCORE: <span id="score" style="color: #34D399;">0</span></span>
+        <span id="level" style="color: #06b6d4;">NÍVEL 1</span>
     </div>
 
-    <canvas id="gameCanvas" width="300" height="300"></canvas>
-    <button id="startBtn" class="start-btn" onclick="startGame()">TOCAR PARA JOGAR</button>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <button id="startBtn" class="start-btn" onclick="startGame()">JOGAR AGORA</button>
 
-    <div class="d-pad">
-        <button class="d-btn d-up" ontouchstart="dir('UP')" onmousedown="dir('UP')"><span class="material-icons-round">keyboard_arrow_up</span></button>
-        <button class="d-btn d-left" ontouchstart="dir('LEFT')" onmousedown="dir('LEFT')"><span class="material-icons-round">keyboard_arrow_left</span></button>
-        <button class="d-btn d-right" ontouchstart="dir('RIGHT')" onmousedown="dir('RIGHT')"><span class="material-icons-round">keyboard_arrow_right</span></button>
-        <button class="d-btn d-down" ontouchstart="dir('DOWN')" onmousedown="dir('DOWN')"><span class="material-icons-round">keyboard_arrow_down</span></button>
+    <div class="controls-wrapper">
+        <div class="d-pad-half left-hand">
+            <button class="d-btn" ontouchstart="dir(event, 'LEFT')" onmousedown="dir(event, 'LEFT')"><span class="material-icons-round">keyboard_arrow_left</span></button>
+            <button class="d-btn" ontouchstart="dir(event, 'RIGHT')" onmousedown="dir(event, 'RIGHT')"><span class="material-icons-round">keyboard_arrow_right</span></button>
+        </div>
+        
+        <div class="d-pad-half right-hand">
+            <button class="d-btn" ontouchstart="dir(event, 'UP')" onmousedown="dir(event, 'UP')"><span class="material-icons-round">keyboard_arrow_up</span></button>
+            <button class="d-btn" ontouchstart="dir(event, 'DOWN')" onmousedown="dir(event, 'DOWN')"><span class="material-icons-round">keyboard_arrow_down</span></button>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const gridSize = 10;
-        let snake, food, dx, dy, score, gameInterval, speed;
+        
+        // Grelha maior (20px) para gráficos mais detalhados e cobra mais grossa
+        const gridSize = 20; 
+        let snake = [];
+        let food = {x: 0, y: 0, img: null};
+        let dx = gridSize, dy = 0;
+        let score = 0, speed = 120, gameInterval = null;
+        let isPlaying = false;
 
-        function dir(direction) {
-            event.preventDefault();
+        // Imagens dos animais (Sapo, Rato, Joaninha)
+        const foodSrcs = [
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png', // Rato
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', // Sapo
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  // Joaninha
+        ];
+        const foodImages = [];
+        foodSrcs.forEach(src => {
+            const img = new Image();
+            img.src = src;
+            foodImages.push(img);
+        });
+
+        // Função de Comando (Bloqueia cliques falsos com e.preventDefault())
+        function dir(e, direction) {
+            if(e) e.preventDefault();
+            if(!isPlaying) return;
+            
             if (direction === 'UP' && dy === 0) { dx = 0; dy = -gridSize; }
             if (direction === 'DOWN' && dy === 0) { dx = 0; dy = gridSize; }
             if (direction === 'LEFT' && dx === 0) { dx = -gridSize; dy = 0; }
             if (direction === 'RIGHT' && dx === 0) { dx = gridSize; dy = 0; }
         }
 
+        // Teclado para testes no PC
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowUp') dir(null, 'UP');
+            if(e.key === 'ArrowDown') dir(null, 'DOWN');
+            if(e.key === 'ArrowLeft') dir(null, 'LEFT');
+            if(e.key === 'ArrowRight') dir(null, 'RIGHT');
+        });
+
         function startGame() {
             document.getElementById("startBtn").style.display = "none";
-            snake = [{x: 150, y: 150}];
-            dx = gridSize; dy = 0; score = 0; speed = 120;
-            document.getElementById("score").innerText = score;
+            // Cobra começa com 3 blocos
+            snake = [
+                {x: 200, y: 200}, 
+                {x: 180, y: 200}, 
+                {x: 160, y: 200}
+            ];
+            dx = gridSize; dy = 0; score = 0; speed = 130;
+            isPlaying = true;
+            updateHUD();
             placeFood();
+            
             if (gameInterval) clearInterval(gameInterval);
             gameInterval = setInterval(gameLoop, speed);
+        }
+
+        function updateHUD() {
+            document.getElementById("score").innerText = score * 10;
+            let lvl = Math.floor(score / 5) + 1;
+            document.getElementById("level").innerText = "NÍVEL " + lvl;
+            
+            // Aumenta a velocidade a cada 5 comidas
+            let newSpeed = 130 - ((lvl - 1) * 15);
+            if(newSpeed < 50) newSpeed = 50; // Limite máximo de velocidade
+            
+            if(newSpeed !== speed) {
+                speed = newSpeed;
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, speed);
+            }
         }
 
         function placeFood() {
             food = {
                 x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
-                y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize
+                y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize,
+                img: foodImages[Math.floor(Math.random() * foodImages.length)]
             };
         }
 
         function gameLoop() {
+            // Limpa o fundo a cada frame
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const head = { x: snake[0].x + dx, y: snake[0].y + dy };
-            snake.unshift(head);
+            snake.unshift(head); // Adiciona nova cabeça
 
+            // Se a cabeça tocar na comida
             if (head.x === food.x && head.y === food.y) {
-                score += 10;
-                document.getElementById("score").innerText = score;
+                score++;
+                updateHUD();
                 placeFood();
             } else {
-                snake.pop();
+                snake.pop(); // Remove rabo se não comer
             }
 
+            // Morte por bater na parede ou em si mesmo
             if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || snakeCollision(head)) {
                 clearInterval(gameInterval);
+                isPlaying = false;
                 document.getElementById("startBtn").style.display = "block";
-                document.getElementById("startBtn").innerText = "TENTAR DE NOVO";
+                document.getElementById("startBtn").innerText = "MORTO! TENTAR NOVAMENTE";
                 
-                // MÁGICA: Comunica com o ChatPTT para dar XP!
+                // Envia os XPs para o Servidor Principal (App.js)
                 if(score > 0 && window.parent && window.parent.gameEarnXP) {
-                    window.parent.gameEarnXP(Math.floor(score / 10)); 
+                    window.parent.gameEarnXP(score); 
                 }
                 return;
             }
 
-            ctx.fillStyle = "red";
-            ctx.fillRect(food.x, food.y, gridSize, gridSize);
+            // 1. Desenhar a Presa (Animais reais)
+            if(food.img && food.img.complete) {
+                ctx.drawImage(food.img, food.x, food.y, gridSize, gridSize);
+            } else {
+                ctx.fillStyle = "red";
+                ctx.fillRect(food.x, food.y, gridSize, gridSize);
+            }
 
-            ctx.fillStyle = "#06b6d4";
+            // 2. Desenhar a Cobra Orgânica
             snake.forEach((p, index) => {
+                const isHead = index === 0;
+                // A cabeça é um pouco maior que o corpo
+                const radius = isHead ? gridSize / 1.8 : gridSize / 2.2;
+                const centerX = p.x + gridSize / 2;
+                const centerY = p.y + gridSize / 2;
+
                 ctx.beginPath();
-                ctx.arc(p.x + gridSize/2, p.y + gridSize/2, index===0? 5 : 4, 0, Math.PI*2);
-                ctx.fill();
+                ctx.fillStyle = isHead ? "#34D399" : "#06B6D4"; // Cabeça Verde, Corpo Ciano
+
+                if (isHead) {
+                    // Mágica Trigonométrica: Calcula a direção do movimento
+                    let angle = Math.atan2(dy, dx);
+                    
+                    // Se estiver a menos de 3 grelhas da comida, abre a boca!
+                    let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
+                    let isMouthOpen = distToFood <= gridSize * 3;
+
+                    if (isMouthOpen) {
+                        ctx.arc(centerX, centerY, radius, angle + 0.25 * Math.PI, angle + 1.75 * Math.PI);
+                        ctx.lineTo(centerX, centerY);
+                    } else {
+                        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    }
+                    ctx.fill();
+                    ctx.closePath();
+
+                    // Desenhar os Olhos (Fundo Branco)
+                    ctx.fillStyle = "white"; 
+                    let eyeOffset = radius * 0.55; 
+                    let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+                    let eyeY1 = centerY + Math.sin(angle - Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+                    let eyeX2 = centerX + Math.cos(angle + Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+                    let eyeY2 = centerY + Math.sin(angle + Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+
+                    ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 3, 0, Math.PI*2); ctx.fill();
+
+                    // Desenhar as Pupilas (Pretas olhando para a frente)
+                    ctx.fillStyle = "black";
+                    ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1.5, eyeY1 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1.5, eyeY2 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
+
+                } else {
+                    // Corpo liso
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.closePath();
+                }
             });
         }
 
         function snakeCollision(head) {
-            for (let i = 4; i < snake.length; i++) {
+            // Ignora os 3 primeiros blocos para evitar mortes falsas ao curvar
+            for (let i = 3; i < snake.length; i++) {
                 if (head.x === snake[i].x && head.y === snake[i].y) return true;
             }
             return false;
