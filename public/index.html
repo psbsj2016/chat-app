@@ -127,6 +127,24 @@
             </div>
 
             <div class="explore-section">
+                <h3 class="explore-section-title">🍅 Produtividade <span class="badge-tech">Foco</span></h3>
+                <div class="explore-card focus-card" id="focus-card-idle">
+                    <div style="flex:1;">
+                        <h4 style="font-size:16px; font-weight:700;">Modo Foco (25 min)</h4>
+                        <p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;">Concentre-se sem distrações e ganhe +50 XP!</p>
+                        <button class="chic-btn mini-btn" onclick="startFocusMode()" style="background: #EF4444; color: white; width: auto; padding: 6px 15px; font-size:13px;">Iniciar Foco</button>
+                    </div>
+                    <span class="material-icons-round" style="font-size:40px; color:#EF4444; opacity:0.8;">timer</span>
+                </div>
+                <div class="explore-card focus-card hidden" id="focus-card-active" style="text-align: center; justify-content: center; flex-direction: column;">
+                    <h4 style="font-size:16px; font-weight:800; color: #EF4444; margin-bottom: 5px; text-transform: uppercase;">Em Foco 🤫</h4>
+                    <p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 10px;">Não feche o aplicativo!</p>
+                    <div id="focus-timer-display" style="font-size: 42px; font-weight: 900; letter-spacing: 2px; color: var(--text-color); margin-bottom: 15px; font-variant-numeric: tabular-nums;">25:00</div>
+                    <button class="chic-btn mini-btn" onclick="cancelFocusMode()" style="background: transparent; border: 2px solid #FECACA; color: #EF4444; width: 100%; max-width: 200px; margin: 0 auto;">Desistir</button>
+                </div>
+            </div>
+
+            <div class="explore-section">
                 <h3 class="explore-section-title">⭐ Para você <span class="badge-tech">Python AI</span></h3>
                 <div class="explore-card para-voce-card">
                     <div style="flex:1;">
@@ -215,6 +233,7 @@
 
         </div>
     </div>
+
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer">
         <div class="drawer-header">
@@ -527,6 +546,6 @@
     </nav>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script>document.write('<script src="app.js?v=' + appVer + '"></script>');</script>
+    <script>document.write('<script src="app.js?v=' + appVer + '"><\/script>');</script>
 </body>
 </html>

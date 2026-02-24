@@ -20,7 +20,7 @@ let recordingInterval = null;
 let recordingSeconds = 0;      
 let pendingAudioFile = null;  
 
-let messageToReply = null; // <- NOVA VARIÁVEL PARA O SISTEMA DE RESPOSTA
+let messageToReply = null; 
 
 let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 
@@ -29,9 +29,6 @@ function hideElement(id) { const el = document.getElementById(id); if(el) el.cla
 function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn') && !e.target.closest('#header-my-avatar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
-// ==========================================
-// MÁGICA: DESTRUIDOR DE CACHE 
-// ==========================================
 socket.on('check_app_version', (serverVersion) => { 
     const localVersion = localStorage.getItem('appVersion'); 
     if (!localVersion) { 
@@ -43,9 +40,6 @@ socket.on('check_app_version', (serverVersion) => {
     } 
 });
 
-// ==========================================
-// MÁGICA: SERVICE WORKER E PUSH NOTIFICATIONS
-// ==========================================
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -73,9 +67,6 @@ async function registerServiceWorkerAndSubscribe() {
     }
 }
 
-// ==========================================
-// PERMISSÕES E DESTRAVAMENTO DE ÁUDIO NO CELULAR
-// ==========================================
 let audioCtx = null;
 
 function checkAndShowPermissions() {
@@ -90,7 +81,6 @@ function checkAndShowPermissions() {
 function grantAppPermissions() {
     localStorage.setItem('permissionsAsked', 'true');
     
-    // Destrava o Áudio: Dispara um som mudo invisível
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
@@ -112,7 +102,7 @@ function showMainScreen() {
     showElement('main-screen'); loadContacts(); socket.emit('join_room', myId); 
     if ("Notification" in window && Notification.permission === "granted") registerServiceWorkerAndSubscribe();
 }
-function backToMain() { currentChatId = null; hideElement('settings-screen'); hideElement('profile-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('chat-screen'); hideElement('add-contact-screen'); showElement('main-screen'); updateAppBadge(); }
+
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); showElement('settings-screen'); }
 function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { checkAndShowPermissions(); }, 1200); }
 
@@ -243,7 +233,7 @@ function openChat(id, name, photo, email, type = 'user') {
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
     updateAppBadge();
-    cancelReply(); // Cancela qualquer resposta ativa ao mudar de chat
+    cancelReply(); 
     
     hideElement('main-screen'); hideElement('settings-screen'); hideElement('profile-screen'); hideElement('add-contact-screen'); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; 
     const contactDiv = document.getElementById(`contact-${id}`); 
@@ -498,12 +488,11 @@ let pressTimer; let currentSelectedMsgElement = null; let selectedMsgData = null
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; 
     
-    // Suporte a Long Press e DUPLO CLIQUE para Responder
     div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
     div.addEventListener('touchend', () => clearTimeout(pressTimer)); 
     div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
     div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
-    div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); }); // Atalho Rápido para Computador
+    div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
 
     let contentHtml = ''; 
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
@@ -516,7 +505,6 @@ function displayMessage(msg) {
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
 
-// === SISTEMA DE RESPOSTA E CITAÇÃO ===
 function initReply() {
     if (!selectedMsgData) return;
     const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato');
@@ -527,7 +515,6 @@ function initReply() {
     else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo';
     else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF';
     else {
-        // Remove a citação antiga se estiver respondendo a uma resposta
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = txt;
         const qMsg = tempDiv.querySelector('.quoted-msg');
@@ -596,7 +583,6 @@ function showMessageMenu(e, msgElement, msgObj) {
 }
 function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
-// === CÓPIA INTELIGENTE (Ignora Citações ao copiar) ===
 function copySelectedMessage() { 
     if(!selectedMsgData || !selectedMsgData.content) return; 
     const tempDiv = document.createElement('div');
@@ -791,16 +777,15 @@ function toggleMainSearch() {
     }
 }
 
-// ==== ATUALIZE O SEU SWITCH TAB PARA ISSO ====
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     if(element) element.classList.add('active');
 
-    hideElement('main-screen');       
+    hideElement('main-screen');        
     hideElement('screen-anotacoes');  
     hideElement('screen-jogos');      
     hideElement('screen-explorar');   
-    hideElement('chat-screen');       
+    hideElement('chat-screen');        
 
     if (tabName === 'conversas') {
         showElement('main-screen');
@@ -814,7 +799,6 @@ function switchTab(tabName, element) {
     }
 }
 
-// Atualize o observerMenu para não esconder a barra na tela explorar
 const observerMenu = new MutationObserver(() => {
     const chat = document.getElementById('chat-screen');
     const nav = document.getElementById('bottom-navigation');
@@ -890,22 +874,22 @@ async function saveNote() { const title = document.getElementById('note-title').
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
 // ==============================================================
-// 🐍 JOGO 1: SNAKE NEON REALISTA (ATUALIZADO)
+// 🐍 JOGO 1: SNAKE NEON REALISTA (CORRIGIDO BUG DO SINTAXE)
 // ==============================================================
 let snake = []; 
-let food = {x:0, y:0, img: null}; // Comida agora tem imagem
+let food = {x:0, y:0, img: null}; 
 let dx=10; let dy=0; let gameInterval=null;
 let snakeScore = 0; let snakeSpeed = 150; let isPlayingSnake = false;
-const GRID_ size = 10;
-const CANVAS_SIZE = 400; // Atualizado para 400
 
-// Pré-carregar imagens das presas (usando emojis de alta qualidade via CDN)
+const GRID_SIZE = 10; // ⚠️ AQUI ESTAVA O SEU BUG: Tinha um espaço! "GRID_ size"
+const CANVAS_SIZE = 400; 
+
 const foodImagesSrc = [
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png', // Ratinho
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', // Sapinho
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f439.png', // Hamster
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1fab2.png', // Besouro
-    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  // Joaninha
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png',
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f439.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1fab2.png', 
+    'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  
 ];
 const foodImages = [];
 foodImagesSrc.forEach(src => {
@@ -915,9 +899,8 @@ foodImagesSrc.forEach(src => {
 });
 
 function startSnakeGame() { 
-    // Posição inicial ajustada para o centro do novo canvas 400x400
     snake = [{x:200, y:200}, {x:190, y:200}, {x:180, y:200}]; 
-    dx=GRID_size; dy=0; snakeScore=0; snakeSpeed=150;
+    dx=GRID_SIZE; dy=0; snakeScore=0; snakeSpeed=150;
     isPlayingSnake = true;
     document.getElementById('game-score').innerText = '0';
     updateSnakeLevel();
@@ -960,16 +943,12 @@ function updateSnakeLevel() {
 function gameLoop() { 
     const canvas = document.getElementById('snake-canvas'); 
     const ctx = canvas.getContext('2d'); 
-    
-    // Limpar a tela (agora com o tamanho certo)
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
     snake.unshift(head); 
     
-    // Comeu a presa?
-    // Usamos uma margem de tolerância pequena para facilitar comer a imagem
-    if(Math.abs(head.x - food.x) < GRID_size && Math.abs(head.y - food.y) < GRID_size) { 
+    if(Math.abs(head.x - food.x) < GRID_SIZE && Math.abs(head.y - food.y) < GRID_SIZE) { 
         createFood(); 
         snakeScore++;
         document.getElementById('game-score').innerText = snakeScore * 10; 
@@ -978,7 +957,6 @@ function gameLoop() {
         snake.pop(); 
     }
     
-    // Colisão (Bordas 400x400 ou corpo)
     if(head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE || snakeCollision(head)) { 
         clearInterval(gameInterval); 
         isPlayingSnake = false;
@@ -986,32 +964,21 @@ function gameLoop() {
         if(snakeScore > 0) gainXP(snakeScore, false);
         return;
     } 
-    
-    // --- DESENHO REALISTA ---
 
-    // 1. Desenhar a Presa (Animalzinho)
     if(food.img && food.img.complete) {
-        // Desenha a imagem um pouco maior que o grid (14x14) e centralizada para "saltar"
         ctx.drawImage(food.img, food.x - 2, food.y - 2, 14, 14);
     } else {
-        // Fallback se a imagem não carregou: quadrado vermelho
         ctx.fillStyle = "red";
-        ctx.fillRect(food.x, food.y, GRID_size, GRID_size);
+        ctx.fillRect(food.x, food.y, GRID_SIZE, GRID_SIZE);
     }
     
-    // 2. Desenhar a Cobra Orgânica (Círculos)
     snake.forEach((p, index) => {
         ctx.beginPath();
-        // A cabeça é um pouco maior e mais brilhante
-        const radius = index === 0 ? GRID_size / 1.8 : GRID_size / 2;
-        ctx.fillStyle = index === 0 ? "#34D399" : "var(--brand-primary)"; // Cabeça mais clara
-        
-        // Desenha um círculo no centro do bloco
-        ctx.arc(p.x + GRID_size/2, p.y + GRID_size/2, radius, 0, 2 * Math.PI);
+        const radius = index === 0 ? GRID_SIZE / 1.8 : GRID_SIZE / 2;
+        ctx.fillStyle = index === 0 ? "#34D399" : "var(--brand-primary)"; 
+        ctx.arc(p.x + GRID_SIZE/2, p.y + GRID_SIZE/2, radius, 0, 2 * Math.PI);
         ctx.fill();
         ctx.closePath();
-
-        // Adiciona um brilho sutil na cabeça
         if(index === 0) {
              ctx.shadowColor = "#34D399";
              ctx.shadowBlur = 10;
@@ -1019,11 +986,10 @@ function gameLoop() {
              ctx.shadowBlur = 0;
         }
     });
-    ctx.shadowBlur = 0; // Reset do brilho para o resto
+    ctx.shadowBlur = 0; 
 }
 
 function snakeCollision(head) {
-    // Começa de i=1 porque a cabeça (i=0) sempre "colide" com ela mesma na lógica
     for(let i=4; i<snake.length; i++){ 
         if(head.x === snake[i].x && head.y === snake[i].y) return true; 
     }
@@ -1031,24 +997,21 @@ function snakeCollision(head) {
 }
 
 function createFood() { 
-    // Garante que a comida cai alinhada ao grid de 10 em 10 numa área de 400x400
-    food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_size)) * GRID_size; 
-    food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_size)) * GRID_size;
-    // Escolhe uma imagem aleatória do array pré-carregado
+    food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE; 
+    food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE;
     food.img = foodImages[Math.floor(Math.random() * foodImages.length)];
 }
 
 function changeSnakeDirection(d) { 
     if(!isPlayingSnake) return;
-    // Lógica anti-reversa (não pode ir para a direita se já está indo para a esquerda, etc.)
-    if(d==='UP' && dy===0) {dx=0; dy=-GRID_size} 
-    if(d==='DOWN' && dy===0) {dx=0; dy=GRID_size} 
-    if(d==='LEFT' && dx===0) {dx=-GRID_size; dy=0} 
-    if(d==='RIGHT' && dx===0) {dx=GRID_size; dy=0} 
+    if(d==='UP' && dy===0) {dx=0; dy=-GRID_SIZE} 
+    if(d==='DOWN' && dy===0) {dx=0; dy=GRID_SIZE} 
+    if(d==='LEFT' && dx===0) {dx=-GRID_SIZE; dy=0} 
+    if(d==='RIGHT' && dx===0) {dx=GRID_SIZE; dy=0} 
 }
 
 // ==============================================================
-// ⭕❌ JOGO 2: JOGO DA VELHA (CONTRA A IA)
+// ⭕❌ JOGO 2: JOGO DA VELHA
 // ==============================================================
 let tttBoard = ['', '', '', '', '', '', '', '', ''];
 let tttActive = true;
@@ -1057,10 +1020,9 @@ function playTTT(index) {
     if(!tttActive || tttBoard[index] !== '') return;
     tttBoard[index] = 'X';
     renderTTT();
-    
     if(!checkTTTWin()) {
         document.getElementById('ttt-status').innerText = "Bot pensando...";
-        tttActive = false; // Bloqueia clique enquanto o bot joga
+        tttActive = false; 
         setTimeout(botMoveTTT, 600);
     }
 }
@@ -1068,12 +1030,10 @@ function playTTT(index) {
 function botMoveTTT() {
     let empty = [];
     for(let i=0; i<9; i++) if(tttBoard[i] === '') empty.push(i);
-    
     if(empty.length > 0) {
         let move = empty[Math.floor(Math.random() * empty.length)];
         tttBoard[move] = 'O';
         renderTTT();
-        
         if(!checkTTTWin()) {
             document.getElementById('ttt-status').innerText = "Sua vez (X)!";
             tttActive = true;
@@ -1091,11 +1051,10 @@ function renderTTT() {
 
 function checkTTTWin() {
     const wins = [
-        [0,1,2], [3,4,5], [6,7,8], // linhas
-        [0,3,6], [1,4,7], [2,5,8], // colunas
-        [0,4,8], [2,4,6]           // diagonais
+        [0,1,2], [3,4,5], [6,7,8], 
+        [0,3,6], [1,4,7], [2,5,8], 
+        [0,4,8], [2,4,6]           
     ];
-    
     for(let combo of wins) {
         const [a,b,c] = combo;
         if(tttBoard[a] && tttBoard[a] === tttBoard[b] && tttBoard[a] === tttBoard[c]) {
@@ -1109,7 +1068,6 @@ function checkTTTWin() {
             return true;
         }
     }
-    
     if(!tttBoard.includes('')) {
         tttActive = false;
         document.getElementById('ttt-status').innerText = "⚖️ Deu Velha (Empate)!";
@@ -1125,110 +1083,17 @@ function resetTTT() {
     renderTTT();
 }
 
-let quickCameraFile = null;
-function handleQuickCamera(input) { const file = input.files[0]; if (!file) return; quickCameraFile = file; openQuickSendModal(); }
-async function openQuickSendModal() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Enviar foto para..."; const list = document.getElementById('forward-contacts-list'); list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Carregando contatos...</div>'; try { const [resG, resU] = await Promise.all([fetch(`/groups/${myId}`), fetch(`/users/${myId}`)]); const groups = await resG.json(); const users = await resU.json(); list.innerHTML = ''; groups.forEach(g => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${g.photoUrl}" class="avatar-small"> <span class="contact-name">${g.name} (Grupo)</span>`; div.onclick = () => executeQuickSend(g._id, true); list.appendChild(div); }); users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email.split('@')[0]}</span>`; div.onclick = () => executeQuickSend(user._id, false); list.appendChild(div); }); } catch(e) { list.innerHTML = '<div style="text-align:center; padding:20px; color:red;">Erro ao carregar contatos.</div>'; } }
-async function executeQuickSend(targetId, isGroup) { hideElement('forward-modal'); const btn = document.getElementById('fab-camera-btn'); const originalIcon = btn.innerHTML; btn.innerHTML = '<span class="material-icons uploading-icon" style="color:var(--brand-primary)">sync</span>'; const fd = new FormData(); fd.append('file', quickCameraFile); try { const res = await fetch('/upload', { method: 'POST', body: fd }); const data = await res.json(); socket.emit('private_message', { senderId: myId, receiverId: isGroup ? null : targetId, groupId: isGroup ? targetId : null, content: '📸 Foto enviada', fileUrl: data.url, fileType: 'image' }); quickCameraFile = null; document.getElementById('quick-camera-input').value = ''; alert("✅ Foto enviada com sucesso!"); loadContacts(); } catch (e) { alert("❌ Erro ao enviar a foto."); } finally { btn.innerHTML = originalIcon; } }
-
-function applyWallpaper(url) { if (url) { document.body.style.setProperty('--chat-bg-image', `url('${url}')`); } }
-function updateWallpaperUI() { const remBtn = document.getElementById('wallpaper-remove-link'); if (!remBtn) return; if (cachedMe && cachedMe.chatWallpaper) { remBtn.classList.remove('hidden'); } else { remBtn.classList.add('hidden'); } }
-function triggerWallpaperUpload() { document.getElementById('wallpaper-file-input').click(); }
-async function uploadWallpaper(input) { const file = input.files[0]; if(!file) return; const btn = document.getElementById('wallpaper-action-link'); if(btn) btn.innerText = "Enviando..."; const fd = new FormData(); fd.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: fd }); const data = await res.json(); await saveProfile({ chatWallpaper: data.url }); cachedMe.chatWallpaper = data.url; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); applyWallpaper(data.url); updateWallpaperUI(); alert("Papel de parede atualizado com sucesso!"); } catch (e) { alert("Erro ao enviar a imagem. Verifique a internet."); } finally { if(btn) btn.innerText = "Escolher"; input.value = ''; } }
-async function removeWallpaper() { if(!confirm("Deseja remover sua imagem e voltar ao fundo padrão do CPTT?")) return; try { await saveProfile({ chatWallpaper: '' }); cachedMe.chatWallpaper = ''; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); document.body.style.removeProperty('--chat-bg-image'); updateWallpaperUI(); } catch(e) { alert("Erro ao remover o papel de parede."); } }
-
-function openScheduleModal() {
-    toggleMenu('main-menu');
-    const select = document.getElementById('schedule-target');
-    select.innerHTML = '<option value="">Selecione o Destinatário...</option>';
-    
-    const cGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
-    const cUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-    
-    if (cGroups.length > 0) {
-        const groupOptGroup = document.createElement('optgroup');
-        groupOptGroup.label = "Meus Grupos";
-        cGroups.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = `group_${g._id}`;
-            opt.innerText = g.name;
-            groupOptGroup.appendChild(opt);
-        });
-        select.appendChild(groupOptGroup);
-    }
-    
-    if (cUsers.length > 0) {
-        const userOptGroup = document.createElement('optgroup');
-        userOptGroup.label = "Contatos";
-        cUsers.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = `user_${u._id}`;
-            opt.innerText = u.displayName || u.email.split('@')[0];
-            userOptGroup.appendChild(opt);
-        });
-        select.appendChild(userOptGroup);
-    }
-    
-    document.getElementById('schedule-datetime').value = '';
-    document.getElementById('schedule-text').value = '';
-    
-    showElement('schedule-modal');
-}
-
-async function saveScheduledMessage() {
-    const targetVal = document.getElementById('schedule-target').value;
-    const datetimeVal = document.getElementById('schedule-datetime').value;
-    const textVal = document.getElementById('schedule-text').value.trim();
-    
-    if (!targetVal || !datetimeVal || !textVal) {
-        return alert("⚠️ Preencha todos os campos para agendar!");
-    }
-    
-    const isGroup = targetVal.startsWith('group_');
-    const targetId = targetVal.replace('group_', '').replace('user_', '');
-    const timeToSent = new Date(datetimeVal).getTime();
-    
-    if (timeToSent <= Date.now()) {
-        return alert("⚠️ A data e hora devem ser no futuro!");
-    }
-    
-    try {
-        const res = await fetch('/schedule-message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                senderId: myId,
-                targetId: targetId,
-                isGroup: isGroup,
-                content: textVal,
-                time: timeToSent
-            })
-        });
-
-        if (res.ok) {
-            alert("✅ Mensagem agendada no Servidor!\n\nEla será enviada mesmo que você feche o aplicativo ou fique sem internet.");
-            hideElement('schedule-modal');
-        } else {
-            alert("❌ Erro ao processar o agendamento.");
-        }
-    } catch (e) {
-        alert("❌ Erro de conexão com a nuvem.");
-    }
-}
-
-// ==============================================================
-// LÓGICA DO MENU LATERAL (DRAWER) E FAB EXPANSÍVEL - CHATPTT
-// ==============================================================
-
 function toggleDrawer() {
     const drawer = document.getElementById('side-drawer');
     const overlay = document.getElementById('drawer-overlay');
     
-    // Atualiza info se estiver abrindo
     if (!drawer.classList.contains('active')) {
         document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
         document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
         const av = document.getElementById('drawer-avatar');
         av.src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        document.getElementById('drawer-xp').innerText = cachedMe.xp || 0;
+        document.getElementById('drawer-level').innerText = cachedMe.level || 1;
     }
 
     drawer.classList.toggle('active');
@@ -1238,62 +1103,14 @@ function toggleDrawer() {
 function toggleFab() {
     const wrapper = document.querySelector('.fab-wrapper');
     const options = document.getElementById('fab-options');
-    
-    wrapper.classList.toggle('active');
-    options.classList.toggle('active');
-}
-
-// Fecha o FAB se clicar fora dele
-document.addEventListener('click', (e) => {
-    const wrapper = document.querySelector('.fab-wrapper');
-    if (wrapper && wrapper.classList.contains('active') && !e.target.closest('.fab-wrapper')) {
-        toggleFab();
-    }
-});
-
-// ==============================================================
-// LÓGICA DO MENU LATERAL E FAB - CHATPTT
-// ==============================================================
-
-function toggleDrawer() {
-    const drawer = document.getElementById('side-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    
-    if (!drawer.classList.contains('active')) {
-        document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário';
-        document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...';
-        const av = document.getElementById('drawer-avatar');
-        av.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    }
-
-    drawer.classList.toggle('active');
-    overlay.classList.toggle('active');
-}
-
-function toggleFab() {
-    const wrapper = document.querySelector('.fab-wrapper');
-    const options = document.getElementById('fab-options');
-    
     if(wrapper) wrapper.classList.toggle('active');
     if(options) options.classList.toggle('active');
 }
 
-document.addEventListener('click', (e) => {
-    const wrapper = document.querySelector('.fab-wrapper');
-    if (wrapper && wrapper.classList.contains('active') && !e.target.closest('.fab-wrapper')) {
-        toggleFab();
-    }
-});
-
 function openSurprise() {
-    alert("🎁 Bônus Diário!\n\nVocê acaba de ganhar 50 XP por explorar a comunidade ChatPTT. Volte amanhã para mais novidades orquestradas pelo Node.js!");
+    gainXP(50, true); 
 }
 
-// ==============================================================
-// SISTEMA DE GAMIFICAÇÃO (XP E LEVEL)
-// ==============================================================
-
-// Função central para ganhar XP
 async function gainXP(amount, isSurprise = false) {
     if (!myId) return;
     try {
@@ -1302,24 +1119,17 @@ async function gainXP(amount, isSurprise = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: myId, xpAmount: amount, isSurprise: isSurprise })
         });
-        
         const data = await res.json();
-        
         if (!res.ok) {
-            if (isSurprise) alert(data.error); // Avisa se já abriu a caixa hoje
+            if (isSurprise) alert(data.error); 
             return;
         }
-
-        // Atualiza a Interface com o novo XP e Nível
         document.getElementById('drawer-xp').innerText = data.xp;
         document.getElementById('drawer-level').innerText = data.level;
-        
-        // Salva localmente para carregar rápido da próxima vez
         cachedMe.xp = data.xp;
         cachedMe.level = data.level;
         localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
 
-        // Animação de Level Up
         if (data.levelUp) {
             alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`);
             playNotificationSound('pop');
@@ -1333,33 +1143,10 @@ async function gainXP(amount, isSurprise = false) {
     }
 }
 
-// Substitui o botão da Caixa Surpresa (aba explorar) para o código real:
-window.openSurprise = function() {
-    gainXP(50, true); // Tenta ganhar 50 XP (Bloqueado por 24h no backend se já pegou)
-}
-
-// Modifica a captura do Drawer para exibir os dados salvos quando abrir
-const originalToggleDrawer = window.toggleDrawer;
-window.toggleDrawer = function() {
-    const drawer = document.getElementById('side-drawer');
-    if (!drawer.classList.contains('active')) {
-        document.getElementById('drawer-xp').innerText = cachedMe.xp || 0;
-        document.getElementById('drawer-level').innerText = cachedMe.level || 1;
-    }
-    originalToggleDrawer();
-}
-
-// Adiciona um gatilho para ganhar 2 XP sempre que enviar uma mensagem (Limitado silenciosamente pela função)
 document.querySelector('.send-btn').addEventListener('click', () => {
-    // Dá 2 XP sempre que o usuário envia mensagem
     gainXP(2, false);
 });
 
-// ==============================================================
-// MOTOR DE MISSÕES DIÁRIAS (UI e Sockets)
-// ==============================================================
-
-// Função para desenhar a barra de progresso
 function renderDailyMission(sent, completed) {
     const countSpan = document.getElementById('mission-count');
     const progressFill = document.getElementById('mission-progress-fill');
@@ -1368,12 +1155,12 @@ function renderDailyMission(sent, completed) {
     const iconBg = document.getElementById('mission-icon-bg');
     const icon = document.getElementById('mission-icon');
 
-    if (!countSpan) return; // Se a tela não carregou, ignora
+    if (!countSpan) return; 
 
     if (completed) {
         countSpan.innerText = "3";
         progressFill.style.width = "100%";
-        progressFill.style.background = "#10B981"; // Verde Sucesso
+        progressFill.style.background = "#10B981"; 
         badge.innerText = "Concluída";
         badge.style.background = "#D1FAE5";
         badge.style.color = "#059669";
@@ -1395,7 +1182,6 @@ function renderDailyMission(sent, completed) {
     }
 }
 
-// Ouve as ordens do Servidor sobre a missão
 socket.on('mission_update', (data) => {
     cachedMe.dailyMessagesSent = data.sent;
     cachedMe.dailyMissionCompleted = data.completed;
@@ -1406,12 +1192,8 @@ socket.on('mission_update', (data) => {
         document.getElementById('drawer-xp').innerText = data.xp;
         document.getElementById('drawer-level').innerText = data.level;
         
-        // Efeito uau!
         setTimeout(() => alert("🎯 MISSÃO DIÁRIA CONCLUÍDA!\nVocê acaba de ganhar +10 XP!"), 500);
-        
-        if (data.levelUp) {
-            setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500);
-        }
+        if (data.levelUp) setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500);
         playNotificationSound('pop');
     }
     
@@ -1419,12 +1201,9 @@ socket.on('mission_update', (data) => {
     renderDailyMission(data.sent, data.completed);
 });
 
-// Interceptador para carregar a missão logo que o app abre
 const originalFetchAndSync = window.fetchAndSyncProfile;
 window.fetchAndSyncProfile = async function() {
     if (originalFetchAndSync) await originalFetchAndSync();
-    
-    // Verifica se virou o dia na interface
     const todayStr = new Date().toISOString().split('T')[0];
     if (cachedMe.lastActiveDate !== todayStr) {
         cachedMe.dailyMessagesSent = 0;
@@ -1433,9 +1212,6 @@ window.fetchAndSyncProfile = async function() {
     renderDailyMission(cachedMe.dailyMessagesSent || 0, cachedMe.dailyMissionCompleted || false);
 };
 
-// ==============================================================
-// FIX DE NAVEGAÇÃO: SINCRONIZAÇÃO DA BARRA INFERIOR
-// ==============================================================
 window.backToMain = function() {
     currentChatId = null;
     hideElement('settings-screen');
@@ -1446,7 +1222,6 @@ window.backToMain = function() {
     hideElement('chat-screen');
     hideElement('add-contact-screen');
     
-    // Força a aba "Conversas" a acender e sincronizar
     const navItems = document.querySelectorAll('.nav-item');
     if (navItems.length > 0) {
         switchTab('conversas', navItems[0]);
@@ -1455,3 +1230,69 @@ window.backToMain = function() {
     }
     updateAppBadge();
 };
+
+// ==============================================================
+// 🍅 MODO FOCO (POMODORO) - LÓGICA DE TEMPO E RECOMPENSA
+// ==============================================================
+let focusInterval = null;
+let focusTimeLeft = 25 * 60; // 25 minutos em segundos
+
+function startFocusMode() {
+    hideElement('focus-card-idle');
+    showElement('focus-card-active');
+    document.getElementById('focus-card-active').classList.add('active-focus');
+    
+    focusTimeLeft = 25 * 60; // Reseta para 25 minutos
+    updateFocusDisplay();
+    
+    if(focusInterval) clearInterval(focusInterval);
+    focusInterval = setInterval(() => {
+        focusTimeLeft--;
+        updateFocusDisplay();
+        
+        if(focusTimeLeft <= 0) {
+            completeFocusMode();
+        }
+    }, 1000);
+
+    // Opcional: Emite um status para o servidor avisar que está ocupado
+    if(socket && myId) {
+        socket.emit('profile_updated', { userId: myId, isFocused: true });
+    }
+}
+
+function updateFocusDisplay() {
+    let m = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
+    let s = (focusTimeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('focus-timer-display').innerText = `${m}:${s}`;
+}
+
+function cancelFocusMode() {
+    if(confirm("🛑 Tem certeza que deseja quebrar o seu foco?\nVocê perderá os 50 XP de recompensa!")) {
+        clearInterval(focusInterval);
+        hideElement('focus-card-active');
+        document.getElementById('focus-card-active').classList.remove('active-focus');
+        showElement('focus-card-idle');
+        
+        if(socket && myId) {
+            socket.emit('profile_updated', { userId: myId, isFocused: false });
+        }
+    }
+}
+
+function completeFocusMode() {
+    clearInterval(focusInterval);
+    hideElement('focus-card-active');
+    document.getElementById('focus-card-active').classList.remove('active-focus');
+    showElement('focus-card-idle');
+    
+    if(socket && myId) {
+        socket.emit('profile_updated', { userId: myId, isFocused: false });
+    }
+    
+    setTimeout(() => {
+        alert("🍅 FOCO CONCLUÍDO COM SUCESSO!\n\nA sua mente agradece. Você foi altamente produtivo por 25 minutos e acaba de ganhar +50 XP!");
+        gainXP(50, false); 
+        playNotificationSound('pop');
+    }, 500);
+}
