@@ -1202,3 +1202,26 @@ window.fetchAndSyncProfile = async function() {
     }
     renderDailyMission(cachedMe.dailyMessagesSent || 0, cachedMe.dailyMissionCompleted || false);
 };
+
+// ==============================================================
+// FIX DE NAVEGAÇÃO: SINCRONIZAÇÃO DA BARRA INFERIOR
+// ==============================================================
+window.backToMain = function() {
+    currentChatId = null;
+    hideElement('settings-screen');
+    hideElement('profile-screen');
+    hideElement('appearance-screen');
+    hideElement('account-screen');
+    hideElement('notifications-screen');
+    hideElement('chat-screen');
+    hideElement('add-contact-screen');
+    
+    // Força a aba "Conversas" a acender e sincronizar
+    const navItems = document.querySelectorAll('.nav-item');
+    if (navItems.length > 0) {
+        switchTab('conversas', navItems[0]);
+    } else {
+        showElement('main-screen');
+    }
+    updateAppBadge();
+};

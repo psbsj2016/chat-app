@@ -100,7 +100,21 @@
         </div>
     </div>
 
-    <div class="explore-section">
+    <div id="screen-explorar" class="app-screen hidden">
+        <div class="explore-header">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+                <h2 style="font-size: 28px; font-weight: 800; color: var(--text-color); letter-spacing: -1px;">Explorar</h2>
+                <img src="favicon.png" style="width:36px; border-radius:12px;" onerror="this.style.display='none'">
+            </div>
+            <div class="search-box" style="box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                <span class="material-icons-round">search</span>
+                <input type="text" placeholder="Buscar pessoas, jogos, grupos...">
+            </div>
+        </div>
+
+        <div class="explore-content">
+            
+            <div class="explore-section">
                 <h3 class="explore-section-title">🎯 Missão Diária <span class="badge-tech">Node Engine</span></h3>
                 <div class="explore-card mission-card" id="daily-mission-card">
                     <div class="mission-icon" id="mission-icon-bg"><span class="material-icons-round" id="mission-icon">chat</span></div>
@@ -112,8 +126,6 @@
                 </div>
             </div>
 
-        <div class="explore-content">
-            
             <div class="explore-section">
                 <h3 class="explore-section-title">⭐ Para você <span class="badge-tech">Python AI</span></h3>
                 <div class="explore-card para-voce-card">
@@ -146,7 +158,7 @@
 
             <div class="explore-section">
                 <h3 class="explore-section-title">🤖 Cérebro Artificial <span class="badge-tech">Python Engine</span></h3>
-                <div class="explore-card ai-card" onclick="openBotChat(); switchTab('conversas', document.querySelectorAll('.nav-item')[0]);">
+                <div class="explore-card ai-card" onclick="openBotChat()">
                     <div style="flex:1;">
                         <h4 style="font-size:18px; margin-bottom:4px; font-weight:700; color:white;">Assistente ChatPTT</h4>
                         <p style="font-size:13.5px; color:rgba(255,255,255,0.8); margin-bottom:10px; line-height:1.4;">Crie ideias, resuma textos ou pergunte qualquer coisa.</p>
@@ -165,7 +177,7 @@
                     <span style="font-size:12px; color:var(--brand-primary); font-weight:700; cursor:pointer;" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3])">Ver todos</span>
                 </div>
                 <div style="margin-top:10px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="explore-card action-card" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3]); startSnakeGame()">
+                    <div class="explore-card action-card" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3]); setTimeout(startSnakeGame, 100);">
                         <span class="material-icons-round" style="color:#22C55E;">sports_esports</span>
                         <h4>Jogar Snake</h4>
                         <p>Solo Game</p>
@@ -194,18 +206,6 @@
                 </div>
             </div>
 
-            <div class="explore-section">
-                <h3 class="explore-section-title">🎯 Missões Diárias</h3>
-                <div class="explore-card mission-card">
-                    <div class="mission-icon"><span class="material-icons-round">chat</span></div>
-                    <div style="flex:1;">
-                        <h4 style="font-size:14.5px;">Enviar 3 Mensagens</h4>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 33%;"></div></div>
-                    </div>
-                    <div class="reward-badge">+10 XP</div>
-                </div>
-            </div>
-
             <div style="padding: 20px 0 40px 0; text-align:center;">
                 <button class="surprise-btn" onclick="openSurprise()">
                     <span class="material-icons-round">redeem</span> 
@@ -215,8 +215,6 @@
 
         </div>
     </div>
-
-
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer">
         <div class="drawer-header">
@@ -438,33 +436,33 @@
     
     <div id="change-password-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px;">Alterar Senha</h3><input type="password" id="cp-current" placeholder="Senha Atual" class="chic-input"><input type="password" id="cp-new" placeholder="Nova Senha" class="chic-input"><input type="password" id="cp-confirm" placeholder="Confirmar Nova Senha" class="chic-input"><div style="display:flex; gap:10px; width:100%;"><button onclick="closeChangePasswordModal()" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button><button onclick="submitChangePassword()" class="chic-btn">Salvar</button></div></div></div>
 
-   <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
-    <div class="modal-content profile-view-card">
-        <div style="width: 100%; display: flex; justify-content: flex-end;">
-            <button class="icon-btn" onclick="closeContactProfile()" style="padding: 0;">
-                <span class="material-icons-round" style="font-size: 20px;">close</span>
-            </button>
-        </div>
-        <img id="view-contact-avatar" src="">
-        <h3 id="view-contact-name">Nome</h3>
-        
-        <div id="view-user-details" style="width: 100%;">
-            <div class="profile-detail-item">
-                <span class="material-icons-round">info</span>
-                <span id="view-contact-bio" style="font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</span>
-            </div>
-            <div class="profile-detail-item">
-                <span class="material-icons-round">phone</span>
-                <b id="view-contact-phone">...</b>
-            </div>
-        </div>
+    <div id="contact-profile-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeContactProfile()">
+     <div class="modal-content profile-view-card">
+         <div style="width: 100%; display: flex; justify-content: flex-end;">
+             <button class="icon-btn" onclick="closeContactProfile()" style="padding: 0;">
+                 <span class="material-icons-round" style="font-size: 20px;">close</span>
+             </button>
+         </div>
+         <img id="view-contact-avatar" src="">
+         <h3 id="view-contact-name">Nome</h3>
+         
+         <div id="view-user-details" style="width: 100%;">
+             <div class="profile-detail-item">
+                 <span class="material-icons-round">info</span>
+                 <span id="view-contact-bio" style="font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</span>
+             </div>
+             <div class="profile-detail-item">
+                 <span class="material-icons-round">phone</span>
+                 <b id="view-contact-phone">...</b>
+             </div>
+         </div>
 
-        <div id="view-group-details" class="hidden" style="width: 100%; max-height: 150px; overflow-y: auto;">
-            <p style="font-size: 11px; font-weight: 800; color: var(--secondary-text); text-transform: uppercase; margin-bottom: 5px;">Membros</p>
-            <div id="view-group-members"></div>
-        </div>
+         <div id="view-group-details" class="hidden" style="width: 100%; max-height: 150px; overflow-y: auto;">
+             <p style="font-size: 11px; font-weight: 800; color: var(--secondary-text); text-transform: uppercase; margin-bottom: 5px;">Membros</p>
+             <div id="view-group-members"></div>
+         </div>
+     </div>
     </div>
-</div>
 
     <div id="sector-modal" class="modal-overlay hidden"><div class="modal-content"><h3 id="sector-modal-title" style="color:var(--brand-primary); margin-bottom:5px;">Setor</h3><p id="sector-target-name" style="font-size:14px; color:var(--secondary-text); margin-bottom:15px;"></p><div id="sector-checkbox-list" class="checkbox-list" style="margin-bottom: 15px; width: 100%;"></div><div style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('sector-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button><button onclick="submitSector()" class="chic-btn">Salvar</button></div></div></div>
     
