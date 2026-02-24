@@ -931,3 +931,29 @@ function openNoteModal() { editingNoteId = null; document.getElementById('note-t
 function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').value = note.content || ''; showElement('note-modal'); }
 async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
+
+// ==============================================================
+// 🔄 FIX: NAVEGAÇÃO GLOBAL (BOTÃO VOLTAR)
+// ==============================================================
+window.backToMain = function() {
+    currentChatId = null;
+    
+    // Esconde todas as telas secundárias
+    hideElement('settings-screen');
+    hideElement('profile-screen');
+    hideElement('appearance-screen');
+    hideElement('account-screen');
+    hideElement('notifications-screen');
+    hideElement('chat-screen');
+    hideElement('add-contact-screen');
+    
+    // Força a aba "Conversas" a acender e sincronizar
+    const navItems = document.querySelectorAll('.nav-item');
+    if (navItems.length > 0) {
+        switchTab('conversas', navItems[0]);
+    } else {
+        showElement('main-screen');
+    }
+    
+    updateAppBadge();
+};
