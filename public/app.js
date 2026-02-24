@@ -1,5 +1,5 @@
 const socket = io();
-let myId = localStorage.getItem('myId');
+window.myId = localStorage.getItem('myId'); let myId = window.myId;
 let token = localStorage.getItem('token');
 let currentChatId = null;
 let currentChatEmail = ''; 
@@ -19,7 +19,7 @@ let recordingTimeout = null;
 let recordingInterval = null; 
 let recordingSeconds = 0;      
 let pendingAudioFile = null;  
-
+let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; // Controla os chats apagados da tela inicial
 let messageToReply = null; 
 let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 
@@ -135,12 +135,33 @@ document.addEventListener('visibilitychange', () => {
 });
 
 socket.on('receive_message', (msg) => { 
-    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const groupIdStr = msg.groupId ? ((typeof msg.groupId === 'object') ? msg.groupId._id : msg.groupId) : null; const targetId = groupIdStr ? groupIdStr : senderIdStr;
+    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
+    const groupIdStr = msg.groupId ? ((typeof msg.groupId === 'object') ? msg.groupId._id : msg.groupId) : null; 
+    const targetId = groupIdStr ? groupIdStr : senderIdStr;
+    
+    // Desoculta automaticamente se receber nova mensagem
+    const chatPartner = senderIdStr === myId ? msg.receiver : senderIdStr;
+    if (!groupIdStr && hiddenChats.includes(chatPartner)) {
+        hiddenChats = hiddenChats.filter(id => id !== chatPartner);
+        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+        loadContacts(); 
+    }
+
     if (senderIdStr !== myId) { const soundPref = localStorage.getItem('notificationSound') || 'modern'; playNotificationSound(soundPref); }
-    let cacheTargetId = groupIdStr ? groupIdStr : (senderIdStr === myId ? msg.receiver : senderIdStr); 
+    let cacheTargetId = groupIdStr ? groupIdStr : chatPartner; 
     if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; 
     if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
-    if (isGroupChat && groupIdStr === currentChatId && !document.hidden) { displayMessage(msg); } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId)) && !document.hidden) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); renderContactsList(JSON.parse(localStorage.getItem('cacheGroups')) || [], JSON.parse(localStorage.getItem('cacheUsers')) || []); updateAppBadge(); } 
+    
+    if (isGroupChat && groupIdStr === currentChatId && !document.hidden) { displayMessage(msg); } 
+    else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId)) && !document.hidden) { 
+        displayMessage(msg); 
+        if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); 
+    } else { 
+        unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; 
+        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+        renderContactsList(JSON.parse(localStorage.getItem('cacheGroups')) || [], JSON.parse(localStorage.getItem('cacheUsers')) || []); 
+        updateAppBadge(); 
+    } 
 });
 
 const msgInput = document.getElementById('message-input'); 
@@ -171,9 +192,21 @@ async function loadContacts() {
     } catch(e) {} 
 }
 
+// ==============================================================
+// 👥 RENDERIZAÇÃO DA LISTA DE CONTATOS E GRUPOS
+// ==============================================================
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; 
-    if (groups.length === 0 && users.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Para começar, envie uma<br>mensagem para alguém.</h3></div>`; return; }
+    
+    // Filtra os usuários que tiveram o chat apagado para não os mostrar
+    const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
+
+    if (groups.length === 0 && visibleUsers.length === 0) { 
+        list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar e<br>iniciar uma conversa.</h3></div>`; 
+        return; 
+    }
+
+    // 1. Renderiza os Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -184,6 +217,53 @@ function renderContactsList(groups, users) {
         menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="group-menu-${group._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:210px;"><div class="menu-item" onclick="event.stopPropagation(); openEditGroupModal('${group._id}', '${group.name}', '${photo}')"><span class="material-icons">edit</span> Perfil do Grupo</div><div class="menu-item" onclick="event.stopPropagation(); openSpecificAddMember('${group._id}', '${memberStr}')"><span class="material-icons">person_add</span> Adicionar Alguém</div><div class="menu-item" onclick="event.stopPropagation(); openRemoveMemberModal('${group._id}', '${memberStr}')"><span class="material-icons" style="color:#d32f2f;">person_remove</span> <span style="color:#d32f2f;">Remover Membros</span></div><div class="menu-separator"></div><div class="menu-item" style="color: #F59E0B;" onclick="event.stopPropagation(); reportContact('${group._id}')"><span class="material-icons-round">flag</span> Denunciar Grupo</div>${deleteGroupBtn}</div>`; 
         div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
     }); 
+    
+    // 2. Renderiza os Contatos (Usuários Privados)
+    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    visibleUsers.forEach(user => { 
+        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
+        let sectorLabel = ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); 
+        let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="Usuário VIP">workspace_premium</span>' : '';
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); 
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
+        const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; 
+        
+        // ===============================================
+        // AQUI ESTÁ O MENU COM O BOTÃO DE APAGAR CHAT!
+        // ===============================================
+        menuArea.innerHTML = `
+        <span class="material-icons" style="color:#888;">more_vert</span>
+        <div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:200px;">
+            <div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${safeName}', ${isSectored})">${sectorBtnText}</div>
+            <div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${safeName}')">Adicionar ao Grupo</div>
+            <div class="menu-separator"></div>
+            
+            <div class="menu-item" style="color: #EF4444; font-weight: bold;" onclick="event.stopPropagation(); deleteChatFromList('${user._id}', '${safeName}')">
+                <span class="material-icons-round">delete_outline</span> Apagar Chat
+            </div>
+            
+            <div class="menu-separator"></div>
+            <div class="menu-item" style="color: #F59E0B;" onclick="event.stopPropagation(); reportContact('${user._id}')"><span class="material-icons-round">flag</span> Denunciar</div>
+            <div class="menu-item" style="color: #EF4444;" onclick="event.stopPropagation(); blockContact('${user._id}', '${safeName}')"><span class="material-icons-round">block</span> Bloquear</div>
+        </div>`; 
+        
+        div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
+    });
+}
+    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    visibleUsers.forEach(user => { 
+        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
+        let sectorLabel = ''; let isSectored = false; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; isSectored = true; } }); 
+        let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="Usuário VIP">workspace_premium</span>' : '';
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); clickArea.onclick = () => openChat(user._id, name, photo, email, 'user'); 
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
+        const menuArea = document.createElement('div'); menuArea.className = 'contact-actions'; menuArea.onclick = (e) => { e.stopPropagation(); toggleMenu(`contact-menu-${user._id}`); }; const sectorBtnText = isSectored ? 'Remover do Setor' : 'Adicionar ao Setor'; 
+        menuArea.innerHTML = `<span class="material-icons" style="color:#888;">more_vert</span><div id="contact-menu-${user._id}" class="dropdown-menu right-menu hidden" style="top:35px; min-width:190px;"><div class="menu-item" onclick="event.stopPropagation(); openSectorModal('${user._id}', '${safeName}', ${isSectored})">${sectorBtnText}</div><div class="menu-item" onclick="event.stopPropagation(); openAddGroupModal('${user._id}', '${safeName}')">Adicionar ao Grupo</div><div class="menu-separator"></div><div class="menu-item" style="color: #EF4444;" onclick="event.stopPropagation(); deleteChatFromList('${user._id}', '${safeName}')"><span class="material-icons-round">delete_outline</span> Apagar Chat</div><div class="menu-separator"></div><div class="menu-item" style="color: #F59E0B;" onclick="event.stopPropagation(); reportContact('${user._id}')"><span class="material-icons-round">flag</span> Denunciar</div><div class="menu-item" style="color: #EF4444;" onclick="event.stopPropagation(); blockContact('${user._id}', '${safeName}')"><span class="material-icons-round">block</span> Bloquear</div></div>`; 
+        div.appendChild(clickArea); div.appendChild(menuArea); list.appendChild(div); 
+    });
+}
     users.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     users.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -304,7 +384,47 @@ async function openForwardModal() {
 
 async function blockContact(targetId, targetName) { if(!confirm(`🚫 Tem certeza que deseja BLOQUEAR ${targetName}?\nVocê não receberá mais mensagens dessa pessoa.`)) return; try { await fetch('/block-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ myId: myId, targetId: targetId }) }); alert("Usuário bloqueado com sucesso."); backToMain(); loadContacts(); } catch(e) { alert("Erro ao bloquear usuário."); } }
 async function reportContact(targetId, msgId = null) { const reason = prompt("🚨 Qual o motivo da denúncia?\n(Ex: Spam, Ofensa, Tentativa de Golpe)"); if(!reason) return; try { await fetch('/report-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reporterId: myId, reportedId: targetId, messageId: msgId, reason: reason }) }); alert("🛡️ Denúncia enviada para os administradores. Obrigado por manter a comunidade segura!"); } catch(e) { alert("Erro ao enviar denúncia."); } }
-async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
+// ==============================================================
+// 🗑️ MOTOR DE EXCLUSÃO DE CHATS
+// ==============================================================
+async function deleteChatFromList(targetId, targetName) { 
+    hideElement(`contact-menu-${targetId}`);
+    if(!confirm(`⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODA a conversa com ${targetName}?\nA mídia será excluída e o contato sumirá desta lista.`)) return; 
+    
+    try { 
+        // Aciona o Backend para limpar a Base de Dados
+        const res = await fetch(`/messages/${myId}/${targetId}`, { method: 'DELETE' }); 
+        if (res.ok) { 
+            messageCache[targetId] = []; 
+            if(!hiddenChats.includes(targetId)) {
+                hiddenChats.push(targetId);
+                localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+            }
+            alert("Chat apagado com sucesso!"); 
+            loadContacts(); 
+        } 
+    } catch(e) { alert("Erro ao apagar chat."); } 
+}
+
+async function deleteCurrentChat() { 
+    if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); 
+    if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?\nO contato sumirá da sua lista.")) return; 
+    try { 
+        const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); 
+        if (res.ok) { 
+            document.getElementById('chat-box').innerHTML = ''; 
+            messageCache[currentChatId] = []; 
+            toggleMenu('attach-menu'); 
+            if(!hiddenChats.includes(currentChatId)) {
+                hiddenChats.push(currentChatId);
+                localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+            }
+            alert("Conversa apagada com sucesso!"); 
+            backToMain();
+            loadContacts();
+        } 
+    } catch (e) { } 
+}
 
 function viewMyProfilePhoto() { const src = document.getElementById('config-avatar').src; document.getElementById('viewer-photo').src = src; showElement('photo-viewer-modal'); }
 async function uploadProfilePhoto(input) { 
@@ -467,7 +587,12 @@ function showStartChatConfirmation(userJsonStr) {
     document.getElementById('btn-confirm-start-chat').onclick = () => { 
         hideElement('start-chat-modal'); 
         
-        // Cacheia o usuário para ele aparecer na lista imediatamente
+        // Remove do modo "Oculto" ao iniciar nova conversa
+        if (hiddenChats.includes(u._id)) {
+            hiddenChats = hiddenChats.filter(id => id !== u._id);
+            localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+        }
+        
         const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
         if(!cachedUsers.find(cu => cu._id === u._id)) { 
             cachedUsers.push(u); 
@@ -764,13 +889,6 @@ function toggleMainSearch() { const bar = document.getElementById('main-search-b
 function switchTab(tabName, element) { document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active')); if(element) element.classList.add('active'); hideElement('main-screen'); hideElement('screen-anotacoes'); hideElement('screen-jogos'); hideElement('screen-explorar'); hideElement('chat-screen'); hideElement('add-contact-screen'); hideElement('profile-screen'); hideElement('settings-screen'); if (tabName === 'conversas') { showElement('main-screen'); } else if (tabName === 'explorar') { showElement('screen-explorar'); } else if (tabName === 'anotacoes') { showElement('screen-anotacoes'); loadNotes(); } else if (tabName === 'jogos') { showElement('screen-jogos'); } }
 const observerMenu = new MutationObserver(() => { const chat = document.getElementById('chat-screen'); const nav = document.getElementById('bottom-navigation'); const main = document.getElementById('main-screen'); const notes = document.getElementById('screen-anotacoes'); const games = document.getElementById('screen-jogos'); const explorar = document.getElementById('screen-explorar'); if (chat && !chat.classList.contains('hidden')) { if(nav) nav.style.display = 'none'; } else if ((main && !main.classList.contains('hidden')) || (notes && !notes.classList.contains('hidden')) || (games && !games.classList.contains('hidden')) || (explorar && !explorar.classList.contains('hidden'))) { if(nav) nav.style.display = 'flex'; } else { if(nav) nav.style.display = 'none'; } }); document.querySelectorAll('.app-screen').forEach(screen => { if(screen) observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] }); }); const mainScreenEl = document.getElementById('main-screen'); if(mainScreenEl) { observerMenu.observe(mainScreenEl, { attributes: true, attributeFilter: ['class'] }); }
 
-let currentNotes = []; let editingNoteId = null;
-async function loadNotes() { if(!myId) return; const list = document.getElementById('notes-list'); try { const res = await fetch(`/notes/${myId}`); currentNotes = await res.json(); renderNotes(); } catch(e) { list.innerHTML = '<div style="text-align:center; color:#ff5252;">Erro ao carregar anotações.</div>'; } }
-function renderNotes() { const list = document.getElementById('notes-list'); list.innerHTML = ''; if(currentNotes.length === 0) { list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--secondary-text);"><span class="material-icons" style="font-size: 50px; color: #ccc; margin-bottom: 10px;">sticky_note_2</span><br>Nenhuma anotação ainda.<br>Clique no botão <b>+</b> para criar.</div>`; return; } currentNotes.forEach(note => { const div = document.createElement('div'); div.className = 'note-card'; const date = new Date(note.timestamp).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); div.innerHTML = `<div style="flex: 1;" onclick="viewNote('${note._id}')"><div class="note-title">${note.title || 'Sem Título'}</div><div class="note-preview">${note.content}</div><div class="note-date">${date}</div></div><button class="icon-btn" onclick="deleteNote('${note._id}')" style="align-self: flex-start; margin-top: -5px;"><span class="material-icons" style="color: #ff5252; font-size: 22px;">delete</span></button>`; list.appendChild(div); }); }
-function openNoteModal() { editingNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').value = ''; showElement('note-modal'); }
-function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').value = note.content || ''; showElement('note-modal'); }
-async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar na Nuvem'; } }
-async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
 function toggleDrawer() { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer.classList.contains('active')) { document.getElementById('drawer-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Usuário'; document.getElementById('drawer-email').innerText = cachedMe.email || localStorage.getItem('email') || '...'; const av = document.getElementById('drawer-avatar'); av.src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('drawer-xp').innerText = cachedMe.xp || 0; document.getElementById('drawer-level').innerText = cachedMe.level || 1; } drawer.classList.toggle('active'); overlay.classList.toggle('active'); }
 function toggleFab() { const wrapper = document.querySelector('.fab-wrapper'); const options = document.getElementById('fab-options'); if(wrapper) wrapper.classList.toggle('active'); if(options) options.classList.toggle('active'); }
