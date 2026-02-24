@@ -12,6 +12,11 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 const webpush = require('web-push');
 
+// === 🛡️ PROTOCOLO AEGIS: PACOTES DE SEGURANÇA ===
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+
 webpush.setVapidDetails(
   'mailto:psbsj.2020@outlook.com',
   'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY',
@@ -22,19 +27,30 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// === 🛡️ PROTOCOLO AEGIS: MIDDLEWARES ATIVADOS ===
+app.use(helmet()); // Protege headers HTTP contra ataques comuns (XSS, Clickjacking)
+app.use(mongoSanitize()); // Impede injeção de NoSQL e queries maliciosas
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public', { etag: false, setHeaders: (res, path) => { res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate'); res.setHeader('Pragma', 'no-cache'); res.setHeader('Expires', '0'); } }));
+
+// Limitador de requisições: previne ataques DDoS e Brute Force (Força Bruta)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 10, // Max 10 tentativas por IP
+    message: { error: 'Muitas tentativas de login. O sistema de segurança bloqueou o acesso temporariamente. Tente novamente em 15 minutos.' }
+});
 
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
 const storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chat-app-uploads', resource_type: 'auto', transformation: [{ width: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" }] }, });
 const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.MONGO_URI).then(() => {
-    console.log("✅ MongoDB Conectado!");
+    console.log("✅ MongoDB Conectado e Aegis Ativado!");
     initializeAIBot(); 
 }).catch(err => console.error("Erro MongoDB:", err));
 
+// === 🛡️ SCHEMA ATUALIZADO COM PRIVACIDADE E SEGURANÇA ===
 const UserSchema = new mongoose.Schema({ 
     email: { type: String, unique: true, required: true }, 
     password: { type: String, required: true }, 
@@ -55,14 +71,30 @@ const UserSchema = new mongoose.Schema({
     lastSurprise: { type: Date, default: null },
     dailyMessagesSent: { type: Number, default: 0 },
     dailyMissionCompleted: { type: Boolean, default: false },
-    lastActiveDate: { type: String, default: '' }
+    lastActiveDate: { type: String, default: '' },
+    // Novas features de privacidade
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    trustScore: { type: Number, default: 100 },
+    privacyVisibility: { type: String, default: 'public' }
 });
 const User = mongoose.model('User', UserSchema);
 
 const GroupSchema = new mongoose.Schema({ name: { type: String, required: true }, admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } });
 const Group = mongoose.model('Group', GroupSchema);
 
-const MessageSchema = new mongoose.Schema({ sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, content: String, fileUrl: String, fileType: { type: String, default: 'text' }, status: { type: String, default: 'sent' }, reaction: { type: String, default: null }, timestamp: { type: Date, default: Date.now } });
+// === 🛡️ SCHEMA DE MENSAGEM COM FLAGS DE SEGURANÇA ===
+const MessageSchema = new mongoose.Schema({ 
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
+    groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, 
+    content: String, 
+    fileUrl: String, 
+    fileType: { type: String, default: 'text' }, 
+    status: { type: String, default: 'sent' }, 
+    reaction: { type: String, default: null }, 
+    timestamp: { type: Date, default: Date.now },
+    securityFlags: { type: Object, default: null } // Onde o bot Python salva a análise de toxicidade
+});
 const Message = mongoose.model('Message', MessageSchema);
 
 const NoteSchema = new mongoose.Schema({ userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, title: String, content: String, timestamp: { type: Date, default: Date.now } });
@@ -70,6 +102,16 @@ const Note = mongoose.model('Note', NoteSchema);
 
 const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
 const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
+
+// === 🛡️ SCHEMA DE DENÚNCIAS (REPORTS) ===
+const ReportSchema = new mongoose.Schema({
+    reporterId: String,
+    reportedId: String,
+    messageId: String,
+    reason: String,
+    timestamp: { type: Date, default: Date.now }
+});
+const Report = mongoose.model('Report', ReportSchema);
 
 let botUserId = null;
 async function initializeAIBot() {
@@ -86,39 +128,32 @@ async function initializeAIBot() {
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
-app.post('/add-xp', async (req, res) => {
+// === ROTAS PROTEGIDAS PELO RATE LIMIT ===
+app.post('/register', loginLimiter, async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/login', loginLimiter, async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+
+// === ROTAS DE SEGURANÇA E PRIVACIDADE ===
+app.post('/block-user', async (req, res) => {
     try {
-        const { userId, xpAmount, isSurprise } = req.body;
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({error: 'Usuário não encontrado'});
-
-        if (isSurprise) {
-            const now = new Date();
-            if (user.lastSurprise && (now - user.lastSurprise) < 24 * 60 * 60 * 1000) {
-                return res.status(400).json({ error: 'Você já abriu a Caixa Surpresa hoje. Volte amanhã!' });
-            }
-            user.lastSurprise = now;
+        const user = await User.findById(req.body.myId);
+        if (!user.blockedUsers.includes(req.body.targetId)) {
+            user.blockedUsers.push(req.body.targetId);
+            await user.save();
         }
-
-        user.xp += xpAmount;
-        const newLevel = Math.floor(user.xp / 100) + 1;
-        let levelUp = false;
-        
-        if (newLevel > user.level) {
-            user.level = newLevel;
-            levelUp = true;
-        }
-        
-        await user.save();
-        res.json({ xp: user.xp, level: user.level, levelUp: levelUp });
-    } catch (e) {
-        res.status(500).json({error: 'Erro interno'});
-    }
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({error: 'Erro ao bloquear'}); }
 });
 
+app.post('/report-user', async (req, res) => {
+    try {
+        const report = new Report(req.body);
+        await report.save();
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({error: 'Erro ao denunciar'}); }
+});
+
+app.post('/add-xp', async (req, res) => { try { const { userId, xpAmount, isSurprise } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({error: 'Usuário não encontrado'}); if (isSurprise) { const now = new Date(); if (user.lastSurprise && (now - user.lastSurprise) < 24 * 60 * 60 * 1000) { return res.status(400).json({ error: 'Você já abriu a Caixa Surpresa hoje. Volte amanhã!' }); } user.lastSurprise = now; } user.xp += xpAmount; const newLevel = Math.floor(user.xp / 100) + 1; let levelUp = false; if (newLevel > user.level) { user.level = newLevel; levelUp = true; } await user.save(); res.json({ xp: user.xp, level: user.level, levelUp: levelUp }); } catch (e) { res.status(500).json({error: 'Erro interno'}); } });
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
-app.post('/register', async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }, (err) => { if(err) return res.status(500).json({error: 'Erro email'}); res.json({ message: 'Enviado' }); }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/login', async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/verify', async (req, res) => { const { email, code } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido' }); user.isVerified = true; user.code = null; await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) {} });
 app.get('/user/:id', async (req, res) => { try { res.json(await User.findById(req.params.id).select('-password')); } catch (e) {} });
@@ -170,7 +205,6 @@ io.on('connection', (socket) => {
     socket.on('typing', (data) => { if (data.groupId) { socket.to(data.groupId).emit('typing', data); } else { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', data); } });
     socket.on('stop_typing', (data) => { if (data.groupId) { socket.to(data.groupId).emit('stop_typing', data); } else { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', data); } });
 
-    // === MÁGICA: GERADOR DE JOGOS DINÂMICOS PELA IA ===
     socket.on('request_ai_game', async (data) => {
         try {
             const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/criar-jogo', {
@@ -191,55 +225,69 @@ io.on('connection', (socket) => {
     });
 
     socket.on('private_message', async (data) => {
-        const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 
+        
+        // === 🛡️ PROTOCOLO AEGIS: SHADOWBAN E BLOQUEIOS ===
+        // Verifica se o remetente está na lista negra do destinatário
+        try {
+            if (!data.groupId) { // Ignora bloqueio direto em grupos por enquanto
+                const receiver = await User.findById(data.receiverId);
+                if (receiver && receiver.blockedUsers && receiver.blockedUsers.includes(data.senderId)) {
+                    // O remetente foi bloqueado. Não salva no banco nem entrega.
+                    // Para o remetente, a mensagem parece que foi enviada (evita fúria).
+                    socket.emit('receive_message', { 
+                        sender: data.senderId, receiver: data.receiverId, content: data.content, 
+                        fileType: data.fileType, status: 'sent', _id: new mongoose.Types.ObjectId() 
+                    });
+                    return; // Interrompe o processo aqui
+                }
+            }
+        } catch(e) { console.error("Erro na checagem de bloqueio", e); }
+
+        // === 🛡️ PROTOCOLO AEGIS: ANÁLISE DE TOXICIDADE COM IA ===
+        let securityFlags = null;
+        // Analisa apenas mensagens de texto puras com mais de 5 caracteres
+        if (data.content && data.fileType === 'text' && data.content.length > 5 && String(data.receiverId) !== String(botUserId)) {
+            try {
+                // Chama a API Python silenciosamente (Fire and Forget para não gerar lag)
+                fetch('https://cptt-bot-ia1.onrender.com/analise-seguranca', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: data.content, sender_id: data.senderId })
+                }).then(res => res.json()).then(async analysis => {
+                    if (analysis && (analysis.risk_level === 'critical' || analysis.risk_level === 'medium')) {
+                        // Se detectou algo perigoso (Phishing ou Toxicidade), atualiza a mensagem no banco a posteriori
+                        await Message.findByIdAndUpdate(msg._id, { securityFlags: analysis });
+                        // Avisa o destinatário do risco (se ele ainda estiver online)
+                        const rSocket = users[data.receiverId]; 
+                        if (rSocket) io.to(rSocket).emit('security_alert_update', { msgId: msg._id, flags: analysis });
+                    }
+                }).catch(()=>{}); // Ignora erros se o Python estiver a dormir
+            } catch (e) {}
+        }
+
+        // Salva a mensagem (As flags vão vazias inicialmente para garantir velocidade máxima no chat)
+        const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', securityFlags: null, _id: new mongoose.Types.ObjectId() }); 
         await msg.save(); 
 
+        // === MISSÃO DIÁRIA ===
         try {
             const senderUser = await User.findById(data.senderId);
             if (senderUser) {
                 const todayStr = new Date().toISOString().split('T')[0];
-                
-                if (senderUser.lastActiveDate !== todayStr) {
-                    senderUser.dailyMessagesSent = 0;
-                    senderUser.dailyMissionCompleted = false;
-                    senderUser.lastActiveDate = todayStr;
-                }
-                
+                if (senderUser.lastActiveDate !== todayStr) { senderUser.dailyMessagesSent = 0; senderUser.dailyMissionCompleted = false; senderUser.lastActiveDate = todayStr; }
                 if (!senderUser.dailyMissionCompleted) {
                     senderUser.dailyMessagesSent += 1;
-                    
                     if (senderUser.dailyMessagesSent >= 3) {
-                        senderUser.dailyMissionCompleted = true;
-                        senderUser.xp += 10; 
-                        
-                        const newLevel = Math.floor(senderUser.xp / 100) + 1;
-                        let levelUp = false;
-                        if (newLevel > senderUser.level) {
-                            senderUser.level = newLevel;
-                            levelUp = true;
-                        }
+                        senderUser.dailyMissionCompleted = true; senderUser.xp += 10; 
+                        const newLevel = Math.floor(senderUser.xp / 100) + 1; let levelUp = false;
+                        if (newLevel > senderUser.level) { senderUser.level = newLevel; levelUp = true; }
                         await senderUser.save();
-                        
-                        socket.emit('mission_update', {
-                            sent: senderUser.dailyMessagesSent,
-                            completed: true,
-                            xp: senderUser.xp,
-                            level: senderUser.level,
-                            levelUp: levelUp
-                        });
+                        socket.emit('mission_update', { sent: senderUser.dailyMessagesSent, completed: true, xp: senderUser.xp, level: senderUser.level, levelUp: levelUp });
                     } else {
-                        await senderUser.save();
-                        socket.emit('mission_update', {
-                            sent: senderUser.dailyMessagesSent,
-                            completed: false
-                        });
+                        await senderUser.save(); socket.emit('mission_update', { sent: senderUser.dailyMessagesSent, completed: false });
                     }
-                } else if (senderUser.lastActiveDate !== todayStr) {
-                     senderUser.lastActiveDate = todayStr;
-                     await senderUser.save();
-                }
+                } else if (senderUser.lastActiveDate !== todayStr) { senderUser.lastActiveDate = todayStr; await senderUser.save(); }
             }
-        } catch(err) { console.error("Erro no processamento da missão", err); }
+        } catch(err) {}
 
         if (data.groupId) { 
             io.to(data.groupId).emit('receive_message', msg);
@@ -262,9 +310,6 @@ io.on('connection', (socket) => {
             if (rSocket) io.to(rSocket).emit('receive_message', msg); 
             socket.emit('receive_message', msg); 
 
-            // ==========================================
-            // NOVA ARQUITETURA DE IA (Comunicação com Python)
-            // ==========================================
             if (String(data.receiverId) === String(botUserId) && data.content) {
                 socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
 
@@ -299,7 +344,7 @@ io.on('connection', (socket) => {
                 }
             }
         }
-    }); // <-- ESTA ERA A CHAVE QUE FALTAVA (FECHAR O SOCKET.ON('PRIVATE_MESSAGE'))
+    });
 
     socket.on('mark_as_read', async (data) => { await Message.updateMany({ sender: data.senderId, receiver: data.receiverId, status: 'sent' }, { $set: { status: 'read' } }); const senderSocket = users[data.senderId]; if (senderSocket) io.to(senderSocket).emit('messages_read', { receiverId: data.receiverId }); });
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });

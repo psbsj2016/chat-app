@@ -493,6 +493,35 @@ function displayMessage(msg) {
     div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
     div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
     div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
+    
+    let securityWarningHtml = '';
+let displayContent = msg.content;
+
+// Se a IA do Python marcou como perigosa
+if (msg.securityFlags && msg.securityFlags.risk_level) {
+    let warningText = "Mensagem suspeita detectada.";
+    let icon = "warning";
+    
+    if (msg.securityFlags.phishing) {
+        warningText = "⚠️ ATENÇÃO: Possível tentativa de golpe ou link malicioso.";
+        displayContent = `<span class="blocked-msg">Conteúdo ocultado por segurança.</span>`; // Oculta o link de golpe
+        icon = "gpp_bad";
+    } else if (msg.securityFlags.toxic) {
+        warningText = "Conteúdo potencialmente ofensivo.";
+        icon = "policy";
+    }
+
+    securityWarningHtml = `
+        <div class="security-alert">
+            <span class="material-icons-round">${icon}</span>
+            <span>${warningText}</span>
+        </div>
+    `;
+}
+
+// Quando for montar o contentHtml, adicione o alerta antes do texto:
+// Exemplo:
+// else contentHtml += securityWarningHtml + displayContent;     
 
     let contentHtml = ''; 
     if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px;">${msg.sender.displayName || 'Membro'}</div>`; 
@@ -615,6 +644,33 @@ async function openForwardModal() {
     }); 
 }
 
+// Adicione junto aos outros menus (context menu de contato)
+async function blockContact(targetId, targetName) {
+    if(!confirm(`🚫 Tem certeza que deseja BLOQUEAR ${targetName}?\nVocê não receberá mais mensagens dessa pessoa.`)) return;
+    
+    try {
+        await fetch('/block-user', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ myId: myId, targetId: targetId })
+        });
+        alert("Usuário bloqueado com sucesso.");
+        backToMain();
+        loadContacts(); // Recarrega a lista
+    } catch(e) { alert("Erro ao bloquear usuário."); }
+}
+
+async function reportContact(targetId, msgId = null) {
+    const reason = prompt("🚨 Qual o motivo da denúncia?\n(Ex: Spam, Ofensa, Tentativa de Golpe)");
+    if(!reason) return;
+
+    try {
+        await fetch('/report-user', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reporterId: myId, reportedId: targetId, messageId: msgId, reason: reason })
+        });
+        alert("🛡️ Denúncia enviada para os administradores. Obrigado por manter a comunidade segura!");
+    } catch(e) { alert("Erro ao enviar denúncia."); }
+}
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); alert("Apagada!"); } } catch (e) { } }
 const emojiPicker = document.querySelector('emoji-picker'); if(emojiPicker) emojiPicker.addEventListener('emoji-click', event => document.execCommand('insertText', false, event.detail.unicode));
 function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
@@ -1364,4 +1420,10 @@ socket.on('ai_game_error', (data) => {
 function closeAIGame() {
     hideElement('ai-game-modal');
     document.getElementById('ai-game-frame').srcdoc = ''; // Limpa a memória
+}
+
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag]));
 }

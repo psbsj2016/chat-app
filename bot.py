@@ -64,3 +64,44 @@ Retorne APENAS o código HTML. Não escreva nenhuma explicação antes ou depois
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     uvicorn.run(app, host='0.0.0.0', port=port)
+
+# Adicione estas importações no topo do seu main.py
+import json
+
+class SecurityRequest(BaseModel):
+    text: str
+    sender_id: str
+
+@app.post("/analise-seguranca")
+async def security_analysis(req: SecurityRequest):
+    try:
+        # Prompt focado em análise rápida de ameaças
+        prompt = f"""<s>[INST] Analise a mensagem abaixo e responda APENAS com um JSON válido.
+Verifique se contém:
+1. 'toxic' (ofensas, ódio)
+2. 'phishing' (links falsos, pedido de dinheiro/PIX/senhas, golpes)
+3. 'spam' (propagandas repetitivas)
+Mensagem: "{req.text}"
+Formato esperado: {{"toxic": bool, "phishing": bool, "spam": bool, "reason": "breve motivo ou null"}} [/INST]"""
+        
+        raw_response = query_huggingface(prompt)
+        
+        # Extrair apenas o JSON da resposta da IA
+        json_match = re.search(r'\{.*\}', raw_response.replace('\n', ''))
+        if json_match:
+            analysis = json.loads(json_match.group(0))
+        else:
+            # Fallback seguro
+            analysis = {"toxic": False, "phishing": False, "spam": False, "reason": None}
+            
+        # Sistema de Trust Score Local (Pode pontuar negativamente)
+        risk_level = "low"
+        if analysis.get('phishing'): risk_level = "critical"
+        elif analysis.get('toxic') or analysis.get('spam'): risk_level = "medium"
+
+        analysis['risk_level'] = risk_level
+        return analysis
+        
+    except Exception as e:
+        # Se a IA falhar, o chat não pode parar. Retorna como seguro.
+        return {"toxic": False, "phishing": False, "spam": False, "risk_level": "low", "error": str(e)}
