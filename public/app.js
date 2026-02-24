@@ -1296,3 +1296,42 @@ function completeFocusMode() {
         playNotificationSound('pop');
     }, 500);
 }
+
+// ==============================================================
+// 🪄 SISTEMA FRONTEND: GERADOR DE JOGOS IA
+// ==============================================================
+function requestAIGame() {
+    const prompt = document.getElementById('ai-game-prompt').value.trim();
+    if (!prompt) return alert("Digite o tipo de jogo que deseja!");
+    
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "🤖 Compilando Código...";
+    btn.disabled = true;
+
+    socket.emit('request_ai_game', { prompt: prompt });
+}
+
+socket.on('ai_game_ready', (data) => {
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "Gerar Jogo";
+    btn.disabled = false;
+    
+    // Injeta o código HTML gerado no iFrame usando srcdoc
+    const iframe = document.getElementById('ai-game-frame');
+    iframe.srcdoc = data.code;
+    
+    showElement('ai-game-modal');
+    gainXP(100, false); // Ganha muito XP por criar um jogo!
+});
+
+socket.on('ai_game_error', (data) => {
+    const btn = document.getElementById('btn-create-game');
+    btn.innerText = "Gerar Jogo";
+    btn.disabled = false;
+    alert("Erro na IA: " + data.error);
+});
+
+function closeAIGame() {
+    hideElement('ai-game-modal');
+    document.getElementById('ai-game-frame').srcdoc = ''; // Limpa a memória
+}

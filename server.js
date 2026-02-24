@@ -35,7 +35,6 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     initializeAIBot(); 
 }).catch(err => console.error("Erro MongoDB:", err));
 
-// === SCHEMA ATUALIZADO COM AS MISSÕES ===
 const UserSchema = new mongoose.Schema({ 
     email: { type: String, unique: true, required: true }, 
     password: { type: String, required: true }, 
@@ -171,17 +170,35 @@ io.on('connection', (socket) => {
     socket.on('typing', (data) => { if (data.groupId) { socket.to(data.groupId).emit('typing', data); } else { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', data); } });
     socket.on('stop_typing', (data) => { if (data.groupId) { socket.to(data.groupId).emit('stop_typing', data); } else { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', data); } });
 
+    // === MÁGICA: GERADOR DE JOGOS DINÂMICOS PELA IA ===
+    socket.on('request_ai_game', async (data) => {
+        try {
+            const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/criar-jogo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: data.prompt })
+            });
+            const pyData = await pyRes.json();
+            
+            if (pyData.code) {
+                socket.emit('ai_game_ready', { code: pyData.code, prompt: data.prompt });
+            } else {
+                socket.emit('ai_game_error', { error: "A IA falhou em compilar o código." });
+            }
+        } catch (e) {
+            socket.emit('ai_game_error', { error: "Motor Python indisponível." });
+        }
+    });
+
     socket.on('private_message', async (data) => {
         const msg = new Message({ sender: data.senderId, receiver: data.receiverId, groupId: data.groupId, content: data.content, fileUrl: data.fileUrl, fileType: data.fileType || 'text', status: 'sent', _id: new mongoose.Types.ObjectId() }); 
         await msg.save(); 
 
-        // === MÁGICA: VERIFICAÇÃO DA MISSÃO DIÁRIA EM TEMPO REAL ===
         try {
             const senderUser = await User.findById(data.senderId);
             if (senderUser) {
                 const todayStr = new Date().toISOString().split('T')[0];
                 
-                // Se for um novo dia, reseta a missão
                 if (senderUser.lastActiveDate !== todayStr) {
                     senderUser.dailyMessagesSent = 0;
                     senderUser.dailyMissionCompleted = false;
@@ -193,9 +210,8 @@ io.on('connection', (socket) => {
                     
                     if (senderUser.dailyMessagesSent >= 3) {
                         senderUser.dailyMissionCompleted = true;
-                        senderUser.xp += 10; // PRÊMIO
+                        senderUser.xp += 10; 
                         
-                        // Verifica Level Up
                         const newLevel = Math.floor(senderUser.xp / 100) + 1;
                         let levelUp = false;
                         if (newLevel > senderUser.level) {
@@ -204,7 +220,6 @@ io.on('connection', (socket) => {
                         }
                         await senderUser.save();
                         
-                        // Emite evento para a tela do usuário brilhar!
                         socket.emit('mission_update', {
                             sent: senderUser.dailyMessagesSent,
                             completed: true,
@@ -226,7 +241,6 @@ io.on('connection', (socket) => {
             }
         } catch(err) { console.error("Erro no processamento da missão", err); }
 
-        // Continua o fluxo normal de envio de mensagens
         if (data.groupId) { 
             io.to(data.groupId).emit('receive_message', msg);
             const group = await Group.findById(data.groupId);
@@ -248,41 +262,29 @@ io.on('connection', (socket) => {
             if (rSocket) io.to(rSocket).emit('receive_message', msg); 
             socket.emit('receive_message', msg); 
 
+            // ==========================================
+            // NOVA ARQUITETURA DE IA (Comunicação com Python)
+            // ==========================================
             if (String(data.receiverId) === String(botUserId) && data.content) {
-                socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT Bot IA', action: 'typing' });
+                socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
 
                 try {
-                    const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/ask', {
+                    const pyRes = await fetch('https://cptt-bot-ia1.onrender.com/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: data.content })
                     });
                     
-                    const responseText = await pyRes.text();
+                    const pyData = await pyRes.json();
                     socket.emit('stop_typing', { senderId: botUserId });
 
-                    if (!pyRes.ok) {
-                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Render recusou a chamada (Erro ${pyRes.status}). Resposta: \n${responseText.substring(0, 200)}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
-                        await errorMsg.save();
-                        socket.emit('receive_message', errorMsg);
-                        return;
-                    }
-
-                    try {
-                        const pyData = JSON.parse(responseText);
-                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
-                        await botMsg.save();
-                        socket.emit('receive_message', botMsg);
-                    } catch (parseError) {
-                        const cleanError = responseText.replace(/</g, "&lt;").substring(0, 250);
-                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 O Python não mandou um JSON! Ele mandou isto:\n\n${cleanError}...`, status: 'sent', _id: new mongoose.Types.ObjectId() });
-                        await errorMsg.save();
-                        socket.emit('receive_message', errorMsg);
-                    }
+                    const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: pyData.reply || pyData.error, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
+                    await botMsg.save();
+                    socket.emit('receive_message', botMsg);
+                    
                 } catch (netError) {
                     socket.emit('stop_typing', { senderId: botUserId });
-                    const alertMsg = `🚨 Falha na rede interna do Node.js: "${netError.message}".`;
-                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: alertMsg, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                    const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Python Offline: "${netError.message}"`, status: 'sent', _id: new mongoose.Types.ObjectId() });
                     await errorMsg.save();
                     socket.emit('receive_message', errorMsg);
                 }
@@ -297,7 +299,7 @@ io.on('connection', (socket) => {
                 }
             }
         }
-    });
+    }); // <-- ESTA ERA A CHAVE QUE FALTAVA (FECHAR O SOCKET.ON('PRIVATE_MESSAGE'))
 
     socket.on('mark_as_read', async (data) => { await Message.updateMany({ sender: data.senderId, receiver: data.receiverId, status: 'sent' }, { $set: { status: 'read' } }); const senderSocket = users[data.senderId]; if (senderSocket) io.to(senderSocket).emit('messages_read', { receiverId: data.receiverId }); });
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });
