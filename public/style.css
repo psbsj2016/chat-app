@@ -600,3 +600,11 @@ body.bubble-cyber {
     margin-left: 4px; 
     filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4));
 }
+
+/* ==========================================
+   ANIMAÇÃO: SPINNER DO PERFIL E MODAL DE FOTO
+   ========================================== */
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
