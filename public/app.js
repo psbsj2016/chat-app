@@ -604,11 +604,130 @@ async function submitChangePassword() { const currentPassword = document.getElem
 function logout() { if (confirm("Tem certeza que deseja sair?")) { localStorage.removeItem('token'); localStorage.removeItem('myId'); localStorage.removeItem('displayName'); localStorage.removeItem('photoUrl'); localStorage.removeItem('permissionsAsked'); window.location.reload(); } }
 async function deleteAccount() { if(confirm("⚠️ ATENÇÃO EXTREMA!\n\nIsso apagará SUA CONTA e removerá você de todos os grupos.\n\nTem certeza absoluta?")) { document.getElementById('auth-btn').innerText = "Excluindo..."; try { const res = await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); if (res.ok) { socket.emit('group_updated'); alert("Sua conta foi excluída. Voltando ao início."); logout(); } } catch (e) {} } }
 
+// ==============================================================
+// 💎 INVENTÁRIO NEON E MOTOR DE VISUAIS
+// ==============================================================
+
+// 1. Aplica apenas os itens que estão EQUIPADOS no localStorage
 function applyUnlockedItems() {
+    // Remove as classes antes de aplicar para evitar conflitos ao trocar
+    document.body.classList.remove('theme-matrix', 'bubble-cyber');
+    
+    const dName = document.getElementById('drawer-name');
+    if (dName) {
+        // Limpa o badge VIP antigo do menu lateral para não acumular
+        dName.innerHTML = dName.innerHTML.replace(/ <span class="material-icons-round vip-badge-icon".*?<\/span>/g, '');
+    }
+
     if (!cachedMe.unlockedItems) return;
-    if (cachedMe.unlockedItems.includes('theme_matrix')) { document.body.classList.add('theme-matrix'); const btn = document.getElementById('btn-theme_matrix'); if(btn) { btn.innerText = 'Equipado'; btn.disabled = true; btn.style.background = 'var(--brand-primary)'; btn.style.color = 'white';} }
-    if (cachedMe.unlockedItems.includes('bubble_cyber')) { document.body.classList.add('bubble-cyber'); const btn = document.getElementById('btn-bubble_cyber'); if(btn) { btn.innerText = 'Equipado'; btn.disabled = true; btn.style.background = 'var(--brand-primary)'; btn.style.color = 'white'; } }
-    if (cachedMe.unlockedItems.includes('badge_vip')) { const btn = document.getElementById('btn-badge_vip'); if(btn) { btn.innerText = 'Equipado'; btn.disabled = true; btn.style.background = 'var(--brand-primary)'; btn.style.color = 'white'; } const dName = document.getElementById('drawer-name'); if (dName && !dName.innerHTML.includes('workspace_premium')) { dName.innerHTML += ' <span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:18px; vertical-align:middle;" title="VIP">workspace_premium</span>'; } }
+
+    // Aplica o Tema Global se estiver equipado
+    const equippedTheme = localStorage.getItem('equipped_theme');
+    if (equippedTheme === 'theme_matrix' && cachedMe.unlockedItems.includes('theme_matrix')) { 
+        document.body.classList.add('theme-matrix'); 
+    }
+
+    // Aplica o Balão Cyber se estiver equipado
+    const equippedBubble = localStorage.getItem('equipped_bubble');
+    if (equippedBubble === 'bubble_cyber' && cachedMe.unlockedItems.includes('bubble_cyber')) { 
+        document.body.classList.add('bubble-cyber'); 
+    }
+
+    // Aplica o Selo VIP se estiver equipado
+    const equippedBadge = localStorage.getItem('equipped_badge');
+    if (equippedBadge === 'badge_vip' && cachedMe.unlockedItems.includes('badge_vip')) { 
+        if (dName && !dName.innerHTML.includes('workspace_premium')) { 
+            dName.innerHTML += ' <span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:18px; vertical-align:middle;" title="VIP">workspace_premium</span>'; 
+        } 
+    }
+
+    // Atualiza os botões da Loja para mostrar que já possui o item
+    ['theme_matrix', 'bubble_cyber', 'badge_vip'].forEach(id => {
+        if (cachedMe.unlockedItems.includes(id)) {
+            const btn = document.getElementById('btn-' + id); 
+            if(btn) { 
+                btn.innerText = 'Adquirido'; 
+                btn.disabled = true; 
+                btn.style.background = 'var(--input-bg)'; 
+                btn.style.color = 'var(--secondary-text)';
+            }
+        }
+    });
+}
+
+// 2. Abre a tela de Aparência e carrega o Inventário
+function openAppearanceSettings() { 
+    hideElement('settings-screen'); 
+    showElement('appearance-screen'); 
+    document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; 
+    document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; 
+    renderInventory(); 
+}
+
+// 3. Renderiza os cartões de itens dentro da Aparência
+function renderInventory() {
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+    
+    const items = [
+        { id: 'theme_matrix', name: 'Tema Matrix', icon: 'terminal', type: 'theme', color: '#10B981' },
+        { id: 'bubble_cyber', name: 'Balão Cyber', icon: 'chat_bubble', type: 'bubble', color: '#06B6D4' },
+        { id: 'badge_vip', name: 'Selo VIP', icon: 'workspace_premium', type: 'badge', color: '#F59E0B' }
+    ];
+
+    const unlocked = cachedMe.unlockedItems || [];
+    const categories = { 'theme': 'Temas Globais', 'bubble': 'Estilo de Balões', 'badge': 'Emblemas de Perfil' };
+
+    for (let type in categories) {
+        let catHtml = `<div style="font-size: 13px; font-weight: 800; color: var(--text-color); margin-bottom: 5px; margin-top: 10px;">${categories[type]}</div>`;
+        catHtml += `<div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">`;
+        
+        // Botão Padrão (Sempre disponível para voltar ao normal)
+        const isDefaultActive = !localStorage.getItem(`equipped_${type}`);
+        catHtml += `
+        <div onclick="equipItem('${type}', null)" style="min-width: 100px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 2px solid ${isDefaultActive ? 'var(--brand-primary)' : 'transparent'}; text-align: center; cursor: pointer; transition: 0.2s;">
+            <span class="material-icons-round" style="font-size: 28px; color: var(--secondary-text);">layers_clear</span>
+            <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: var(--text-color);">Padrão</div>
+            ${isDefaultActive ? '<div style="font-size: 10px; font-weight: 900; background: var(--brand-primary); color: white; border-radius: 10px; margin-top: 5px; padding: 2px;">USANDO</div>' : ''}
+        </div>`;
+
+        // Verifica os itens da Loja para esta categoria
+        items.filter(i => i.type === type).forEach(item => {
+            const hasItem = unlocked.includes(item.id);
+            const isEquipped = localStorage.getItem(`equipped_${type}`) === item.id;
+            
+            if (hasItem) {
+                // Item Desbloqueado (Permite Equipar)
+                catHtml += `
+                <div onclick="equipItem('${type}', '${item.id}')" style="min-width: 100px; padding: 10px; border-radius: 12px; background: ${item.color}15; border: 2px solid ${isEquipped ? item.color : 'transparent'}; text-align: center; cursor: pointer; transition: 0.2s;">
+                    <span class="material-icons-round" style="font-size: 28px; color: ${item.color};">${item.icon}</span>
+                    <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: ${item.color};">${item.name}</div>
+                    ${isEquipped ? '<div style="font-size: 10px; font-weight: 900; background: '+item.color+'; color: white; border-radius: 10px; margin-top: 5px; padding: 2px;">USANDO</div>' : ''}
+                </div>`;
+            } else {
+                // Item Bloqueado (Cadeado)
+                catHtml += `
+                <div style="min-width: 100px; padding: 10px; border-radius: 12px; background: var(--input-bg); border: 2px dashed var(--secondary-text); text-align: center; opacity: 0.5;">
+                    <span class="material-icons-round" style="font-size: 28px; color: var(--secondary-text);">lock</span>
+                    <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: var(--secondary-text);">Bloqueado</div>
+                </div>`;
+            }
+        });
+
+        catHtml += `</div>`;
+        list.innerHTML += catHtml;
+    }
+}
+
+// 4. Executa a troca de visual e salva no aparelho
+function equipItem(type, itemId) {
+    if (itemId) {
+        localStorage.setItem(`equipped_${type}`, itemId);
+    } else {
+        localStorage.removeItem(`equipped_${type}`); // Volta ao Padrão
+    }
+    applyUnlockedItems(); // Injeta o CSS na hora
+    renderInventory();    // Atualiza a borda dos botões na tela
 }
 
 async function initApp() { 
@@ -783,12 +902,6 @@ window.switchTab = function(tabName, element) {
 // ==============================================================
 // ⚙️ NAVEGAÇÃO DOS SUBMENUS DE CONFIGURAÇÕES
 // ==============================================================
-function openAppearanceSettings() { 
-    hideElement('settings-screen'); 
-    showElement('appearance-screen'); 
-    document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; 
-    document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; 
-}
 
 function openNotificationsSettings() { 
     hideElement('settings-screen'); 

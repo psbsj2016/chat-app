@@ -480,12 +480,35 @@
     </div>
 
     <div id="appearance-screen" class="app-screen hidden">
-        <div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px;">Aparência</span><div style="width: 40px;"></div></div>
-        <div class="settings-content">
+        <div class="main-header">
+            <button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button>
+            <span class="header-title" style="font-size:20px; font-weight:800;">Aparência</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="settings-content" style="padding: 15px;">
             <div class="settings-group">
-                <div class="setting-item"><span>Modo Escuro</span><label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label></div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13.5px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Tamanho da Fonte</span><select id="font-size-select" onchange="changeFontSize(this.value)" class="chic-input" style="margin:0; padding:10px;"><option value="small">Pequeno</option><option value="medium">Médio (Ideal)</option><option value="large">Grande</option></select></div>
+                <div class="setting-item">
+                    <span style="font-weight:600;">Modo Escuro</span>
+                    <label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label>
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 13.5px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Tamanho da Fonte</span>
+                    <select id="font-size-select" onchange="changeFontSize(this.value)" class="chic-input" style="margin:0; padding:10px; font-weight:600;">
+                        <option value="small">Pequeno</option>
+                        <option value="medium">Médio (Ideal)</option>
+                        <option value="large">Grande</option>
+                    </select>
+                </div>
             </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin: 25px 0 10px 5px;">
+                <span class="material-icons-round" style="color: var(--brand-primary);">checkroom</span>
+                <h3 style="font-size: 14px; color: var(--secondary-text); text-transform: uppercase; margin: 0; font-weight: 800;">Meu Inventário Neon</h3>
+            </div>
+            
+            <div class="settings-group" id="inventory-list" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);">
+                </div>
         </div>
     </div>
     
