@@ -1,11 +1,12 @@
 {
-  "name": "Chat CPTT",
-  "short_name": "CPTT",
-  "description": "Aplicativo de Comunicação Premium",
-  "start_url": "/?source=pwa",
+  "name": "ChatPTT SuperApp",
+  "short_name": "ChatPTT",
+  "description": "Comunicação, Inteligência Artificial e Jogos.",
+  "start_url": "/?mode=standalone",
   "display": "standalone",
-  "background_color": "#0b141a",
-  "theme_color": "#003882",
+  "background_color": "#09090b",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "favicon.png",

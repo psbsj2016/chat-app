@@ -607,3 +607,97 @@ window.switchTab = function(tabName, element) {
         init3DHubBackground();
     }
 };
+
+// ==============================================================
+// ⚙️ NAVEGAÇÃO DOS SUBMENUS DE CONFIGURAÇÕES
+// ==============================================================
+function openAppearanceSettings() { 
+    hideElement('settings-screen'); 
+    showElement('appearance-screen'); 
+    document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; 
+    document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; 
+}
+
+function openNotificationsSettings() { 
+    hideElement('settings-screen'); 
+    showElement('notifications-screen'); 
+    document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; 
+}
+
+function openAccountSettings() { 
+    hideElement('settings-screen'); 
+    showElement('account-screen'); 
+    const emailEl = document.getElementById('config-email');
+    if(emailEl) emailEl.innerText = cachedMe.email || 'Carregando...'; 
+    renderSectorsList(); 
+}
+
+function backToSettings() { 
+    hideElement('appearance-screen'); 
+    hideElement('account-screen'); 
+    hideElement('notifications-screen'); 
+    showElement('settings-screen'); 
+}
+
+// ==============================================================
+// 📱 MOTOR PWA: INSTALAÇÃO DO APP NATIVO
+// ==============================================================
+let deferredPrompt;
+
+// 1. Interceta o convite automático do navegador
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Previne o prompt feio padrão do Chrome
+    e.preventDefault();
+    // Guarda o evento para dispararmos quando o utilizador clicar no nosso botão
+    deferredPrompt = e;
+    
+    // Acende o nosso banner super premium e o botão no menu
+    showElement('pwa-install-banner');
+    const menuBtn = document.getElementById('install-menu-btn');
+    if(menuBtn) menuBtn.classList.remove('hidden');
+});
+
+// 2. Ação de Instalação (Chamada ao clicar no botão "Instalar")
+async function installPWA() {
+    hideElement('pwa-install-banner');
+    
+    if (deferredPrompt) {
+        // Dispara a janela nativa do Android/Chrome
+        deferredPrompt.prompt();
+        
+        // Aguarda a resposta do utilizador
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            console.log('Comandante autorizou a instalação!');
+        }
+        // Limpa o prompt (só pode ser usado uma vez)
+        deferredPrompt = null;
+        
+        const menuBtn = document.getElementById('install-menu-btn');
+        if(menuBtn) menuBtn.classList.add('hidden');
+    } else {
+        // Falha tática: Para utilizadores de iPhone (Safari bloqueia o prompt automático)
+        alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no menu do Safari e escolha 'Adicionar à Tela de Início'.");
+    }
+}
+
+// 3. Recompensa após Instalação Concluída
+window.addEventListener('appinstalled', () => {
+    hideElement('pwa-install-banner');
+    const menuBtn = document.getElementById('install-menu-btn');
+    if(menuBtn) menuBtn.classList.add('hidden');
+    
+    // Injeta 200 XP de recompensa diretamente na conta!
+    setTimeout(() => {
+        alert("🎉 CHATPTT INSTALADO COM SUCESSO!\n\nBem-vindo à experiência VIP em tela cheia. Você acaba de ganhar +200 XP!");
+        gainXP(200, false);
+        playNotificationSound('bell');
+    }, 1500);
+});
+
+// 4. Se o utilizador já estiver dentro do App Instalado, não mostra nada
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    hideElement('pwa-install-banner');
+    const menuBtn = document.getElementById('install-menu-btn');
+    if(menuBtn) menuBtn.classList.add('hidden');
+}

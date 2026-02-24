@@ -6,22 +6,20 @@
     <title>Snake Neon 3D</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        /* Bloqueia totalmente o zoom e o arrasto da tela para os botões funcionarem perfeitos */
+        /* Bloqueio absoluto de comportamentos indesejados no toque */
         * { box-sizing: border-box; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         
         body { 
-            margin: 0; background: #09090b; color: white; font-family: 'Inter', sans-serif; 
+            margin: 0; background: #09090b; color: white; font-family: sans-serif; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
             height: 100vh; overflow: hidden; 
         }
         
-        /* O HUD (Placar) Superior */
         .hud { 
             display: flex; justify-content: space-between; width: 95%; max-width: 400px; 
             padding: 15px 10px; font-weight: 900; font-size: 16px; letter-spacing: 1px; 
         }
         
-        /* A Tela de Jogo (Maior) */
         canvas { 
             box-shadow: 0 0 40px rgba(52, 211, 153, 0.15); 
             border-radius: 12px; 
@@ -34,7 +32,6 @@
             display: block;
         }
         
-        /* Layout de Consola Portátil (2 Mãos) */
         .controls-wrapper {
             display: flex;
             justify-content: space-between;
@@ -46,10 +43,7 @@
         }
         
         .d-pad-half { display: grid; gap: 15px; }
-        
-        /* Mão Esquerda: Esquerda e Direita */
         .left-hand { grid-template-columns: 70px 70px; grid-template-rows: 70px; }
-        /* Mão Direita: Cima e Baixo (Empilhados) */
         .right-hand { grid-template-columns: 70px; grid-template-rows: 70px 70px; justify-content: end;}
         
         .d-btn { 
@@ -66,7 +60,7 @@
         .d-btn:active { 
             background: #34D399; transform: scale(0.9); box-shadow: 0 0 20px #34D399; color: black; 
         }
-        .d-btn .material-icons-round { font-size: 40px; }
+        .d-btn .material-icons-round { font-size: 40px; pointer-events: none; }
         
         .start-btn { 
             position: absolute; top: 40%; background: #34D399; color: black; 
@@ -88,13 +82,13 @@
 
     <div class="controls-wrapper">
         <div class="d-pad-half left-hand">
-            <button class="d-btn" ontouchstart="dir(event, 'LEFT')" onmousedown="dir(event, 'LEFT')"><span class="material-icons-round">keyboard_arrow_left</span></button>
-            <button class="d-btn" ontouchstart="dir(event, 'RIGHT')" onmousedown="dir(event, 'RIGHT')"><span class="material-icons-round">keyboard_arrow_right</span></button>
+            <button class="d-btn" onpointerdown="setDir('LEFT')"><span class="material-icons-round">keyboard_arrow_left</span></button>
+            <button class="d-btn" onpointerdown="setDir('RIGHT')"><span class="material-icons-round">keyboard_arrow_right</span></button>
         </div>
         
         <div class="d-pad-half right-hand">
-            <button class="d-btn" ontouchstart="dir(event, 'UP')" onmousedown="dir(event, 'UP')"><span class="material-icons-round">keyboard_arrow_up</span></button>
-            <button class="d-btn" ontouchstart="dir(event, 'DOWN')" onmousedown="dir(event, 'DOWN')"><span class="material-icons-round">keyboard_arrow_down</span></button>
+            <button class="d-btn" onpointerdown="setDir('UP')"><span class="material-icons-round">keyboard_arrow_up</span></button>
+            <button class="d-btn" onpointerdown="setDir('DOWN')"><span class="material-icons-round">keyboard_arrow_down</span></button>
         </div>
     </div>
 
@@ -102,7 +96,6 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
-        // Grelha maior (20px) para gráficos mais detalhados e cobra mais grossa
         const gridSize = 20; 
         let snake = [];
         let food = {x: 0, y: 0, img: null};
@@ -110,11 +103,10 @@
         let score = 0, speed = 120, gameInterval = null;
         let isPlaying = false;
 
-        // Imagens dos animais (Sapo, Rato, Joaninha)
         const foodSrcs = [
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png', // Rato
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png', // Sapo
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png'  // Joaninha
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png',
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png',
+            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png' 
         ];
         const foodImages = [];
         foodSrcs.forEach(src => {
@@ -123,9 +115,8 @@
             foodImages.push(img);
         });
 
-        // Função de Comando (Bloqueia cliques falsos com e.preventDefault())
-        function dir(e, direction) {
-            if(e) e.preventDefault();
+        // Nova função segura para trocar a direção
+        function setDir(direction) {
             if(!isPlaying) return;
             
             if (direction === 'UP' && dy === 0) { dx = 0; dy = -gridSize; }
@@ -134,22 +125,17 @@
             if (direction === 'RIGHT' && dx === 0) { dx = gridSize; dy = 0; }
         }
 
-        // Teclado para testes no PC
+        // Suporte para teclado (Setas) se jogar no PC
         document.addEventListener('keydown', (e) => {
-            if(e.key === 'ArrowUp') dir(null, 'UP');
-            if(e.key === 'ArrowDown') dir(null, 'DOWN');
-            if(e.key === 'ArrowLeft') dir(null, 'LEFT');
-            if(e.key === 'ArrowRight') dir(null, 'RIGHT');
+            if(e.key === 'ArrowUp') setDir('UP');
+            if(e.key === 'ArrowDown') setDir('DOWN');
+            if(e.key === 'ArrowLeft') setDir('LEFT');
+            if(e.key === 'ArrowRight') setDir('RIGHT');
         });
 
         function startGame() {
             document.getElementById("startBtn").style.display = "none";
-            // Cobra começa com 3 blocos
-            snake = [
-                {x: 200, y: 200}, 
-                {x: 180, y: 200}, 
-                {x: 160, y: 200}
-            ];
+            snake = [{x: 200, y: 200}, {x: 180, y: 200}, {x: 160, y: 200}];
             dx = gridSize; dy = 0; score = 0; speed = 130;
             isPlaying = true;
             updateHUD();
@@ -164,9 +150,8 @@
             let lvl = Math.floor(score / 5) + 1;
             document.getElementById("level").innerText = "NÍVEL " + lvl;
             
-            // Aumenta a velocidade a cada 5 comidas
             let newSpeed = 130 - ((lvl - 1) * 15);
-            if(newSpeed < 50) newSpeed = 50; // Limite máximo de velocidade
+            if(newSpeed < 50) newSpeed = 50; 
             
             if(newSpeed !== speed) {
                 speed = newSpeed;
@@ -184,36 +169,31 @@
         }
 
         function gameLoop() {
-            // Limpa o fundo a cada frame
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const head = { x: snake[0].x + dx, y: snake[0].y + dy };
-            snake.unshift(head); // Adiciona nova cabeça
+            snake.unshift(head); 
 
-            // Se a cabeça tocar na comida
             if (head.x === food.x && head.y === food.y) {
                 score++;
                 updateHUD();
                 placeFood();
             } else {
-                snake.pop(); // Remove rabo se não comer
+                snake.pop(); 
             }
 
-            // Morte por bater na parede ou em si mesmo
             if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || snakeCollision(head)) {
                 clearInterval(gameInterval);
                 isPlaying = false;
                 document.getElementById("startBtn").style.display = "block";
-                document.getElementById("startBtn").innerText = "MORTO! TENTAR NOVAMENTE";
+                document.getElementById("startBtn").innerText = "MORTO! REINICIAR";
                 
-                // Envia os XPs para o Servidor Principal (App.js)
                 if(score > 0 && window.parent && window.parent.gameEarnXP) {
                     window.parent.gameEarnXP(score); 
                 }
                 return;
             }
 
-            // 1. Desenhar a Presa (Animais reais)
             if(food.img && food.img.complete) {
                 ctx.drawImage(food.img, food.x, food.y, gridSize, gridSize);
             } else {
@@ -221,22 +201,17 @@
                 ctx.fillRect(food.x, food.y, gridSize, gridSize);
             }
 
-            // 2. Desenhar a Cobra Orgânica
             snake.forEach((p, index) => {
                 const isHead = index === 0;
-                // A cabeça é um pouco maior que o corpo
                 const radius = isHead ? gridSize / 1.8 : gridSize / 2.2;
                 const centerX = p.x + gridSize / 2;
                 const centerY = p.y + gridSize / 2;
 
                 ctx.beginPath();
-                ctx.fillStyle = isHead ? "#34D399" : "#06B6D4"; // Cabeça Verde, Corpo Ciano
+                ctx.fillStyle = isHead ? "#34D399" : "#06B6D4"; 
 
                 if (isHead) {
-                    // Mágica Trigonométrica: Calcula a direção do movimento
                     let angle = Math.atan2(dy, dx);
-                    
-                    // Se estiver a menos de 3 grelhas da comida, abre a boca!
                     let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
                     let isMouthOpen = distToFood <= gridSize * 3;
 
@@ -249,7 +224,6 @@
                     ctx.fill();
                     ctx.closePath();
 
-                    // Desenhar os Olhos (Fundo Branco)
                     ctx.fillStyle = "white"; 
                     let eyeOffset = radius * 0.55; 
                     let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
@@ -260,13 +234,11 @@
                     ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 3, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 3, 0, Math.PI*2); ctx.fill();
 
-                    // Desenhar as Pupilas (Pretas olhando para a frente)
                     ctx.fillStyle = "black";
                     ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1.5, eyeY1 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1.5, eyeY2 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
 
                 } else {
-                    // Corpo liso
                     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
                     ctx.fill();
                     ctx.closePath();
@@ -275,7 +247,6 @@
         }
 
         function snakeCollision(head) {
-            // Ignora os 3 primeiros blocos para evitar mortes falsas ao curvar
             for (let i = 3; i < snake.length; i++) {
                 if (head.x === snake[i].x && head.y === snake[i].y) return true;
             }
