@@ -326,8 +326,85 @@ async function submitSector() { const checkboxes = document.querySelectorAll('#s
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('group-target-name').innerText = `Contato: ${name}`; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; if(groups.length === 0) list.innerHTML = '<span>Sem grupos.</span>'; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); if(checkboxes.length===0) return; const groupIds = Array.from(checkboxes).map(cb => cb.value); if(!confirm("Confirmar?")) return; try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); alert("Inserido!"); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 
-async function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; cachedUsers.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.dataset.name = user.displayName ? user.displayName.toLowerCase() : ''; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
-function closeCreateGroup() { hideElement('create-group-modal'); }
+// ==============================================================
+// 👥 MOTOR DE CRIAÇÃO DE GRUPOS (UI PREMIUM)
+// ==============================================================
+async function openCreateGroupModal() { 
+    toggleMenu('main-menu'); 
+    showElement('create-group-modal'); 
+    selectedUserIds = []; 
+    document.getElementById('group-name-input').value = ''; 
+    document.getElementById('group-search-input').value = '';
+    document.getElementById('new-group-photo').src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
+    
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+    const list = document.getElementById('group-candidates-list'); 
+    list.innerHTML = ''; 
+    
+    cachedUsers.forEach(user => { 
+        const div = document.createElement('div'); 
+        div.className = 'candidate-item'; 
+        div.dataset.name = (user.displayName || user.email).toLowerCase(); 
+        
+        // Estilo Inline para garantir que a foto nunca fica gigante!
+        div.style = "display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: 0.2s; border: 1px solid transparent;";
+        
+        div.onclick = () => { 
+            if (selectedUserIds.includes(user._id)) { 
+                selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); 
+                div.classList.remove('selected'); 
+                div.style.background = 'transparent';
+                div.style.borderColor = 'transparent';
+                div.querySelector('.check-icon').style.opacity = '0';
+            } else { 
+                selectedUserIds.push(user._id); 
+                div.classList.add('selected'); 
+                div.style.background = 'rgba(6, 182, 212, 0.1)';
+                div.style.borderColor = 'var(--brand-secondary)';
+                div.querySelector('.check-icon').style.opacity = '1';
+            } 
+        }; 
+        
+        div.innerHTML = `
+            <img src="${user.photoUrl}" style="width: 40px; height: 40px; min-width: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--input-bg);">
+            <span style="font-weight: 600; flex: 1; text-align: left; font-size: 14.5px; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${user.displayName || user.email}</span>
+            <span class="material-icons-round check-icon" style="color: var(--brand-secondary); opacity: 0; transition: 0.2s;">check_circle</span>
+        `; 
+        list.appendChild(div); 
+    }); 
+}
+
+function closeCreateGroup() { 
+    hideElement('create-group-modal'); 
+}
+
+// Filtro de Pesquisa em Tempo Real
+function filterGroupContacts(query) {
+    const list = document.getElementById('group-candidates-list');
+    const items = list.querySelectorAll('.candidate-item');
+    const q = query.toLowerCase();
+    
+    items.forEach(item => {
+        const name = item.dataset.name || '';
+        if(name.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Fazer Upload da Foto do Novo Grupo
+async function uploadNewGroupPhoto(input) { 
+    const file = input.files[0]; 
+    if(!file) return; 
+    const fd = new FormData(); fd.append('file', file); 
+    try { 
+        const res = await fetch('/upload', {method:'POST', body:fd}); 
+        const data = await res.json(); 
+        document.getElementById('new-group-photo').src = data.url; 
+    } catch(e) { alert("Erro ao enviar foto do grupo."); } 
+}
 
 let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 100); } 
 async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
