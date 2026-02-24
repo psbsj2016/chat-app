@@ -943,11 +943,14 @@ function updateSnakeLevel() {
 function gameLoop() { 
     const canvas = document.getElementById('snake-canvas'); 
     const ctx = canvas.getContext('2d'); 
+    
+    // Limpar a tela
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     const head = {x: snake[0].x + dx, y: snake[0].y + dy}; 
     snake.unshift(head); 
     
+    // Comeu a presa?
     if(Math.abs(head.x - food.x) < GRID_SIZE && Math.abs(head.y - food.y) < GRID_SIZE) { 
         createFood(); 
         snakeScore++;
@@ -957,6 +960,7 @@ function gameLoop() {
         snake.pop(); 
     }
     
+    // Colisão
     if(head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE || snakeCollision(head)) { 
         clearInterval(gameInterval); 
         isPlayingSnake = false;
@@ -965,6 +969,7 @@ function gameLoop() {
         return;
     } 
 
+    // 1. Desenhar a Presa (Animalzinho)
     if(food.img && food.img.complete) {
         ctx.drawImage(food.img, food.x - 2, food.y - 2, 14, 14);
     } else {
@@ -972,42 +977,67 @@ function gameLoop() {
         ctx.fillRect(food.x, food.y, GRID_SIZE, GRID_SIZE);
     }
     
+    // 2. Desenhar a Cobra Orgânica e Realista
     snake.forEach((p, index) => {
+        const isHead = index === 0;
+        const radius = isHead ? GRID_SIZE / 1.6 : GRID_SIZE / 2.2;
+        const centerX = p.x + GRID_SIZE / 2;
+        const centerY = p.y + GRID_SIZE / 2;
+
         ctx.beginPath();
-        const radius = index === 0 ? GRID_SIZE / 1.8 : GRID_SIZE / 2;
-        ctx.fillStyle = index === 0 ? "#34D399" : "var(--brand-primary)"; 
-        ctx.arc(p.x + GRID_SIZE/2, p.y + GRID_SIZE/2, radius, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.closePath();
-        if(index === 0) {
-             ctx.shadowColor = "#34D399";
-             ctx.shadowBlur = 10;
+        ctx.fillStyle = isHead ? "#34D399" : "var(--brand-primary)";
+
+        if (isHead) {
+            // A Mágica do Rosto: Qual é o ângulo do movimento?
+            let angle = Math.atan2(dy, dx);
+            
+            // A Mágica da Mordida: Está perto da comida?
+            // Calcula a distância entre a cabeça e a comida
+            let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
+            let isMouthOpen = distToFood <= GRID_SIZE * 3; // Abre a boca se estiver a 3 blocos de distância
+
+            if (isMouthOpen) {
+                // Desenha a cabeça com a boca aberta (Pac-Man style)
+                ctx.arc(centerX, centerY, radius, angle + 0.25 * Math.PI, angle + 1.75 * Math.PI);
+                ctx.lineTo(centerX, centerY);
+            } else {
+                // Cabeça fechada normal
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            }
+            ctx.fill();
+            ctx.closePath();
+
+            // --- DESENHAR OS OLHOS ---
+            ctx.fillStyle = "white"; // Fundo do olho
+            let eyeOffset = radius * 0.55; 
+            
+            // Posição dos dois olhos baseada no ângulo de movimento
+            let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+            let eyeY1 = centerY + Math.sin(angle - Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+            let eyeX2 = centerX + Math.cos(angle + Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
+            let eyeY2 = centerY + Math.sin(angle + Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
+
+            ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 2.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 2.5, 0, Math.PI*2); ctx.fill();
+
+            // --- DESENHAR AS PUPILAS ---
+            ctx.fillStyle = "black";
+            // Pupilas sempre a olhar ligeiramente para a frente
+            ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1, eyeY1 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1, eyeY2 + Math.sin(angle)*1, 1.2, 0, Math.PI*2); ctx.fill();
+
+            // Efeito Brilho Neon na cabeça
+            ctx.shadowColor = "#34D399";
+            ctx.shadowBlur = 10;
         } else {
-             ctx.shadowBlur = 0;
+            // Corpo da Cobra (Bolinhas menores)
+            ctx.shadowBlur = 0;
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
         }
     });
-    ctx.shadowBlur = 0; 
-}
-
-function snakeCollision(head) {
-    for(let i=4; i<snake.length; i++){ 
-        if(head.x === snake[i].x && head.y === snake[i].y) return true; 
-    }
-    return false;
-}
-
-function createFood() { 
-    food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE; 
-    food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE;
-    food.img = foodImages[Math.floor(Math.random() * foodImages.length)];
-}
-
-function changeSnakeDirection(d) { 
-    if(!isPlayingSnake) return;
-    if(d==='UP' && dy===0) {dx=0; dy=-GRID_SIZE} 
-    if(d==='DOWN' && dy===0) {dx=0; dy=GRID_SIZE} 
-    if(d==='LEFT' && dx===0) {dx=-GRID_SIZE; dy=0} 
-    if(d==='RIGHT' && dx===0) {dx=GRID_SIZE; dy=0} 
+    ctx.shadowBlur = 0; // Limpa o brilho para a próxima renderização
 }
 
 // ==============================================================

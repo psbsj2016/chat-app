@@ -493,3 +493,21 @@ body.dark-mode .search-filter-btn {
 .search-filter-btn .material-icons-round {
     font-size: 20px;
 }
+
+/* ==========================================
+   TRAVA TOTAL DE SCROLL PARA JOGOS MOBILE
+   ========================================== */
+#screen-jogos {
+    overscroll-behavior: none; /* Impede o elástico e o pull-to-refresh */
+}
+
+.games-content {
+    overscroll-behavior-y: contain; 
+}
+
+/* Evita seleção de texto e zoom duplo acidental ao jogar */
+.d-btn {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation; 
+}
