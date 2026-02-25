@@ -25,91 +25,40 @@ let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; 
 
 // ==============================================================
-// 🛠️ NAVEGAÇÃO E UI PRINCIPAL (COMANDO DIRETO BLINDADO)
+// 🛠️ NAVEGAÇÃO E UI PRINCIPAL (BLINDAGEM MAXIMA)
 // ==============================================================
-function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
-function hideElement(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
+function showElement(id) { const el = document.getElementById(id); if(el) { el.classList.remove('hidden'); el.style.display = ''; } }
+function hideElement(id) { const el = document.getElementById(id); if(el) { el.classList.add('hidden'); el.style.display = 'none'; } }
 
-function toggleMenu(menuId) { 
-    document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); 
-    const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); 
-}
+function forceShowNav() { const nav = document.getElementById('bottom-navigation'); if(nav) { nav.classList.remove('hidden'); nav.style.setProperty('display', 'flex', 'important'); } }
+function forceHideNav() { const nav = document.getElementById('bottom-navigation'); if(nav) { nav.classList.add('hidden'); nav.style.setProperty('display', 'none', 'important'); } }
 
-document.addEventListener('click', (e) => { 
-    if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn') && !e.target.closest('#header-my-avatar')) { 
-        document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); 
-    } 
-});
+function toggleMenu(menuId) { document.querySelectorAll('.dropdown-menu').forEach(menu => { if (menu.id !== menuId) menu.classList.add('hidden'); }); const menu = document.getElementById(menuId); if(menu) menu.classList.toggle('hidden'); }
+document.addEventListener('click', (e) => { if (!e.target.closest('.icon-btn') && !e.target.closest('.contact-actions') && !e.target.closest('.dropdown-menu') && !e.target.closest('#text-format-toolbar') && !e.target.closest('.header-logo-btn') && !e.target.closest('#header-my-avatar')) { document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.add('hidden')); } });
 
 function hideAllTabs() {
-    hideElement('main-screen');        
-    hideElement('screen-anotacoes');  
-    hideElement('screen-jogos');      
-    hideElement('screen-explorar');   
-    hideElement('chat-screen');
-    hideElement('add-contact-screen'); 
-    hideElement('profile-screen');
-    hideElement('settings-screen');
-    hideElement('appearance-screen');
-    hideElement('account-screen');
-    hideElement('notifications-screen');
-    
-    // 🚨 A MÁGICA: Esconde a barra sempre que a tela for limpa
-    hideElement('bottom-navigation');
+    hideElement('main-screen'); hideElement('screen-anotacoes'); hideElement('screen-jogos'); hideElement('screen-explorar');
+    hideElement('chat-screen'); hideElement('add-contact-screen'); hideElement('profile-screen');
+    hideElement('settings-screen'); hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen');
+    hideElement('screen-communities'); // Nova tela que vamos criar abaixo!
+    forceHideNav();
 }
 
 function switchTab(tabName, element) {
-    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active')); 
-    if(element) element.classList.add('active'); 
-    hideAllTabs();
-    
-    // 🚨 A MÁGICA: Acende a barra sempre que abrir uma aba
-    showElement('bottom-navigation');
-    
-    if (tabName === 'conversas') { showElement('main-screen'); } 
-    else if (tabName === 'explorar') { showElement('screen-explorar'); } 
-    else if (tabName === 'anotacoes') { showElement('screen-anotacoes'); loadNotes(); } 
-    else if (tabName === 'jogos') { showElement('screen-jogos'); init3DHubBackground(); }
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active')); if(element) element.classList.add('active'); 
+    hideAllTabs(); forceShowNav();
+    if (tabName === 'conversas') { showElement('main-screen'); } else if (tabName === 'explorar') { showElement('screen-explorar'); } else if (tabName === 'anotacoes') { showElement('screen-anotacoes'); loadNotes(); } else if (tabName === 'jogos') { showElement('screen-jogos'); init3DHubBackground(); }
 }
 
-function backToMain() {
-    currentChatId = null;
-    hideAllTabs();
-    const navItems = document.querySelectorAll('.nav-item');
-    if (navItems.length > 0) { 
-        switchTab('conversas', navItems[0]); 
-    } else { 
-        showElement('main-screen'); 
-        showElement('bottom-navigation'); // 🚨 Traz a barra de volta
-    }
-    updateAppBadge();
-}
+function backToMain() { currentChatId = null; hideAllTabs(); const navItems = document.querySelectorAll('.nav-item'); if (navItems.length > 0) { switchTab('conversas', navItems[0]); } else { showElement('main-screen'); forceShowNav(); } updateAppBadge(); }
 
 function showMainScreen() { 
-    hideElement('auth-screen'); 
-    hideElement('welcome-screen'); 
-    hideElement('permissions-screen'); 
-    hideAllTabs(); 
-    
-    showElement('main-screen'); 
-    showElement('bottom-navigation'); // 🚨 Acende a barra ao fazer Login
-    
-    loadContacts(); 
-    socket.emit('join_room', myId); 
+    hideElement('auth-screen'); hideElement('welcome-screen'); hideElement('permissions-screen'); 
+    hideAllTabs(); showElement('main-screen'); forceShowNav();
+    loadContacts(); socket.emit('join_room', myId); 
     if ("Notification" in window && Notification.permission === "granted") registerServiceWorkerAndSubscribe(); 
-    const navItems = document.querySelectorAll('.nav-item'); 
-    if(navItems.length > 0) navItems[0].classList.add('active'); 
+    const navItems = document.querySelectorAll('.nav-item'); if(navItems.length > 0) navItems[0].classList.add('active'); 
 }
-
-socket.on('check_app_version', (serverVersion) => { 
-    const localVersion = localStorage.getItem('appVersion'); 
-    if (!localVersion) { localStorage.setItem('appVersion', serverVersion); } 
-    else if (localVersion !== serverVersion) { 
-        localStorage.setItem('appVersion', serverVersion); 
-        if ('caches' in window) { caches.keys().then((names) => { for (let name of names) caches.delete(name); }); }
-        window.location.replace(window.location.pathname + '?v=' + serverVersion); 
-    } 
-});
 
 // ==============================================================
 // 📱 MOTOR PWA E PERMISSÕES
