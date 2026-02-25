@@ -735,3 +735,21 @@ body.bubble-cyber {
     flex-direction: column;
 }
 .channel-top-bar { height: 60px; padding: 0 20px; display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 700; color: white; gap: 10px; }
+
+/* ==========================================
+   📱 RESPONSIVIDADE MOBILE: COMUNIDADES
+   ========================================== */
+.mobile-back-btn { display: none; cursor: pointer; color: white; margin-right: 10px; padding: 5px; }
+
+@media (max-width: 768px) {
+    .mobile-back-btn { display: block; }
+    
+    .community-servers-bar { width: 65px; } /* Barra ligeiramente menor no mobile */
+    .community-channels-bar { flex: 1; max-width: none; border-right: none; } /* Lista de canais preenche a tela */
+    .community-chat-area { display: none; flex: 1; } /* Esconde o chat por padrão */
+    
+    /* Quando o chat está aberto (classe adicionada via JS) */
+    #screen-communities.show-chat .community-servers-bar { display: none; }
+    #screen-communities.show-chat .community-channels-bar { display: none; }
+    #screen-communities.show-chat .community-chat-area { display: flex; }
+}

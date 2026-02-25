@@ -468,6 +468,11 @@ async function createNewCommunity(name, description) {
 // 1. ABRIR COMUNIDADE E CARREGAR CANAIS
 async function openCommunity(commId, commName) {
     currentCommunityId = commId;
+    
+    // 📱 Garante que no mobile a tela volte para a lista de canais ao trocar de servidor
+    const screenComm = document.getElementById('screen-communities');
+    if(screenComm) screenComm.classList.remove('show-chat');
+
     const nameEl = document.getElementById('active-comm-name');
     if(nameEl) nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
     
@@ -502,6 +507,10 @@ async function openChannel(channelId, channelName, type) {
     const chItem = document.getElementById(`nav-ch-${channelId}`);
     if(chItem) chItem.classList.add('active');
 
+    // 📱 Ativa a visão de CHAT no mobile
+    const screenComm = document.getElementById('screen-communities');
+    if(screenComm) screenComm.classList.add('show-chat');
+
     const nameEl = document.getElementById('active-channel-name');
     if(nameEl) nameEl.innerText = channelName;
     
@@ -509,9 +518,9 @@ async function openChannel(channelId, channelName, type) {
     if(!box) return;
     box.innerHTML = '<div style="text-align:center; margin-top:20px; color:#64748B;">Sincronizando satélites...</div>';
 
-    // Se for voz, emite alerta e bloqueia o input de texto
+    // Se for voz...
     if(type === 'voice') {
-        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC (Chamadas de Áudio) será ativada em breve!</p></div>';
+        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC em breve!</p></div>';
         const inputEl = document.getElementById('community-message-input');
         if(inputEl) inputEl.disabled = true;
         return;
@@ -520,7 +529,6 @@ async function openChannel(channelId, channelName, type) {
     const inputEl = document.getElementById('community-message-input');
     if(inputEl) inputEl.disabled = false;
     
-    // Isola o WebSocket! Você só escuta o que se passa neste canal.
     socket.emit('join_community_channel', channelId); 
 
     try {
@@ -531,6 +539,12 @@ async function openChannel(channelId, channelName, type) {
         msgs.forEach(msg => renderCommunityMessage(msg));
     } catch(e) {}
 }
+
+// 📱 Função para Voltar aos Canais no Mobile
+window.closeMobileCommunityChat = function() {
+    const screenComm = document.getElementById('screen-communities');
+    if(screenComm) screenComm.classList.remove('show-chat');
+};
 
 // 3. ENVIAR MENSAGEM NO CANAL
 window.sendCommunityMessage = function() {
