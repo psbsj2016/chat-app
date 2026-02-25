@@ -262,6 +262,49 @@ app.post('/communities', async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Erro ao criar comunidade' }); }
 });
 
+// --- FASE 4: EXPLORAR, ENTRAR E CRIAR CANAIS ---
+
+// Explorar Comunidades Públicas
+app.get('/communities-explore', async (req, res) => {
+    try {
+        const comms = await Community.find({ isPublic: true }).sort('-createdAt').limit(20);
+        res.json(comms);
+    } catch (e) { res.status(500).json([]); }
+});
+
+// Entrar numa Comunidade
+app.post('/communities/join', async (req, res) => {
+    try {
+        const { userId, communityId } = req.body;
+        // 1. Verifica se já está lá dentro
+        let member = await CommunityMember.findOne({ communityId, userId });
+        if (member) return res.json({ success: true, message: 'Já é membro' });
+
+        // 2. Busca o cargo base de "Membro", se não existir, cria-o
+        let baseRole = await CommunityRole.findOne({ communityId, name: 'Membro' });
+        if (!baseRole) {
+            baseRole = new CommunityRole({ communityId, name: 'Membro', color: '#CBD5E1', permissions: { canManageChannels: false, canDeleteMessages: false, canKickUsers: false } });
+            await baseRole.save();
+        }
+
+        // 3. Adiciona o usuário
+        member = new CommunityMember({ communityId, userId, roleId: baseRole._id });
+        await member.save();
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: 'Erro ao entrar na comunidade' }); }
+});
+
+// Criar novo Canal
+app.post('/communities/channels', async (req, res) => {
+    try {
+        const { communityId, name, type } = req.body;
+        const count = await CommunityChannel.countDocuments({ communityId });
+        const ch = new CommunityChannel({ communityId, name, type, order: count + 1 });
+        await ch.save();
+        res.json({ success: true, channel: ch });
+    } catch(e) { res.status(500).json({ error: 'Erro ao criar canal' }); }
+});
+
 app.get('/communities/user/:userId', async (req, res) => {
     try {
         const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId');

@@ -49,9 +49,12 @@
 
     <div id="welcome-screen" class="app-screen hidden">
         <div class="welcome-content">
-            <img src="favicon.png" class="welcome-logo" alt="ChatPTT" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
+            <img src="favicon.png" class="welcome-logo" alt="ChatPTT Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
             <h1>ChatPTT</h1>
-            <p>Conectando ideias, pessoas e diversão...</p>
+            <p>Conectando o seu mundo.</p>
+            <div style="margin-top: 30px; display: flex; justify-content: center;">
+                <div style="width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
         </div>
     </div>
 
@@ -616,6 +619,32 @@
     <div id="remove-members-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 400px; height: 80%;"><div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:10px;"><h3 style="margin: 0;">Remover Membros</h3><button id="btn-execute-remove" class="hidden chic-btn" onclick="submitRemoveMembers()" style="background: #EF4444; margin: 0; padding: 6px 12px; width: auto; font-size: 13px;">Remover</button></div><div id="remove-members-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('remove-members-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Fechar</button></div></div>
     <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%;"><h3 style="color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('forward-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button></div></div>   
     <div id="admin-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color: var(--brand-accent); margin-bottom: 15px;">⚡ Aviso Geral</h3><input type="text" id="broadcast-title" class="chic-input" placeholder="Título"><textarea id="broadcast-message" class="chic-input" placeholder="Aviso..." style="height: 80px; resize: none;"></textarea><button onclick="triggerTurboBroadcast()" class="chic-btn" style="background: var(--brand-accent);"><span class="material-icons-round" style="font-size: 18px;">rocket_launch</span> Lançar</button><p id="broadcast-status" style="font-size: 13px; margin-top: 10px; font-weight: bold;"></p><button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Fechar</button></div></div>
+        
+         <div id="explore-communities-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 450px; height: 85%; display: flex; flex-direction: column; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: var(--brand-secondary); margin: 0; font-size: 20px; font-weight: 800;"><span class="material-icons-round" style="vertical-align: middle; color: var(--brand-secondary);">explore</span> Descobrir Servidores</h3>
+                <button class="icon-btn" onclick="hideElement('explore-communities-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button>
+            </div>
+            <div id="explore-communities-list" style="flex: 1; overflow-y: auto; padding-right: 5px;">
+                </div>
+        </div>
+    </div>
+
+    <div id="create-channel-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 320px;">
+            <h3 style="margin-bottom: 15px;">Criar Novo Canal</h3>
+            <input type="hidden" id="new-channel-type" value="text">
+            <div style="display: flex; align-items: center; background: var(--input-bg); border-radius: 12px; padding: 0 10px; margin-bottom: 20px;">
+                <span class="material-icons-round" style="color: var(--secondary-text);">tag</span>
+                <input type="text" id="new-channel-name" placeholder="nome-do-canal" class="chic-input" style="background: transparent; border: none; margin: 0; box-shadow: none;">
+            </div>
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button onclick="hideElement('create-channel-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text);">Cancelar</button>
+                <button onclick="submitCreateChannel()" class="chic-btn" style="flex: 1; margin: 0; background: var(--brand-secondary);">Criar</button>
+            </div>
+        </div>
+    </div>
 
         <nav id="bottom-navigation" class="bottom-nav hidden">
         <div class="nav-item active" onclick="switchTab('conversas', this)">

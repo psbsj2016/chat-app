@@ -409,26 +409,22 @@ function renderCommunitiesSidebar() {
     const sidebar = document.querySelector('.community-servers-bar');
     if(!sidebar) return;
     
-    // Mantém os botões base de Voltar
     sidebar.innerHTML = `
         <div class="c-icon" onclick="backToMain()"><span class="material-icons-round">chat</span></div>
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
     `;
     
-    // Renderiza as suas comunidades criadas
     myCommunities.forEach(comm => {
-        // MÁGICA FASE 3: Agora o clique ABRE a comunidade!
         sidebar.innerHTML += `<img src="${comm.photoUrl}" class="c-icon" onclick="openCommunity('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')" title="${comm.name}">`;
     });
     
-    // Botões de Ação
+    // MÁGICA DA FASE 4: O Botão Explorar agora chama a função real!
     sidebar.innerHTML += `
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
         <div class="c-icon action-btn" onclick="openCreateCommunityModal()"><span class="material-icons-round">add</span></div>
-        <div class="c-icon action-btn" style="color: #06B6D4;" onclick="alert('Aba Explorar Comunidades chegará em breve!')"><span class="material-icons-round">explore</span></div>
+        <div class="c-icon action-btn" style="color: #06B6D4;" onclick="openExploreCommunities()"><span class="material-icons-round">explore</span></div>
     `;
 
-    // Atualiza o mini-perfil na aba de Canais
     if(cachedMe) {
         const avatarEl = document.getElementById('comm-mini-avatar');
         const nameEl = document.getElementById('comm-mini-name');
@@ -437,11 +433,129 @@ function renderCommunitiesSidebar() {
     }
 }
 
-function openCreateCommunityModal() {
-    const name = prompt("🏰 Qual será o nome do seu novo Servidor/Comunidade?");
+// 1. ABRIR COMUNIDADE E CARREGAR CANAIS (COM BOTÃO DE CRIAR CANAL)
+async function openCommunity(commId, commName) {
+    currentCommunityId = commId;
+    const screenComm = document.getElementById('screen-communities');
+    if(screenComm) screenComm.classList.remove('show-chat');
+
+    const nameEl = document.getElementById('active-comm-name');
+    if(nameEl) nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
+    
+    const list = document.getElementById('community-channels-list');
+    if(!list) return;
+    list.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--secondary-text);">Carregando satélites...</div>';
+    
+    try {
+        const res = await fetch(`/communities/${commId}/channels`);
+        const channels = await res.json();
+        
+        let textChannels = channels.filter(c => c.type === 'text' || c.type === 'announcement');
+        let voiceChannels = channels.filter(c => c.type === 'voice');
+        let firstTextChannel = textChannels[0] || null;
+
+        // Renderiza os Canais de Texto com botão +
+        list.innerHTML = `
+            <div class="channel-category" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>CANAIS DE TEXTO</span>
+                <span class="material-icons-round" style="font-size:18px; cursor:pointer;" onclick="openCreateChannelModal('text')">add</span>
+            </div>
+        `;
+        textChannels.forEach(ch => {
+            let icon = ch.type === 'announcement' ? 'campaign' : 'tag';
+            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">${icon}</span> ${ch.name}</div>`;
+        });
+
+        // Renderiza os Canais de Voz com botão +
+        list.innerHTML += `
+            <div class="channel-category" style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+                <span>CANAIS DE VOZ</span>
+                <span class="material-icons-round" style="font-size:18px; cursor:pointer;" onclick="openCreateChannelModal('voice')">add</span>
+            </div>
+        `;
+        voiceChannels.forEach(ch => {
+            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">volume_up</span> ${ch.name}</div>`;
+        });
+
+        if(firstTextChannel) openChannel(firstTextChannel._id, firstTextChannel.name, firstTextChannel.type);
+
+    } catch (e) { list.innerHTML = '<div style="padding:15px; color:#EF4444;">Erro ao carregar.</div>'; }
+}
+
+// ==========================================================
+// MÓDULOS DE EXPLORAÇÃO E CRIAÇÃO (FASE 4)
+// ==========================================================
+function openCreateChannelModal(type) {
+    if(!currentCommunityId) return alert("Selecione uma comunidade primeiro!");
+    document.getElementById('new-channel-type').value = type;
+    document.getElementById('new-channel-name').value = '';
+    showElement('create-channel-modal');
+}
+
+async function submitCreateChannel() {
+    let name = document.getElementById('new-channel-name').value.trim().toLowerCase().replace(/\s+/g, '-');
+    const type = document.getElementById('new-channel-type').value;
     if(!name) return;
-    const desc = prompt("Descreva a sua comunidade em uma frase curta:");
-    if(desc !== null) createNewCommunity(name, desc);
+
+    try {
+        const res = await fetch('/communities/channels', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ communityId: currentCommunityId, name, type })
+        });
+        const data = await res.json();
+        if(data.success) {
+            hideElement('create-channel-modal');
+            openCommunity(currentCommunityId, document.getElementById('active-comm-name').innerText.split('<')[0].trim());
+        }
+    } catch(e) { alert("Erro ao forjar o canal."); }
+}
+
+async function openExploreCommunities() {
+    showElement('explore-communities-modal');
+    const list = document.getElementById('explore-communities-list');
+    list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--brand-secondary);"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size:40px;">radar</span><br>Buscando sinais de vida...</div>';
+    
+    try {
+        const res = await fetch('/communities-explore');
+        const comms = await res.json();
+        list.innerHTML = '';
+        if(comms.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px; color:#94A3B8;">O espaço está vazio. Seja o primeiro a criar um Servidor!</div>'; return; }
+        
+        comms.forEach(c => {
+            const isMine = myCommunities.some(my => my._id === c._id);
+            const btnHtml = isMine ? 
+                `<button class="chic-btn" style="background:var(--input-bg); color:var(--secondary-text); padding: 8px 15px; width:auto; margin:0;" disabled>Você já está aqui</button>` : 
+                `<button class="chic-btn" style="padding: 8px 15px; width:auto; margin:0; background: var(--brand-secondary);" onclick="joinCommunity('${c._id}')">Entrar no Servidor</button>`;
+            
+            list.innerHTML += `
+                <div style="background:var(--input-bg); border-radius:16px; padding:15px; display:flex; align-items:center; gap:15px; margin-bottom:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <img src="${c.photoUrl}" style="width:60px; height:60px; border-radius:18px; object-fit:cover; border: 2px solid var(--brand-secondary);">
+                    <div style="flex:1;">
+                        <h4 style="margin:0 0 4px 0; font-size:16.5px; font-weight: 800; color: var(--text-color);">${c.name}</h4>
+                        <p style="margin:0; font-size:12px; color:var(--secondary-text); line-height:1.4;">${c.description}</p>
+                    </div>
+                    ${btnHtml}
+                </div>
+            `;
+        });
+    } catch(e) { list.innerHTML = '<div style="color:#EF4444; text-align:center;">Falha de conexão com os radares.</div>'; }
+}
+
+async function joinCommunity(commId) {
+    try {
+        const res = await fetch('/communities/join', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ userId: myId, communityId: commId })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("🎉 Acesso autorizado! Bem-vindo ao novo Servidor!");
+            hideElement('explore-communities-modal');
+            loadCommunities(); // Atualiza a sua barra lateral instantaneamente
+        }
+    } catch(e) { alert("Os portões do servidor estão bloqueados no momento."); }
 }
 
 async function createNewCommunity(name, description) {
