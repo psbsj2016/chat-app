@@ -251,7 +251,7 @@
         <div class="drawer-content">
             <div class="drawer-section-title">Social</div>
             <div class="drawer-item" onclick="openBotChat(); toggleDrawer()"><span class="material-icons-round" style="color:var(--brand-accent)">smart_toy</span> Falar com a IA</div>
-            <div class="drawer-item" onclick="openCreateGroupModal(); toggleDrawer()"><span class="material-icons-round">groups</span> Criar Comunidade</div>
+            <div class="drawer-item" onclick="showElement('screen-communities'); hideAllTabs(); toggleDrawer()"><span class="material-icons-round">groups</span> Minhas Comunidades</div>
             
             <div class="drawer-section-title">Ferramentas</div>
             <div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div>
@@ -645,6 +645,67 @@
             <button class="chic-btn" onclick="installPWA()" style="margin: 0; padding: 8px 16px; font-size: 13px; background: linear-gradient(135deg, #4F46E5, #06B6D4); font-weight: 800; border:none; box-shadow: 0 4px 10px rgba(6,182,212,0.3);">Instalar</button>
         </div>
     </div>
+
+         <div id="screen-communities" class="app-screen hidden">
+        
+        <div class="community-servers-bar">
+            <div class="c-icon" onclick="backToMain()"><span class="material-icons-round">chat</span></div>
+            <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
+            
+            <img src="https://cdn-icons-png.flaticon.com/512/844/844004.png" class="c-icon active">
+            
+            <div class="c-icon action-btn" onclick="alert('Criar Comunidade em breve!')"><span class="material-icons-round">add</span></div>
+            <div class="c-icon action-btn" style="color: #06B6D4;" onclick="alert('Explorar Comunidades em breve!')"><span class="material-icons-round">explore</span></div>
+        </div>
+
+        <div class="community-channels-bar">
+            <div class="comm-header">
+                CPTT HQ <span class="material-icons-round" style="font-size: 20px;">expand_more</span>
+            </div>
+            <div style="flex: 1; overflow-y: auto;">
+                <div class="channel-category">INFORMAÇÃO</div>
+                <div class="channel-item"><span class="material-icons-round">campaign</span> avisos</div>
+                <div class="channel-item"><span class="material-icons-round">menu_book</span> regras</div>
+                
+                <div class="channel-category">TEXTO</div>
+                <div class="channel-item active"><span class="material-icons-round">tag</span> chat-geral</div>
+                <div class="channel-item"><span class="material-icons-round">tag</span> off-topic</div>
+                
+                <div class="channel-category">VOZ</div>
+                <div class="channel-item"><span class="material-icons-round">volume_up</span> Lounge</div>
+            </div>
+            <div style="height: 60px; background: #0B0F19; display: flex; align-items: center; padding: 0 15px; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 32px; border-radius: 50%;" id="comm-mini-avatar">
+                <div style="flex: 1;">
+                    <div style="color: white; font-size: 13px; font-weight: 700;" id="comm-mini-name">Você</div>
+                    <div style="color: #22C55E; font-size: 11px;">Online</div>
+                </div>
+                <span class="material-icons-round" style="font-size: 20px; color: #94A3B8; cursor: pointer;">settings</span>
+            </div>
+        </div>
+
+        <div class="community-chat-area">
+            <div class="channel-top-bar">
+                <span class="material-icons-round" style="color: #94A3B8; font-size: 24px;">tag</span> 
+                chat-geral
+            </div>
+            <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <div style="text-align: center; color: #64748B; margin-top: 50px;">
+                    <span class="material-icons-round" style="font-size: 50px; opacity: 0.5; margin-bottom: 10px;">forum</span>
+                    <h2>Bem-vindo ao #chat-geral</h2>
+                    <p>Este é o início da sua nova comunidade.</p>
+                </div>
+            </div>
+            <div style="padding: 15px 20px;">
+                <div style="background: #334155; border-radius: 8px; display: flex; align-items: center; padding: 0 15px;">
+                    <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">add_circle</span>
+                    <input type="text" placeholder="Conversar em #chat-geral" style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;">
+                    <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">emoji_emotions</span>
+                </div>
+            </div>
+        </div>
+    </div>    
+
   <script src="/socket.io/socket.io.js"></script>
     <script>
         // BOMBA DE CACHE: Força o PWA a ler sempre a versão mais recente do JS

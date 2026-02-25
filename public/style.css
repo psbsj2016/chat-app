@@ -653,3 +653,86 @@ body.bubble-cyber {
 .card-details h4 { font-size: 14.5px; font-weight: 800; margin: 0 0 4px 0; color: white; }
 .card-category { font-size: 11px; color: var(--brand-secondary); font-weight: 700; text-transform: uppercase; }
 .hub-card.locked { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
+
+/* ==========================================
+   TELA DE COMUNIDADES (DISCORD STYLE)
+   ========================================== */
+#screen-communities {
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    background: #0B0F19; /* Fundo Escuro Base */
+}
+
+/* Coluna 1: Servidores */
+.community-servers-bar {
+    width: 72px;
+    background: #020617;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 15px;
+    gap: 12px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.c-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 24px; /* Começa redondo */
+    background: #1E293B;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    object-fit: cover;
+}
+
+.c-icon:hover, .c-icon.active {
+    border-radius: 16px; /* Fica squircle no hover/ativo */
+    background: var(--brand-primary);
+}
+
+.c-icon.action-btn { background: #1E293B; color: #22C55E; }
+.c-icon.action-btn:hover { background: #22C55E; color: white; }
+
+/* Coluna 2: Canais */
+.community-channels-bar {
+    width: 240px;
+    background: #0F172A;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+.comm-header {
+    height: 60px;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-weight: 800;
+    color: white;
+    cursor: pointer;
+}
+.comm-header:hover { background: rgba(255,255,255,0.05); }
+
+.channel-category { padding: 15px 15px 5px 15px; font-size: 11px; font-weight: 800; color: #94A3B8; text-transform: uppercase; }
+.channel-item { padding: 8px 15px; margin: 2px 10px; border-radius: 8px; color: #CBD5E1; font-weight: 600; font-size: 14.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
+.channel-item:hover { background: rgba(255,255,255,0.05); color: white; }
+.channel-item.active { background: rgba(255,255,255,0.1); color: white; }
+.channel-item .material-icons-round { font-size: 18px; color: #64748B; }
+
+/* Coluna 3: Chat */
+.community-chat-area {
+    flex: 1;
+    background: #1E293B;
+    display: flex;
+    flex-direction: column;
+}
+.channel-top-bar { height: 60px; padding: 0 20px; display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 700; color: white; gap: 10px; }

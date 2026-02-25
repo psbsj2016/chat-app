@@ -313,6 +313,90 @@ io.on('connection', (socket) => {
         } catch(e) { console.error("Erro no envio", e); }
     });
 
+    // ==============================================================
+// 🏢 ECOSSISTEMA DE COMUNIDADES (DISCORD-LIKE)
+// ==============================================================
+const CommunitySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    description: { type: String, default: 'Uma nova comunidade no ChatPTT.' },
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/844/844004.png' },
+    category: { type: String, default: 'Geral' },
+    isPublic: { type: Boolean, default: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now }
+});
+const Community = mongoose.model('Community', CommunitySchema);
+
+const CommunityChannelSchema = new mongoose.Schema({
+    communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
+    name: { type: String, required: true },
+    type: { type: String, enum: ['text', 'voice', 'announcement'], default: 'text' },
+    order: { type: Number, default: 0 }
+});
+const CommunityChannel = mongoose.model('CommunityChannel', CommunityChannelSchema);
+
+const CommunityRoleSchema = new mongoose.Schema({
+    communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
+    name: { type: String, required: true },
+    color: { type: String, default: '#FFFFFF' },
+    permissions: {
+        canManageChannels: { type: Boolean, default: false },
+        canDeleteMessages: { type: Boolean, default: false },
+        canKickUsers: { type: Boolean, default: false }
+    }
+});
+const CommunityRole = mongoose.model('CommunityRole', CommunityRoleSchema);
+
+const CommunityMemberSchema = new mongoose.Schema({
+    communityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Community' },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'CommunityRole' },
+    joinedAt: { type: Date, default: Date.now }
+});
+const CommunityMember = mongoose.model('CommunityMember', CommunityMemberSchema);
+
+const CommunityMessageSchema = new mongoose.Schema({
+    channelId: { type: mongoose.Schema.Types.ObjectId, ref: 'CommunityChannel' },
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: String,
+    fileUrl: String,
+    fileType: { type: String, default: 'text' },
+    timestamp: { type: Date, default: Date.now }
+});
+const CommunityMessage = mongoose.model('CommunityMessage', CommunityMessageSchema);
+
+// ROTA BASE PARA CRIAR COMUNIDADE (REAÇÃO EM CADEIA)
+app.post('/communities', async (req, res) => {
+    try {
+        const { name, description, ownerId, isPublic, category } = req.body;
+        
+        // 1. Cria a Comunidade
+        const comm = new Community({ name, description, ownerId, isPublic, category });
+        await comm.save();
+
+        // 2. Cria Cargo de Dono
+        const ownerRole = new CommunityRole({ communityId: comm._id, name: 'Fundador', color: '#F59E0B', permissions: { canManageChannels: true, canDeleteMessages: true, canKickUsers: true } });
+        await ownerRole.save();
+
+        // 3. Adiciona o criador como membro com o cargo de dono
+        const member = new CommunityMember({ communityId: comm._id, userId: ownerId, roleId: ownerRole._id });
+        await member.save();
+
+        // 4. Cria Canais Padrão
+        await new CommunityChannel({ communityId: comm._id, name: 'avisos', type: 'announcement', order: 1 }).save();
+        await new CommunityChannel({ communityId: comm._id, name: 'chat-geral', type: 'text', order: 2 }).save();
+
+        res.json({ success: true, community: comm });
+    } catch (error) { res.status(500).json({ error: 'Erro ao criar comunidade.' }); }
+});
+
+app.get('/communities/explore', async (req, res) => {
+    try {
+        const comms = await Community.find({ isPublic: true }).sort('-createdAt').limit(20);
+        res.json(comms);
+    } catch (e) { res.status(500).json([]); }
+});
+
     socket.on('mark_as_read', async (data) => { await Message.updateMany({ sender: data.senderId, receiver: data.receiverId, status: 'sent' }, { $set: { status: 'read' } }); const senderSocket = users[data.senderId]; if (senderSocket) io.to(senderSocket).emit('messages_read', { receiverId: data.receiverId }); });
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
