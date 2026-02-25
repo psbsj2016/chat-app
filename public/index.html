@@ -251,7 +251,7 @@
         <div class="drawer-content">
             <div class="drawer-section-title">Social</div>
             <div class="drawer-item" onclick="openBotChat(); toggleDrawer()"><span class="material-icons-round" style="color:var(--brand-accent)">smart_toy</span> Falar com a IA</div>
-            <div class="drawer-item" onclick="showElement('screen-communities'); hideAllTabs(); toggleDrawer()"><span class="material-icons-round">groups</span> Minhas Comunidades</div>
+            <div class="drawer-item" onclick="hideAllTabs(); showElement('screen-communities'); toggleDrawer()"><span class="material-icons-round">groups</span> Minhas Comunidades</div>
             
             <div class="drawer-section-title">Ferramentas</div>
             <div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div>
@@ -345,7 +345,7 @@
                     </div>
                 </div>
 
-                <div class="hub-card" onclick="openImmersiveGame('games/battleship/index.html', 'Batalha Naval')">
+               <div class="hub-card" onclick="openImmersiveGame('games/battleship/index.html', 'Batalha Naval')">
                     <div class="card-img" style="background: linear-gradient(135deg, #0284C7, #1E3A8A);">
                         <span class="material-icons-round" style="font-size: 50px; color: white;">directions_boat</span>
                     </div>
@@ -355,8 +355,7 @@
                     </div>
                 </div>
             </div>
-
-  <div id="game-immersive-modal" class="modal-overlay hidden" style="z-index: 99999; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;">
+        </div> </div> <div id="game-immersive-modal" class="modal-overlay hidden" style="z-index: 99999; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;">
         
         <div style="width: 100%; height: 60px; min-height: 60px; background: #09090b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.08);">
             <button class="icon-btn" onclick="closeImmersiveGame()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;">

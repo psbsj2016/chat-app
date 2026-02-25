@@ -227,6 +227,41 @@ app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelet
 app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 
+// ==============================================================
+// 🏢 ROTAS DO ECOSSISTEMA DE COMUNIDADES
+// ==============================================================
+app.post('/communities', async (req, res) => {
+    try {
+        const { name, description, ownerId, isPublic, category } = req.body;
+        
+        // 1. Cria a Comunidade
+        const comm = new Community({ name, description, ownerId, isPublic, category });
+        await comm.save();
+
+        // 2. Cria Cargo de Dono Mestre
+        const ownerRole = new CommunityRole({ communityId: comm._id, name: 'Fundador', color: '#F59E0B', permissions: { canManageChannels: true, canDeleteMessages: true, canKickUsers: true } });
+        await ownerRole.save();
+
+        // 3. Adiciona você como membro com cargo de dono
+        const member = new CommunityMember({ communityId: comm._id, userId: ownerId, roleId: ownerRole._id });
+        await member.save();
+
+        // 4. Cria Canais Padrão Discord
+        await new CommunityChannel({ communityId: comm._id, name: 'avisos', type: 'announcement', order: 1 }).save();
+        await new CommunityChannel({ communityId: comm._id, name: 'chat-geral', type: 'text', order: 2 }).save();
+
+        res.json({ success: true, community: comm });
+    } catch (error) { res.status(500).json({ error: 'Erro ao criar comunidade' }); }
+});
+
+app.get('/communities/user/:userId', async (req, res) => {
+    try {
+        const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId');
+        const comms = members.map(m => m.communityId).filter(c => c !== null);
+        res.json(comms);
+    } catch (e) { res.status(500).json([]); }
+});
+
 // === WEBSOCKETS (CHAT E IA) ===
 let users = {};
 const SERVER_VERSION = Date.now().toString(); // Gera a versão apenas UMA VEZ ao ligar o servidor
