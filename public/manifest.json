@@ -4,8 +4,8 @@
   "description": "Comunicação, Inteligência Artificial e Jogos.",
   "start_url": "/?mode=standalone",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#4F46E5",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "portrait",
   "icons": [
     {

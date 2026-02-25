@@ -74,10 +74,41 @@ body.dark-mode #auth-screen { background: linear-gradient(135deg, var(--bg-color
 .auth-top-logo { width: 65px; margin-bottom: 15px; border-radius: 18px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
 .link { color: var(--brand-primary); font-size: 14.5px; font-weight: 600; cursor: pointer; margin-top: 15px; display: inline-block; transition: 0.2s; }
 
-#welcome-screen { position: fixed; width: 100%; height: 100%; background: var(--my-msg-bg); z-index: 4000; display: flex; justify-content: center; align-items: center; color: white; }
-.welcome-content { text-align: center; animation: floatUp 1s ease; }
-.welcome-logo { width: 90px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 20px; }
-.welcome-content h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+/* TELAS DE BOAS VINDAS (SPLASH SCREEN PREMIUM) */
+#welcome-screen { 
+    position: fixed; 
+    width: 100%; 
+    height: 100%; 
+    background: #FFFFFF; /* Fundo Totalmente Branco */
+    z-index: 4000; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+}
+.welcome-content { 
+    text-align: center; 
+    animation: floatUp 1s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+.welcome-logo { 
+    width: 110px; /* Maior e mais imponente */
+    height: 110px;
+    border-radius: 30px; /* Squircle perfeito e moderno */
+    box-shadow: 0 15px 35px rgba(79, 70, 229, 0.25); /* Sombra colorida suave (Neon) */
+    margin-bottom: 25px; 
+    object-fit: cover;
+}
+.welcome-content h1 { 
+    font-size: 36px; 
+    font-weight: 900; 
+    letter-spacing: -1.5px; 
+    margin-bottom: 8px; 
+    color: #0F172A; /* Texto escuro para contrastar no branco */
+}
+.welcome-content p {
+    font-size: 15px;
+    font-weight: 600;
+    color: #64748B; /* Texto secundário elegante */
+}
 @keyframes floatUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 
 /* ESTRUTURA HEADER & LISTAS */
