@@ -231,10 +231,107 @@ function filterGroupContacts(query) { const items = document.querySelectorAll('.
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
 
-let searchTimeout = null; function handleSearch(query) { if (!query.trim()) { loadContacts(); return; } clearTimeout(searchTimeout); searchTimeout = setTimeout(() => performSearch(query), 100); } 
-async function performSearch(query) { try { const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`); const data = await res.json(); renderSearchResults(data); } catch (e) {} }
-function renderSearchResults(data) { const list = document.getElementById('users-list'); list.innerHTML = ''; if (data.users.length > 0) { list.innerHTML += '<div class="search-section-title">Contatos</div>'; data.users.forEach(user => list.appendChild(createSearchItem(user, null))); } if (data.messages.length > 0) { list.innerHTML += '<div class="search-section-title">Mensagens</div>'; data.messages.forEach(msg => { const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender; list.appendChild(createSearchItem(chatPartner, msg)); }); } }
-function createSearchItem(user, msgMatch) { const div = document.createElement('div'); div.className = 'user-item'; div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user'); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const safeName = (user.displayName || '').replace(/'/g, "\\'"); let subText = 'Toque para conversar'; if (msgMatch) subText = `<span style="color:var(--brand-primary)">Encontrado:</span> "${msgMatch.content}"`; div.innerHTML = `<img src="${photo}" class="avatar-small" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview">${subText}</div></div>`; return div; }
+// ==============================================================
+// 🔍 MOTOR DE PESQUISA GLOBAL (CONTATOS E MENSAGENS)
+// ==============================================================
+window.toggleMainSearch = function() {
+    const bar = document.getElementById('main-search-bar');
+    const input = document.getElementById('search-input');
+    if (bar.classList.contains('hidden')) {
+        bar.classList.remove('hidden');
+        input.focus();
+    } else {
+        bar.classList.add('hidden');
+        input.value = '';
+        loadContacts(); // Restaura a lista de conversas normal
+    }
+};
+
+let searchTimeout = null;
+window.handleSearch = function(query) {
+    if (!query.trim()) { loadContacts(); return; }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => performSearch(query), 300); // Aguarda o usuário parar de digitar
+};
+
+async function performSearch(query) {
+    const list = document.getElementById('users-list');
+    list.innerHTML = '<div style="text-align:center; padding: 30px; color: var(--brand-secondary);"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size: 30px;">sync</span><br><b style="font-size:13px; margin-top:10px; display:block;">Rastreando mensagens...</b></div>';
+
+    try {
+        // Tenta buscar no Banco de Dados primeiro
+        const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderSearchResults(data, query);
+    } catch (e) {
+        // 🛡️ SISTEMA DE EMERGÊNCIA: Se o servidor falhar, faz a busca local no telemóvel!
+        performLocalSearchFallback(query);
+    }
+}
+
+function renderSearchResults(data, query) {
+    const list = document.getElementById('users-list');
+    list.innerHTML = '';
+    if (data.users.length === 0 && data.messages.length === 0) {
+        list.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--secondary-text); font-weight: bold;"><span class="material-icons-round" style="font-size: 40px; margin-bottom: 10px; opacity: 0.5;">search_off</span><br>Nenhum resultado encontrado.</div>';
+        return;
+    }
+
+    if (data.users.length > 0) {
+        const title = document.createElement('div'); title.innerText = '👤 Contatos'; title.style = 'padding: 10px 15px; font-size: 12px; font-weight: 900; color: var(--brand-primary); text-transform: uppercase; background: rgba(0,0,0,0.2);'; list.appendChild(title);
+        data.users.forEach(user => list.appendChild(createSearchItem(user, null, query)));
+    }
+    if (data.messages.length > 0) {
+        const title = document.createElement('div'); title.innerText = '💬 Nas Mensagens'; title.style = 'padding: 10px 15px; font-size: 12px; font-weight: 900; color: var(--brand-secondary); text-transform: uppercase; background: rgba(0,0,0,0.2);'; list.appendChild(title);
+        data.messages.forEach(msg => {
+            const chatPartner = msg.sender._id === myId ? msg.receiver : msg.sender;
+            list.appendChild(createSearchItem(chatPartner, msg, query));
+        });
+    }
+}
+
+function createSearchItem(user, msgMatch, query) {
+    const div = document.createElement('div'); div.className = 'user-item';
+    div.onclick = () => openChat(user._id, user.displayName, user.photoUrl, user.email, 'user');
+    const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const safeName = (user.displayName || '').replace(/'/g, "\\'");
+
+    if (msgMatch) {
+        div.style = "border-left: 3px solid var(--brand-secondary); margin-bottom: 5px; background: rgba(6, 182, 212, 0.05);";
+        // Efeito Visual de Highlight (Marcador de Texto Neon)
+        const regex = new RegExp(`(${query})`, "gi");
+        const highlightedText = escapeHTML(msgMatch.content).replace(regex, "<mark style='background: var(--brand-secondary); color: black; padding: 0 2px; border-radius: 4px; font-weight: bold;'>$1</mark>");
+        div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview" style="font-size: 13px; color: var(--text-color); margin-top: 3px; font-style: italic;">"${highlightedText}"</div></div>`;
+    } else {
+        div.innerHTML = `<img src="${photo}" class="avatar-small"><div class="info"><div class="contact-name">${user.displayName}</div><div class="match-preview" style="font-size: 12px; color: var(--secondary-text);">Toque para conversar</div></div>`;
+    }
+    return div;
+}
+
+// Motor de busca de backup caso o Node.js falhe
+function performLocalSearchFallback(query) {
+    const list = document.getElementById('users-list'); list.innerHTML = '';
+    const q = query.toLowerCase();
+    let matchedMessages = [];
+
+    for (let chatId in messageCache) {
+        messageCache[chatId].forEach(msg => {
+            if (msg.content && msg.content.toLowerCase().includes(q)) {
+                const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+                const user = cachedUsers.find(u => u._id === chatId) || { _id: chatId, displayName: 'Contato', photoUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' };
+                matchedMessages.push({ sender: user, content: msg.content });
+            }
+        });
+    }
+
+    if (matchedMessages.length > 0) {
+        const title = document.createElement('div'); title.innerText = '💬 Nas Mensagens (Busca Local)'; title.style = 'padding: 10px 15px; font-size: 12px; font-weight: 900; color: var(--brand-secondary); text-transform: uppercase; background: rgba(0,0,0,0.2);'; list.appendChild(title);
+        matchedMessages.reverse().slice(0, 20).forEach(msg => list.appendChild(createSearchItem(msg.sender, msg, query))); // Limita a 20 resultados
+    } else {
+        list.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--secondary-text); font-weight: bold;"><span class="material-icons-round" style="font-size: 40px; margin-bottom: 10px; opacity: 0.5;">search_off</span><br>Nenhuma mensagem encontrada.</div>';
+    }
+}
 
 // ==============================================================
 // ⚙️ PERFIL, CONFIGURAÇÕES E WARDROBE

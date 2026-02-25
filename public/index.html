@@ -77,10 +77,11 @@
             <button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button>
         </div>
 
-        <div id="main-search-bar" class="search-container hidden">
-            <div class="search-box">
-                <span class="material-icons-round">search</span>
-                <input type="text" id="search-input" placeholder="Buscar conversas..." onkeyup="handleSearch(this.value)">
+        <div id="main-search-bar" class="search-container hidden" style="padding: 10px 15px; background: var(--bg-color); border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">
+            <div class="search-box" style="display: flex; align-items: center; background: rgba(79, 70, 229, 0.1); border: 1px solid var(--brand-primary); border-radius: 20px; padding: 5px 15px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);">
+                <span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span>
+                <input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)" style="flex: 1; background: transparent; border: none; color: white; outline: none; padding: 8px 0; font-size: 14.5px; font-weight: 500;">
+                <span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer; font-size: 20px; transition: 0.2s;">close</span>
             </div>
         </div>
 
