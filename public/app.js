@@ -433,14 +433,26 @@ function renderCommunitiesSidebar() {
     }
 }
 
-// 1. ABRIR COMUNIDADE E CARREGAR CANAIS (COM BOTÃO DE CRIAR CANAL)
+// 1. ABRIR COMUNIDADE (AGORA COM CONTROLE DE PERMISSÕES - MODO DEUS)
 async function openCommunity(commId, commName) {
     currentCommunityId = commId;
     const screenComm = document.getElementById('screen-communities');
     if(screenComm) screenComm.classList.remove('show-chat');
 
+    // 🛡️ Verifica se o usuário é o DONO desta comunidade
+    const currentCommObj = myCommunities.find(c => c._id === commId);
+    const isOwner = currentCommObj && currentCommObj.ownerId === myId;
+
     const nameEl = document.getElementById('active-comm-name');
-    if(nameEl) nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
+    if(nameEl) {
+        if (isOwner) {
+            // O Dono vê o botão de Destruir Servidor
+            nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 22px; color: #EF4444; cursor:pointer;" onclick="deleteCommunity('${commId}')" title="Destruir Servidor">delete_forever</span>`;
+        } else {
+            // O Membro vê o botão de Sair
+            nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px; color: #EF4444; cursor:pointer;" onclick="leaveCommunity('${commId}')" title="Sair do Servidor">exit_to_app</span>`;
+        }
+    }
     
     const list = document.getElementById('community-channels-list');
     if(!list) return;
@@ -454,32 +466,87 @@ async function openCommunity(commId, commName) {
         let voiceChannels = channels.filter(c => c.type === 'voice');
         let firstTextChannel = textChannels[0] || null;
 
-        // Renderiza os Canais de Texto com botão +
         list.innerHTML = `
             <div class="channel-category" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>CANAIS DE TEXTO</span>
-                <span class="material-icons-round" style="font-size:18px; cursor:pointer;" onclick="openCreateChannelModal('text')">add</span>
+                ${isOwner ? `<span class="material-icons-round" style="font-size:18px; cursor:pointer; color: #22C55E;" onclick="openCreateChannelModal('text')">add_circle</span>` : ''}
             </div>
         `;
         textChannels.forEach(ch => {
             let icon = ch.type === 'announcement' ? 'campaign' : 'tag';
-            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">${icon}</span> ${ch.name}</div>`;
+            // Impede de apagar os canais obrigatórios
+            let delBtn = (isOwner && ch.name !== 'chat-geral' && ch.name !== 'avisos') ? `<span class="material-icons-round" style="font-size:16px; color:#EF4444; margin-left:auto; opacity:0.7;" onclick="event.stopPropagation(); deleteCommChannel('${ch._id}', '${commId}')">delete</span>` : '';
+            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">${icon}</span> ${ch.name} ${delBtn}</div>`;
         });
 
-        // Renderiza os Canais de Voz com botão +
         list.innerHTML += `
             <div class="channel-category" style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
                 <span>CANAIS DE VOZ</span>
-                <span class="material-icons-round" style="font-size:18px; cursor:pointer;" onclick="openCreateChannelModal('voice')">add</span>
+                ${isOwner ? `<span class="material-icons-round" style="font-size:18px; cursor:pointer; color: #22C55E;" onclick="openCreateChannelModal('voice')">add_circle</span>` : ''}
             </div>
         `;
         voiceChannels.forEach(ch => {
-            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">volume_up</span> ${ch.name}</div>`;
+            let delBtn = isOwner ? `<span class="material-icons-round" style="font-size:16px; color:#EF4444; margin-left:auto; opacity:0.7;" onclick="event.stopPropagation(); deleteCommChannel('${ch._id}', '${commId}')">delete</span>` : '';
+            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">volume_up</span> ${ch.name} ${delBtn}</div>`;
         });
 
         if(firstTextChannel) openChannel(firstTextChannel._id, firstTextChannel.name, firstTextChannel.type);
 
     } catch (e) { list.innerHTML = '<div style="padding:15px; color:#EF4444;">Erro ao carregar.</div>'; }
+}
+
+// ==========================================================
+// FUNÇÕES DE MODERAÇÃO (MISSÃO A)
+// ==========================================================
+async function deleteCommChannel(channelId, commId) {
+    if(!confirm("⚠️ Tem certeza que deseja apagar este canal? Todas as mensagens contidas nele serão deletadas para sempre!")) return;
+    try {
+        const res = await fetch(`/communities/channels/${channelId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, commId: commId })
+        });
+        const data = await res.json();
+        if(data.success) openCommunity(commId, document.getElementById('active-comm-name').innerText.split('<')[0].trim());
+    } catch(e) { alert("Erro ao apagar canal."); }
+}
+
+async function deleteCommunity(commId) {
+    if(!confirm("🔥 ALERTA DE DESTRUIÇÃO 🔥\nTem certeza que deseja DESTRUIR este servidor?\nTodos os canais, membros e mensagens desaparecerão. Esta ação é irreversível!")) return;
+    try {
+        const res = await fetch(`/communities/${commId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("💥 Servidor desintegrado com sucesso.");
+            resetCommunityView();
+        }
+    } catch(e) { alert("Erro ao destruir servidor."); }
+}
+
+async function leaveCommunity(commId) {
+    if(!confirm("🚪 Deseja realmente sair deste servidor?")) return;
+    try {
+        const res = await fetch('/communities/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, communityId: commId })
+        });
+        const data = await res.json();
+        if(data.success) resetCommunityView();
+    } catch(e) {}
+}
+
+function resetCommunityView() {
+    currentCommunityId = null;
+    document.getElementById('community-channels-list').innerHTML = '<div style="padding: 20px; text-align: center; color: #64748B; font-size: 13px;">Nenhuma comunidade selecionada.</div>';
+    document.getElementById('active-comm-name').innerHTML = 'Selecione um Servidor';
+    document.getElementById('community-chat-box').innerHTML = '<div style="text-align: center; color: #64748B; margin-top: 50px;"><span class="material-icons-round" style="font-size: 50px; opacity: 0.5;">forum</span><h2>Bem-vindo à sua Comunidade</h2><p>Selecione um servidor na barra à esquerda para começar.</p></div>';
+    document.getElementById('active-channel-name').innerText = 'selecione-um-canal';
+    loadCommunities(); // Atualiza a barra lateral
 }
 
 // ==========================================================

@@ -305,6 +305,51 @@ app.post('/communities/channels', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao criar canal' }); }
 });
 
+// --- FASE 5: MODERAÇÃO E GESTÃO (MISSÃO A) ---
+
+// Apagar um Canal Específico
+app.delete('/communities/channels/:id', async (req, res) => {
+    try {
+        const { userId, commId } = req.body;
+        const comm = await Community.findById(commId);
+        if (!comm || comm.ownerId.toString() !== userId) return res.status(403).json({ error: 'Sem permissão' });
+
+        await CommunityMessage.deleteMany({ channelId: req.params.id });
+        await CommunityChannel.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: 'Erro ao deletar canal' }); }
+});
+
+// Destruir a Comunidade Inteira
+app.delete('/communities/:id', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const comm = await Community.findById(req.params.id);
+        if (!comm) return res.status(404).json({ error: 'Comunidade não encontrada' });
+        if (comm.ownerId.toString() !== userId) return res.status(403).json({ error: 'Sem permissão' });
+
+        const channels = await CommunityChannel.find({ communityId: comm._id });
+        const channelIds = channels.map(c => c._id);
+        
+        await CommunityMessage.deleteMany({ channelId: { $in: channelIds } });
+        await CommunityChannel.deleteMany({ communityId: comm._id });
+        await CommunityMember.deleteMany({ communityId: comm._id });
+        await CommunityRole.deleteMany({ communityId: comm._id });
+        await Community.findByIdAndDelete(comm._id);
+        
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: 'Erro ao deletar comunidade' }); }
+});
+
+// Membro Normal Sair da Comunidade
+app.post('/communities/leave', async (req, res) => {
+    try {
+        const { userId, communityId } = req.body;
+        await CommunityMember.findOneAndDelete({ communityId, userId });
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: 'Erro ao sair' }); }
+});
+
 app.get('/communities/user/:userId', async (req, res) => {
     try {
         const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId');
