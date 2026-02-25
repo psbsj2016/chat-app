@@ -461,7 +461,12 @@
                     <input type="file" id="profile-file-input" hidden onchange="uploadProfilePhoto(this)">
                 </div>
                 <h3 id="config-name" style="font-size: 24px; margin-bottom: 5px;">Nome</h3>
-                <span class="edit-btn" onclick="editName()" style="font-weight:600;">Editar Nome</span>
+                <span class="edit-btn" onclick="editName()" style="font-weight:600; color: var(--brand-primary); cursor: pointer;">Editar Nome</span>
+                
+                <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+                    <div style="background: var(--input-bg); padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 800; color: var(--brand-secondary);">Nível <span id="config-level">1</span></div>
+                    <div style="background: var(--input-bg); padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #F59E0B;"><span id="config-xp">0</span> XP</div>
+                </div>
             </div>
             <div class="settings-group">
                 <div class="group-title">Informações</div>

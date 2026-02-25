@@ -25,7 +25,7 @@ let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; 
 
 // ==============================================================
-// 🛠️ NAVEGAÇÃO E UI PRINCIPAL
+// 🛠️ NAVEGAÇÃO E UI PRINCIPAL (COMANDO DIRETO BLINDADO)
 // ==============================================================
 function showElement(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
 function hideElement(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); }
@@ -53,12 +53,18 @@ function hideAllTabs() {
     hideElement('appearance-screen');
     hideElement('account-screen');
     hideElement('notifications-screen');
+    
+    // 🚨 A MÁGICA: Esconde a barra sempre que a tela for limpa
+    hideElement('bottom-navigation');
 }
 
 function switchTab(tabName, element) {
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active')); 
     if(element) element.classList.add('active'); 
     hideAllTabs();
+    
+    // 🚨 A MÁGICA: Acende a barra sempre que abrir uma aba
+    showElement('bottom-navigation');
     
     if (tabName === 'conversas') { showElement('main-screen'); } 
     else if (tabName === 'explorar') { showElement('screen-explorar'); } 
@@ -70,8 +76,12 @@ function backToMain() {
     currentChatId = null;
     hideAllTabs();
     const navItems = document.querySelectorAll('.nav-item');
-    if (navItems.length > 0) { switchTab('conversas', navItems[0]); } 
-    else { showElement('main-screen'); }
+    if (navItems.length > 0) { 
+        switchTab('conversas', navItems[0]); 
+    } else { 
+        showElement('main-screen'); 
+        showElement('bottom-navigation'); // 🚨 Traz a barra de volta
+    }
     updateAppBadge();
 }
 
@@ -80,7 +90,10 @@ function showMainScreen() {
     hideElement('welcome-screen'); 
     hideElement('permissions-screen'); 
     hideAllTabs(); 
+    
     showElement('main-screen'); 
+    showElement('bottom-navigation'); // 🚨 Acende a barra ao fazer Login
+    
     loadContacts(); 
     socket.emit('join_room', myId); 
     if ("Notification" in window && Notification.permission === "granted") registerServiceWorkerAndSubscribe(); 
@@ -114,7 +127,7 @@ async function installPWA() {
         const { outcome } = await deferredPrompt.userChoice;
         deferredPrompt = null;
         const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden');
-    } else { alert("Para instalar: Toque em 'Compartilhar' no navegador e escolha 'Adicionar à Tela de Início'."); }
+    } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); }
 }
 window.addEventListener('appinstalled', () => {
     hideElement('pwa-install-banner');
@@ -226,7 +239,7 @@ function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content
 async function openForwardModal() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
-// 🗑️ MOTOR DE EXCLUSÃO, BLOQUEIOS E NOTAS
+// 🗑️ MOTOR DE EXCLUSÃO E BLOQUEIOS
 // ==============================================================
 async function deleteChatFromList(targetId, targetName) { hideElement(`contact-menu-${targetId}`); if(!confirm(`⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODA a conversa com ${targetName}?\nA mídia será excluída e o contato sumirá desta lista.`)) return; try { const res = await fetch(`/messages/${myId}/${targetId}`, { method: 'DELETE' }); if (res.ok) { messageCache[targetId] = []; if(!hiddenChats.includes(targetId)) { hiddenChats.push(targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Chat apagado com sucesso!"); loadContacts(); } } catch(e) { alert("Erro ao apagar chat."); } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); if(!hiddenChats.includes(currentChatId)) { hiddenChats.push(currentChatId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Conversa apagada!"); backToMain(); loadContacts(); } } catch (e) { } }
@@ -267,7 +280,23 @@ async function submitCreateGroup() { const name = document.getElementById('group
 // ==============================================================
 // ⚙️ PERFIL, LOJA NEON, CONFIGURAÇÕES
 // ==============================================================
-function openProfile() { hideAllTabs(); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; if(window.fetchAndSyncProfile) window.fetchAndSyncProfile(); }
+function openProfile() { 
+    hideAllTabs(); 
+    showElement('profile-screen'); 
+    document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; 
+    document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+    document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; 
+    document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; 
+    
+    // Atualiza Nível e XP no Perfil
+    const elXp = document.getElementById('config-xp');
+    if(elXp) elXp.innerText = cachedMe.xp || 0;
+    const elLevel = document.getElementById('config-level');
+    if(elLevel) elLevel.innerText = cachedMe.level || 1;
+
+    if(window.fetchAndSyncProfile) window.fetchAndSyncProfile(); 
+}
+
 function openSettings() { hideAllTabs(); showElement('settings-screen'); }
 function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; renderInventory(); }
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; }
@@ -300,6 +329,19 @@ async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try
 function openImmersiveGame(gameUrl, gameTitle) { const modal = document.getElementById('game-immersive-modal'); const iframe = document.getElementById('immersive-game-frame'); const title = document.getElementById('immersive-game-title'); title.innerText = gameTitle.toUpperCase(); iframe.src = gameUrl; modal.classList.remove('hidden'); }
 function closeImmersiveGame() { const modal = document.getElementById('game-immersive-modal'); const iframe = document.getElementById('immersive-game-frame'); iframe.src = ''; modal.classList.add('hidden'); }
 window.gameEarnXP = function(amount) { gainXP(amount, false); };
+
+// Motor Inteligente de Progressão de Níveis para TODOS os jogos
+window.gameLevelUp = function(faseAtual) {
+    // Fase 1 = 10 XP, Fase 2 = 20 XP, Fase 3 = 30 XP...
+    const xpGanho = faseAtual * 10; 
+    const xpProximaFase = (faseAtual + 1) * 10;
+
+    // Alerta em tela com a informação da próxima fase
+    alert(`🎮 FASE ${faseAtual} CONCLUÍDA!\n\nVocê acaba de ganhar +${xpGanho} XP!\nPrepare-se: A Fase ${faseAtual + 1} vai valer ${xpProximaFase} XP!`);
+
+    // Injeta o XP na conta do usuário
+    gainXP(xpGanho, false);
+};
 
 let threeJsLoaded = false;
 function init3DHubBackground() {
@@ -342,7 +384,7 @@ function completeFocusMode() { clearInterval(focusInterval); hideElement('focus-
 async function buyItem(itemId, cost) { if (!myId) return; if ((cachedMe.xp || 0) < cost) return alert("❌ XP insuficiente!"); if (cachedMe.unlockedItems && cachedMe.unlockedItems.includes(itemId)) return alert("Já possui!"); try { const btn = document.getElementById('btn-' + itemId); if(btn) btn.innerText = "Comprando..."; const res = await fetch('/buy-item', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, itemId: itemId, cost: cost }) }); const data = await res.json(); if (data.success) { cachedMe.xp = data.xp; cachedMe.unlockedItems = data.unlockedItems; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); document.getElementById('drawer-xp').innerText = data.xp; alert("💎 Compra realizada!"); applyUnlockedItems(); } else { alert(data.error); if(btn) btn.innerText = cost + " XP"; } } catch (e) {} }
 
 // ==============================================================
-// 🚀 INICIALIZAÇÃO MASTER, AUTH E O "RADAR" DOS BOTÕES
+// 🚀 INICIALIZAÇÃO MASTER E AUTH
 // ==============================================================
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); hideElement('forgot-pass-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); showElement('forgot-pass-text'); } }
@@ -389,42 +431,5 @@ async function initApp() {
     } else { showElement('auth-screen'); } 
 }
 
-// =========================================================
-// O "RADAR" DE NAVEGAÇÃO QUE VOCÊ PEDIU (MUTATION OBSERVER)
-// =========================================================
-const observerMenu = new MutationObserver(() => { 
-    const chat = document.getElementById('chat-screen'); 
-    const nav = document.getElementById('bottom-navigation'); 
-    const main = document.getElementById('main-screen'); 
-    const notes = document.getElementById('screen-anotacoes'); 
-    const games = document.getElementById('screen-jogos'); 
-    const explorar = document.getElementById('screen-explorar'); 
-    
-    if(!nav) return;
-    
-    // Se o Chat, as Configurações ou o Explorar Perfil estiverem abertos, ESCONDE a barra forçadamente
-    if (chat && !chat.classList.contains('hidden')) { 
-        nav.style.setProperty('display', 'none', 'important');
-        nav.classList.add('hidden');
-    } 
-    // Se alguma das 4 Abas Principais estiver aberta, MOSTRA a barra forçadamente
-    else if ((main && !main.classList.contains('hidden')) || 
-             (notes && !notes.classList.contains('hidden')) || 
-             (games && !games.classList.contains('hidden')) || 
-             (explorar && !explorar.classList.contains('hidden'))) { 
-        nav.style.setProperty('display', 'flex', 'important');
-        nav.classList.remove('hidden');
-    } else { 
-        nav.style.setProperty('display', 'none', 'important');
-        nav.classList.add('hidden');
-    } 
-});
-
-// Ativa o Radar em todas as telas
-document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll('.app-screen').forEach(screen => { 
-        if(screen) observerMenu.observe(screen, { attributes: true, attributeFilter: ['class'] }); 
-    });
-});
-
+// O RADAR FOI DELETADO. A NAVEGAÇÃO AGORA É 100% DIRETA E SEGURA!
 initApp();

@@ -159,7 +159,16 @@
                 gameInterval = setInterval(gameLoop, speed);
             }
         }
+        
+        // O jogo sabe em que fase está
+let faseDoJogo = 1; 
 
+// QUANDO O JOGADOR VENCER A FASE / NIVEL, RODE ISTO:
+if (window.parent && window.parent.gameLevelUp) {
+    window.parent.gameLevelUp(faseDoJogo); // Manda o XP escalável para o App!
+}
+faseDoJogo++; // Sobe para a próxima fase no jogo
+  
         function placeFood() {
             food = {
                 x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
