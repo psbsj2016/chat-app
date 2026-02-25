@@ -269,7 +269,9 @@
 
     <div id="screen-anotacoes" class="app-screen hidden">
         <div class="material-header">
-            <span class="header-title" style="font-size:22px; margin-left: 10px; font-weight:800; color: var(--text-color);">Anotações</span>
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
+            
+            <span class="header-title" style="font-size:22px; margin-left: 5px; font-weight:800; color: var(--text-color);">Anotações</span>
             <div style="flex:1"></div>
             <button class="icon-btn" onclick="openNoteModal()"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 28px;">add_circle</span></button>
         </div>
@@ -602,7 +604,7 @@
     <div id="forward-modal" class="modal-overlay hidden"><div class="modal-content" style="max-width: 320px; height: 70%;"><h3 style="color: var(--brand-primary); margin-bottom: 10px;">Encaminhar para...</h3><div id="forward-contacts-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div><button onclick="hideElement('forward-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Cancelar</button></div></div>   
     <div id="admin-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color: var(--brand-accent); margin-bottom: 15px;">⚡ Aviso Geral</h3><input type="text" id="broadcast-title" class="chic-input" placeholder="Título"><textarea id="broadcast-message" class="chic-input" placeholder="Aviso..." style="height: 80px; resize: none;"></textarea><button onclick="triggerTurboBroadcast()" class="chic-btn" style="background: var(--brand-accent);"><span class="material-icons-round" style="font-size: 18px;">rocket_launch</span> Lançar</button><p id="broadcast-status" style="font-size: 13px; margin-top: 10px; font-weight: bold;"></p><button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="chic-btn" style="background:transparent; color:var(--secondary-text);">Fechar</button></div></div>
 
-    <nav id="bottom-navigation" class="bottom-nav" style="display: none;">
+        <nav id="bottom-navigation" class="bottom-nav hidden">
         <div class="nav-item active" onclick="switchTab('conversas', this)">
             <div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span>
         </div>
@@ -631,7 +633,8 @@
     </div>
   <script src="/socket.io/socket.io.js"></script>
     <script>
-        document.write('<script src="app.js?v=' + appVer + '"><\/script>');
+        // BOMBA DE CACHE: Força o PWA a ler sempre a versão mais recente do JS
+        document.write('<script src="app.js?v=' + Date.now() + '"><\/script>');
     </script>
 </body>
 </html>
