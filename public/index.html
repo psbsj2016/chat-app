@@ -736,28 +736,7 @@
                 </div>
             </div>
         </div>
-    </div> ```
-
----
-
-### 🎨 PASSO 3: O Estilo Responsivo (`style.css`)
-
-Para que esta barra lateral não quebre o telemóvel, vamos fazê-la "flutuar" por cima do chat em telas pequenas.
-
-Abra o **`style.css`**. Desça até à **ÚLTIMA LINHA** do ficheiro e cole esta regra de adaptação visual:
-
-```css
-/* FASE 5: BARRA DE MEMBROS (MISSÃO B) */
-@media (max-width: 768px) {
-    #community-members-bar {
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 100;
-        box-shadow: -10px 0 25px rgba(0,0,0,0.6);
-    }
-}
+    </div>
 
   <script src="/socket.io/socket.io.js"></script>
     <script>

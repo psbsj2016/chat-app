@@ -784,3 +784,15 @@ body.bubble-cyber {
     #screen-communities.show-chat .community-channels-bar { display: none; }
     #screen-communities.show-chat .community-chat-area { display: flex; }
 }
+
+/* FASE 5: BARRA DE MEMBROS (MISSÃO B) */
+@media (max-width: 768px) {
+    #community-members-bar {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        box-shadow: -10px 0 25px rgba(0,0,0,0.6);
+    }
+}

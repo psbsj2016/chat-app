@@ -203,6 +203,80 @@ async function saveNote() { const title = document.getElementById('note-title').
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
 // ==============================================================
+// 🎙️ MOTOR DE GRAVAÇÃO DE ÁUDIO (VOZ)
+// ==============================================================
+let audioChunks = [];
+let audioStream = null;
+
+async function startRecording() {
+    hideElement('attach-menu'); // Esconde o menu do clipe
+    try {
+        // Pede permissão ao navegador/celular para usar o microfone
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        globalMediaRecorder = new MediaRecorder(audioStream);
+        audioChunks = [];
+
+        globalMediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        globalMediaRecorder.onstop = () => {
+            clearInterval(recordingInterval);
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const file = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' });
+            
+            // Oculta a interface de gravação e mostra o campo de texto
+            hideElement('recording-ui');
+            document.getElementById('message-input').style.display = 'block';
+            
+            // Desliga a luz/uso do microfone no celular
+            audioStream.getTracks().forEach(track => track.stop());
+            
+            // Transfere o arquivo para o sistema de envio
+            pendingAudioFile = file;
+            sendMessage(); // Dispara o envio automaticamente!
+        };
+
+        // UI: Mostra o cronômetro e esconde o campo de texto
+        showElement('recording-ui');
+        document.getElementById('message-input').style.display = 'none';
+        recordingSeconds = 0;
+        document.getElementById('recording-timer').innerText = "00:00";
+        
+        recordingInterval = setInterval(() => {
+            recordingSeconds++;
+            const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0');
+            const s = (recordingSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('recording-timer').innerText = `${m}:${s}`;
+        }, 1000);
+
+        globalMediaRecorder.start();
+        emitTypingStatus('recording'); // Mostra "gravando..." para o outro contato
+        drawAudioVisualizer(); // Inicia a animação das ondas
+
+    } catch (e) {
+        alert("🎤 Permissão de microfone negada. Verifique as configurações do seu navegador ou celular.");
+    }
+}
+
+function drawAudioVisualizer() {
+    const canvas = document.getElementById('audio-visualizer');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const draw = () => {
+        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return;
+        requestAnimationFrame(draw);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#EF4444'; // Cor vermelha do áudio
+        for(let i = 0; i < (canvas.width / 8); i++) {
+            const h = Math.random() * (canvas.height - 5) + 5;
+            ctx.fillRect(i * 8, (canvas.height / 2) - (h / 2), 4, h);
+        }
+    };
+    draw();
+}
+
+// ==============================================================
 // 🔍 MOTOR DE PESQUISA GLOBAL E GRUPOS
 // ==============================================================
 function toggleMainSearch() { const bar = document.getElementById('main-search-bar'); const input = document.getElementById('search-input'); if (bar.classList.contains('hidden')) { bar.classList.remove('hidden'); input.focus(); } else { bar.classList.add('hidden'); input.value = ''; loadContacts(); } }
