@@ -403,54 +403,129 @@ async function loadCommunities() {
     } catch(e) {}
 }
 
+let currentCommunityId = null;
+let currentChannelId = null;
+
 function renderCommunitiesSidebar() {
     const sidebar = document.querySelector('.community-servers-bar');
     if(!sidebar) return;
     
-    // Mantém os botões base de Voltar
     sidebar.innerHTML = `
         <div class="c-icon" onclick="backToMain()"><span class="material-icons-round">chat</span></div>
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
     `;
     
-    // Renderiza as suas comunidades criadas
     myCommunities.forEach(comm => {
-        sidebar.innerHTML += `<img src="${comm.photoUrl}" class="c-icon" onclick="alert('Bem-vindo a ${comm.name}! O chat interno será ativado na Fase 3.')" title="${comm.name}">`;
+        // Agora o clique CHAMA a função de abrir a comunidade!
+        sidebar.innerHTML += `<img src="${comm.photoUrl}" class="c-icon" onclick="openCommunity('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')" title="${comm.name}">`;
     });
     
-    // Botões de Ação
     sidebar.innerHTML += `
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
         <div class="c-icon action-btn" onclick="openCreateCommunityModal()"><span class="material-icons-round">add</span></div>
-        <div class="c-icon action-btn" style="color: #06B6D4;" onclick="alert('Aba Explorar Comunidades chegará em breve!')"><span class="material-icons-round">explore</span></div>
     `;
+
+    // Atualiza o mini-perfil
+    if(cachedMe) {
+        document.getElementById('comm-mini-avatar').src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        document.getElementById('comm-mini-name').innerText = cachedMe.displayName || 'Você';
+    }
 }
 
-function openCreateCommunityModal() {
-    const name = prompt("🏰 Qual será o nome do seu novo Servidor/Comunidade?");
-    if(!name) return;
-    const desc = prompt("Descreva a sua comunidade em uma frase curta:");
-    if(desc !== null) createNewCommunity(name, desc);
-}
-
-async function createNewCommunity(name, description) {
+// 1. ABRIR COMUNIDADE E CARREGAR CANAIS
+async function openCommunity(commId, commName) {
+    currentCommunityId = commId;
+    document.getElementById('active-comm-name').innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
+    
+    const list = document.getElementById('community-channels-list');
+    list.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--secondary-text);">Carregando...</div>';
+    
     try {
-        const res = await fetch('/communities', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, ownerId: myId, isPublic: true, category: 'Geral' })
+        const res = await fetch(`/communities/${commId}/channels`);
+        const channels = await res.json();
+        list.innerHTML = '';
+        
+        let firstTextChannel = null;
+
+        channels.forEach(ch => {
+            let icon = ch.type === 'voice' ? 'volume_up' : (ch.type === 'announcement' ? 'campaign' : 'tag');
+            if(ch.type === 'text' && !firstTextChannel) firstTextChannel = ch;
+            
+            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">${icon}</span> ${ch.name}</div>`;
         });
-        const data = await res.json();
-        if(data.success) {
-            alert("🚀 SUCESSO! A sua Comunidade e os Canais base foram gerados pelo Servidor.");
-            loadCommunities();
-        } else {
-            alert("Erro ao criar a comunidade.");
-        }
-    } catch(e) { alert("Falha na conexão com a nuvem."); }
+
+        // Entra automaticamente no primeiro canal de texto
+        if(firstTextChannel) openChannel(firstTextChannel._id, firstTextChannel.name, firstTextChannel.type);
+
+    } catch (e) { list.innerHTML = 'Erro ao carregar canais.'; }
 }
 
-// Carregar comunidades quando o App inicia
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadCommunities, 2000);
+// 2. ABRIR CANAL E CARREGAR MENSAGENS
+async function openChannel(channelId, channelName, type) {
+    currentChannelId = channelId;
+    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+    const chItem = document.getElementById(`nav-ch-${channelId}`);
+    if(chItem) chItem.classList.add('active');
+
+    document.getElementById('active-channel-name').innerText = channelName;
+    const box = document.getElementById('community-chat-box');
+    box.innerHTML = '<div style="text-align:center; margin-top:20px; color:#64748B;">Sincronizando satélites...</div>';
+
+    // Se for voz, emite alerta (Fase Futura)
+    if(type === 'voice') {
+        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC em breve!</p></div>';
+        document.getElementById('community-message-input').disabled = true;
+        return;
+    }
+
+    document.getElementById('community-message-input').disabled = false;
+    socket.emit('join_community_channel', channelId); // Isola o WebSocket!
+
+    try {
+        const res = await fetch(`/communities/channels/${channelId}/messages`);
+        const msgs = await res.json();
+        box.innerHTML = '';
+        if(msgs.length === 0) box.innerHTML = `<div style="text-align: center; color: #64748B; margin-top: 50px;"><span class="material-icons-round" style="font-size: 50px; opacity: 0.5;">forum</span><h2>Bem-vindo ao #${channelName}</h2><p>Seja o primeiro a dizer olá!</p></div>`;
+        msgs.forEach(msg => renderCommunityMessage(msg));
+    } catch(e) {}
+}
+
+// 3. ENVIAR MENSAGEM NO CANAL
+function sendCommunityMessage() {
+    const input = document.getElementById('community-message-input');
+    const content = input.value.trim();
+    if(!content || !currentChannelId) return;
+
+    socket.emit('send_channel_message', { channelId: currentChannelId, senderId: myId, content: content });
+    input.value = '';
+}
+
+// 4. RECEBER E RENDERIZAR MENSAGEM NO ESTILO DISCORD
+socket.on('receive_channel_message', (msg) => {
+    if(msg.channelId === currentChannelId) {
+        renderCommunityMessage(msg);
+    }
 });
+
+function renderCommunityMessage(msg) {
+    const box = document.getElementById('community-chat-box');
+    const div = document.createElement('div');
+    div.style = "display: flex; gap: 15px; align-items: flex-start; margin-bottom: 5px; animation: slideUp 0.2s ease;";
+    
+    const senderName = msg.senderId ? msg.senderId.displayName : 'Usuário Desconhecido';
+    const photo = msg.senderId ? msg.senderId.photoUrl : 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const time = new Date(msg.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+    div.innerHTML = `
+        <img src="${photo}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; cursor: pointer;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                <span style="color: white; font-weight: 700; font-size: 15px; cursor: pointer;">${senderName}</span>
+                <span style="color: #64748B; font-size: 11px; font-weight: 600;">Hoje às ${time}</span>
+            </div>
+            <div style="color: #CBD5E1; font-size: 14.5px; line-height: 1.4;">${escapeHTML(msg.content)}</div>
+        </div>
+    `;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}

@@ -262,6 +262,16 @@ app.get('/communities/user/:userId', async (req, res) => {
     } catch (e) { res.status(500).json([]); }
 });
 
+app.get('/communities/:id/channels', async (req, res) => {
+    try { res.json(await CommunityChannel.find({ communityId: req.params.id }).sort('order')); }
+    catch (e) { res.status(500).json([]); }
+});
+
+app.get('/communities/channels/:id/messages', async (req, res) => {
+    try { res.json(await CommunityMessage.find({ channelId: req.params.id }).populate('senderId', 'displayName photoUrl').sort('timestamp').limit(150)); }
+    catch (e) { res.status(500).json([]); }
+});
+
 // === WEBSOCKETS (CHAT E IA) ===
 let users = {};
 const SERVER_VERSION = Date.now().toString(); // Gera a versão apenas UMA VEZ ao ligar o servidor
@@ -270,7 +280,25 @@ io.on('connection', (socket) => {
     socket.emit('check_app_version', SERVER_VERSION); // Envia a mesma versão sempre
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
+    // === SOCKETS DAS COMUNIDADES ===
+    socket.on('join_community_channel', (channelId) => {
+        // Sai do canal anterior para não ler mensagens vazadas
+        if(socket.currentCommChannel) socket.leave(socket.currentCommChannel);
+        socket.join(channelId);
+        socket.currentCommChannel = channelId;
+    });
 
+    socket.on('send_channel_message', async (data) => {
+        try {
+            // Guarda na Coleção Específica da Comunidade
+            const msg = new CommunityMessage({ channelId: data.channelId, senderId: data.senderId, content: data.content, fileType: 'text' });
+            await msg.save();
+            
+            // Popula os dados de quem enviou e dispara PARA O CANAL
+            const popMsg = await CommunityMessage.findById(msg._id).populate('senderId', 'displayName photoUrl');
+            io.to(data.channelId).emit('receive_channel_message', popMsg);
+        } catch(e) { console.error("Erro ao enviar msg de comunidade:", e); }
+    });
     socket.on('typing', (data) => { if (data.groupId) socket.to(data.groupId).emit('typing', data); else { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', data); } });
     socket.on('stop_typing', (data) => { if (data.groupId) socket.to(data.groupId).emit('stop_typing', data); else { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', data); } });
 

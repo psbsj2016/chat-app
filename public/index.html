@@ -658,20 +658,11 @@
         </div>
 
         <div class="community-channels-bar">
-            <div class="comm-header">
-                CPTT HQ <span class="material-icons-round" style="font-size: 20px;">expand_more</span>
+            <div class="comm-header" id="active-comm-name">
+                Selecione um Servidor
             </div>
-            <div style="flex: 1; overflow-y: auto;">
-                <div class="channel-category">INFORMAÇÃO</div>
-                <div class="channel-item"><span class="material-icons-round">campaign</span> avisos</div>
-                <div class="channel-item"><span class="material-icons-round">menu_book</span> regras</div>
-                
-                <div class="channel-category">TEXTO</div>
-                <div class="channel-item active"><span class="material-icons-round">tag</span> chat-geral</div>
-                <div class="channel-item"><span class="material-icons-round">tag</span> off-topic</div>
-                
-                <div class="channel-category">VOZ</div>
-                <div class="channel-item"><span class="material-icons-round">volume_up</span> Lounge</div>
+            <div id="community-channels-list" style="flex: 1; overflow-y: auto;">
+                <div style="padding: 20px; text-align: center; color: #64748B; font-size: 13px;">Nenhuma comunidade selecionada.</div>
             </div>
             <div style="height: 60px; background: #0B0F19; display: flex; align-items: center; padding: 0 15px; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
                 <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 32px; border-radius: 50%;" id="comm-mini-avatar">
@@ -685,25 +676,24 @@
 
         <div class="community-chat-area">
             <div class="channel-top-bar">
-                <span class="material-icons-round" style="color: #94A3B8; font-size: 24px;">tag</span> 
-                chat-geral
+                <span class="material-icons-round" style="color: #94A3B8;">tag</span> 
+                <span id="active-channel-name">selecione-um-canal</span>
             </div>
-            <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px;">
+            <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
                 <div style="text-align: center; color: #64748B; margin-top: 50px;">
-                    <span class="material-icons-round" style="font-size: 50px; opacity: 0.5; margin-bottom: 10px;">forum</span>
-                    <h2>Bem-vindo ao #chat-geral</h2>
-                    <p>Este é o início da sua nova comunidade.</p>
+                    <span class="material-icons-round" style="font-size: 50px; opacity: 0.5;">forum</span>
+                    <h2>Bem-vindo à sua Comunidade</h2>
+                    <p>Selecione um servidor na barra à esquerda para começar.</p>
                 </div>
             </div>
             <div style="padding: 15px 20px;">
                 <div style="background: #334155; border-radius: 8px; display: flex; align-items: center; padding: 0 15px;">
                     <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">add_circle</span>
-                    <input type="text" placeholder="Conversar em #chat-geral" style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;">
-                    <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">emoji_emotions</span>
+                    <input type="text" id="community-message-input" placeholder="Conversar no canal..." style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;" onkeydown="if(event.key==='Enter') sendCommunityMessage()">
+                    <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer;" onclick="sendCommunityMessage()">send</span>
                 </div>
             </div>
         </div>
-    </div>    
 
   <script src="/socket.io/socket.io.js"></script>
     <script>
