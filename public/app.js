@@ -390,9 +390,11 @@ async function initApp() {
 initApp();
 
 // ==============================================================
-// 🏰 MOTOR DE COMUNIDADES (FASE 2: CRIAÇÃO E LISTAGEM)
+// 🏰 MOTOR DE COMUNIDADES (FASE 2 E 3: CRIAÇÃO, LISTAGEM E CHAT)
 // ==============================================================
 let myCommunities = [];
+let currentCommunityId = null;
+let currentChannelId = null;
 
 async function loadCommunities() {
     if(!myId) return;
@@ -403,42 +405,75 @@ async function loadCommunities() {
     } catch(e) {}
 }
 
-let currentCommunityId = null;
-let currentChannelId = null;
-
 function renderCommunitiesSidebar() {
     const sidebar = document.querySelector('.community-servers-bar');
     if(!sidebar) return;
     
+    // Mantém os botões base de Voltar
     sidebar.innerHTML = `
         <div class="c-icon" onclick="backToMain()"><span class="material-icons-round">chat</span></div>
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
     `;
     
+    // Renderiza as suas comunidades criadas
     myCommunities.forEach(comm => {
-        // Agora o clique CHAMA a função de abrir a comunidade!
+        // MÁGICA FASE 3: Agora o clique ABRE a comunidade!
         sidebar.innerHTML += `<img src="${comm.photoUrl}" class="c-icon" onclick="openCommunity('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')" title="${comm.name}">`;
     });
     
+    // Botões de Ação
     sidebar.innerHTML += `
         <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
         <div class="c-icon action-btn" onclick="openCreateCommunityModal()"><span class="material-icons-round">add</span></div>
+        <div class="c-icon action-btn" style="color: #06B6D4;" onclick="alert('Aba Explorar Comunidades chegará em breve!')"><span class="material-icons-round">explore</span></div>
     `;
 
-    // Atualiza o mini-perfil
+    // Atualiza o mini-perfil na aba de Canais
     if(cachedMe) {
-        document.getElementById('comm-mini-avatar').src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        document.getElementById('comm-mini-name').innerText = cachedMe.displayName || 'Você';
+        const avatarEl = document.getElementById('comm-mini-avatar');
+        const nameEl = document.getElementById('comm-mini-name');
+        if(avatarEl) avatarEl.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        if(nameEl) nameEl.innerText = cachedMe.displayName || 'Você';
     }
 }
+
+function openCreateCommunityModal() {
+    const name = prompt("🏰 Qual será o nome do seu novo Servidor/Comunidade?");
+    if(!name) return;
+    const desc = prompt("Descreva a sua comunidade em uma frase curta:");
+    if(desc !== null) createNewCommunity(name, desc);
+}
+
+async function createNewCommunity(name, description) {
+    try {
+        const res = await fetch('/communities', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, ownerId: myId, isPublic: true, category: 'Geral' })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("🚀 SUCESSO! A sua Comunidade e os Canais base foram gerados pelo Servidor.");
+            loadCommunities();
+        } else {
+            alert("Erro ao criar a comunidade.");
+        }
+    } catch(e) { alert("Falha na conexão com a nuvem."); }
+}
+
+// ---------------------------------------------------------
+// FASE 3: ABRIR CANAIS, CHAT E WEBSOCKETS
+// ---------------------------------------------------------
 
 // 1. ABRIR COMUNIDADE E CARREGAR CANAIS
 async function openCommunity(commId, commName) {
     currentCommunityId = commId;
-    document.getElementById('active-comm-name').innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
+    const nameEl = document.getElementById('active-comm-name');
+    if(nameEl) nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
     
     const list = document.getElementById('community-channels-list');
-    list.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--secondary-text);">Carregando...</div>';
+    if(!list) return;
+    list.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--secondary-text);">Carregando canais...</div>';
     
     try {
         const res = await fetch(`/communities/${commId}/channels`);
@@ -467,19 +502,26 @@ async function openChannel(channelId, channelName, type) {
     const chItem = document.getElementById(`nav-ch-${channelId}`);
     if(chItem) chItem.classList.add('active');
 
-    document.getElementById('active-channel-name').innerText = channelName;
+    const nameEl = document.getElementById('active-channel-name');
+    if(nameEl) nameEl.innerText = channelName;
+    
     const box = document.getElementById('community-chat-box');
+    if(!box) return;
     box.innerHTML = '<div style="text-align:center; margin-top:20px; color:#64748B;">Sincronizando satélites...</div>';
 
-    // Se for voz, emite alerta (Fase Futura)
+    // Se for voz, emite alerta e bloqueia o input de texto
     if(type === 'voice') {
-        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC em breve!</p></div>';
-        document.getElementById('community-message-input').disabled = true;
+        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC (Chamadas de Áudio) será ativada em breve!</p></div>';
+        const inputEl = document.getElementById('community-message-input');
+        if(inputEl) inputEl.disabled = true;
         return;
     }
 
-    document.getElementById('community-message-input').disabled = false;
-    socket.emit('join_community_channel', channelId); // Isola o WebSocket!
+    const inputEl = document.getElementById('community-message-input');
+    if(inputEl) inputEl.disabled = false;
+    
+    // Isola o WebSocket! Você só escuta o que se passa neste canal.
+    socket.emit('join_community_channel', channelId); 
 
     try {
         const res = await fetch(`/communities/channels/${channelId}/messages`);
@@ -491,17 +533,19 @@ async function openChannel(channelId, channelName, type) {
 }
 
 // 3. ENVIAR MENSAGEM NO CANAL
-function sendCommunityMessage() {
+window.sendCommunityMessage = function() {
     const input = document.getElementById('community-message-input');
+    if(!input) return;
     const content = input.value.trim();
     if(!content || !currentChannelId) return;
 
     socket.emit('send_channel_message', { channelId: currentChannelId, senderId: myId, content: content });
-    input.value = '';
+    input.value = ''; // Limpa o campo após o envio
 }
 
 // 4. RECEBER E RENDERIZAR MENSAGEM NO ESTILO DISCORD
 socket.on('receive_channel_message', (msg) => {
+    // Só renderiza a mensagem se o utilizador estiver COM A TELA DAQUELE CANAL aberta
     if(msg.channelId === currentChannelId) {
         renderCommunityMessage(msg);
     }
@@ -509,6 +553,7 @@ socket.on('receive_channel_message', (msg) => {
 
 function renderCommunityMessage(msg) {
     const box = document.getElementById('community-chat-box');
+    if(!box) return;
     const div = document.createElement('div');
     div.style = "display: flex; gap: 15px; align-items: flex-start; margin-bottom: 5px; animation: slideUp 0.2s ease;";
     
@@ -523,9 +568,14 @@ function renderCommunityMessage(msg) {
                 <span style="color: white; font-weight: 700; font-size: 15px; cursor: pointer;">${senderName}</span>
                 <span style="color: #64748B; font-size: 11px; font-weight: 600;">Hoje às ${time}</span>
             </div>
-            <div style="color: #CBD5E1; font-size: 14.5px; line-height: 1.4;">${escapeHTML(msg.content)}</div>
+            <div style="color: #CBD5E1; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere;">${escapeHTML(msg.content)}</div>
         </div>
     `;
     box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = box.scrollHeight; // Faz scroll automático para a nova mensagem
 }
+
+// Carregar comunidades quando o App inicia
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(loadCommunities, 2000);
+});
