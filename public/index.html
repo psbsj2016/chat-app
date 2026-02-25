@@ -708,22 +708,56 @@
                 <span class="material-icons-round mobile-back-btn" onclick="closeMobileCommunityChat()">menu</span>
                 <span class="material-icons-round" style="color: #94A3B8; font-size: 24px;">tag</span> 
                 <span id="active-channel-name" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">selecione-um-canal</span>
+                <span class="material-icons-round" style="color: #94A3B8; cursor: pointer; margin-left: auto;" onclick="toggleCommunityMembers()" title="Ver Membros">people</span>
             </div>
-            <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
-                <div style="text-align: center; color: #64748B; margin-top: 50px;">
-                    <span class="material-icons-round" style="font-size: 50px; opacity: 0.5;">forum</span>
-                    <h2>Bem-vindo à sua Comunidade</h2>
-                    <p>Selecione um servidor na barra à esquerda para começar.</p>
+            
+            <div style="display: flex; flex: 1; overflow: hidden; position: relative;">
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="text-align: center; color: #64748B; margin-top: 50px;">
+                            <span class="material-icons-round" style="font-size: 50px; opacity: 0.5; margin-bottom: 10px;">forum</span>
+                            <h2>Bem-vindo à sua Comunidade</h2>
+                            <p>Selecione um servidor na barra à esquerda para começar.</p>
+                        </div>
+                    </div>
+                    <div style="padding: 15px 20px;">
+                        <div style="background: #334155; border-radius: 8px; display: flex; align-items: center; padding: 0 15px;">
+                            <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">add_circle</span>
+                            <input type="text" id="community-message-input" placeholder="Conversar no canal..." style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;" onkeydown="if(event.key==='Enter') sendCommunityMessage()">
+                            <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer;" onclick="sendCommunityMessage()">send</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div style="padding: 15px 20px;">
-                <div style="background: #334155; border-radius: 8px; display: flex; align-items: center; padding: 0 15px;">
-                    <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;">add_circle</span>
-                    <input type="text" id="community-message-input" placeholder="Conversar no canal..." style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;" onkeydown="if(event.key==='Enter') sendCommunityMessage()">
-                    <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer;" onclick="sendCommunityMessage()">send</span>
+
+                <div id="community-members-bar" style="width: 240px; background: #0B0F19; border-left: 1px solid rgba(255,255,255,0.05); overflow-y: auto; display: none; flex-direction: column;">
+                    <div style="padding: 15px; font-size: 12px; font-weight: 800; color: #94A3B8; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05);">Roster da Tropa</div>
+                    <div id="community-members-list" style="flex: 1; padding: 0 10px;">
+                        </div>
                 </div>
             </div>
         </div>
+    </div> ```
+
+---
+
+### 🎨 PASSO 3: O Estilo Responsivo (`style.css`)
+
+Para que esta barra lateral não quebre o telemóvel, vamos fazê-la "flutuar" por cima do chat em telas pequenas.
+
+Abra o **`style.css`**. Desça até à **ÚLTIMA LINHA** do ficheiro e cole esta regra de adaptação visual:
+
+```css
+/* FASE 5: BARRA DE MEMBROS (MISSÃO B) */
+@media (max-width: 768px) {
+    #community-members-bar {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 100;
+        box-shadow: -10px 0 25px rgba(0,0,0,0.6);
+    }
+}
 
   <script src="/socket.io/socket.io.js"></script>
     <script>

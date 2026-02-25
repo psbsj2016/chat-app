@@ -770,6 +770,79 @@ function renderCommunityMessage(msg) {
     box.scrollTop = box.scrollHeight; // Faz scroll automático para a nova mensagem
 }
 
+// ==========================================================
+// RADAR DE MEMBROS (MISSÃO B)
+// ==========================================================
+window.toggleCommunityMembers = function() {
+    const bar = document.getElementById('community-members-bar');
+    if(!bar) return;
+    if(bar.style.display === 'none' || bar.style.display === '') {
+        bar.style.display = 'flex';
+        loadCommunityMembers(); // Ativa o scan quando abre a gaveta
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+async function loadCommunityMembers() {
+    if(!currentCommunityId) return;
+    const list = document.getElementById('community-members-list');
+    list.innerHTML = '<div style="color:#64748B; text-align:center; margin-top:30px;"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size:30px;">radar</span><br><br>Escaneando sinais...</div>';
+    
+    try {
+        const res = await fetch(`/communities/${currentCommunityId}/members`);
+        const members = await res.json();
+        
+        // Agrupar os membros por Cargo (Role)
+        let rolesMap = {};
+        members.forEach(m => {
+            if(!m.userId) return; // Prevenção contra usuários apagados da base
+            let roleName = m.roleId ? m.roleId.name : 'Membro';
+            let roleColor = m.roleId ? m.roleId.color : '#CBD5E1';
+            
+            if(!rolesMap[roleName]) rolesMap[roleName] = { color: roleColor, users: [] };
+            
+            // Verifica se está na lista de online via Sockets
+            let isOnline = onlineUsersList.includes(m.userId._id.toString()) || m.userId._id.toString() === myId;
+            
+            rolesMap[roleName].users.push({
+                id: m.userId._id,
+                name: m.userId.displayName || 'Usuário',
+                photo: m.userId.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+                online: isOnline
+            });
+        });
+
+        list.innerHTML = '';
+        
+        // Renderizar Grupos na Tela
+        for(let role in rolesMap) {
+            let group = rolesMap[role];
+            // Ordena para que os online fiquem primeiro
+            group.users.sort((a, b) => b.online - a.online);
+            
+            list.innerHTML += `<div style="margin-top: 15px; margin-bottom: 8px; font-size: 11px; font-weight: 800; color: #94A3B8; text-transform: uppercase;">${role} — ${group.users.length}</div>`;
+            
+            group.users.forEach(u => {
+                let statusColor = u.online ? '#22C55E' : '#64748B'; // Verde se online, Cinza se offline
+                let opacity = u.online ? '1' : '0.5'; // Deixa os offline meio transparentes
+                
+                list.innerHTML += `
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; opacity: ${opacity}; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                        <div style="position: relative;">
+                            <img src="${u.photo}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                            <div style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; background: ${statusColor}; border: 2px solid #0B0F19; border-radius: 50%;"></div>
+                        </div>
+                        <span style="color: ${group.color}; font-weight: 600; font-size: 14px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${u.name}</span>
+                    </div>
+                `;
+            });
+        }
+    } catch(e) {
+        list.innerHTML = '<div style="color:#EF4444; text-align:center; margin-top:20px;">Falha no radar.</div>';
+    }
+}
+
 // Carregar comunidades quando o App inicia
 document.addEventListener("DOMContentLoaded", () => {
     setTimeout(loadCommunities, 2000);

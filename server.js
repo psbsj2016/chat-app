@@ -350,6 +350,16 @@ app.post('/communities/leave', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao sair' }); }
 });
 
+// Buscar Membros e Cargos da Comunidade (MISSÃO B)
+app.get('/communities/:id/members', async (req, res) => {
+    try {
+        const members = await CommunityMember.find({ communityId: req.params.id })
+            .populate('userId', 'displayName photoUrl')
+            .populate('roleId', 'name color');
+        res.json(members);
+    } catch (e) { res.status(500).json({ error: 'Erro ao buscar membros' }); }
+});
+
 app.get('/communities/user/:userId', async (req, res) => {
     try {
         const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId');
