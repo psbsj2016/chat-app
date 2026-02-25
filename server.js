@@ -147,7 +147,15 @@ const CommunityMemberSchema = new mongoose.Schema({
     joinedAt: { type: Date, default: Date.now }
 });
 const CommunityMember = mongoose.model('CommunityMember', CommunityMemberSchema);
-
+const CommunityMessageSchema = new mongoose.Schema({
+    channelId: { type: mongoose.Schema.Types.ObjectId, ref: 'CommunityChannel' },
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: String,
+    fileUrl: String,
+    fileType: { type: String, default: 'text' },
+    timestamp: { type: Date, default: Date.now }
+});
+const CommunityMessage = mongoose.model('CommunityMessage', CommunityMessageSchema);
 const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
 const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
 
