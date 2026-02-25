@@ -658,10 +658,9 @@ body.bubble-cyber {
    TELA DE COMUNIDADES (DISCORD STYLE)
    ========================================== */
 #screen-communities {
-    display: flex !important;
-    flex-direction: row !important;
+    flex-direction: row;
     padding: 0 !important;
-    background: #0B0F19; /* Fundo Escuro Base */
+    background: #0B0F19;
 }
 
 /* Coluna 1: Servidores */
