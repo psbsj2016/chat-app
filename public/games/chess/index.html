@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Xadrez vs IA</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        body { background: #09090b; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; touch-action: manipulation; }
+        #board { width: 100%; max-width: 350px; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .status-box { background: #18181b; border: 1px solid #27272a; padding: 15px; border-radius: 12px; margin-top: 20px; font-weight: bold; color: #06B6D4; font-size: 16px; }
+        .btn { background: #4F46E5; color: white; border: none; padding: 14px 24px; border-radius: 12px; margin-top: 15px; cursor: pointer; font-weight: 800; width: 100%; max-width: 350px; }
+    </style>
+</head>
+<body>
+    <div id="board"></div>
+    <div class="status-box" id="status">Sua vez (Brancas)</div>
+    <button class="btn" onclick="resetGame()">Reiniciar Partida</button>
+
+    <script>
+        var board = null;
+        var game = new Chess();
+        var $status = $('#status');
+        var level = 1; // Nível para o sistema de XP
+
+        // IA Simples (Movimentos Aleatórios)
+        function makeBotMove() {
+            var possibleMoves = game.moves();
+            if (game.game_over()) return;
+            var randomIdx = Math.floor(Math.random() * possibleMoves.length);
+            game.move(possibleMoves[randomIdx]);
+            board.position(game.fen());
+            updateStatus();
+        }
+
+        function onDragStart(source, piece, position, orientation) {
+            if (game.game_over()) return false;
+            if (piece.search(/^b/) !== -1) return false; // Impede mexer as pretas
+        }
+
+        function onDrop(source, target) {
+            var move = game.move({ from: source, to: target, promotion: 'q' });
+            if (move === null) return 'snapback';
+            updateStatus();
+            window.setTimeout(makeBotMove, 400); // Bot responde em 0.4s
+        }
+
+        function onSnapEnd() { board.position(game.fen()); }
+
+        function updateStatus() {
+            var statusHTML = '';
+            var moveColor = game.turn() === 'b' ? 'Pretas' : 'Brancas';
+
+            if (game.in_checkmate()) {
+                if (moveColor === 'Pretas') {
+                    statusHTML = '🎉 VITÓRIA! O Bot levou Xeque-Mate!';
+                    if(window.parent && window.parent.gameLevelUp) {
+                        window.parent.gameLevelUp(level); // INJETA XP NA CONTA
+                        level++;
+                    }
+                } else {
+                    statusHTML = '💥 DERROTA! Você levou Xeque-Mate.';
+                }
+            } else if (game.in_draw()) {
+                statusHTML = '⚖️ Jogo empatado.';
+            } else {
+                statusHTML = 'Turno: ' + moveColor;
+                if (game.in_check()) statusHTML += ' (Xeque!)';
+            }
+            $status.html(statusHTML);
+        }
+
+        var config = { draggable: true, position: 'start', onDragStart: onDragStart, onDrop: onDrop, onSnapEnd: onSnapEnd };
+        board = Chessboard('board', config);
+        updateStatus();
+
+        function resetGame() { game.reset(); board.start(); updateStatus(); }
+    </script>
+</body>
+</html>

@@ -298,6 +298,12 @@ function openProfile() {
 }
 
 function openSettings() { hideAllTabs(); showElement('settings-screen'); }
+function backToSettings() { 
+    hideElement('appearance-screen'); 
+    hideElement('account-screen'); 
+    hideElement('notifications-screen'); 
+    showElement('settings-screen'); 
+}
 function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; renderInventory(); }
 function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; }
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); const emailEl = document.getElementById('config-email'); if(emailEl) emailEl.innerText = cachedMe.email || 'Carregando...'; renderSectorsList(); }

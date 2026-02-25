@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Batalha Naval Neon</title>
+    <style>
+        body { background: #09090b; color: white; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 30px; height: 100vh; margin: 0; user-select: none; }
+        .status-box { background: #18181b; border: 1px solid #27272a; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; font-weight: bold; color: #06B6D4; width: 90%; max-width: 300px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 90%; max-width: 320px; margin-bottom: 20px; }
+        .cell { background: #1E293B; aspect-ratio: 1; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 28px; cursor: pointer; transition: 0.2s; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3); border: 1px solid #334155; }
+        .cell:active { transform: scale(0.9); box-shadow: inset 0 0 0 rgba(0,0,0,0); }
+        .hit { background: #EF4444; border-color: #B91C1C; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); animation: pop 0.3s ease; }
+        .miss { background: #0284C7; opacity: 0.7; border-color: #0369A1; }
+        .btn { background: #4F46E5; color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; width: 90%; max-width: 320px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); }
+        @keyframes pop { 0% {transform: scale(1);} 50% {transform: scale(1.2);} 100% {transform: scale(1);} }
+    </style>
+</head>
+<body>
+    <div class="status-box" id="status">Nível 1 - Ache 3 Navios</div>
+    <div class="grid" id="board"></div>
+    <button class="btn" onclick="initGame()">Reposicionar Tropa</button>
+
+    <script>
+        let ships = [];
+        let found = 0;
+        let moves = 0;
+        let level = 1;
+        const board = document.getElementById('board');
+        const status = document.getElementById('status');
+
+        function initGame() {
+            board.innerHTML = '';
+            ships = []; found = 0; moves = 0;
+            status.innerHTML = `<span style="color:white">Nível ${level}</span><br>Encontre 3 navios inimigos!`;
+            
+            // Planta 3 navios aleatoriamente
+            while(ships.length < 3) {
+                let r = Math.floor(Math.random() * 25);
+                if(!ships.includes(r)) ships.push(r);
+            }
+
+            for(let i=0; i<25; i++) {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.onclick = () => shoot(i, cell);
+                board.appendChild(cell);
+            }
+        }
+
+        function shoot(index, cell) {
+            if(cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+            moves++;
+            
+            if(ships.includes(index)) {
+                cell.classList.add('hit');
+                cell.innerText = '💥';
+                found++;
+                if(found === 3) {
+                    status.innerHTML = `🎉 VITÓRIA EM ${moves} TIROS!`;
+                    setTimeout(() => {
+                        if(window.parent && window.parent.gameLevelUp) {
+                            window.parent.gameLevelUp(level); // INJETA XP NA CONTA
+                            level++;
+                        }
+                        initGame();
+                    }, 1500);
+                } else {
+                    status.innerHTML = `Acertou em cheio!<br><span style="color:#EF4444">Faltam ${3 - found}</span>`;
+                }
+            } else {
+                cell.classList.add('miss');
+                cell.innerText = '💧';
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>

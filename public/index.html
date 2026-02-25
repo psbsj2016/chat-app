@@ -333,19 +333,28 @@
 
             </div>
 
-            <h3 class="hub-section-title" style="margin-top: 25px;">Multijogador (Em Breve)</h3>
+            <h3 class="hub-section-title" style="margin-top: 25px;">Estratégia e Tabuleiro</h3>
             <div class="hub-grid">
-                <div class="hub-card locked">
-                    <div class="card-img" style="background: #1f2937;"><span class="material-icons-round" style="color:#4b5563;">sports_esports</span></div>
-                    <div class="card-details"><h4>Chess Real-time</h4><span class="card-category">Go Engine</span></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/chess/index.html', 'Xadrez vs IA')">
+                    <div class="card-img" style="background: linear-gradient(135deg, #1E293B, #0F172A);">
+                        <span class="material-icons-round" style="font-size: 50px; color: white;">chess</span>
+                    </div>
+                    <div class="card-details">
+                        <h4>Chess AI</h4>
+                        <span class="card-category">Estratégia</span>
+                    </div>
                 </div>
-                <div class="hub-card locked">
-                    <div class="card-img" style="background: #1f2937;"><span class="material-icons-round" style="color:#4b5563;">sports_esports</span></div>
-                    <div class="card-details"><h4>Batalha Naval</h4><span class="card-category">Go Engine</span></div>
+
+                <div class="hub-card" onclick="openImmersiveGame('games/battleship/index.html', 'Batalha Naval')">
+                    <div class="card-img" style="background: linear-gradient(135deg, #0284C7, #1E3A8A);">
+                        <span class="material-icons-round" style="font-size: 50px; color: white;">directions_boat</span>
+                    </div>
+                    <div class="card-details">
+                        <h4>Batalha Naval</h4>
+                        <span class="card-category">Lógica e Sorte</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 
   <div id="game-immersive-modal" class="modal-overlay hidden" style="z-index: 99999; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;">
         
