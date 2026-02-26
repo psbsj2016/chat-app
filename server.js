@@ -545,4 +545,4 @@ setInterval(async () => {
 }, 10000); 
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Servidor na porta ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Servidor na porta ${PORT}`));
