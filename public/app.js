@@ -775,10 +775,16 @@ async function openChannel(channelId, channelName, type) {
 
     // Se for voz...
     if(type === 'voice') {
-        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Conexão WebRTC em breve!</p></div>';
+        box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Clique em Conectar Rádio acima para falar!</p></div>';
         const inputEl = document.getElementById('community-message-input');
         if(inputEl) inputEl.disabled = true;
+        
+        // MOSTRA O PAINEL DE RÁDIO
+        document.getElementById('voice-lounge-container').style.display = 'block';
         return;
+    } else {
+        // ESCONDE O PAINEL DE RÁDIO SE FOR CANAL DE TEXTO
+        document.getElementById('voice-lounge-container').style.display = 'none';
     }
 
     const inputEl = document.getElementById('community-message-input');
