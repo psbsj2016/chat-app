@@ -406,6 +406,39 @@ io.on('connection', (socket) => {
             io.to(data.channelId).emit('receive_channel_message', popMsg);
         } catch(e) { console.error("Erro ao enviar msg de comunidade:", e); }
     });
+    
+    // ==============================================================
+    // 🎙️ SINALIZAÇÃO WEBRTC (LOUNGE DE VOZ DAS COMUNIDADES)
+    // ==============================================================
+    socket.on('join_voice_channel', (data) => {
+        const roomName = `voice_${data.channelId}`;
+        socket.join(roomName);
+        socket.voiceChannel = roomName;
+        socket.userProfile = data.userProfile; // { id, name, photoUrl }
+        
+        // Avisa a todos que já estão na sala que você chegou (para eles ligarem para você)
+        socket.to(roomName).emit('user_joined_voice', {
+            socketId: socket.id,
+            userProfile: data.userProfile
+        });
+    });
+
+    socket.on('webrtc_signal', (data) => {
+        // Envia as "coordenadas" de rádio diretamente para o alvo
+        io.to(data.to).emit('webrtc_signal', {
+            from: socket.id,
+            signal: data.signal,
+            userProfile: socket.userProfile
+        });
+    });
+
+    socket.on('leave_voice_channel', () => {
+        if (socket.voiceChannel) {
+            socket.leave(socket.voiceChannel);
+            socket.to(socket.voiceChannel).emit('user_left_voice', socket.id);
+            socket.voiceChannel = null;
+        }
+    });
 
     socket.on('typing', (data) => { if (data.groupId) socket.to(data.groupId).emit('typing', data); else { const r = users[data.receiverId]; if (r) io.to(r).emit('typing', data); } });
     socket.on('stop_typing', (data) => { if (data.groupId) socket.to(data.groupId).emit('stop_typing', data); else { const r = users[data.receiverId]; if (r) io.to(r).emit('stop_typing', data); } });
@@ -526,8 +559,19 @@ io.on('connection', (socket) => {
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
-    socket.on('disconnect', () => { const uid = Object.keys(users).find(key => users[key] === socket.id); if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); } });
-});
+    socket.on('disconnect', () => { 
+        // Lógica existente de presença
+        const uid = Object.keys(users).find(key => users[key] === socket.id); 
+        if (uid) { 
+            delete users[uid]; 
+            io.emit('online_users', Object.keys(users)); 
+        }
+
+        // NOVA Lógica do Rádio: Avisa a sala se o soldado cair
+        if (socket.voiceChannel) {
+            socket.to(socket.voiceChannel).emit('user_left_voice', socket.id);
+        }
+    });
 
 setInterval(async () => {
     try {

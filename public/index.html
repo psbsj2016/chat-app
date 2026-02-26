@@ -704,6 +704,20 @@
         </div>
 
         <div class="community-chat-area">
+            <div id="voice-lounge-container" style="display: none;" class="glass-panel">
+    <div class="voice-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="margin: 0; color: #4ade80;">🔊 <span id="voice-channel-name">Lounge de Voz</span></h3>
+        <div class="voice-controls">
+            <button id="btn-join-voice" style="background: #22c55e; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold;">Conectar Rádio</button>
+            <button id="btn-leave-voice" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; display: none;">Desconectar</button>
+        </div>
+    </div>
+    
+    <div id="voice-participants-grid" style="display: flex; gap: 15px; padding: 15px; overflow-x: auto; min-height: 80px;">
+        </div>
+    
+    <div id="remote-audios-container" style="display: none;"></div>
+</div>
             <div class="channel-top-bar">
                 <span class="material-icons-round mobile-back-btn" onclick="closeMobileCommunityChat()">menu</span>
                 <span class="material-icons-round" style="color: #94A3B8; font-size: 24px;">tag</span> 
