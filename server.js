@@ -502,36 +502,38 @@ io.on('connection', (socket) => {
                 if (rSocket) io.to(rSocket).emit('receive_message', populatedMsg); 
                 socket.emit('receive_message', populatedMsg); 
 
-                // 🧠 CÉREBRO DA IA NATIVA 
+               // 🧠 CÉREBRO DA IA NATIVA (MICROSERVIÇO LOCAL)
                 if (String(data.receiverId) === String(botUserId) && data.content) {
                     socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
                     try {
-                        const apiKey = process.env.HF_API_KEY;
-                        let replyText = "";
+                        // URL do seu novo microserviço Python (Variável de ambiente ou localhost)
+                        const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:8000';
+                        
+                        // Faz a requisição POST para o seu FastAPI
+                        const pyRes = await fetch(`${PYTHON_AI_URL}/chat`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                message: data.content,
+                                user_id: data.senderId // Passa o ID para manter o contexto da sessão
+                            })
+                        });
 
-                        if (!apiKey) {
-                            replyText = "⚠️ Cérebro desligado. Adicione a chave 'HF_API_KEY' no Render!";
-                        } else {
-                            const hfRes = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                                body: JSON.stringify({ 
-                                    inputs: `<s>[INST] Você é o CPTT Bot, a Inteligência Artificial oficial do aplicativo ChatPTT. Responda em português, de forma amigável, curta e direta. Usuário diz: ${data.content} [/INST]`,
-                                    parameters: { max_new_tokens: 300, temperature: 0.7 }
-                                })
-                            });
-
-                            const hfData = await hfRes.json();
-                            
-                            if (hfData.error) {
-                                if (hfData.error.includes('loading')) replyText = "Estou a acordar! 🥱 Tente enviar a mensagem de novo em 15 segundos.";
-                                else replyText = `🚨 Erro nos circuitos: ${hfData.error}`;
-                            } else if (Array.isArray(hfData) && hfData[0].generated_text) {
-                                replyText = hfData[0].generated_text.split('[/INST]')[1].trim();
-                            } else {
-                                replyText = "Não entendi. Pode repetir?";
-                            }
-                        }
+                        const pyData = await pyRes.json();
+                        let replyText = pyData.response || "Tive um branco, pode repetir?";
+                        
+                        socket.emit('stop_typing', { senderId: botUserId });
+                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        await botMsg.save();
+                        socket.emit('receive_message', await Message.findById(botMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
+                        
+                    } catch (netError) {
+                        socket.emit('stop_typing', { senderId: botUserId });
+                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Microserviço de IA Offline: ${netError.message}`, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        await errorMsg.save();
+                        socket.emit('receive_message', await Message.findById(errorMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
+                    }
+                }
                         socket.emit('stop_typing', { senderId: botUserId });
                         const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
