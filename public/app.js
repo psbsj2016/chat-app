@@ -783,7 +783,7 @@ async function openChannel(channelId, channelName, type) {
         document.getElementById('voice-lounge-container').style.display = 'block';
         return;
     } else {
-        // ESCONDE O PAINEL DE RÁDIO SE FOR CANAL DE TEXTO
+        // ESCONDE O PAINEL NOS CANAIS DE TEXTO
         document.getElementById('voice-lounge-container').style.display = 'none';
     }
 
