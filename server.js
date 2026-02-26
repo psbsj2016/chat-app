@@ -572,6 +572,7 @@ io.on('connection', (socket) => {
             socket.to(socket.voiceChannel).emit('user_left_voice', socket.id);
         }
     });
+});
 
 setInterval(async () => {
     try {
