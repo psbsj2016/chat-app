@@ -3,264 +3,451 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snake Neon 3D</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <title>Neon Serpent: Viper Protocol</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* Bloqueio absoluto de comportamentos indesejados no toque */
-        * { box-sizing: border-box; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-        
-        body { 
-            margin: 0; background: #09090b; color: white; font-family: sans-serif; 
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
-            height: 100vh; overflow: hidden; 
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: none; }
+        body {
+            background-color: #030308;
+            color: #0FF;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
-        
-        .hud { 
-            display: flex; justify-content: space-between; width: 95%; max-width: 400px; 
-            padding: 15px 10px; font-weight: 900; font-size: 16px; letter-spacing: 1px; 
+
+        /* Grid Holográfico Animado */
+        #grid-bg {
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(45deg);
+            animation: gridMove 10s linear infinite;
+            z-index: 1;
+            pointer-events: none;
         }
-        
-        canvas { 
-            box-shadow: 0 0 40px rgba(52, 211, 153, 0.15); 
-            border-radius: 12px; 
-            border: 2px solid #34D399; 
-            background: #111; 
-            width: 95vw;
-            height: 95vw;
-            max-width: 400px;
-            max-height: 400px;
-            display: block;
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(45deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(45deg) translateY(50px); }
         }
-        
-        .controls-wrapper {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 450px;
-            flex: 1;
-            padding: 20px;
-            align-items: center;
+
+        /* Interface HUD Tecnológica */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            z-index: 10; pointer-events: none;
+            background: linear-gradient(180deg, rgba(3,3,8,0.9) 0%, transparent 100%);
         }
-        
-        .d-pad-half { display: grid; gap: 15px; }
-        .left-hand { grid-template-columns: 70px 70px; grid-template-rows: 70px; }
-        .right-hand { grid-template-columns: 70px; grid-template-rows: 70px 70px; justify-content: end;}
-        
-        .d-btn { 
-            background: rgba(255,255,255,0.08); 
-            border: 1px solid rgba(255,255,255,0.1); 
-            border-radius: 20px; 
-            color: white; 
-            font-size: 36px; 
-            display: flex; justify-content: center; align-items: center;
-            transition: 0.1s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            cursor: pointer;
+        .hud-panel {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-left: 4px solid #0FF;
+            padding: 10px 20px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
         }
-        .d-btn:active { 
-            background: #34D399; transform: scale(0.9); box-shadow: 0 0 20px #34D399; color: black; 
+        .hud-title { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .hud-value { font-size: 24px; font-weight: 900; color: #FFF; text-shadow: 0 0 10px #0FF; }
+        .hud-value span { color: #0FF; font-size: 16px; }
+
+        /* Barra de Energia (Dash) */
+        .energy-container { width: 150px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 8px; overflow: hidden; position: relative;}
+        #energy-bar { height: 100%; width: 100%; background: #F0F; box-shadow: 0 0 10px #F0F; transition: width 0.1s; }
+
+        /* Canvas Game */
+        #gameCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
         }
-        .d-btn .material-icons-round { font-size: 40px; pointer-events: none; }
-        
-        .start-btn { 
-            position: absolute; top: 40%; background: #34D399; color: black; 
-            padding: 15px 30px; font-weight: 900; border: none; border-radius: 30px; 
-            font-size: 18px; cursor: pointer; z-index: 10; 
-            box-shadow: 0 10px 30px rgba(52,211,153,0.4); text-transform: uppercase; 
+
+        /* Telas de Overlay (Morte / Start) */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 3, 8, 0.85); z-index: 20;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(10px); text-align: center;
+        }
+        .hidden { display: none !important; }
+        h1 { font-size: 40px; color: #FFF; text-shadow: 0 0 20px #0FF, 0 0 40px #0FF; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 4px; }
+        p { color: #888; margin-bottom: 30px; font-size: 14px; letter-spacing: 1px; }
+        .cyber-btn {
+            background: transparent; border: 2px solid #0FF; color: #0FF;
+            padding: 15px 40px; font-size: 18px; font-family: 'Orbitron', sans-serif;
+            font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2) inset; transition: 0.2s;
+        }
+        .cyber-btn:hover, .cyber-btn:active { background: #0FF; color: #000; box-shadow: 0 0 30px #0FF; }
+
+        /* Avisos de Sistema */
+        #system-alert {
+            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
+            color: #F0F; font-size: 20px; font-weight: 900; letter-spacing: 3px;
+            text-shadow: 0 0 15px #F0F; z-index: 15; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s; text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <span>SCORE: <span id="score" style="color: #34D399;">0</span></span>
-        <span id="level" style="color: #06b6d4;">NÍVEL 1</span>
+    <div id="grid-bg"></div>
+
+    <div id="hud">
+        <div class="hud-panel">
+            <div class="hud-title">Sinal de Dados</div>
+            <div class="hud-value" id="scoreDisplay">000</div>
+        </div>
+        <div class="hud-panel" style="border-left-color: #F0F;">
+            <div class="hud-title">Nível Viper</div>
+            <div class="hud-value" id="levelDisplay"><span>LVL</span> 1</div>
+            <div class="energy-container"><div id="energy-bar"></div></div>
+        </div>
     </div>
 
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
-    <button id="startBtn" class="start-btn" onclick="startGame()">JOGAR AGORA</button>
+    <div id="system-alert">Anomalia Detectada!</div>
 
-    <div class="controls-wrapper">
-        <div class="d-pad-half left-hand">
-            <button class="d-btn" onpointerdown="setDir('LEFT')"><span class="material-icons-round">keyboard_arrow_left</span></button>
-            <button class="d-btn" onpointerdown="setDir('RIGHT')"><span class="material-icons-round">keyboard_arrow_right</span></button>
-        </div>
-        
-        <div class="d-pad-half right-hand">
-            <button class="d-btn" onpointerdown="setDir('UP')"><span class="material-icons-round">keyboard_arrow_up</span></button>
-            <button class="d-btn" onpointerdown="setDir('DOWN')"><span class="material-icons-round">keyboard_arrow_down</span></button>
-        </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="startScreen" class="overlay">
+        <h1 style="font-size:30px;">Viper Protocol</h1>
+        <p>ARRASTE PARA GUIAR • SEGURE PARA DASH MÁXIMO</p>
+        <button class="cyber-btn" onclick="startGame()">Iniciar Link</button>
+    </div>
+
+    <div id="gameOverScreen" class="overlay hidden">
+        <h1 style="color: #F00; text-shadow: 0 0 20px #F00;">Sinal Perdido</h1>
+        <p id="finalScoreText">Dados Extraídos: 0</p>
+        <button class="cyber-btn" style="border-color: #F00; color: #F00;" onclick="startGame()">Reconectar</button>
+        <button class="cyber-btn" style="margin-top:15px; border:none; box-shadow:none; font-size:12px;" onclick="closeGame()">Sair para o Hub</button>
     </div>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
         
-        const gridSize = 20; 
-        let snake = [];
-        let food = {x: 0, y: 0, img: null};
-        let dx = gridSize, dy = 0;
-        let score = 0, speed = 120, gameInterval = null;
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Variáveis Globais
+        let gameLoopId;
         let isPlaying = false;
-
-        const foodSrcs = [
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f42d.png',
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f438.png',
-            'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f41e.png' 
-        ];
-        const foodImages = [];
-        foodSrcs.forEach(src => {
-            const img = new Image();
-            img.src = src;
-            foodImages.push(img);
-        });
-
-        // Nova função segura para trocar a direção
-        function setDir(direction) {
-            if(!isPlaying) return;
-            
-            if (direction === 'UP' && dy === 0) { dx = 0; dy = -gridSize; }
-            if (direction === 'DOWN' && dy === 0) { dx = 0; dy = gridSize; }
-            if (direction === 'LEFT' && dx === 0) { dx = -gridSize; dy = 0; }
-            if (direction === 'RIGHT' && dx === 0) { dx = gridSize; dy = 0; }
-        }
-
-        // Suporte para teclado (Setas) se jogar no PC
-        document.addEventListener('keydown', (e) => {
-            if(e.key === 'ArrowUp') setDir('UP');
-            if(e.key === 'ArrowDown') setDir('DOWN');
-            if(e.key === 'ArrowLeft') setDir('LEFT');
-            if(e.key === 'ArrowRight') setDir('RIGHT');
-        });
-
-        function startGame() {
-            document.getElementById("startBtn").style.display = "none";
-            snake = [{x: 200, y: 200}, {x: 180, y: 200}, {x: 160, y: 200}];
-            dx = gridSize; dy = 0; score = 0; speed = 130;
-            isPlaying = true;
-            updateHUD();
-            placeFood();
-            
-            if (gameInterval) clearInterval(gameInterval);
-            gameInterval = setInterval(gameLoop, speed);
-        }
-
-        function updateHUD() {
-            document.getElementById("score").innerText = score * 10;
-            let lvl = Math.floor(score / 5) + 1;
-            document.getElementById("level").innerText = "NÍVEL " + lvl;
-            
-            let newSpeed = 130 - ((lvl - 1) * 15);
-            if(newSpeed < 50) newSpeed = 50; 
-            
-            if(newSpeed !== speed) {
-                speed = newSpeed;
-                clearInterval(gameInterval);
-                gameInterval = setInterval(gameLoop, speed);
-            }
-        }
+        let score = 0;
+        let level = 1;
+        let energy = 100;
+        let pointer = { x: width/2, y: height/2, isDown: false };
         
-        // O jogo sabe em que fase está
-let faseDoJogo = 1; 
+        // Fila de partículas e efeitos
+        let particles = [];
+        let nodes = []; // Alvos (comida)
+        let hazards = []; // Eventos (Buraco Negro)
 
-// QUANDO O JOGADOR VENCER A FASE / NIVEL, RODE ISTO:
-if (window.parent && window.parent.gameLevelUp) {
-    window.parent.gameLevelUp(faseDoJogo); // Manda o XP escalável para o App!
-}
-faseDoJogo++; // Sobe para a próxima fase no jogo       
- 
-        function placeFood() {
-            food = {
-                x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
-                y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize,
-                img: foodImages[Math.floor(Math.random() * foodImages.length)]
-            };
-        }
+        // A Serpente
+        const snake = {
+            segments: [],
+            history: [], // Histórico de posições para fluidez
+            head: { x: 0, y: 0 },
+            baseSpeed: 4,
+            currentSpeed: 4,
+            angle: 0,
+            color: '#0FF',
+            size: 8,
+            length: 20, // Quantidade inicial de segmentos
+            spacing: 4  // Distância no histórico entre cada segmento
+        };
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Inputs (Touch e Mouse fluido)
+        window.addEventListener('pointermove', (e) => {
+            pointer.x = e.clientX;
+            pointer.y = e.clientY;
+        });
+        window.addEventListener('pointerdown', (e) => { pointer.isDown = true; pointer.x = e.clientX; pointer.y = e.clientY; });
+        window.addEventListener('pointerup', () => pointer.isDown = false );
 
-            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
-            snake.unshift(head); 
-
-            if (head.x === food.x && head.y === food.y) {
-                score++;
-                updateHUD();
-                placeFood();
-            } else {
-                snake.pop(); 
-            }
-
-            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || snakeCollision(head)) {
-                clearInterval(gameInterval);
-                isPlaying = false;
-                document.getElementById("startBtn").style.display = "block";
-                document.getElementById("startBtn").innerText = "MORTO! REINICIAR";
-                
-                if(score > 0 && window.parent && window.parent.gameEarnXP) {
-                    window.parent.gameEarnXP(score); 
-                }
-                return;
-            }
-
-            if(food.img && food.img.complete) {
-                ctx.drawImage(food.img, food.x, food.y, gridSize, gridSize);
-            } else {
-                ctx.fillStyle = "red";
-                ctx.fillRect(food.x, food.y, gridSize, gridSize);
-            }
-
-            snake.forEach((p, index) => {
-                const isHead = index === 0;
-                const radius = isHead ? gridSize / 1.8 : gridSize / 2.2;
-                const centerX = p.x + gridSize / 2;
-                const centerY = p.y + gridSize / 2;
-
-                ctx.beginPath();
-                ctx.fillStyle = isHead ? "#34D399" : "#06B6D4"; 
-
-                if (isHead) {
-                    let angle = Math.atan2(dy, dx);
-                    let distToFood = Math.sqrt(Math.pow(p.x - food.x, 2) + Math.pow(p.y - food.y, 2));
-                    let isMouthOpen = distToFood <= gridSize * 3;
-
-                    if (isMouthOpen) {
-                        ctx.arc(centerX, centerY, radius, angle + 0.25 * Math.PI, angle + 1.75 * Math.PI);
-                        ctx.lineTo(centerX, centerY);
-                    } else {
-                        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                    }
-                    ctx.fill();
-                    ctx.closePath();
-
-                    ctx.fillStyle = "white"; 
-                    let eyeOffset = radius * 0.55; 
-                    let eyeX1 = centerX + Math.cos(angle - Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
-                    let eyeY1 = centerY + Math.sin(angle - Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
-                    let eyeX2 = centerX + Math.cos(angle + Math.PI/2.2) * eyeOffset + Math.cos(angle) * (radius * 0.2);
-                    let eyeY2 = centerY + Math.sin(angle + Math.PI/2.2) * eyeOffset + Math.sin(angle) * (radius * 0.2);
-
-                    ctx.beginPath(); ctx.arc(eyeX1, eyeY1, 3, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(eyeX2, eyeY2, 3, 0, Math.PI*2); ctx.fill();
-
-                    ctx.fillStyle = "black";
-                    ctx.beginPath(); ctx.arc(eyeX1 + Math.cos(angle)*1.5, eyeY1 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(eyeX2 + Math.cos(angle)*1.5, eyeY2 + Math.sin(angle)*1.5, 1.5, 0, Math.PI*2); ctx.fill();
-
-                } else {
-                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.closePath();
-                }
+        function spawnNode() {
+            nodes.push({
+                x: Math.random() * (width - 100) + 50,
+                y: Math.random() * (height - 100) + 50,
+                radius: 6,
+                pulse: 0,
+                color: Math.random() > 0.8 ? '#F0F' : '#0FF', // 20% chance de nó especial
+                value: 10
             });
         }
 
-        function snakeCollision(head) {
-            for (let i = 3; i < snake.length; i++) {
-                if (head.x === snake[i].x && head.y === snake[i].y) return true;
+        function createParticles(x, y, color, amount) {
+            for (let i = 0; i < amount; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 1,
+                    decay: Math.random() * 0.05 + 0.02,
+                    color: color
+                });
             }
-            return false;
         }
+
+        function systemAlert(msg, color) {
+            const el = document.getElementById('system-alert');
+            el.innerText = msg;
+            el.style.color = color;
+            el.style.textShadow = `0 0 15px ${color}`;
+            el.style.opacity = 1;
+            setTimeout(() => el.style.opacity = 0, 2000);
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            
+            score = 0; level = 1; energy = 100;
+            document.getElementById('scoreDisplay').innerText = '000';
+            document.getElementById('levelDisplay').innerHTML = `<span>LVL</span> 1`;
+            
+            snake.head = { x: width/2, y: height/2 };
+            snake.history = [];
+            for(let i=0; i<300; i++) snake.history.push({...snake.head});
+            snake.length = 25;
+            snake.baseSpeed = 4;
+            
+            nodes = []; particles = []; hazards = [];
+            spawnNode(); spawnNode();
+            
+            isPlaying = true;
+            pointer.x = width/2; pointer.y = height/4; // Aponta pra cima inicialmente
+            
+            systemAlert('Sinal Estabelecido', '#0FF');
+            cancelAnimationFrame(gameLoopId);
+            gameLoop();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            createParticles(snake.head.x, snake.head.y, '#F00', 50);
+            
+            // Integração XP ChatPTT
+            if(window.parent && window.parent.gameEarnXP && score > 50) {
+                window.parent.gameEarnXP(Math.floor(score / 2)); // Dá XP baseado no score
+            }
+
+            document.getElementById('finalScoreText').innerText = `Dados Extraídos: ${score}`;
+            setTimeout(() => {
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }, 1000);
+        }
+
+        function closeGame() {
+            if(window.parent && window.parent.closeImmersiveGame) {
+                window.parent.closeImmersiveGame();
+            }
+        }
+
+        function update() {
+            if (!isPlaying) return;
+
+            // Motor de Movimento Fluido (Persegue o Pointer)
+            let dx = pointer.x - snake.head.x;
+            let dy = pointer.y - snake.head.y;
+            let targetAngle = Math.atan2(dy, dx);
+            
+            // Curva Suave (Interpolação de Ângulo)
+            let diff = targetAngle - snake.angle;
+            // Normaliza a diferença para o caminho mais curto
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            
+            snake.angle += diff * 0.15; // Velocidade de curva
+
+            // Mecânica de Dash (Gasta energia)
+            if (pointer.isDown && energy > 2) {
+                snake.currentSpeed = snake.baseSpeed * 2.2;
+                energy -= 1;
+                createParticles(snake.head.x, snake.head.y, '#F0F', 1);
+            } else {
+                snake.currentSpeed = snake.baseSpeed;
+                if(energy < 100) energy += 0.3;
+            }
+            document.getElementById('energy-bar').style.width = `${energy}%`;
+
+            // Move a Cabeça
+            snake.head.x += Math.cos(snake.angle) * snake.currentSpeed;
+            snake.head.y += Math.sin(snake.angle) * snake.currentSpeed;
+
+            // Grava Histórico (Guarda coordenadas a cada frame)
+            snake.history.unshift({ x: snake.head.x, y: snake.head.y });
+            if (snake.history.length > snake.length * snake.spacing) {
+                snake.history.pop();
+            }
+
+            // Colisão com Paredes (Mortal)
+            if (snake.head.x < 0 || snake.head.x > width || snake.head.y < 0 || snake.head.y > height) {
+                gameOver();
+            }
+
+            // Colisão com o Próprio Corpo
+            for (let i = 10 * snake.spacing; i < snake.history.length; i += snake.spacing) {
+                let seg = snake.history[i];
+                if (seg) {
+                    let dist = Math.hypot(snake.head.x - seg.x, snake.head.y - seg.y);
+                    if (dist < snake.size) {
+                        gameOver();
+                    }
+                }
+            }
+
+            // Coleta de Nodes (Comida)
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                let n = nodes[i];
+                n.pulse += 0.1;
+                let dist = Math.hypot(snake.head.x - n.x, snake.head.y - n.y);
+                if (dist < snake.size + n.radius + 10) {
+                    createParticles(n.x, n.y, n.color, 15);
+                    score += n.value;
+                    snake.length += 3;
+                    energy = Math.min(100, energy + 15);
+                    nodes.splice(i, 1);
+                    spawnNode();
+                    document.getElementById('scoreDisplay').innerText = score.toString().padStart(3, '0');
+
+                    // Progressão de Nível
+                    if (score % 100 === 0) {
+                        level++;
+                        snake.baseSpeed += 0.5;
+                        document.getElementById('levelDisplay').innerHTML = `<span>LVL</span> ${level}`;
+                        systemAlert(`Nível ${level} Atingido`, '#FFF');
+                        if(level % 3 === 0) spawnHazard(); // Adiciona perigo a cada 3 níveis
+                        
+                        // Envia Level Up para o ChatPTT
+                        if(window.parent && window.parent.gameLevelUp) {
+                            window.parent.gameLevelUp(level);
+                        }
+                    }
+                }
+            }
+
+            // Atualiza Perigos (Buraco Negro)
+            for (let i = hazards.length - 1; i >= 0; i--) {
+                let h = hazards[i];
+                h.angle += 0.05;
+                // Atrai a cobra
+                let hdx = h.x - snake.head.x;
+                let hdy = h.y - snake.head.y;
+                let hDist = Math.hypot(hdx, hdy);
+                if(hDist < 150) {
+                    snake.head.x += (hdx / hDist) * 1.5; // Puxa
+                    snake.head.y += (hdy / hDist) * 1.5;
+                }
+                if(hDist < h.radius) gameOver(); // Morte
+            }
+
+            // Atualiza Partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.life -= p.decay;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function spawnHazard() {
+            hazards.push({
+                x: Math.random() * (width - 200) + 100,
+                y: Math.random() * (height - 200) + 100,
+                radius: 25,
+                angle: 0
+            });
+            systemAlert("Ruptura Espacial Detectada!", "#F00");
+        }
+
+        function draw() {
+            // Limpa com rastro (Motion Blur)
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(3, 3, 8, 0.3)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.globalCompositeOperation = 'lighter'; // Efeito Neon Aditivo
+
+            // Desenha Perigos (Buracos Negros)
+            hazards.forEach(h => {
+                ctx.beginPath();
+                ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#F00';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#F00';
+                ctx.setLineDash([10, 10]);
+                ctx.lineDashOffset = -h.angle * 20;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            // Desenha Nodes
+            nodes.forEach(n => {
+                ctx.beginPath();
+                let r = n.radius + Math.sin(n.pulse) * 2;
+                ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = n.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = n.color;
+                ctx.fill();
+            });
+
+            // Desenha Cobra
+            ctx.shadowBlur = pointer.isDown ? 25 : 10;
+            ctx.shadowColor = pointer.isDown ? '#F0F' : snake.color;
+            ctx.lineWidth = snake.size * 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = pointer.isDown ? '#F0F' : snake.color;
+
+            ctx.beginPath();
+            ctx.moveTo(snake.head.x, snake.head.y);
+            
+            // Loop para desenhar os segmentos lendo o histórico
+            for (let i = 0; i < snake.length; i++) {
+                let index = i * snake.spacing;
+                if (index < snake.history.length) {
+                    let pos = snake.history[index];
+                    ctx.lineTo(pos.x, pos.y);
+                }
+            }
+            ctx.stroke();
+
+            // Cabeça brilhante
+            ctx.beginPath();
+            ctx.arc(snake.head.x, snake.head.y, snake.size, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFF';
+            ctx.fill();
+
+            // Partículas
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        // Fundo renderizado inicialmente
+        ctx.fillStyle = '#030308';
+        ctx.fillRect(0, 0, width, height);
     </script>
 </body>
 </html>
