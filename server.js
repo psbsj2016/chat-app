@@ -502,49 +502,44 @@ io.on('connection', (socket) => {
                 if (rSocket) io.to(rSocket).emit('receive_message', populatedMsg); 
                 socket.emit('receive_message', populatedMsg); 
 
-               // 🧠 CÉREBRO DA IA NATIVA (MICROSERVIÇO LOCAL)
+                  // 🧠 CÉREBRO DA IA (NUVEM 24/7 - GOOGLE GEMINI)
                 if (String(data.receiverId) === String(botUserId) && data.content) {
                     socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
                     try {
-                        // URL do seu novo microserviço Python (Variável de ambiente ou localhost)
-                        const PYTHON_AI_URL = process.env.PYTHON_AI_URL || 'http://localhost:8000';
-                        
-                        // Faz a requisição POST para o seu FastAPI
-                        const pyRes = await fetch(`${PYTHON_AI_URL}/chat`, {
+                        const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+                        const aiRes = await fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                message: data.content,
-                                user_id: data.senderId // Passa o ID para manter o contexto da sessão
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: `Você é o assistente inteligente do aplicativo ChatPTT. Responda de forma amigável e direta a esta mensagem do usuário: ${data.content}` }] }]
                             })
                         });
 
-                        const pyData = await pyRes.json();
-                        let replyText = pyData.response || "Tive um branco, pode repetir?";
+                        const aiData = await aiRes.json();
+                        let replyText = "Tive um branco nas nuvens...";
                         
+                        // Extrai a resposta da estrutura do Gemini
+                        if (aiData.candidates && aiData.candidates.length > 0) {
+                            replyText = aiData.candidates[0].content.parts[0].text;
+                        } else {
+                            replyText = "Desculpe, os meus circuitos estão a recarregar.";
+                        }
+
                         socket.emit('stop_typing', { senderId: botUserId });
                         const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
                         socket.emit('receive_message', await Message.findById(botMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
-                        
+
                     } catch (netError) {
                         socket.emit('stop_typing', { senderId: botUserId });
-                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Microserviço de IA Offline: ${netError.message}`, status: 'sent', _id: new mongoose.Types.ObjectId() });
-                        await errorMsg.save();
-                        socket.emit('receive_message', await Message.findById(errorMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
-                    }
-                }
-                        socket.emit('stop_typing', { senderId: botUserId });
-                        const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
-                        await botMsg.save();
-                        socket.emit('receive_message', await Message.findById(botMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
-                    } catch (netError) {
-                        socket.emit('stop_typing', { senderId: botUserId });
-                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Conexão Neural falhou: ${netError.message}`, status: 'sent', _id: new mongoose.Types.ObjectId() });
+                        const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Conexão com a Nuvem falhou.`, status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await errorMsg.save();
                         socket.emit('receive_message', await Message.findById(errorMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
                     }
                 } else {
+
                     const receiver = await User.findById(data.receiverId);
                     if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                         const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
