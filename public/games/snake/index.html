@@ -3,99 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Predator: Wild Hunt</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Predator 3D: Survival</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@600;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* =========================================
-           ARQUITETURA UI / UX - NATURAL / ORGÂNICO
-           ========================================= */
         :root {
-            --bg-color: #0c120c;
-            --hud-bg: #1a241a;
+            --hud-bg: #0f172a;
             --primary: #4ade80;
-            --accent: #facc15;
             --danger: #ef4444;
-            --success: #22c55e;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --accent: #3b82f6;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; font-family: 'Inter', sans-serif; }
-        body { background-color: var(--bg-color); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
+        body { background-color: #020617; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* 1. HEADER / HUD SUPERIOR (LIMPO - SEM SETAS EXTRAS) */
+        /* HUD SUPERIOR */
         #hud {
-            display: flex; justify-content: center; align-items: center;
-            background: var(--hud-bg); padding: 12px 15px; border-bottom: 2px solid #273527;
-            color: var(--text-main); z-index: 10;
-            height: 70px; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15, 23, 42, 0.95); padding: 10px 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.1); color: #fff; z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .hud-center { display: flex; gap: 30px; align-items: center; }
         .hud-stat { display: flex; flex-direction: column; align-items: center; }
-        .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
-        .stat-value { font-size: 18px; font-weight: 900; color: var(--primary); }
+        .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 800; }
+        .stat-value { font-size: 18px; font-weight: 900; font-family: 'Orbitron'; }
+        
+        .progress-container { flex: 1; margin: 0 15px; display: flex; flex-direction: column; align-items: center; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #4ade80); width: 0%; transition: width 0.3s; }
 
-        /* 2. ÁREA DO JOGO (CENÁRIOS FOTOREALISTAS) */
+        /* ÁREA DO JOGO (INFINITA) */
         #game-area {
             flex: 1; position: relative; width: 100%; overflow: hidden;
-            background-color: #1a2421;
-            background-size: cover;
-            background-position: center;
-            transition: background-image 1s ease-in-out; /* Transição suave entre níveis */
+            background: #1e293b; transition: background 1s ease;
         }
         canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6)); }
 
-        /* 3. CONTROLOS INFERIORES (D-PAD ESPAÇOSO) */
+        /* CONTROLOS INFERIORES (D-PAD ERGONÔMICO) */
         #controls-wrapper {
-            height: 250px; background: var(--hud-bg); border-top: 2px solid #273527;
-            display: flex; justify-content: center; align-items: center; flex-shrink: 0;
-            padding-bottom: 20px;
+            background: var(--hud-bg); border-top: 2px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: center; align-items: center; padding: 25px 0 35px 0;
+            box-shadow: 0 -10px 20px rgba(0,0,0,0.5); z-index: 10;
         }
         
+        /* CRUZ COM ESPAÇAMENTO PERFEITO */
         #d-pad {
             display: grid;
-            grid-template-columns: 70px 70px 70px;
-            grid-template-rows: 70px 70px 70px;
-            gap: 20px; /* ESPAÇO AMPLO ENTRE BOTÕES */
+            grid-template-columns: 65px 65px 65px;
+            grid-template-rows: 65px 65px 65px;
+            gap: 20px; /* O ESPAÇAMENTO PARA NÃO ERRAR O TOQUE */
             justify-content: center;
             align-items: center;
         }
         
         .d-btn {
-            width: 100%; height: 100%; border-radius: 50%;
-            background: linear-gradient(180deg, #374151 0%, #1e293b 100%);
-            border: 2px solid #475569;
-            color: #f1f5f9; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.1);
-            transition: 0.1s; cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
+            width: 100%; height: 100%; border-radius: 18px;
+            background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+            border: 2px solid #475569; color: #f8fafc; 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
+            cursor: pointer; transition: 0.1s; -webkit-tap-highlight-color: transparent;
         }
-        .d-btn:active { background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); border-color: #86efac; transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.5); color: #000; }
-        .d-btn .material-icons-round { font-size: 38px; font-weight: bold; }
+        .d-btn:active {
+            background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%); border-color: #86efac;
+            transform: scale(0.9) translateY(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.5); color: #000;
+        }
+        .d-btn .material-icons-round { font-size: 40px; }
         
         .btn-up { grid-column: 2; grid-row: 1; }
         .btn-left { grid-column: 1; grid-row: 2; }
         .btn-right { grid-column: 3; grid-row: 2; }
         .btn-down { grid-column: 2; grid-row: 3; }
 
-        /* TELAS DE UI */
-        .overlay { position: absolute; inset: 0; background: rgba(12, 18, 12, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(10px); }
+        /* TELAS OVERLAY */
+        .overlay { position: absolute; inset: 0; background: rgba(2, 6, 23, 0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
         .hidden { display: none !important; }
-        .main-btn { background: var(--primary); border: none; color: #000; padding: 18px 45px; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 16px; margin: 10px; border-radius: 30px; cursor: pointer; transition: 0.2s; text-transform: uppercase; box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3); }
-        .main-btn:active { transform: scale(0.95); box-shadow: 0 4px 10px rgba(74, 222, 128, 0.3); }
-        .secondary-btn { background: transparent; border: 2px solid var(--accent); color: var(--accent); box-shadow: none; }
-        .secondary-btn:active { background: var(--accent); color: #000; }
+        h1 { font-family: 'Orbitron'; font-size: 42px; font-weight: 900; margin-bottom: 10px; letter-spacing: 2px; }
+        .main-btn { background: var(--primary); border: none; color: #000; padding: 18px 45px; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; border-radius: 30px; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 25px rgba(74, 222, 128, 0.4); margin-top: 20px; }
+        .main-btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
     <header id="hud">
-        <div class="hud-center">
-            <div class="hud-stat"><span class="stat-label">Comprimento</span><span class="stat-value" id="ui-size" style="color: #fff;">3</span></div>
-            <div class="hud-stat"><span class="stat-label">Nível</span><span class="stat-value" id="ui-level" style="color: var(--accent);">1</span></div>
-            <div class="hud-stat"><span class="stat-label">Presas</span><span class="stat-value" id="ui-score">0</span></div>
+        <div class="hud-stat" style="color: var(--accent);">
+            <span class="stat-label">Fase</span>
+            <span class="stat-value" id="ui-level">1</span>
+        </div>
+        
+        <div class="progress-container">
+            <span class="stat-label" style="color: #fff;"><span id="ui-score">0</span> / <span id="ui-target">200</span> Presas</span>
+            <div class="progress-bar"><div class="progress-fill" id="ui-progress"></div></div>
+        </div>
+
+        <div class="hud-stat" style="color: var(--primary);">
+            <span class="stat-label">Tamanho</span>
+            <span class="stat-value" id="ui-size">1</span>
         </div>
     </header>
 
@@ -103,16 +106,15 @@
         <canvas id="canvas"></canvas>
         
         <div id="start-screen" class="overlay">
-            <h1 style="color: var(--primary); font-size: 42px; font-weight: 900; margin-bottom: 10px; letter-spacing: -1px;">WILD HUNT</h1>
-            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 14px;">A NATUREZA NÃO PERDOA.</p>
-            <button class="main-btn" onclick="initGame('solo')">Caçada Natural</button>
-            <button class="main-btn secondary-btn" onclick="initGame('multi')">Disputar Território</button>
+            <h1 style="color: var(--primary); text-shadow: 0 0 20px var(--primary);">PREDATOR 3D</h1>
+            <p style="color: #94a3b8; margin-bottom: 20px; max-width: 300px;">8 Fases de Sobrevivência Extrema. Evolua, proteja o seu ninho e escape das águias.</p>
+            <button class="main-btn" onclick="startGame()">INICIAR CAÇADA</button>
         </div>
 
         <div id="end-screen" class="overlay hidden">
-            <h1 id="end-title" style="color: var(--danger); font-size: 38px; font-weight: 900;">FIM DA LINHA</h1>
-            <p id="end-desc" style="color: #fff; margin-bottom: 30px; font-size: 16px;"></p>
-            <button class="main-btn" onclick="location.reload()">Renascer</button>
+            <h1 id="end-title" style="color: var(--danger);">MORTO</h1>
+            <p id="end-desc" style="color: #fff; margin-bottom: 20px;"></p>
+            <button class="main-btn" onclick="location.reload()">TENTAR NOVAMENTE</button>
         </div>
     </main>
 
@@ -126,44 +128,40 @@
     </footer>
 
 <script>
-    const socket = io();
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const gameArea = document.getElementById('game-area');
 
-    let state = { isRunning: false, mode: 'solo', score: 0, level: 1, maxLevel: 10, baseSpeed: 4.5 };
-
-    const cols = 22; 
-    const rows = 22;
+    // === CONFIGURAÇÕES E ESTADO ===
+    const cols = 28; 
+    const rows = 28;
     let cellW, cellH;
     
-    // Cores Orgânicas da Cobra
-    let snake = { 
-        body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, 
-        colorSpine: '#064e3b',   // Verde muito escuro (manchas nas costas)
-        colorBody: '#15803d',    // Verde floresta (corpo principal)
-        colorBelly: '#84cc16'    // Verde limão/amarelado (barriga)
-    };
-    
-    let currentRoom = null;
-    let opponent = { 
-        active: false, id: null, body: [], 
-        colorSpine: '#450a0a', colorBody: '#b91c1c', colorBelly: '#fca5a5' 
+    let state = {
+        running: false,
+        level: 1, score: 0, targetScore: 200,
+        speed: 6 // Ticks por segundo
     };
 
-    // Cenários Fotorealistas (Imagens da Natureza)
-    const backgrounds = [
-        "url('https://images.unsplash.com/photo-1558350133-14902b369cc4?auto=format&fit=crop&w=1200&q=80')", // Nível 1: Chão da Floresta
-        "url('https://images.unsplash.com/photo-1547333590-bc7490059c25?auto=format&fit=crop&w=1200&q=80')", // Nível 2: Areia do Deserto
-        "url('https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&w=1200&q=80')", // Nível 3: Pântano
-        "url('https://images.unsplash.com/photo-1507369651582-74737a4d56d1?auto=format&fit=crop&w=1200&q=80')", // Nível 4: Folhas de Outono
-        "url('https://images.unsplash.com/photo-1464638681273-0962e9b53566?auto=format&fit=crop&w=1200&q=80')", // Nível 5: Rochas / Caverna
-        "url('https://images.unsplash.com/photo-1478265409131-1f65c88f965c?auto=format&fit=crop&w=1200&q=80')"  // Nível 6+: Neve
+    // Parâmetros das 8 Fases
+    const levelsData = [
+        { target: 200, rocks: 0, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#1e293b', snakeColor: '#4ade80' }, // Fase 1
+        { target: 300, rocks: 5, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#451a03', snakeColor: '#facc15' }, // Fase 2
+        { target: 400, rocks: 8, trees: 5, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#14532d', snakeColor: '#22d3ee' }, // Fase 3
+        { target: 500, rocks: 10, trees: 8, movingPrey: true, eagles: 0, nest: false, babies: 0, bg: '#312e81', snakeColor: '#c084fc' }, // Fase 4
+        { target: 600, rocks: 12, trees: 10, movingPrey: true, eagles: 1, nest: false, babies: 0, bg: '#701a75', snakeColor: '#f87171' }, // Fase 5
+        { target: 700, rocks: 15, trees: 5, movingPrey: true, eagles: 1, nest: true, babies: 0, bg: '#064e3b', snakeColor: '#fbbf24' }, // Fase 6
+        { target: 900, rocks: 10, trees: 5, movingPrey: true, eagles: 2, nest: true, babies: 20, bg: '#4c1d95', snakeColor: '#34d399' }, // Fase 7
+        { target: 1000, rocks: 15, trees: 8, movingPrey: true, eagles: 3, nest: true, babies: 20, portal: true, bg: '#000000', snakeColor: '#e879f9' } // Fase 8
     ];
 
-    const animaisReais = ['🐭', '🐦', '🐸', '🐰', '🦎'];
-    let preys = []; 
+    let snake = { body: [], dir: {x:1, y:0}, nextDir: {x:1, y:0}, color: '#4ade80' };
+    let preys = [];
     let obstacles = [];
+    let eagles = [];
+    let nest = { active: false, x: Math.floor(cols/2), y: Math.floor(rows/2), eggs: 0, babies: 0 };
+    let groundPredators = [];
+    let portal = { active: false, x: 0, y: 0 };
 
     function resize() {
         canvas.width = gameArea.clientWidth;
@@ -174,120 +172,89 @@
     window.addEventListener('resize', resize);
     resize();
 
-    function initGame(mode) {
-        state.mode = mode;
+    // === INICIALIZAÇÃO ===
+    function startGame() {
         document.getElementById('start-screen').classList.add('hidden');
-        setEnvironment();
+        loadLevel(1);
+        state.running = true;
+        gameLoop();
+    }
+
+    function loadLevel(lvl) {
+        state.level = lvl;
+        let lData = levelsData[lvl - 1];
+        state.targetScore = lData.target;
+        gameArea.style.background = lData.bg;
+        snake.color = lData.snakeColor;
+        state.speed = 6 + (lvl * 0.5); // Fica ligeiramente mais rápido
+
+        // Reseta Cobra
+        snake.body = [{ x: 5, y: 5 }, { x: 4, y: 5 }, { x: 3, y: 5 }];
+        snake.dir = {x:1, y:0}; snake.nextDir = {x:1, y:0};
         
-        if (mode === 'multi') {
-            document.getElementById('end-title').innerText = "PROCURANDO...";
-            document.getElementById('end-title').style.color = "var(--primary)";
-            document.getElementById('end-desc').innerText = "Aguardando um rival invadir seu território...";
-            document.getElementById('end-screen').classList.remove('hidden');
-            socket.emit('join_snake_duel', { profile: { name: 'Anaconda' } });
-        } else {
-            resetSnake(Math.floor(cols/2));
-            obstacles = [];
-            maintainPreys();
-            state.isRunning = true;
-            gameLoop();
-        }
+        // Reseta Entidades
+        obstacles = []; preys = []; eagles = []; groundPredators = [];
+        portal.active = false;
+        
+        // Ninho
+        nest.active = lData.nest;
+        nest.eggs = (lvl === 6) ? 5 : 0;
+        nest.babies = lData.babies;
+
+        // Gera Obstáculos (Pedras e Árvores)
+        for(let i=0; i<lData.rocks; i++) spawnObstacle('rock');
+        for(let i=0; i<lData.trees; i++) spawnObstacle('tree');
+
+        // Gera Águias
+        for(let i=0; i<lData.eagles; i++) eagles.push({ state: 'cooldown', timer: 100 + Math.random()*100, x:-1, y:-1 });
+
+        maintainPreys();
+        updateHUD();
     }
 
-    function setEnvironment() {
-        let bgIndex = (state.level - 1) % backgrounds.length;
-        gameArea.style.backgroundImage = backgrounds[bgIndex];
-    }
-
-    socket.on('snake_duel_start', (data) => {
-        const isHost = data.players[0].id === socket.id;
-        currentRoom = data.roomId; 
-        opponent.id = data.players.find(p => p.id !== socket.id).id; 
-        opponent.active = true;
-        document.getElementById('end-screen').classList.add('hidden');
-
-        resetSnake(isHost ? 5 : cols - 5);
-        snake.dir = { x: isHost ? 1 : -1, y: 0 }; snake.nextDir = { x: isHost ? 1 : -1, y: 0 };
-        opponent.body = [{ x: isHost ? cols - 5 : 5, y: Math.floor(rows/2), dir: {x: isHost ? -1 : 1, y: 0} }];
-
-        obstacles = []; maintainPreys();
-        state.score = 0; state.level = 1; state.baseSpeed = 4.5;
-        updateHUD(); setEnvironment();
-        state.isRunning = true; gameLoop();
-    });
-
-    socket.on('opponent_move', (data) => {
-        if(opponent.active) { opponent.body = data.history; opponent.dir = data.dir; }
-    });
-
-    socket.on('duel_victory', () => { gameOver("VITÓRIA", "Você engoliu o rival inteiro!", "var(--success)"); });
-
-    function resetSnake(startX) {
-        snake.body = [ 
-            { x: startX, y: Math.floor(rows/2) },
-            { x: startX-1, y: Math.floor(rows/2) },
-            { x: startX-2, y: Math.floor(rows/2) }
-        ];
-        snake.dir = { x: 1, y: 0 }; snake.nextDir = { x: 1, y: 0 };
+    function spawnObstacle(type) {
+        let x, y, valid;
+        do {
+            valid = true;
+            x = Math.floor(Math.random() * cols); y = Math.floor(Math.random() * rows);
+            if (x < 10 && y < 10) valid = false; // Longe do spawn da cobra
+            if (nest.active && Math.abs(x - nest.x) < 3 && Math.abs(y - nest.y) < 3) valid = false; // Longe do ninho
+        } while(!valid);
+        obstacles.push({x, y, type});
     }
 
     function maintainPreys() {
-        let maxPreys = 2 + state.level; 
-        while(preys.length < maxPreys) {
+        let requiredPreys = 15 + state.level * 2; // Começa com ~17, sobe pra ~30 presas na tela
+        while(preys.length < requiredPreys) {
             let px = Math.floor(Math.random() * cols);
             let py = Math.floor(Math.random() * rows);
-            let valid = true;
-            for(let o of obstacles) { if(o.x === px && o.y === py) valid = false; }
-            if(valid) preys.push({ x: px, y: py, animal: animaisReais[Math.floor(Math.random() * animaisReais.length)] });
+            preys.push({ x: px, y: py });
         }
     }
 
-    function generateObstacles() {
-        obstacles = [];
-        let numObstacles = (state.level - 1) * 3; 
-        for(let i=0; i<numObstacles; i++) {
-            let ox = Math.floor(Math.random() * cols);
-            let oy = Math.floor(Math.random() * rows);
-            obstacles.push({x: ox, y: oy});
-        }
-    }
-
+    // === CONTROLES ===
     function changeDir(x, y) {
         if (x !== 0 && snake.dir.x !== 0) return;
         if (y !== 0 && snake.dir.y !== 0) return;
         snake.nextDir = { x, y };
     }
 
-    function handleProgression() {
-        state.score += 10;
-        let newLevel = Math.floor(state.score / 100) + 1;
-        
-        if (newLevel > state.level) {
-            state.level = newLevel;
-            if (state.level > state.maxLevel) return gameOver("SOBREVIVENTE MÁXIMO", "Você está no topo da cadeia alimentar.", "var(--success)");
+    window.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp') changeDir(0, -1);
+        if (e.key === 'ArrowDown') changeDir(0, 1);
+        if (e.key === 'ArrowLeft') changeDir(-1, 0);
+        if (e.key === 'ArrowRight') changeDir(1, 0);
+    });
 
-            state.baseSpeed += 0.5; 
-            generateObstacles(); 
-            setEnvironment(); // Muda a imagem de fundo real
-            
-            if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(state.level);
-        }
-        updateHUD();
-    }
-
-    function updateHUD() {
-        document.getElementById('ui-size').innerText = snake.body.length;
-        document.getElementById('ui-score').innerText = state.score;
-        document.getElementById('ui-level').innerText = state.level;
-    }
-
+    // === LOOP E LÓGICA PRINCIPAL ===
     let lastTime = 0; let accumulatedTime = 0;
+    
     function gameLoop(timestamp = 0) {
-        if (!state.isRunning) return;
+        if (!state.running) return;
         let deltaTime = timestamp - lastTime;
         lastTime = timestamp; accumulatedTime += deltaTime;
         
-        let tickInterval = 1000 / state.baseSpeed; 
+        let tickInterval = 1000 / state.speed; 
         if (accumulatedTime > tickInterval) { update(); accumulatedTime = 0; }
         
         draw();
@@ -298,192 +265,286 @@
         snake.dir = { ...snake.nextDir };
         let head = { x: snake.body[0].x + snake.dir.x, y: snake.body[0].y + snake.dir.y };
 
+        // Wrap Around (Tela Infinita)
         if (head.x < 0) head.x = cols - 1; if (head.x >= cols) head.x = 0;
         if (head.y < 0) head.y = rows - 1; if (head.y >= rows) head.y = 0;
 
-        for (let i = 0; i < snake.body.length; i++) {
-            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-MORDIDA", `Sua cobra ficou grande demais. Tamanho: ${snake.body.length}`, "var(--danger)");
+        // Colisão com o Corpo
+        for (let i = 1; i < snake.body.length; i++) {
+            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-MORDIDA", "Você enrolou-se no próprio corpo!");
         }
 
-        for (let o of obstacles) {
-            if (head.x === o.x && head.y === o.y) return gameOver("ESMAGADA", "Você bateu numa rocha sólida!", "var(--danger)");
-        }
-
-        snake.body.unshift(head);
-
-        if (state.mode === 'multi') {
-            socket.emit('snake_move', { roomId: currentRoom, head: head, history: snake.body, dir: snake.dir });
-            if (opponent.active) {
-                for (let pt of opponent.body) {
-                    if (head.x === pt.x && head.y === pt.y) {
-                        socket.emit('snake_death', { roomId: currentRoom, opponentId: opponent.id });
-                        return gameOver("PRESA", "Você bateu no Invasor!", "var(--danger)");
-                    }
+        // Colisão / Empurrar Obstáculos
+        for (let i = 0; i < obstacles.length; i++) {
+            let o = obstacles[i];
+            if (head.x === o.x && head.y === o.y) {
+                if (state.level >= 6 && o.type === 'rock') {
+                    // Tenta empurrar a pedra
+                    let pushX = o.x + snake.dir.x; let pushY = o.y + snake.dir.y;
+                    if (pushX < 0) pushX = cols - 1; if (pushX >= cols) pushX = 0;
+                    if (pushY < 0) pushY = rows - 1; if (pushY >= rows) pushY = 0;
+                    
+                    // Verifica se o espaço atrás da pedra está livre
+                    let blocked = obstacles.some(ob => ob.x === pushX && ob.y === pushY) || (nest.active && pushX===nest.x && pushY===nest.y);
+                    if (!blocked) { o.x = pushX; o.y = pushY; } 
+                    else { return gameOver("ESMAGADO", "Bateu numa barricada imóvel!"); }
+                } else {
+                    return gameOver("COLISÃO CRÍTICA", "Você bateu numa árvore ou rocha sólida.");
                 }
             }
         }
 
+        snake.body.unshift(head);
         let ate = false;
+
+        // Comer Presa
         for (let i = 0; i < preys.length; i++) {
             if (head.x === preys[i].x && head.y === preys[i].y) {
                 preys.splice(i, 1);
-                handleProgression(); maintainPreys(); ate = true; break;
+                state.score++;
+                ate = true;
+                break;
             }
         }
 
-        if (!ate) { snake.body.pop(); }
+        // Comer Predador Terrestre
+        for (let i = 0; i < groundPredators.length; i++) {
+            if (head.x === groundPredators[i].x && head.y === groundPredators[i].y) {
+                groundPredators.splice(i, 1);
+                state.score += 5; ate = true; break;
+            }
+        }
+
+        if (!ate) {
+            // A cobra só cresce a cada 5 presas (Para caber na tela até os 1000)
+            if (state.score % 5 !== 0 || state.score === 0) snake.body.pop(); 
+        }
+
+        updateHUD();
+        checkLevelUp();
+        
+        // --- IA DOS INIMIGOS ---
+        let lData = levelsData[state.level - 1];
+
+        // 1. Presas Movendo-se (Fugindo)
+        if (lData.movingPrey && Math.random() > 0.6) {
+            preys.forEach(p => {
+                if (Math.abs(p.x - head.x) < 5 && Math.abs(p.y - head.y) < 5) {
+                    p.x += (p.x > head.x ? 1 : -1); p.y += (p.y > head.y ? 1 : -1);
+                    if (p.x < 0) p.x = cols-1; if (p.x >= cols) p.x = 0;
+                    if (p.y < 0) p.y = rows-1; if (p.y >= rows) p.y = 0;
+                }
+            });
+        }
+
+        // 2. Spawn Predadores do Ninho (Fase 6+)
+        if (nest.active && (nest.eggs > 0 || nest.babies > 0)) {
+            if (Math.random() < 0.05 + (state.level * 0.01)) { // 5-10% chance por tick
+                let edgeX = Math.random() > 0.5 ? 0 : cols-1;
+                let edgeY = Math.random() > 0.5 ? 0 : rows-1;
+                groundPredators.push({x: edgeX, y: edgeY});
+            }
+            
+            // Move Predadores em direção ao ninho
+            if(Math.random() > 0.3) {
+                groundPredators.forEach(gp => {
+                    let dx = nest.x - gp.x; let dy = nest.y - gp.y;
+                    if(Math.abs(dx) > Math.abs(dy)) gp.x += (dx > 0 ? 1 : -1);
+                    else gp.y += (dy > 0 ? 1 : -1);
+
+                    // Verifica se devorou ovo/bebe
+                    if(gp.x === nest.x && gp.y === nest.y) {
+                        if(nest.babies > 0) nest.babies--; else nest.eggs--;
+                        gp.x = -10; // some
+                        if(nest.eggs === 0 && nest.babies === 0) return gameOver("NINHO DESTRUÍDO", "Os predadores devoraram toda a sua ninhada!");
+                    }
+                });
+            }
+            groundPredators = groundPredators.filter(gp => gp.x >= 0); // Limpa os que comeram
+        }
+
+        // 3. Águias (Fase 5+)
+        eagles.forEach(e => {
+            if (e.state === 'cooldown') {
+                e.timer--;
+                if(e.timer <= 0) {
+                    e.state = 'aiming'; e.timer = 20; // 20 ticks mirando
+                    // Mira num local à frente da cobra para prever movimento
+                    e.x = head.x + snake.dir.x * 2; e.y = head.y + snake.dir.y * 2;
+                    if(e.x >= cols) e.x -= cols; if(e.x < 0) e.x += cols;
+                    if(e.y >= rows) e.y -= rows; if(e.y < 0) e.y += rows;
+                }
+            } else if (e.state === 'aiming') {
+                e.timer--;
+                if(e.timer <= 0) { e.state = 'striking'; e.timer = 5; } // Strike rápido
+            } else if (e.state === 'striking') {
+                // Checa Colisão
+                if (head.x === e.x && head.y === e.y) return gameOver("ATAQUE AÉREO", "A Águia devorou a sua cabeça!");
+                
+                // Corta o rabo na fase 7 e 8
+                if(state.level >= 7) {
+                    for(let i=1; i<snake.body.length; i++) {
+                        if(snake.body[i].x === e.x && snake.body[i].y === e.y) {
+                            snake.body = snake.body.slice(0, i); // Corta o corpo
+                            if(snake.body.length < 3) return gameOver("DESMEMBRADO", "A Águia cortou o seu corpo até não sobrar nada!");
+                            break;
+                        }
+                    }
+                }
+                e.timer--;
+                if(e.timer <= 0) { e.state = 'cooldown'; e.timer = 80; }
+            }
+        });
+
+        // 4. Portal da Vitória (Fase 8)
+        if (state.level === 8 && state.score >= 1000 && !portal.active) {
+            portal.active = true;
+            portal.x = 2; portal.y = 2; // Canto
+        }
+
+        if (portal.active && head.x === portal.x && head.y === portal.y) {
+            winGame();
+        }
+
+        maintainPreys();
     }
 
-    // ==========================================
-    // MOTOR DE RENDERIZAÇÃO REALISTA (TUBULAR)
-    // ==========================================
-    function drawRealisticSnake(s, isOpponent) {
-        if(s.body.length === 0) return;
-
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // 1. Corpo Contínuo Tubular
-        for (let i = s.body.length - 1; i > 0; i--) {
-            let p1 = s.body[i];
-            let p2 = s.body[i-1];
-            
-            // Impede que desenhe uma linha cortando a tela quando a cobra atravessa a parede
-            if (Math.abs(p1.x - p2.x) > 1 || Math.abs(p1.y - p2.y) > 1) continue;
-
-            let px1 = p1.x * cellW + cellW/2;
-            let py1 = p1.y * cellH + cellH/2;
-            let px2 = p2.x * cellW + cellW/2;
-            let py2 = p2.y * cellH + cellH/2;
-
-            let radius = (cellW / 2) * 1.0;
-            let tailDist = s.body.length - 1 - i;
-            if (tailDist < 8) radius = radius * (0.3 + 0.7 * (tailDist / 8)); // Rabo afinando suavemente
-
-            // Corpo Principal (Verde Escuro)
-            ctx.beginPath();
-            ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
-            ctx.lineWidth = radius * 2;
-            ctx.strokeStyle = isOpponent ? s.colorBody : s.colorBody;
-            ctx.stroke();
-
-            // Textura da Barriga/Costas (Linha Interna mais clara)
-            ctx.beginPath();
-            ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
-            ctx.lineWidth = radius * 1.2;
-            ctx.strokeStyle = isOpponent ? s.colorBelly : s.colorBelly;
-            ctx.stroke();
-
-            // Manchas/Escamas Escuras nas Costas
-            if (i % 3 === 0 && tailDist > 3) {
-                ctx.fillStyle = isOpponent ? s.colorSpine : s.colorSpine;
-                ctx.beginPath();
-                ctx.arc((px1+px2)/2, (py1+py2)/2, radius * 0.4, 0, Math.PI*2);
-                ctx.fill();
-            }
+    function checkLevelUp() {
+        if (state.score >= state.targetScore && state.level < 8) {
+            // XP PRO CHAT PTT
+            if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(state.level);
+            loadLevel(state.level + 1);
         }
+    }
 
-        // 2. Cabeça Orgânica (Alinhada com o pescoço)
-        let head = s.body[0];
-        let px = head.x * cellW + cellW/2;
-        let py = head.y * cellH + cellH/2;
-        
-        let dirX = s.dir ? s.dir.x : (s.body.length > 1 ? head.x - s.body[1].x : 1);
-        let dirY = s.dir ? s.dir.y : (s.body.length > 1 ? head.y - s.body[1].y : 0);
-        let angle = Math.atan2(dirY, dirX);
-
-        let isMouthOpen = false;
-        if (!isOpponent) {
-            for (let p of preys) {
-                if (Math.hypot(head.x - p.x, head.y - p.y) < 3) { isMouthOpen = true; break; }
-            }
-        }
-
-        let headLen = cellW * 0.9;
-        let headWid = cellW * 0.75;
-
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(angle);
-
-        ctx.fillStyle = isOpponent ? s.colorBody : s.colorBody;
-
-        if (isMouthOpen) {
-            // Mandíbula e Dentes
-            ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
-            ctx.ellipse(headLen/2, 0, headLen, headWid/2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            ctx.save(); ctx.rotate(0.35); ctx.beginPath();
-            ctx.ellipse(headLen/2, 0, headLen*0.9, headWid/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            
-            ctx.fillStyle = '#450a0a'; ctx.beginPath(); ctx.arc(0, 0, headWid*0.5, -0.4, 0.4); ctx.fill();
-            ctx.fillStyle = '#f8fafc'; ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
-            ctx.moveTo(headLen*0.8, headWid/4); ctx.lineTo(headLen*0.9, headWid/2); ctx.lineTo(headLen*0.7, headWid/4); ctx.fill(); ctx.restore();
-        } else {
-            // Cabeça Fechada e Língua
-            ctx.beginPath(); ctx.ellipse(headLen/2, 0, headLen, headWid, 0, 0, Math.PI*2); ctx.fill();
-            if (Math.random() > 0.85) {
-                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
-                ctx.beginPath(); ctx.moveTo(headLen, 0); ctx.lineTo(headLen + 8, 0); ctx.lineTo(headLen + 12, -4);
-                ctx.moveTo(headLen + 8, 0); ctx.lineTo(headLen + 12, 4); ctx.stroke();
-            }
-        }
-
-        // Olhos Realistas
-        ctx.fillStyle = '#020617'; 
-        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#eab308'; 
-        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
+    // === RENDERIZAÇÃO 3D (CANVAS API) ===
+    function draw3DSphere(px, py, radius, color, highlightOffset = -2) {
+        let grad = ctx.createRadialGradient(px + highlightOffset, py + highlightOffset, radius*0.2, px, py, radius);
+        grad.addColorStop(0, '#ffffff'); // Brilho Especular (3D)
+        grad.addColorStop(0.3, color);
+        grad.addColorStop(1, '#000000'); // Sombra
+        ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI*2);
+        ctx.fillStyle = grad; ctx.fill();
     }
 
     function draw() {
-        // Limpa o canvas para mostrar a imagem de fundo realística do CSS
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Aplica uma camada escurecida para a cobra e as presas destacarem da foto
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Desenha Pedras 
-        ctx.fillStyle = '#475569';
-        for (let o of obstacles) {
+        // 1. Ninho e Portal (Chão)
+        if (nest.active) {
+            ctx.fillStyle = 'rgba(139, 69, 19, 0.4)';
+            ctx.beginPath(); ctx.arc(nest.x*cellW + cellW/2, nest.y*cellH + cellH/2, cellW*1.5, 0, Math.PI*2); ctx.fill();
+            
+            // Ovos ou Bebês
+            let count = nest.eggs > 0 ? nest.eggs : nest.babies;
+            let color = nest.eggs > 0 ? '#f8fafc' : snake.color;
+            for(let i=0; i<count; i++) {
+                let ox = nest.x*cellW + cellW/2 + Math.cos(i) * 10;
+                let oy = nest.y*cellH + cellH/2 + Math.sin(i) * 10;
+                draw3DSphere(ox, oy, cellW*0.25, color);
+            }
+        }
+
+        if (portal.active) {
+            let pulse = Math.abs(Math.sin(Date.now() / 200)) * 5;
+            let grad = ctx.createRadialGradient(portal.x*cellW+cellW/2, portal.y*cellH+cellH/2, pulse, portal.x*cellW+cellW/2, portal.y*cellH+cellH/2, cellW*2);
+            grad.addColorStop(0, '#fff'); grad.addColorStop(0.5, '#c084fc'); grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(portal.x*cellW+cellW/2, portal.y*cellH+cellH/2, cellW*2, 0, Math.PI*2); ctx.fill();
+        }
+
+        // 2. Obstáculos (Pedras e Árvores)
+        obstacles.forEach(o => {
             let px = o.x * cellW + cellW/2; let py = o.y * cellH + cellH/2;
-            ctx.beginPath(); ctx.moveTo(px - cellW*0.4, py); ctx.lineTo(px - cellW*0.2, py - cellH*0.4);
-            ctx.lineTo(px + cellW*0.3, py - cellH*0.3); ctx.lineTo(px + cellW*0.4, py + cellH*0.2);
-            ctx.lineTo(px, py + cellH*0.4); ctx.fill();
-            ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(px + cellW*0.1, py + cellH*0.1, cellW*0.2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#475569';
+            if(o.type === 'rock') draw3DSphere(px, py, cellW*0.45, '#64748b');
+            if(o.type === 'tree') {
+                ctx.fillStyle = '#451a03'; ctx.fillRect(px - cellW*0.1, py, cellW*0.2, cellH*0.4); // Tronco
+                draw3DSphere(px, py - cellH*0.2, cellW*0.5, '#15803d'); // Copa 3D
+            }
+        });
+
+        // 3. Presas e Predadores Terrestres
+        preys.forEach(p => {
+            let px = p.x * cellW + cellW/2; let py = p.y * cellH + cellH/2;
+            draw3DSphere(px, py, cellW*0.3, '#fca5a5'); // Ratos/Bichos (Pequenos)
+        });
+
+        groundPredators.forEach(gp => {
+            let px = gp.x * cellW + cellW/2; let py = gp.y * cellH + cellH/2;
+            draw3DSphere(px, py, cellW*0.4, '#dc2626'); // Vermelho Escuro
+            // Olhos Maus
+            ctx.fillStyle = '#fbbf24'; ctx.fillRect(px-4, py-2, 3, 3); ctx.fillRect(px+1, py-2, 3, 3);
+        });
+
+        // 4. A Cobra 3D (Corpo contínuo com esferas sobrepostas)
+        for (let i = snake.body.length - 1; i >= 0; i--) {
+            let seg = snake.body[i];
+            let px = seg.x * cellW + cellW/2; let py = seg.y * cellH + cellH/2;
+            let radius = (cellW / 2) * (i === 0 ? 0.9 : 0.8);
+            if (i > snake.body.length - 5) radius *= 0.5; // Rabo afina
+            
+            draw3DSphere(px, py, radius, snake.color);
+
+            // Olhos na Cabeça
+            if (i === 0) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(px - 4, py - 4, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + 4, py - 4, 3, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(px - 4, py - 4, 1.5, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + 4, py - 4, 1.5, 0, Math.PI*2); ctx.fill();
+            }
         }
 
-        // Desenha Presas Vivas
-        let wiggle = Math.sin(Date.now() / 80) * 0.15; 
-        for (let p of preys) {
-            ctx.save(); ctx.translate(p.x * cellW + cellW/2, p.y * cellH + cellH/2);
-            ctx.rotate(wiggle); ctx.font = `${cellW * 1.3}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(p.animal, 0, 0); ctx.restore();
-        }
-
-        // Desenha as Cobras contínuas
-        if (state.mode === 'multi' && opponent.active) drawRealisticSnake(opponent, true);
-        drawRealisticSnake(snake, false);
+        // 5. Águias (Ameaça Aérea)
+        eagles.forEach(e => {
+            let px = e.x * cellW + cellW/2; let py = e.y * cellH + cellH/2;
+            if (e.state === 'aiming') {
+                ctx.strokeStyle = `rgba(239, 68, 68, ${e.timer/20})`; // Retículo pisca
+                ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, cellW*1.5, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(px-cellW*2, py); ctx.lineTo(px+cellW*2, py); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(px, py-cellH*2); ctx.lineTo(px, py+cellH*2); ctx.stroke();
+                
+                // Sombra da águia passando
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath(); ctx.ellipse(px + (e.timer*5), py - (e.timer*5), cellW*3, cellH, Math.PI/4, 0, Math.PI*2); ctx.fill();
+            } else if (e.state === 'striking') {
+                // Garras descendo
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath(); ctx.moveTo(px-10, py-20); ctx.lineTo(px, py); ctx.lineTo(px+10, py-20); ctx.fill();
+                draw3DSphere(px, py-10, cellW*0.8, '#451a03'); // Corpo da Águia Perto
+            }
+        });
     }
 
-    function gameOver(title, desc, color) {
-        state.isRunning = false;
+    function updateHUD() {
+        document.getElementById('ui-level').innerText = state.level;
+        document.getElementById('ui-score').innerText = state.score;
+        document.getElementById('ui-target').innerText = state.targetScore;
+        document.getElementById('ui-size').innerText = snake.body.length;
+        
+        let pct = (state.score / state.targetScore) * 100;
+        document.getElementById('ui-progress').style.width = Math.min(pct, 100) + '%';
+    }
+
+    function gameOver(title, desc) {
+        state.running = false;
         document.getElementById('end-title').innerText = title;
-        document.getElementById('end-title').style.color = color;
+        document.getElementById('end-title').style.color = 'var(--danger)';
         document.getElementById('end-desc').innerText = desc;
         document.getElementById('end-screen').classList.remove('hidden');
         if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(state.score);
     }
 
-    window.addEventListener('keydown', e => {
-        if (e.key === 'ArrowUp') changeDir(0, -1);
-        if (e.key === 'ArrowDown') changeDir(0, 1);
-        if (e.key === 'ArrowLeft') changeDir(-1, 0);
-        if (e.key === 'ArrowRight') changeDir(1, 0);
-    });
+    function winGame() {
+        state.running = false;
+        document.getElementById('end-title').innerText = "TRANSCENDÊNCIA!";
+        document.getElementById('end-title').style.color = '#c084fc';
+        document.getElementById('end-desc').innerText = "Você guiou sua linhagem para o Portal da Vida Eterna. Lenda Imortal.";
+        document.querySelector('#end-screen .main-btn').innerText = "JOGAR NOVAMENTE";
+        document.getElementById('end-screen').classList.remove('hidden');
+        if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(2000); // Bônus Zerei o Jogo
+    }
+
 </script>
 </body>
 </html>
