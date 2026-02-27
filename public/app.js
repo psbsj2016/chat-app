@@ -716,44 +716,6 @@ async function createNewCommunity(name, description) {
     } catch(e) { alert("Falha na conexão com a nuvem."); }
 }
 
-// ---------------------------------------------------------
-// FASE 3: ABRIR CANAIS, CHAT E WEBSOCKETS
-// ---------------------------------------------------------
-
-// 1. ABRIR COMUNIDADE E CARREGAR CANAIS
-async function openCommunity(commId, commName) {
-    currentCommunityId = commId;
-    
-    // 📱 Garante que no mobile a tela volte para a lista de canais ao trocar de servidor
-    const screenComm = document.getElementById('screen-communities');
-    if(screenComm) screenComm.classList.remove('show-chat');
-
-    const nameEl = document.getElementById('active-comm-name');
-    if(nameEl) nameEl.innerHTML = `${commName} <span class="material-icons-round" style="font-size: 20px;">expand_more</span>`;
-    
-    const list = document.getElementById('community-channels-list');
-    if(!list) return;
-    list.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--secondary-text);">Carregando canais...</div>';
-    
-    try {
-        const res = await fetch(`/communities/${commId}/channels`);
-        const channels = await res.json();
-        list.innerHTML = '';
-        
-        let firstTextChannel = null;
-
-        channels.forEach(ch => {
-            let icon = ch.type === 'voice' ? 'volume_up' : (ch.type === 'announcement' ? 'campaign' : 'tag');
-            if(ch.type === 'text' && !firstTextChannel) firstTextChannel = ch;
-            
-            list.innerHTML += `<div class="channel-item" id="nav-ch-${ch._id}" onclick="openChannel('${ch._id}', '${ch.name}', '${ch.type}')"><span class="material-icons-round">${icon}</span> ${ch.name}</div>`;
-        });
-
-        // Entra automaticamente no primeiro canal de texto
-        if(firstTextChannel) openChannel(firstTextChannel._id, firstTextChannel.name, firstTextChannel.type);
-
-    } catch (e) { list.innerHTML = 'Erro ao carregar canais.'; }
-}
 
 // 2. ABRIR CANAL E CARREGAR MENSAGENS
 async function openChannel(channelId, channelName, type) {
