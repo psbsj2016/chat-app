@@ -87,7 +87,18 @@
                 <span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer; font-size: 20px; transition: 0.2s;">close</span>
             </div>
         </div>
-
+   
+         <div class="status-tray" id="status-tray-container">
+            <div class="status-item" onclick="openCreateStatusModal()">
+                <div class="status-avatar-wrapper add-status">
+                    <img id="my-status-tray-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="status-avatar">
+                    <div class="add-status-badge">+</div>
+                </div>
+                <span class="status-name" style="color: var(--secondary-text);">Meu Status</span>
+            </div>
+            <div id="dynamic-statuses" style="display: contents;"></div>
+        </div>       
+  
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1; padding: 10px;"></div>
 
         <div class="fab-wrapper">
@@ -401,16 +412,7 @@
             </div>
             <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons-round" style="color: var(--secondary-text);">attach_file</span></button>
         </div>
-        <div class="status-tray" id="status-tray-container">
-            <div class="status-item" onclick="openCreateStatusModal()">
-                <div class="status-avatar-wrapper add-status">
-                    <img id="my-status-tray-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="status-avatar">
-                    <div class="add-status-badge">+</div>
-                </div>
-                <span class="status-name" style="color: var(--secondary-text);">Meu Status</span>
-            </div>
-            <div id="dynamic-statuses" style="display: contents;"></div>
-        </div>
+        
         <div id="attach-menu" class="dropdown-menu right-menu hidden">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
             <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color:var(--brand-secondary)">image</span> Imagem</div>
