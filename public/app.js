@@ -1069,9 +1069,12 @@ function createPeerConnection(socketId, userProfile) {
         }
         audioElement.srcObject = event.streams[0];
         
-        // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
+       // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
         audioElement.play().catch(e => console.log("Áudio aguardando interação..."));
     };
+
+    return pc; // 🚀 ADICIONE ESTA LINHA
+} // 🚀 ADICIONE ESTA CHAVETA DE FECHO
 
 // Desenha o avatar no Radar
 function addParticipantToUI(id, profile) {
