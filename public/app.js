@@ -3,7 +3,7 @@ let myId = localStorage.getItem('myId');
 let token = localStorage.getItem('token');
 let currentChatId = null;
 let currentChatEmail = ''; 
-let currentVoiceChannelId = null;
+
 let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
 let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
 let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
@@ -773,9 +773,9 @@ async function openChannel(channelId, channelName, type) {
     if(!box) return;
     box.innerHTML = '<div style="text-align:center; margin-top:20px; color:#64748B;">Sincronizando satélites...</div>';
 
-    // 🔊 ATUALIZADO: Sincroniza o rádio com o ID do canal
+    // Se for voz...
     if(type === 'voice') {
-        currentVoiceChannelId = channelId; // Agora esta variável já existe no topo!
+        currentVoiceChannelId = channelId; // 📡 ADICIONADO: Sincroniza a frequência do rádio
         box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Clique em Conectar Rádio acima para falar!</p></div>';
         const inputEl = document.getElementById('community-message-input');
         if(inputEl) inputEl.disabled = true;
@@ -930,6 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==============================================================
 let localAudioStream = null;
 let peerConnections = {}; // Guarda os túneis para cada usuário
+let currentVoiceChannelId = null;
 
 // Servidores públicos da Google para descobrir IPs (STUN)
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };

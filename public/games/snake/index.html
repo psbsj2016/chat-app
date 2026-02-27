@@ -3,180 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Serpent: Viper Protocol</title>
+    <title>Viper Protocol: Synthetic Hunt</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* Estilos Cyberpunk Mantidos */
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
-        body { background-color: #030308; color: #0FF; font-family: 'Orbitron', sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
-        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 3, 8, 0.9); z-index: 20; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(10px); text-align: center; }
+        body { background-color: #020205; color: #0FF; font-family: 'Orbitron', sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        /* Grid de Fundo Infinito */
+        #game-container { position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+
+        /* Interface HUD Futurista */
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; z-index: 10; pointer-events: none; }
+        .stat-box { background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); padding: 10px 20px; border-radius: 8px; backdrop-filter: blur(10px); text-align: center; }
+        .label { font-size: 10px; color: #64748B; text-transform: uppercase; letter-spacing: 2px; }
+        .value { font-size: 20px; font-weight: 900; color: #FFF; text-shadow: 0 0 10px #0FF; }
+
+        /* Controles Direcionais (D-PAD) */
+        #controls { position: absolute; bottom: 30px; left: 30px; display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 60px); gap: 10px; z-index: 15; }
+        .ctrl-btn { width: 60px; height: 60px; background: rgba(0, 255, 255, 0.1); border: 2px solid #0FF; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #0FF; cursor: pointer; backdrop-filter: blur(5px); }
+        .ctrl-btn:active { background: #0FF; color: #000; box-shadow: 0 0 20px #0FF; }
+
+        /* Botão de Dash */
+        #dash-btn { position: absolute; bottom: 40px; right: 40px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255, 0, 255, 0.1); border: 3px solid #F0F; color: #F0F; display: flex; align-items: center; justify-content: center; z-index: 15; }
+
+        /* Telas de Overlay */
+        .overlay { position: absolute; inset: 0; background: rgba(2, 2, 5, 0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(15px); }
         .hidden { display: none !important; }
-        .cyber-btn { background: transparent; border: 2px solid #0FF; color: #0FF; padding: 15px; width: 250px; font-family: 'Orbitron', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s; margin-bottom: 10px; }
-        .cyber-btn:hover { background: rgba(0, 255, 255, 0.1); box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
-        .primary { background: #0FF; color: #000; }
-        .secondary { border-color: #F0F; color: #F0F; }
+        .menu-btn { background: transparent; border: 2px solid #0FF; color: #0FF; padding: 15px 40px; margin: 10px; font-family: 'Orbitron'; font-weight: 900; letter-spacing: 3px; cursor: pointer; transition: 0.3s; }
+        .menu-btn:hover { background: #0FF; color: #000; box-shadow: 0 0 30px #0FF; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
 
-    <div id="startScreen" class="overlay">
-        <h1 style="margin-bottom:20px; font-size: 32px;">Viper Protocol</h1>
-        <button class="cyber-btn primary" onclick="initGame('solo')">Protocolo Solo</button>
-        <button class="cyber-btn secondary" id="btn-multi" onclick="initGame('multiplayer')">Duelo Online</button>
-        <p id="status-msg" style="margin-top:15px; font-size:12px; color:#888;">Selecione o modo</p>
+<div id="game-container">
+    <div id="hud">
+        <div class="stat-box"><div class="label">Bio-Massa</div><div id="score" class="value">0</div></div>
+        <div class="stat-box"><div class="label">Nível Evolutivo</div><div id="level" class="value">1</div></div>
+        <div class="stat-box"><div class="label">Modo</div><div id="mode-text" class="value">SOLO</div></div>
     </div>
 
-    <div id="gameOverScreen" class="overlay hidden">
-        <h1 id="gameResultTitle" style="color: #F00;">Sinal Perdido</h1>
-        <p id="finalScoreText">Dados Extraídos: 0</p>
-        <button class="cyber-btn primary" onclick="location.reload()">Reiniciar</button>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+        <div style="grid-column: 2;"><button class="ctrl-btn" onpointerdown="setDir(0,-1)"><span class="material-icons-round">expand_less</span></button></div>
+        <button class="ctrl-btn" onpointerdown="setDir(-1,0)"><span class="material-icons-round">chevron_left</span></button>
+        <button class="ctrl-btn" onpointerdown="setDir(0,1)"><span class="material-icons-round">expand_more</span></button>
+        <button class="ctrl-btn" onpointerdown="setDir(1,0)"><span class="material-icons-round">chevron_right</span></button>
+    </div>
+    
+    <button id="dash-btn" onpointerdown="toggleDash(true)" onpointerup="toggleDash(false)">
+        <span class="material-icons-round" style="font-size: 40px;">bolt</span>
+    </button>
+
+    <div id="menu" class="overlay">
+        <h1 style="font-size: 40px; text-shadow: 0 0 20px #0FF;">VIPER PROTOCOL</h1>
+        <p style="color: #64748B; margin-bottom: 30px;">SIMULAÇÃO DE CAÇA SINTÉTICA</p>
+        <button class="menu-btn" onclick="start('solo')">INICIAR SOLO</button>
+        <button class="menu-btn" onclick="start('multi')" style="border-color: #F0F; color: #F0F;">DUELO ONLINE</button>
     </div>
 
-    <script>
-        const socket = io();
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, isPlaying = false, gameMode = 'solo';
-        let currentRoom = null, opponentId = null;
+    <div id="death-screen" class="overlay hidden">
+        <h1 id="death-title" style="color: #F00;">SINAL CORROMPIDO</h1>
+        <p id="reward-text" style="margin-bottom: 20px;">Premiação: 0 XP</p>
+        <button class="menu-btn" onclick="location.reload()">REINICIAR</button>
+    </div>
+</div>
 
-        // Entidades
-        const snake = { head: {x:0, y:0}, history: [], angle: 0, length: 20, color: '#0FF', speed: 4 };
-        const opponent = { head: {x:0, y:0}, history: [], angle: 0, color: '#F0F', active: false };
-        let pointer = { x: 0, y: 0 };
+<script>
+    const socket = io();
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, isPlaying = false, mode = 'solo';
+    
+    // Configurações do Jogo
+    let score = 0, level = 1, speed = 4;
+    let snake = { x: 0, y: 0, dx: 4, dy: 0, body: [], size: 12, dash: false };
+    let preys = []; // As "Criaturas" (Bio-Synths)
+    let opponent = { active: false, body: [] };
 
-        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize);
-        resize();
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-        window.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
-
-        function initGame(mode) {
-            gameMode = mode;
-            if(mode === 'solo') {
-                startGame();
-            } else {
-                document.getElementById('status-msg').innerText = "A procurar oponente no radar...";
-                document.getElementById('btn-multi').disabled = true;
-                // Envia o perfil para o servidor
-                socket.emit('join_snake_duel', { profile: { name: 'Agente' } });
-            }
+    // Comandos de Direção
+    function setDir(x, y) {
+        if ((x !== 0 && snake.dx === 0) || (y !== 0 && snake.dy === 0)) {
+            snake.dx = x * speed;
+            snake.dy = y * speed;
         }
+    }
 
-        socket.on('snake_duel_start', (data) => {
-            const me = data.players.find(p => p.id === socket.id);
-            const them = data.players.find(p => p.id !== socket.id);
-            
-            currentRoom = data.roomId;
-            opponentId = them.id;
-            
-            // Configura posições iniciais do duelo
-            snake.head = {...me.startPos};
-            snake.color = me.color;
-            opponent.head = {...them.startPos};
-            opponent.color = them.color;
-            opponent.active = true;
+    function toggleDash(val) { snake.dash = val; speed = val ? 8 : 4 + (level * 0.5); }
 
-            startGame();
+    function spawnPrey() {
+        preys.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            type: Math.random() > 0.8 ? 'rare' : 'normal',
+            angle: 0
         });
+    }
 
-        function startGame() {
-            document.getElementById('startScreen').classList.add('hidden');
-            isPlaying = true;
-            if(gameMode === 'solo') snake.head = {x: width/2, y: height/2};
-            requestAnimationFrame(gameLoop);
-        }
+    function start(m) {
+        mode = m;
+        document.getElementById('menu').classList.add('hidden');
+        document.getElementById('mode-text').innerText = m.toUpperCase();
+        snake.x = width / 2; snake.y = height / 2;
+        for(let i=0; i<5; i++) spawnPrey();
+        isPlaying = true;
+        loop();
+    }
 
-        socket.on('opponent_move', (data) => {
-            opponent.head = data.head;
-            opponent.history = data.history;
-            opponent.angle = data.angle;
+    function drawHead(x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.atan2(snake.dy, snake.dx));
+        
+        // Rosto Tecnológico (Visor Neon)
+        ctx.beginPath();
+        ctx.fillStyle = snake.dash ? '#F0F' : '#0FF';
+        ctx.roundRect(-15, -10, 30, 20, 5);
+        ctx.fill();
+        ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
+        
+        // Olhos/Sensores
+        ctx.fillStyle = '#FFF';
+        ctx.fillRect(8, -5, 4, 2);
+        ctx.fillRect(8, 3, 4, 2);
+        ctx.restore();
+    }
+
+    function update() {
+        if (!isPlaying) return;
+
+        // Movimento
+        snake.x += snake.dx;
+        snake.y += snake.dy;
+
+        // SEM LIMITES: Wrap Around (Atravessa a parede e sai do outro lado)
+        if (snake.x < 0) snake.x = width;
+        if (snake.x > width) snake.x = 0;
+        if (snake.y < 0) snake.y = height;
+        if (snake.y > height) snake.y = 0;
+
+        // Atualiza Corpo
+        snake.body.unshift({ x: snake.x, y: snake.y });
+        if (snake.body.length > 20 + (score / 2)) snake.body.pop();
+
+        // Comer Criaturas
+        preys.forEach((p, i) => {
+            if (Math.hypot(snake.x - p.x, snake.y - p.y) < 25) {
+                score += p.type === 'rare' ? 50 : 10;
+                document.getElementById('score').innerText = score;
+                preys.splice(i, 1);
+                spawnPrey();
+                
+                // Evolução
+                if (score % 100 === 0) {
+                    level++;
+                    speed += 0.5;
+                    document.getElementById('level').innerText = level;
+                }
+            }
         });
+    }
 
-        socket.on('duel_victory', () => {
-            endGame("VITÓRIA: ALVO ELIMINADO", "#0FF");
-        });
+    function draw() {
+        ctx.fillStyle = 'rgba(2, 2, 5, 0.3)'; // Motion Blur
+        ctx.fillRect(0, 0, width, height);
 
-        function gameLoop() {
-            if(!isPlaying) return;
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        function update() {
-            // Movimento fluido em direção ao toque
-            let dx = pointer.x - snake.head.x;
-            let dy = pointer.y - snake.head.y;
-            let targetAngle = Math.atan2(dy, dx);
-            let diff = targetAngle - snake.angle;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            snake.angle += diff * 0.1;
-
-            snake.head.x += Math.cos(snake.angle) * snake.speed;
-            snake.head.y += Math.sin(snake.angle) * snake.speed;
-
-            // Histórico para o rastro
-            snake.history.unshift({...snake.head});
-            if(snake.history.length > 100) snake.history.pop();
-
-            // Sincroniza com o servidor se for multiplayer
-            if(gameMode === 'multiplayer') {
-                socket.emit('snake_move', {
-                    roomId: currentRoom,
-                    head: snake.head,
-                    history: snake.history.slice(0, 20), // Envia apenas pedaço pro rastro ser leve
-                    angle: snake.angle
-                });
-
-                // Detecção de Colisão Online (Se tocar no rastro do inimigo)
-                opponent.history.forEach(pos => {
-                    if(Math.hypot(snake.head.x - pos.x, snake.head.y - pos.y) < 10) {
-                        socket.emit('snake_death', { roomId: currentRoom, opponentId: opponentId });
-                        endGame("DERROTA: LINK CORROMPIDO", "#F00");
-                    }
-                });
-            }
-
-            // Colisão com bordas
-            if(snake.head.x < 0 || snake.head.x > width || snake.head.y < 0 || snake.head.y > height) {
-                if(gameMode === 'multiplayer') socket.emit('snake_death', { roomId: currentRoom, opponentId: opponentId });
-                endGame("SINAL PERDIDO", "#F00");
-            }
-        }
-
-        function draw() {
-            ctx.fillStyle = 'rgba(3, 3, 8, 0.2)';
-            ctx.fillRect(0, 0, width, height);
-
-            // Desenha Inimigo
-            if(opponent.active) {
-                ctx.strokeStyle = opponent.color;
-                ctx.lineWidth = 15;
-                ctx.beginPath();
-                opponent.history.forEach((p, i) => { if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
-                ctx.stroke();
-            }
-
-            // Desenha Minha Cobra
-            ctx.strokeStyle = snake.color;
-            ctx.lineWidth = 15;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = snake.color;
+        // Desenhar Criaturas (Bio-Synths)
+        preys.forEach(p => {
+            ctx.shadowBlur = 10; ctx.shadowColor = p.type === 'rare' ? '#F0F' : '#0FF';
+            ctx.fillStyle = p.type === 'rare' ? '#F0F' : '#0FF';
             ctx.beginPath();
-            snake.history.forEach((p, i) => { if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
-            ctx.stroke();
-        }
+            // Criaturas geométricas modernas
+            ctx.moveTo(p.x, p.y - 10); ctx.lineTo(p.x + 10, p.y + 10); ctx.lineTo(p.x - 10, p.y + 10);
+            ctx.fill();
+        });
 
-        function endGame(title, color) {
-            isPlaying = false;
-            document.getElementById('gameResultTitle').innerText = title;
-            document.getElementById('gameResultTitle').style.color = color;
-            document.getElementById('gameOverScreen').classList.remove('hidden');
-        }
-    </script>
+        // Desenhar Rastro da Cobra
+        ctx.beginPath();
+        ctx.strokeStyle = snake.dash ? '#F0F' : '#0FF';
+        ctx.lineWidth = 15;
+        ctx.lineCap = 'round';
+        snake.body.forEach((pt, i) => {
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+
+        drawHead(snake.x, snake.y);
+    }
+
+    function loop() {
+        update();
+        draw();
+        if (isPlaying) requestAnimationFrame(loop);
+    }
+</script>
 </body>
 </html>
