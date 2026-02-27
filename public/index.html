@@ -133,14 +133,19 @@
         <div class="explore-content">
             
             <div class="explore-section">
-                <h3 class="explore-section-title">🎯 Missão Diária <span class="badge-tech">Inglês PTT</span></h3>
-                <div class="explore-card mission-card" id="daily-mission-card">
-                    <div class="mission-icon" id="mission-icon-bg" style="background: rgba(59, 130, 246, 0.2);"><span class="material-icons-round" id="mission-icon" style="color: #3B82F6;">school</span></div>
-                    <div style="flex:1;">
-                        <h4 style="font-size:14.5px;" id="mission-title">Treinar Habilidades de Inglês (<span id="mission-count">0</span>/1)</h4>
-                        <div class="progress-bar"><div class="progress-fill" id="mission-progress-fill" style="width: 0%; transition: width 0.5s ease; background: #3B82F6;"></div></div>
+                <h3 class="explore-section-title">🌐 Conexões & Fóruns</h3>
+                
+                <div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid #10B981; margin-bottom: 15px; cursor: pointer;" onclick="switchScreen('comunidades')">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #10B981; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                            <span class="material-icons-round" style="font-size: 28px; color: white;">groups</span>
+                        </div>
+                        <div style="text-align: left; flex: 1;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Minhas Comunidades</h4>
+                            <p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Grupos, Fóruns e Canais de Voz PTT</p>
+                        </div>
+                        <span class="material-icons-round" style="color: #10B981;">chevron_right</span>
                     </div>
-                    <div class="reward-badge" id="mission-badge" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6;">+50 XP</div>
                 </div>
             </div>
 
@@ -396,10 +401,10 @@
         <iframe id="immersive-game-frame" src="" style="width: 100%; flex: 1; border: none; background: #000;"></iframe>
     </div>
 
-    <div id="chat-screen" class="app-screen hidden">
-        <span class="material-icons-round" style="color: #10B981; font-size: 28px; cursor: pointer; margin-right: 15px;" onclick="initVideoCall(currentChatId)" title="Videochamada">videocam</span>
+   <div id="chat-screen" class="app-screen hidden">
         <div class="chat-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
+            
             <div class="chat-info clickable" onclick="viewContactProfile()" style="display: flex; align-items: center; justify-content: flex-end; flex: 1;">
                 <div class="chat-texts" style="text-align: right;">
                     <span id="chat-title" style="font-size: 17px; font-weight: 700; color: var(--text-color); display: block;">Contato</span>
@@ -410,7 +415,15 @@
                     <div id="chat-header-status" class="status-dot status-offline" style="top: 0; right: 0; left: auto;"></div>
                 </div>
             </div>
-            <button class="icon-btn" onclick="toggleMenu('attach-menu')"><span class="material-icons-round" style="color: var(--secondary-text);">attach_file</span></button>
+            
+            <div style="display: flex; align-items: center; margin-left: 10px; gap: 5px;">
+                <button class="icon-btn" onclick="initVideoCall(currentChatId)" title="Videochamada">
+                    <span class="material-icons-round" style="color: #10B981;">videocam</span>
+                </button>
+                <button class="icon-btn" onclick="toggleMenu('attach-menu')">
+                    <span class="material-icons-round" style="color: var(--secondary-text);">attach_file</span>
+                </button>
+            </div>
         </div>
         
         <div id="attach-menu" class="dropdown-menu right-menu hidden">
@@ -832,9 +845,9 @@
                 <button class="chic-btn mini-btn" onclick="publishStatus()" style="margin:0; background: var(--primary);">Publicar</button>
             </div>
             
-            <div id="status-preview-area" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s;">
-                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none;"></textarea>
-                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1;">
+            <div id="status-preview-area" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden;">
+                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative;"></textarea>
+                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1;">
             </div>
 
             <div style="padding: 20px; display: flex; justify-content: space-around; background: var(--hud-bg); position: absolute; bottom:0; width:100%; z-index: 2;">
@@ -859,7 +872,7 @@
 
         <div id="story-content-area" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative;">
             <div id="story-text-display" style="color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; z-index: 2;"></div>
-            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1;">
+            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 1;">
         </div>
         
         <div onclick="prevStory()" style="position: absolute; top:0; left:0; width:30%; height:100%; z-index: 5;"></div>
