@@ -122,43 +122,75 @@
         <div class="explore-content">
             
             <div class="explore-section">
-                <h3 class="explore-section-title">🎯 Missão Diária <span class="badge-tech">Node Engine</span></h3>
+                <h3 class="explore-section-title">🎯 Missão Diária <span class="badge-tech">Inglês PTT</span></h3>
                 <div class="explore-card mission-card" id="daily-mission-card">
-                    <div class="mission-icon" id="mission-icon-bg"><span class="material-icons-round" id="mission-icon">chat</span></div>
+                    <div class="mission-icon" id="mission-icon-bg" style="background: rgba(59, 130, 246, 0.2);"><span class="material-icons-round" id="mission-icon" style="color: #3B82F6;">school</span></div>
                     <div style="flex:1;">
-                        <h4 style="font-size:14.5px;" id="mission-title">Enviar 3 Mensagens (<span id="mission-count">0</span>/3)</h4>
-                        <div class="progress-bar"><div class="progress-fill" id="mission-progress-fill" style="width: 0%; transition: width 0.5s ease;"></div></div>
+                        <h4 style="font-size:14.5px;" id="mission-title">Treinar Habilidades de Inglês (<span id="mission-count">0</span>/1)</h4>
+                        <div class="progress-bar"><div class="progress-fill" id="mission-progress-fill" style="width: 0%; transition: width 0.5s ease; background: #3B82F6;"></div></div>
                     </div>
-                    <div class="reward-badge" id="mission-badge">+10 XP</div>
+                    <div class="reward-badge" id="mission-badge" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6; border: 1px solid #3B82F6;">+50 XP</div>
                 </div>
             </div>
 
             <div class="explore-section">
-                <h3 class="explore-section-title">💎 Mercado Neon <span class="badge-tech">Loja</span></h3>
-                <div class="explore-hscroll">
+                <h3 class="explore-section-title" style="margin-bottom: 5px;">🛒 Loja PTT <span class="badge-tech">Store</span></h3>
+                <p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 15px;">Use seu XP para desbloquear benefícios.</p>
+                
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🎨 Visual & Perfil</h4>
+                <div class="explore-hscroll" style="margin-bottom: 20px;">
                     <div class="explore-card store-card">
                         <span class="material-icons-round" style="font-size:32px; color:#10B981;">terminal</span>
                         <h4>Tema Matrix</h4>
-                        <p>Visual Hacker</p>
                         <button class="chic-btn store-btn" id="btn-theme_matrix" onclick="buyItem('theme_matrix', 100)">100 XP</button>
                     </div>
                     <div class="explore-card store-card">
                         <span class="material-icons-round" style="font-size:32px; color:#06B6D4;">chat_bubble</span>
                         <h4>Balão Cyber</h4>
-                        <p>Borda Neon</p>
                         <button class="chic-btn store-btn" id="btn-bubble_cyber" onclick="buyItem('bubble_cyber', 150)">150 XP</button>
                     </div>
                     <div class="explore-card store-card">
                         <span class="material-icons-round" style="font-size:32px; color:#F59E0B;">workspace_premium</span>
                         <h4>Selo VIP</h4>
-                        <p>Destaque-se</p>
                         <button class="chic-btn store-btn" id="btn-badge_vip" onclick="buyItem('badge_vip', 300)">300 XP</button>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🕹️ Expansões do Hub</h4>
+                <div class="explore-hscroll" style="margin-bottom: 20px;">
+                    <div class="explore-card store-card" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <span class="material-icons-round" style="font-size:32px; color:#EF4444;">sports_motorsports</span>
+                        <h4>Neon Racer</h4>
+                        <button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível na próxima atualização!')">500 XP</button>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">📚 Benefícios Inglês</h4>
+                <div class="explore-hscroll">
+                    <div class="explore-card store-card" style="border: 1px solid rgba(59, 130, 246, 0.3);">
+                        <span class="material-icons-round" style="font-size:32px; color:#3B82F6;">lightbulb</span>
+                        <h4>Dicas Premium IA</h4>
+                        <button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível em breve!')">300 XP</button>
                     </div>
                 </div>
             </div>
 
             <div class="explore-section">
-                <h3 class="explore-section-title">🍅 Produtividade <span class="badge-tech">Foco</span></h3>
+                <h3 class="explore-section-title">🚀 Produtividade & Skills</h3>
+                
+                <div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid #3B82F6; margin-bottom: 15px; cursor: pointer;" onclick="alert('Comandante, construiremos a interface do Inglês PTT na Fase 2!')">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #3B82F6; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
+                            <span class="material-icons-round" style="font-size: 28px; color: white;">record_voice_over</span>
+                        </div>
+                        <div style="text-align: left; flex: 1;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Inglês PTT</h4>
+                            <p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Listening • Speaking • Reading • Writing</p>
+                        </div>
+                        <span class="material-icons-round" style="color: #3B82F6;">chevron_right</span>
+                    </div>
+                </div>
+
                 <div class="explore-card focus-card" id="focus-card-idle">
                     <div style="flex:1;">
                         <h4 style="font-size:16px; font-weight:700;">Modo Foco (25 min)</h4>
@@ -167,6 +199,7 @@
                     </div>
                     <span class="material-icons-round" style="font-size:40px; color:#EF4444; opacity:0.8;">timer</span>
                 </div>
+                
                 <div class="explore-card focus-card hidden" id="focus-card-active" style="text-align: center; justify-content: center; flex-direction: column;">
                     <h4 style="font-size:16px; font-weight:800; color: #EF4444; margin-bottom: 5px; text-transform: uppercase;">Em Foco 🤫</h4>
                     <p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 10px;">Não feche o aplicativo!</p>
@@ -175,46 +208,12 @@
                 </div>
             </div>
 
-            <div class="explore-section">
-                <h3 class="explore-section-title">🪄 Fábrica de Jogos <span class="badge-tech">IA Generativa</span></h3>
-                <div class="explore-card" style="padding: 20px; text-align: center;">
-                    <span class="material-icons-round" style="font-size:40px; color:var(--brand-accent); margin-bottom:10px;">code</span>
-                    <h4 style="margin-bottom: 10px;">O que você quer jogar?</h4>
-                    <input type="text" id="ai-game-prompt" class="chic-input" placeholder="Ex: Um jogo da memória com emojis...">
-                    <button class="chic-btn" onclick="requestAIGame()" id="btn-create-game" style="background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);">Gerar Jogo</button>
-                </div>
-            </div>
-
-            <div class="explore-section">
-                <h3 class="explore-section-title">🤖 Cérebro Artificial <span class="badge-tech">HuggingFace</span></h3>
-                <div class="explore-card ai-card" onclick="openBotChat()">
-                    <div style="flex:1;">
-                        <h4 style="font-size:18px; margin-bottom:4px; font-weight:700; color:white;">Assistente ChatPTT</h4>
-                        <p style="font-size:13.5px; color:rgba(255,255,255,0.8); margin-bottom:10px; line-height:1.4;">Fale com a nova Inteligência Artificial nativa super rápida!</p>
-                    </div>
-                    <span class="material-icons-round" style="font-size:50px; color:white; opacity:0.9;">smart_toy</span>
-                </div>
-            </div>
-
-            <div class="explore-section">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 class="explore-section-title" style="margin-bottom:0;">🎮 Jogos Rápidos</h3>
-                    <span style="font-size:12px; color:var(--brand-primary); font-weight:700; cursor:pointer;" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3])">Ver todos</span>
-                </div>
-                <div style="margin-top:10px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="explore-card action-card" onclick="switchTab('jogos', document.querySelectorAll('.nav-item')[3]); setTimeout(startSnakeGame, 100);">
-                        <span class="material-icons-round" style="color:#22C55E;">sports_esports</span>
-                        <h4>Jogar Snake</h4>
-                        <p>Solo Game</p>
-                    </div>
-                </div>
-            </div>
-
-            <div style="padding: 20px 0 40px 0; text-align:center;">
+            <div style="padding: 10px 0 40px 0; text-align:center;">
                 <button class="surprise-btn" onclick="openSurprise()">
                     <span class="material-icons-round">redeem</span> 
-                    <span>Abrir Caixa Surpresa</span>
+                    <span>Abrir Caixa Surpresa Diária</span>
                 </button>
+                <p style="font-size: 11px; color: var(--secondary-text); margin-top: 10px;">Volte todos os dias para acumular XP para a Loja PTT.</p>
             </div>
 
         </div>
