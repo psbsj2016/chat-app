@@ -104,9 +104,7 @@
         <div class="fab-wrapper">
             <input type="file" id="quick-camera-input" accept="image/*" capture="environment" hidden onchange="handleQuickCamera(this)">
             <div id="fab-options" class="fab-options-container">
-                <div class="menu-item" onclick="openNewChatModal()">
-    <span class="material-icons-round">person_add</span> <span>Novo Contato</span>
-</div>
+               <button class="mini-fab" onclick="openAddContactScreen(); toggleFab()"><span class="material-icons-round">person_add</span> <span>Novo Contato</span></button>
                 <button class="mini-fab" onclick="document.getElementById('quick-camera-input').click(); toggleFab()"><span class="material-icons-round">photo_camera</span> <span>Foto Rápida</span></button>
                 <button class="mini-fab" onclick="switchTab('anotacoes', document.querySelectorAll('.nav-item')[2]); openNoteModal(); toggleFab()"><span class="material-icons-round">edit_note</span> <span>Nova Anotação</span></button>
                 <button class="mini-fab" onclick="openCreateGroupModal(); toggleFab()"><span class="material-icons-round">group_add</span> <span>Criar Grupo</span></button>

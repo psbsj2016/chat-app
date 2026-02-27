@@ -316,8 +316,8 @@
         }
 
         if (!ate) {
-            // A cobra só cresce a cada 5 presas (Para caber na tela até os 1000)
-            if (state.score % 5 !== 0 || state.score === 0) snake.body.pop(); 
+            // A cobra só cresce a cada 2 presas, válido para todas as fases
+            if (state.score % 2 !== 0 || state.score === 0) snake.body.pop(); 
         }
 
         updateHUD();
@@ -434,8 +434,6 @@
         if (nest.active) {
             ctx.fillStyle = 'rgba(139, 69, 19, 0.4)';
             ctx.beginPath(); ctx.arc(nest.x*cellW + cellW/2, nest.y*cellH + cellH/2, cellW*1.5, 0, Math.PI*2); ctx.fill();
-            
-            // Ovos ou Bebês
             let count = nest.eggs > 0 ? nest.eggs : nest.babies;
             let color = nest.eggs > 0 ? '#f8fafc' : snake.color;
             for(let i=0; i<count; i++) {
@@ -457,61 +455,108 @@
             let px = o.x * cellW + cellW/2; let py = o.y * cellH + cellH/2;
             if(o.type === 'rock') draw3DSphere(px, py, cellW*0.45, '#64748b');
             if(o.type === 'tree') {
-                ctx.fillStyle = '#451a03'; ctx.fillRect(px - cellW*0.1, py, cellW*0.2, cellH*0.4); // Tronco
-                draw3DSphere(px, py - cellH*0.2, cellW*0.5, '#15803d'); // Copa 3D
+                ctx.fillStyle = '#451a03'; ctx.fillRect(px - cellW*0.1, py, cellW*0.2, cellH*0.4); 
+                draw3DSphere(px, py - cellH*0.2, cellW*0.5, '#15803d'); 
             }
         });
 
-        // 3. Presas e Predadores Terrestres
+        // 3. Presas (Agora são SAPOS CARTOON)
         preys.forEach(p => {
             let px = p.x * cellW + cellW/2; let py = p.y * cellH + cellH/2;
-            draw3DSphere(px, py, cellW*0.3, '#fca5a5'); // Ratos/Bichos (Pequenos)
+            let r = cellW*0.35;
+            
+            // Perninhas do sapo
+            ctx.fillStyle = '#4d7c0f';
+            ctx.beginPath(); ctx.arc(px - r, py + r*0.4, r*0.4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + r, py + r*0.4, r*0.4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px - r, py - r*0.4, r*0.3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + r, py - r*0.4, r*0.3, 0, Math.PI*2); ctx.fill();
+            
+            // Corpo do sapo
+            draw3DSphere(px, py, r, '#84cc16'); 
+            
+            // Olhos do sapo
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(px - r*0.4, py - r*0.5, r*0.35, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + r*0.4, py - r*0.5, r*0.35, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(px - r*0.4, py - r*0.6, r*0.15, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + r*0.4, py - r*0.6, r*0.15, 0, Math.PI*2); ctx.fill();
         });
 
+        // Predadores Terrestres (Inimigos do Ninho)
         groundPredators.forEach(gp => {
             let px = gp.x * cellW + cellW/2; let py = gp.y * cellH + cellH/2;
-            draw3DSphere(px, py, cellW*0.4, '#dc2626'); // Vermelho Escuro
-            // Olhos Maus
+            draw3DSphere(px, py, cellW*0.4, '#dc2626'); 
             ctx.fillStyle = '#fbbf24'; ctx.fillRect(px-4, py-2, 3, 3); ctx.fillRect(px+1, py-2, 3, 3);
         });
 
-        // 4. A Cobra 3D (Corpo contínuo com esferas sobrepostas)
+        // 4. A COBRA (Estilo da Referência: Listras e Olhões)
         for (let i = snake.body.length - 1; i >= 0; i--) {
             let seg = snake.body[i];
             let px = seg.x * cellW + cellW/2; let py = seg.y * cellH + cellH/2;
-            let radius = (cellW / 2) * (i === 0 ? 0.9 : 0.8);
-            if (i > snake.body.length - 5) radius *= 0.5; // Rabo afina
+            let radius = (cellW / 2) * (i === 0 ? 0.95 : 0.85); // Cabeça mais gordinha
+            if (i > snake.body.length - 5) radius *= 0.6; // Rabo afina
             
+            // Base do corpo 3D
             draw3DSphere(px, py, radius, snake.color);
 
-            // Olhos na Cabeça
+            // Listras (Zig-Zag) no corpo
+            if (i > 0 && i < snake.body.length - 2) {
+                if (i % 2 === 0) { // Alterna para criar o padrão
+                    ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)'; // Amarelo vivo estilo referência
+                    ctx.lineWidth = radius * 0.35;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(px - radius*0.5, py - radius*0.5);
+                    ctx.lineTo(px + radius*0.5, py + radius*0.5);
+                    ctx.stroke();
+                }
+            }
+
+            // Cabeça Detalhada
             if (i === 0) {
+                // Brilho na testa
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath(); ctx.arc(px, py, radius*0.7, 0, Math.PI*2); ctx.fill();
+
+                // Direção do olhar
+                let eyeOffsetX = snake.dir.x * radius * 0.3;
+                let eyeOffsetY = snake.dir.y * radius * 0.3;
+                let perpX = -snake.dir.y * radius * 0.5;
+                let perpY = snake.dir.x * radius * 0.5;
+                
+                // Branco do olho
                 ctx.fillStyle = '#fff';
-                ctx.beginPath(); ctx.arc(px - 4, py - 4, 3, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(px + 4, py - 4, 3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX + perpX, py + eyeOffsetY + perpY, radius*0.45, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX - perpX, py + eyeOffsetY - perpY, radius*0.45, 0, Math.PI*2); ctx.fill();
+                
+                // Pupila
                 ctx.fillStyle = '#000';
-                ctx.beginPath(); ctx.arc(px - 4, py - 4, 1.5, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(px + 4, py - 4, 1.5, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 + perpX, py + eyeOffsetY*1.5 + perpY, radius*0.2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 - perpX, py + eyeOffsetY*1.5 - perpY, radius*0.2, 0, Math.PI*2); ctx.fill();
+                
+                // Brilho Cartoon
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 + perpX - 1.5, py + eyeOffsetY*1.5 + perpY - 1.5, radius*0.05, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 - perpX - 1.5, py + eyeOffsetY*1.5 - perpY - 1.5, radius*0.05, 0, Math.PI*2); ctx.fill();
             }
         }
 
-        // 5. Águias (Ameaça Aérea)
+        // 5. Águias
         eagles.forEach(e => {
             let px = e.x * cellW + cellW/2; let py = e.y * cellH + cellH/2;
             if (e.state === 'aiming') {
-                ctx.strokeStyle = `rgba(239, 68, 68, ${e.timer/20})`; // Retículo pisca
+                ctx.strokeStyle = `rgba(239, 68, 68, ${e.timer/20})`; 
                 ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, cellW*1.5, 0, Math.PI*2); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(px-cellW*2, py); ctx.lineTo(px+cellW*2, py); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(px, py-cellH*2); ctx.lineTo(px, py+cellH*2); ctx.stroke();
-                
-                // Sombra da águia passando
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
                 ctx.beginPath(); ctx.ellipse(px + (e.timer*5), py - (e.timer*5), cellW*3, cellH, Math.PI/4, 0, Math.PI*2); ctx.fill();
             } else if (e.state === 'striking') {
-                // Garras descendo
                 ctx.fillStyle = '#f59e0b';
                 ctx.beginPath(); ctx.moveTo(px-10, py-20); ctx.lineTo(px, py); ctx.lineTo(px+10, py-20); ctx.fill();
-                draw3DSphere(px, py-10, cellW*0.8, '#451a03'); // Corpo da Águia Perto
+                draw3DSphere(px, py-10, cellW*0.8, '#451a03'); 
             }
         });
     }
