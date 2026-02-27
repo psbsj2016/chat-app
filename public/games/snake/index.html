@@ -92,7 +92,7 @@
         </div>
         
         <div class="progress-container">
-            <span class="stat-label" style="color: #fff;"><span id="ui-score">0</span> / <span id="ui-target">200</span> Presas</span>
+            <span class="stat-label" style="color: #fff;"><span id="ui-score">0</span> / <span id="ui-target">100</span> Presas</span>
             <div class="progress-bar"><div class="progress-fill" id="ui-progress"></div></div>
         </div>
 
@@ -139,20 +139,20 @@
     
     let state = {
         running: false,
-        level: 1, score: 0, targetScore: 200,
+        level: 1, score: 0, targetScore: 100,
         speed: 6 // Ticks por segundo
     };
 
-    // Parâmetros das 8 Fases
+   // Parâmetros das 8 Fases (Meta reduzida para balanceamento)
     const levelsData = [
-        { target: 200, rocks: 0, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#1e293b', snakeColor: '#4ade80' }, // Fase 1
-        { target: 300, rocks: 5, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#451a03', snakeColor: '#facc15' }, // Fase 2
-        { target: 400, rocks: 8, trees: 5, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#14532d', snakeColor: '#22d3ee' }, // Fase 3
-        { target: 500, rocks: 10, trees: 8, movingPrey: true, eagles: 0, nest: false, babies: 0, bg: '#312e81', snakeColor: '#c084fc' }, // Fase 4
-        { target: 600, rocks: 12, trees: 10, movingPrey: true, eagles: 1, nest: false, babies: 0, bg: '#701a75', snakeColor: '#f87171' }, // Fase 5
-        { target: 700, rocks: 15, trees: 5, movingPrey: true, eagles: 1, nest: true, babies: 0, bg: '#064e3b', snakeColor: '#fbbf24' }, // Fase 6
-        { target: 900, rocks: 10, trees: 5, movingPrey: true, eagles: 2, nest: true, babies: 20, bg: '#4c1d95', snakeColor: '#34d399' }, // Fase 7
-        { target: 1000, rocks: 15, trees: 8, movingPrey: true, eagles: 3, nest: true, babies: 20, portal: true, bg: '#000000', snakeColor: '#e879f9' } // Fase 8
+        { target: 100, rocks: 0, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#1e293b', snakeColor: '#4ade80' }, // Fase 1
+        { target: 200, rocks: 5, trees: 0, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#451a03', snakeColor: '#facc15' }, // Fase 2
+        { target: 300, rocks: 8, trees: 5, movingPrey: false, eagles: 0, nest: false, babies: 0, bg: '#14532d', snakeColor: '#22d3ee' }, // Fase 3
+        { target: 400, rocks: 10, trees: 8, movingPrey: true, eagles: 0, nest: false, babies: 0, bg: '#312e81', snakeColor: '#c084fc' }, // Fase 4
+        { target: 500, rocks: 12, trees: 10, movingPrey: true, eagles: 1, nest: false, babies: 0, bg: '#701a75', snakeColor: '#f87171' }, // Fase 5
+        { target: 600, rocks: 15, trees: 5, movingPrey: true, eagles: 1, nest: true, babies: 0, bg: '#064e3b', snakeColor: '#fbbf24' }, // Fase 6
+        { target: 800, rocks: 10, trees: 5, movingPrey: true, eagles: 2, nest: true, babies: 20, bg: '#4c1d95', snakeColor: '#34d399' }, // Fase 7
+        { target: 900, rocks: 15, trees: 8, movingPrey: true, eagles: 3, nest: true, babies: 20, portal: true, bg: '#000000', snakeColor: '#e879f9' } // Fase 8
     ];
 
     let snake = { body: [], dir: {x:1, y:0}, nextDir: {x:1, y:0}, color: '#4ade80' };
@@ -491,52 +491,67 @@
             ctx.fillStyle = '#fbbf24'; ctx.fillRect(px-4, py-2, 3, 3); ctx.fillRect(px+1, py-2, 3, 3);
         });
 
-        // 4. A COBRA (Estilo da Referência: Listras e Olhões)
+        // 4. A COBRA (Corpo unificado tubular e cauda mais grossa)
         for (let i = snake.body.length - 1; i >= 0; i--) {
             let seg = snake.body[i];
-            let px = seg.x * cellW + cellW/2; let py = seg.y * cellH + cellH/2;
-            let radius = (cellW / 2) * (i === 0 ? 0.95 : 0.85); // Cabeça mais gordinha
-            if (i > snake.body.length - 5) radius *= 0.6; // Rabo afina
+            let px = seg.x * cellW + cellW/2; 
+            let py = seg.y * cellH + cellH/2;
             
-            // Base do corpo 3D
+            // Corpo mais uniforme, cauda levemente afinada mas não "fina"
+            let radius = (cellW / 2) * (i === 0 ? 0.95 : 0.90); 
+            if (i >= snake.body.length - 3 && i !== 0) radius *= 0.85; // Cauda mais grossa que antes
+            
+            // INTERPOLAÇÃO 3D (A Mágica para não parecerem bolinhas separadas)
+            if (i > 0) {
+                let nextSeg = snake.body[i-1];
+                let nx = nextSeg.x * cellW + cellW/2;
+                let ny = nextSeg.y * cellH + cellH/2;
+                
+                // Só une se a distância for de 1 bloco (para não criar uma linha quando atravessa a tela infinita)
+                if (Math.abs(seg.x - nextSeg.x) <= 1 && Math.abs(seg.y - nextSeg.y) <= 1) {
+                    // Preenche o espaço entre os segmentos com 3 mini-esferas para "soldar" o tubo
+                    for(let j = 1; j <= 3; j++) {
+                        let interpX = px + (nx - px) * (j/4);
+                        let interpY = py + (ny - py) * (j/4);
+                        draw3DSphere(interpX, interpY, radius, snake.color);
+                    }
+                }
+            }
+
+            // Base do corpo 3D (Articulação principal)
             draw3DSphere(px, py, radius, snake.color);
 
             // Listras (Zig-Zag) no corpo
-            if (i > 0 && i < snake.body.length - 2) {
-                if (i % 2 === 0) { // Alterna para criar o padrão
-                    ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)'; // Amarelo vivo estilo referência
-                    ctx.lineWidth = radius * 0.35;
+            if (i > 0 && i < snake.body.length - 1) {
+                if (i % 2 === 0) { 
+                    ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)'; 
+                    ctx.lineWidth = radius * 0.4;
                     ctx.lineCap = 'round';
                     ctx.beginPath();
-                    ctx.moveTo(px - radius*0.5, py - radius*0.5);
-                    ctx.lineTo(px + radius*0.5, py + radius*0.5);
+                    ctx.moveTo(px - radius*0.6, py - radius*0.6);
+                    ctx.lineTo(px + radius*0.6, py + radius*0.6);
                     ctx.stroke();
                 }
             }
 
             // Cabeça Detalhada
             if (i === 0) {
-                // Brilho na testa
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.beginPath(); ctx.arc(px, py, radius*0.7, 0, Math.PI*2); ctx.fill();
 
-                // Direção do olhar
                 let eyeOffsetX = snake.dir.x * radius * 0.3;
                 let eyeOffsetY = snake.dir.y * radius * 0.3;
                 let perpX = -snake.dir.y * radius * 0.5;
                 let perpY = snake.dir.x * radius * 0.5;
                 
-                // Branco do olho
                 ctx.fillStyle = '#fff';
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX + perpX, py + eyeOffsetY + perpY, radius*0.45, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX - perpX, py + eyeOffsetY - perpY, radius*0.45, 0, Math.PI*2); ctx.fill();
                 
-                // Pupila
                 ctx.fillStyle = '#000';
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 + perpX, py + eyeOffsetY*1.5 + perpY, radius*0.2, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 - perpX, py + eyeOffsetY*1.5 - perpY, radius*0.2, 0, Math.PI*2); ctx.fill();
                 
-                // Brilho Cartoon
                 ctx.fillStyle = '#fff';
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 + perpX - 1.5, py + eyeOffsetY*1.5 + perpY - 1.5, radius*0.05, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(px + eyeOffsetX*1.5 - perpX - 1.5, py + eyeOffsetY*1.5 - perpY - 1.5, radius*0.05, 0, Math.PI*2); ctx.fill();
