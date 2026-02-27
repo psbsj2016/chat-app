@@ -877,3 +877,12 @@ body.bubble-cyber {
         .add-status-badge { position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; border: 2px solid var(--bg-color); }
         .story-progress-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
         .story-progress-fill { height: 100%; background: white; width: 0%; transition: width 0.1s linear; }
+
+/* ==========================================
+   ESTILO DE SELEÇÃO (CRIAR GRUPO)
+   ========================================== */
+.candidate-item { display: flex; align-items: center; gap: 15px; padding: 12px 15px; background: var(--input-bg); border-radius: 16px; margin-bottom: 8px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+.candidate-item:active { transform: scale(0.98); }
+.candidate-item.selected { border-color: var(--brand-primary); background: rgba(79, 70, 229, 0.1); }
+.candidate-item .check-icon { display: none; color: var(--brand-primary); margin-left: auto; font-size: 24px; }
+.candidate-item.selected .check-icon { display: block; animation: scaleIn 0.2s ease; }

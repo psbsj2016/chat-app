@@ -400,11 +400,80 @@ async function submitSector() { const checkboxes = document.querySelectorAll('#s
 async function openAddGroupModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); const groupIds = Array.from(checkboxes).map(cb => cb.value); try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
 function openCreateGroupModal() { toggleMenu('main-menu'); showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; cachedUsers.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; div.innerHTML = `<img src="${user.photoUrl}" style="width:40px; border-radius:50%;"><span>${user.displayName || user.email}</span>`; list.appendChild(div); }); }
-function closeCreateGroup() { hideElement('create-group-modal'); }
-function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
-async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; }
-async function submitCreateGroup() { const name = document.getElementById('group-name-input').value; const photo = document.getElementById('new-group-photo').src; try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); } catch (e) {} }
+function openCreateGroupModal() { 
+    showElement('create-group-modal'); 
+    selectedUserIds = []; 
+    document.getElementById('group-name-input').value = ''; 
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+    const list = document.getElementById('group-candidates-list'); 
+    list.innerHTML = ''; 
+    
+    if (cachedUsers.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Nenhum contato disponível.</div>';
+        return;
+    }
 
+    cachedUsers.forEach(user => { 
+        const div = document.createElement('div'); 
+        div.className = 'candidate-item'; 
+        div.onclick = () => { 
+            if (selectedUserIds.includes(user._id)) { 
+                selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); 
+                div.classList.remove('selected'); 
+            } else { 
+                selectedUserIds.push(user._id); 
+                div.classList.add('selected'); 
+            } 
+        }; 
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        div.innerHTML = `
+            <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover;">
+            <div style="flex:1; display:flex; flex-direction:column;">
+                <span style="font-weight:700; color:var(--text-color); font-size:15px;">${user.displayName || user.email.split('@')[0]}</span>
+            </div>
+            <span class="material-icons-round check-icon">check_circle</span>
+        `; 
+        list.appendChild(div); 
+    }); 
+}
+
+function closeCreateGroup() { hideElement('create-group-modal'); }
+
+function filterGroupContacts(query) { 
+    const items = document.querySelectorAll('.candidate-item'); 
+    items.forEach(item => { 
+        if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; 
+        else item.style.display = 'none'; 
+    }); 
+}
+
+async function uploadNewGroupPhoto(input) { 
+    const file = input.files[0]; if(!file) return; 
+    const fd = new FormData(); fd.append('file', file); 
+    const res = await fetch('/upload', {method:'POST', body:fd}); 
+    const data = await res.json(); 
+    document.getElementById('new-group-photo').src = data.url; 
+}
+
+async function submitCreateGroup() { 
+    const name = document.getElementById('group-name-input').value.trim(); 
+    const photo = document.getElementById('new-group-photo').src; 
+    
+    if(!name) return alert("⚠️ Digite um nome para o grupo!");
+    if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato para formar o grupo!");
+
+    try { 
+        await fetch('/groups', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) 
+        }); 
+        closeCreateGroup(); 
+        socket.emit('group_updated');
+        loadContacts(); // Recarrega a lista do usuário imediatamente
+        alert("🎉 Grupo formado com sucesso!");
+    } catch (e) { alert("Erro ao criar o grupo."); } 
+}
 // ==============================================================
 // ⚙️ PERFIL, LOJA NEON, CONFIGURAÇÕES
 // ==============================================================
