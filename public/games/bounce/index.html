@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Bounce</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
+        body { background-color: #020617; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; color: white; }
+        
+        #hud { display: flex; justify-content: space-between; padding: 15px 20px; background: rgba(15,23,42,0.9); border-bottom: 2px solid rgba(255,255,255,0.05); z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .hud-stat { display: flex; flex-direction: column; align-items: center; }
+        .hud-label { font-size: 10px; color: #94A3B8; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+        .hud-value { font-size: 22px; font-weight: 900; font-family: 'Orbitron'; color: #F43F5E; text-shadow: 0 0 10px rgba(244, 63, 94, 0.5); }
+        .hud-value.rings { color: #F59E0B; text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+
+        #game-area { flex: 1; position: relative; width: 100%; background: linear-gradient(to bottom, #0F172A, #020617); }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Controles Mobile */
+        #controls { display: flex; justify-content: space-between; padding: 20px; background: #0B0F19; border-top: 1px solid rgba(255,255,255,0.05); z-index: 10; padding-bottom: 40px;}
+        .ctrl-group { display: flex; gap: 15px; }
+        .btn { width: 65px; height: 65px; border-radius: 20px; background: #1E293B; border: 2px solid #334155; color: white; display: flex; justify-content: center; align-items: center; font-size: 36px; box-shadow: 0 8px 15px rgba(0,0,0,0.5); transition: 0.1s; }
+        .btn:active { background: #F43F5E; border-color: #FDA4AF; transform: scale(0.9) translateY(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .btn-jump { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #F43F5E, #E11D48); border-color: #FDA4AF; }
+        .btn-jump:active { background: #BE123C; }
+
+        .overlay { position: absolute; inset: 0; background: rgba(2,6,23,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        .hidden { display: none !important; }
+        h1 { font-family: 'Orbitron'; font-size: 42px; font-weight: 900; margin-bottom: 10px; color: #F43F5E; text-shadow: 0 0 20px rgba(244, 63, 94, 0.6); }
+        .main-btn { background: #F43F5E; border: none; color: white; padding: 18px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; border-radius: 30px; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 25px rgba(244, 63, 94, 0.4); margin-top: 20px; }
+        .main-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <header id="hud">
+        <div class="hud-stat">
+            <span class="hud-label">Distância</span>
+            <span class="hud-value" id="ui-dist">0m</span>
+        </div>
+        <div class="hud-stat">
+            <span class="hud-label">Anéis</span>
+            <span class="hud-value rings" id="ui-rings">0</span>
+        </div>
+    </header>
+
+    <main id="game-area">
+        <canvas id="canvas"></canvas>
+        
+        <div id="start-screen" class="overlay">
+            <h1>NEON BOUNCE</h1>
+            <p style="color: #94A3B8; max-width: 300px;">Sobreviva aos espinhos, recolha os anéis de energia e chegue o mais longe possível!</p>
+            <button class="main-btn" onclick="startGame()">INICIAR</button>
+        </div>
+
+        <div id="end-screen" class="overlay hidden">
+            <h1 style="color: #EF4444;">DESTRUÍDO</h1>
+            <p id="end-desc" style="color: #CBD5E1; margin-bottom: 10px;"></p>
+            <h2 style="font-family: 'Orbitron'; color: #F59E0B; margin-bottom: 20px;">XP Ganho: <span id="end-xp">0</span></h2>
+            <button class="main-btn" onclick="location.reload()">JOGAR NOVAMENTE</button>
+        </div>
+    </main>
+
+    <footer id="controls">
+        <div class="ctrl-group">
+            <div class="btn" onpointerdown="keys.left=true" onpointerup="keys.left=false" onpointerleave="keys.left=false"><span class="material-icons-round">arrow_back</span></div>
+            <div class="btn" onpointerdown="keys.right=true" onpointerup="keys.right=false" onpointerleave="keys.right=false"><span class="material-icons-round">arrow_forward</span></div>
+        </div>
+        <div class="btn btn-jump" onpointerdown="keys.up=true" onpointerup="keys.up=false" onpointerleave="keys.up=false"><span class="material-icons-round" style="font-size: 46px;">arrow_upward</span></div>
+    </footer>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    function resize() {
+        canvas.width = document.getElementById('game-area').clientWidth;
+        canvas.height = document.getElementById('game-area').clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ==========================================
+    // MOTOR FÍSICO E ESTADO
+    // ==========================================
+    let state = { running: false, distance: 0, rings: 0, cameraX: 0 };
+    
+    const keys = { left: false, right: false, up: false };
+    window.addEventListener('keydown', e => {
+        if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+        if(e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+        if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = true;
+    });
+    window.addEventListener('keyup', e => {
+        if(e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+        if(e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+        if(e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') keys.up = false;
+    });
+
+    const ball = {
+        x: 100, y: 100, r: 16,
+        vx: 0, vy: 0,
+        speed: 6, jumpPower: -12, gravity: 0.6, friction: 0.85, bounceRate: 0.5,
+        canJump: false
+    };
+
+    let platforms = [];
+    let obstacles = [];
+    let collectibles = [];
+    
+    // ==========================================
+    // GERAÇÃO PROCEDURAL (MUNDO INFINITO)
+    // ==========================================
+    let lastPlatformX = 0;
+    
+    function generateWorld(targetX) {
+        while (lastPlatformX < targetX + canvas.width * 2) {
+            let width = 150 + Math.random() * 250;
+            let gap = 80 + Math.random() * 120;
+            let yPos = canvas.height - 50 - (Math.random() * 100);
+            
+            if (lastPlatformX === 0) { width = 400; gap = 0; yPos = canvas.height - 50; } // Spawn seguro
+
+            // Cria Plataforma
+            platforms.push({ x: lastPlatformX + gap, y: yPos, w: width, h: 400 });
+            let currentPlatX = lastPlatformX + gap;
+
+            // Cria Espinhos (Chance de 40%)
+            if (lastPlatformX > 500 && Math.random() < 0.4) {
+                obstacles.push({ x: currentPlatX + width/2 - 15, y: yPos - 30, w: 30, h: 30, type: 'spike' });
+            }
+
+            // Cria Anel (Chance de 50%)
+            if (Math.random() < 0.5) {
+                let ringY = yPos - 80 - Math.random() * 60;
+                collectibles.push({ x: currentPlatX + width/2, y: ringY, r: 15, collected: false });
+            }
+
+            lastPlatformX = currentPlatX + width;
+        }
+    }
+
+    // ==========================================
+    // LOOP PRINCIPAL
+    // ==========================================
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        state.running = true;
+        ball.x = 100; ball.y = canvas.height - 200; ball.vx = 0; ball.vy = 0;
+        state.distance = 0; state.rings = 0; state.cameraX = 0;
+        platforms = []; obstacles = []; collectibles = []; lastPlatformX = 0;
+        generateWorld(0);
+        gameLoop();
+    }
+
+    function gameLoop() {
+        if (!state.running) return;
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        // Movimento Horizontal
+        if (keys.left) ball.vx -= 0.8;
+        if (keys.right) ball.vx += 0.8;
+        ball.vx *= ball.friction;
+        ball.x += ball.vx;
+
+        // Limita a velocidade
+        if (ball.vx > ball.speed) ball.vx = ball.speed;
+        if (ball.vx < -ball.speed) ball.vx = -ball.speed;
+
+        // Impede voltar para trás do limite da tela
+        if (ball.x - ball.r < state.cameraX) {
+            ball.x = state.cameraX + ball.r;
+            ball.vx = 0;
+        }
+
+        // Pulo e Gravidade
+        ball.vy += ball.gravity;
+        ball.y += ball.vy;
+
+        if (keys.up && ball.canJump) {
+            ball.vy = ball.jumpPower;
+            ball.canJump = false;
+        }
+
+        // FÍSICA: Colisão com Plataformas
+        ball.canJump = false;
+        for (let p of platforms) {
+            // Colisão AABB simples transformando círculo em quadrado para detecção
+            if (ball.x + ball.r > p.x && ball.x - ball.r < p.x + p.w &&
+                ball.y + ball.r > p.y && ball.y - ball.r < p.y + p.h) {
+                
+                // Bateu por cima (Caindo)
+                if (ball.vy > 0 && ball.y - ball.r < p.y) {
+                    ball.y = p.y - ball.r;
+                    if(ball.vy > 5) {
+                        ball.vy = -ball.vy * ball.bounceRate; // Efeito BOUNCE (Quique)
+                    } else {
+                        ball.vy = 0;
+                        ball.canJump = true; // Permite pular
+                    }
+                } 
+                // Bateu por baixo
+                else if (ball.vy < 0 && ball.y > p.y) {
+                    ball.y = p.y + p.h + ball.r;
+                    ball.vy = 0;
+                }
+            }
+        }
+
+        // Morte por Queda (Buraco)
+        if (ball.y - ball.r > canvas.height + 100) return gameOver("Caiu no abismo cibernético.");
+
+        // Colisão com Espinhos
+        for (let o of obstacles) {
+            if (ball.x + ball.r > o.x + 10 && ball.x - ball.r < o.x + o.w - 10 &&
+                ball.y + ball.r > o.y + 10 && ball.y - ball.r < o.y + o.h) {
+                return gameOver("Perfurado por espinhos de neon.");
+            }
+        }
+
+        // Coleta de Anéis
+        for (let c of collectibles) {
+            if (!c.collected) {
+                let dx = ball.x - c.x; let dy = ball.y - c.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < ball.r + c.r) {
+                    c.collected = true;
+                    state.rings++;
+                    ball.vy = -5; // Impulso ao pegar anel
+                }
+            }
+        }
+
+        // Atualiza Câmera e Distância
+        if (ball.x > state.cameraX + canvas.width * 0.4) {
+            state.cameraX = ball.x - canvas.width * 0.4;
+        }
+        if (ball.x > state.distance) state.distance = Math.floor(ball.x);
+
+        // Gera mais mundo à frente
+        generateWorld(state.cameraX);
+
+        // Atualiza HUD
+        document.getElementById('ui-dist').innerText = Math.floor(state.distance / 50) + "m";
+        document.getElementById('ui-rings').innerText = state.rings;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(-state.cameraX, 0); // Move a câmera
+
+        // Desenha Plataformas (Estilo Tron/Neon)
+        platforms.forEach(p => {
+            // Corpo da plataforma
+            ctx.fillStyle = '#0F172A';
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            
+            // Borda Neon Superior
+            ctx.fillStyle = '#06B6D4';
+            ctx.fillRect(p.x, p.y, p.w, 4);
+            
+            // Grade decorativa (Grid)
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
+            ctx.lineWidth = 1;
+            for(let i = 0; i < p.w; i += 40) {
+                ctx.beginPath(); ctx.moveTo(p.x + i, p.y); ctx.lineTo(p.x + i, p.y + p.h); ctx.stroke();
+            }
+        });
+
+        // Desenha Espinhos
+        obstacles.forEach(o => {
+            ctx.fillStyle = '#EF4444';
+            ctx.beginPath();
+            ctx.moveTo(o.x + o.w/2, o.y); // Ponta
+            ctx.lineTo(o.x + o.w, o.y + o.h); // Base Dir
+            ctx.lineTo(o.x, o.y + o.h); // Base Esq
+            ctx.fill();
+            // Brilho
+            ctx.shadowColor = '#EF4444'; ctx.shadowBlur = 10;
+            ctx.fillStyle = '#FCA5A5'; ctx.beginPath(); ctx.moveTo(o.x + o.w/2, o.y + 5); ctx.lineTo(o.x + o.w/2 + 5, o.y + o.h); ctx.lineTo(o.x + o.w/2 - 5, o.y + o.h); ctx.fill();
+            ctx.shadowBlur = 0;
+        });
+
+        // Desenha Anéis
+        collectibles.forEach(c => {
+            if (!c.collected) {
+                ctx.strokeStyle = '#F59E0B';
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#F59E0B'; ctx.shadowBlur = 15;
+                ctx.beginPath(); ctx.arc(c.x, c.y, c.r + Math.sin(Date.now()/200)*3, 0, Math.PI*2); ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        });
+
+        // Desenha a Bola (Player 3D)
+        let grad = ctx.createRadialGradient(ball.x - 5, ball.y - 5, ball.r*0.2, ball.x, ball.y, ball.r);
+        grad.addColorStop(0, '#FDA4AF'); // Brilho
+        grad.addColorStop(0.4, '#F43F5E'); // Cor Base
+        grad.addColorStop(1, '#881337'); // Sombra
+        
+        ctx.fillStyle = grad;
+        ctx.shadowColor = '#F43F5E'; ctx.shadowBlur = 15;
+        
+        // Efeito de achatamento baseado na velocidade vertical
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        let stretchY = 1 + (ball.vy * 0.02); // Estica ao cair/pular
+        let stretchX = 1 / stretchY; // Amassa ao bater
+        if(stretchY < 0.5) stretchY = 0.5; if(stretchX < 0.5) stretchX = 0.5;
+        ctx.scale(stretchX, stretchY);
+        
+        ctx.beginPath(); ctx.arc(0, 0, ball.r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+        ctx.shadowBlur = 0;
+
+        ctx.restore(); // Restaura câmera
+    }
+
+    function gameOver(reason) {
+        state.running = false;
+        
+        // Cálculo do XP: 1 XP por Anel + 1 XP a cada 50 metros
+        let distScore = Math.floor(state.distance / 50);
+        let finalXP = (state.rings * 2) + distScore;
+        
+        document.getElementById('end-desc').innerText = reason + `\nDistância: ${distScore}m | Anéis: ${state.rings}`;
+        document.getElementById('end-xp').innerText = finalXP;
+        document.getElementById('end-screen').classList.remove('hidden');
+        
+        // Envia XP para o Motor Principal do ChatPTT
+        if(window.parent && window.parent.gameEarnXP && finalXP > 0) {
+            window.parent.gameEarnXP(finalXP);
+        }
+    }
+</script>
+</body>
+</html>
