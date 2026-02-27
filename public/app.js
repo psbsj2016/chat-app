@@ -1553,15 +1553,29 @@ function renderStatusTray() {
         groupedStatuses[s.senderId].push(s);
     });
 
-    const otherUsers = Object.keys(groupedStatuses).filter(id => id !== myId);
+    // Removido o filtro que escondia o seu próprio ID! Agora pegamos todos:
+    const allUsersWithStatus = Object.keys(groupedStatuses);
 
-    otherUsers.forEach(userId => {
+    // Se você tiver status, vamos garantir que ele apareça primeiro na lista (opcional, mas fica melhor)
+    allUsersWithStatus.sort((a, b) => {
+        if (a === myId) return -1;
+        if (b === myId) return 1;
+        return 0;
+    });
+
+    allUsersWithStatus.forEach(userId => {
         const userStatuses = groupedStatuses[userId];
         const lastStatus = userStatuses[userStatuses.length - 1];
+        
+        // Verifica se o status é seu para estilizar diferente
+        const isMe = userId === myId;
+        const displayName = isMe ? 'Você' : lastStatus.senderName.split(' ')[0];
+        const nameStyle = isMe ? 'color: var(--brand-primary); font-weight: 800;' : '';
+
         container.innerHTML += `
             <div class="status-item" onclick="openStoryViewer('${userId}')">
                 <div class="status-avatar-wrapper"><img src="${lastStatus.senderPhoto}" class="status-avatar"></div>
-                <span class="status-name">${lastStatus.senderName.split(' ')[0]}</span>
+                <span class="status-name" style="${nameStyle}">${displayName}</span>
             </div>`;
     });
 }
