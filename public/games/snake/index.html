@@ -25,26 +25,27 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-color); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* 1. HEADER / HUD SUPERIOR (LIMPO - SEM SETA) */
+        /* 1. HEADER / HUD SUPERIOR (LIMPO - SEM SETAS EXTRAS) */
         #hud {
             display: flex; justify-content: center; align-items: center;
             background: var(--hud-bg); padding: 12px 15px; border-bottom: 2px solid #273527;
             color: var(--text-main); z-index: 10;
-            height: 70px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            height: 70px; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         .hud-center { display: flex; gap: 30px; align-items: center; }
         .hud-stat { display: flex; flex-direction: column; align-items: center; }
         .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
         .stat-value { font-size: 18px; font-weight: 900; color: var(--primary); }
 
-        /* 2. ÁREA DO JOGO (CENÁRIO NATURAL) */
+        /* 2. ÁREA DO JOGO (CENÁRIOS FOTOREALISTAS) */
         #game-area {
             flex: 1; position: relative; width: 100%; overflow: hidden;
-            background-color: #2e4a2e; /* Fundo verde escuro (relva) */
-            background-image: radial-gradient(#3a5a3a 10%, transparent 11%), radial-gradient(#3a5a3a 10%, transparent 11%);
-            background-size: 40px 40px; background-position: 0 0, 20px 20px;
+            background-color: #1a2421;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 1s ease-in-out; /* Transição suave entre níveis */
         }
-        canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
+        canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6)); }
 
         /* 3. CONTROLOS INFERIORES (D-PAD ESPAÇOSO) */
         #controls-wrapper {
@@ -57,7 +58,7 @@
             display: grid;
             grid-template-columns: 70px 70px 70px;
             grid-template-rows: 70px 70px 70px;
-            gap: 20px; /* MAIS ESPAÇO ENTRE BOTÕES */
+            gap: 20px; /* ESPAÇO AMPLO ENTRE BOTÕES */
             justify-content: center;
             align-items: center;
         }
@@ -80,7 +81,7 @@
         .btn-down { grid-column: 2; grid-row: 3; }
 
         /* TELAS DE UI */
-        .overlay { position: absolute; inset: 0; background: rgba(12, 18, 12, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .overlay { position: absolute; inset: 0; background: rgba(12, 18, 12, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(10px); }
         .hidden { display: none !important; }
         .main-btn { background: var(--primary); border: none; color: #000; padding: 18px 45px; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 16px; margin: 10px; border-radius: 30px; cursor: pointer; transition: 0.2s; text-transform: uppercase; box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3); }
         .main-btn:active { transform: scale(0.95); box-shadow: 0 4px 10px rgba(74, 222, 128, 0.3); }
@@ -103,7 +104,7 @@
         
         <div id="start-screen" class="overlay">
             <h1 style="color: var(--primary); font-size: 42px; font-weight: 900; margin-bottom: 10px; letter-spacing: -1px;">WILD HUNT</h1>
-            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 14px;">SOBREVIVA. CRESÇA. DOMINE.</p>
+            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 14px;">A NATUREZA NÃO PERDOA.</p>
             <button class="main-btn" onclick="initGame('solo')">Caçada Natural</button>
             <button class="main-btn secondary-btn" onclick="initGame('multi')">Disputar Território</button>
         </div>
@@ -136,15 +137,33 @@
     const rows = 22;
     let cellW, cellH;
     
-    // Cores Naturais da Cobra
-    let snake = { body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, colorHead: '#14532d', colorBody: '#166534', colorBelly: '#4ade80' };
+    // Cores Orgânicas da Cobra
+    let snake = { 
+        body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, 
+        colorSpine: '#064e3b',   // Verde muito escuro (manchas nas costas)
+        colorBody: '#15803d',    // Verde floresta (corpo principal)
+        colorBelly: '#84cc16'    // Verde limão/amarelado (barriga)
+    };
+    
     let currentRoom = null;
-    let opponent = { active: false, id: null, body: [], colorHead: '#7f1d1d', colorBody: '#991b1b', colorBelly: '#fca5a5' };
+    let opponent = { 
+        active: false, id: null, body: [], 
+        colorSpine: '#450a0a', colorBody: '#b91c1c', colorBelly: '#fca5a5' 
+    };
 
-    // Lista Biodiversa de Presas Reais
+    // Cenários Fotorealistas (Imagens da Natureza)
+    const backgrounds = [
+        "url('https://images.unsplash.com/photo-1558350133-14902b369cc4?auto=format&fit=crop&w=1200&q=80')", // Nível 1: Chão da Floresta
+        "url('https://images.unsplash.com/photo-1547333590-bc7490059c25?auto=format&fit=crop&w=1200&q=80')", // Nível 2: Areia do Deserto
+        "url('https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&w=1200&q=80')", // Nível 3: Pântano
+        "url('https://images.unsplash.com/photo-1507369651582-74737a4d56d1?auto=format&fit=crop&w=1200&q=80')", // Nível 4: Folhas de Outono
+        "url('https://images.unsplash.com/photo-1464638681273-0962e9b53566?auto=format&fit=crop&w=1200&q=80')", // Nível 5: Rochas / Caverna
+        "url('https://images.unsplash.com/photo-1478265409131-1f65c88f965c?auto=format&fit=crop&w=1200&q=80')"  // Nível 6+: Neve
+    ];
+
     const animaisReais = ['🐭', '🐦', '🐸', '🐰', '🦎'];
     let preys = []; 
-    let obstacles = []; // Pedras
+    let obstacles = [];
 
     function resize() {
         canvas.width = gameArea.clientWidth;
@@ -158,6 +177,7 @@
     function initGame(mode) {
         state.mode = mode;
         document.getElementById('start-screen').classList.add('hidden');
+        setEnvironment();
         
         if (mode === 'multi') {
             document.getElementById('end-title').innerText = "PROCURANDO...";
@@ -174,21 +194,25 @@
         }
     }
 
+    function setEnvironment() {
+        let bgIndex = (state.level - 1) % backgrounds.length;
+        gameArea.style.backgroundImage = backgrounds[bgIndex];
+    }
+
     socket.on('snake_duel_start', (data) => {
-        const me = data.players.find(p => p.id === socket.id);
-        const them = data.players.find(p => p.id !== socket.id);
-        currentRoom = data.roomId; opponent.id = them.id; opponent.active = true;
+        const isHost = data.players[0].id === socket.id;
+        currentRoom = data.roomId; 
+        opponent.id = data.players.find(p => p.id !== socket.id).id; 
+        opponent.active = true;
         document.getElementById('end-screen').classList.add('hidden');
 
-        const isHost = data.players[0].id === socket.id;
         resetSnake(isHost ? 5 : cols - 5);
         snake.dir = { x: isHost ? 1 : -1, y: 0 }; snake.nextDir = { x: isHost ? 1 : -1, y: 0 };
         opponent.body = [{ x: isHost ? cols - 5 : 5, y: Math.floor(rows/2), dir: {x: isHost ? -1 : 1, y: 0} }];
 
-        obstacles = [];
-        maintainPreys();
+        obstacles = []; maintainPreys();
         state.score = 0; state.level = 1; state.baseSpeed = 4.5;
-        updateHUD();
+        updateHUD(); setEnvironment();
         state.isRunning = true; gameLoop();
     });
 
@@ -207,28 +231,20 @@
         snake.dir = { x: 1, y: 0 }; snake.nextDir = { x: 1, y: 0 };
     }
 
-    // Faz spawn de várias presas simultaneamente
     function maintainPreys() {
-        let maxPreys = 2 + state.level; // Quanto maior o nível, mais presas no mapa
+        let maxPreys = 2 + state.level; 
         while(preys.length < maxPreys) {
             let px = Math.floor(Math.random() * cols);
             let py = Math.floor(Math.random() * rows);
-            
-            // Garante que não faz spawn em cima de obstáculos
             let valid = true;
             for(let o of obstacles) { if(o.x === px && o.y === py) valid = false; }
-            if(valid) {
-                preys.push({
-                    x: px, y: py,
-                    animal: animaisReais[Math.floor(Math.random() * animaisReais.length)]
-                });
-            }
+            if(valid) preys.push({ x: px, y: py, animal: animaisReais[Math.floor(Math.random() * animaisReais.length)] });
         }
     }
 
     function generateObstacles() {
         obstacles = [];
-        let numObstacles = (state.level - 1) * 3; // Aumenta pedras por nível
+        let numObstacles = (state.level - 1) * 3; 
         for(let i=0; i<numObstacles; i++) {
             let ox = Math.floor(Math.random() * cols);
             let oy = Math.floor(Math.random() * rows);
@@ -250,9 +266,9 @@
             state.level = newLevel;
             if (state.level > state.maxLevel) return gameOver("SOBREVIVENTE MÁXIMO", "Você está no topo da cadeia alimentar.", "var(--success)");
 
-            // A COBRA AGORA NÃO ENCOLHE! Ela cresce infinitamente.
-            state.baseSpeed += 0.5; // Fica ligeiramente mais rápida
-            generateObstacles(); // Adiciona pedras ao mapa
+            state.baseSpeed += 0.5; 
+            generateObstacles(); 
+            setEnvironment(); // Muda a imagem de fundo real
             
             if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(state.level);
         }
@@ -282,16 +298,13 @@
         snake.dir = { ...snake.nextDir };
         let head = { x: snake.body[0].x + snake.dir.x, y: snake.body[0].y + snake.dir.y };
 
-        // Wrap Around (Atravessa bordas)
         if (head.x < 0) head.x = cols - 1; if (head.x >= cols) head.x = 0;
         if (head.y < 0) head.y = rows - 1; if (head.y >= rows) head.y = 0;
 
-        // Auto-Colisão
         for (let i = 0; i < snake.body.length; i++) {
             if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-MORDIDA", `Sua cobra ficou grande demais. Tamanho: ${snake.body.length}`, "var(--danger)");
         }
 
-        // Colisão com Obstáculos (Pedras)
         for (let o of obstacles) {
             if (head.x === o.x && head.y === o.y) return gameOver("ESMAGADA", "Você bateu numa rocha sólida!", "var(--danger)");
         }
@@ -310,52 +323,67 @@
             }
         }
 
-        // Caça Múltipla
         let ate = false;
         for (let i = 0; i < preys.length; i++) {
             if (head.x === preys[i].x && head.y === preys[i].y) {
                 preys.splice(i, 1);
-                handleProgression(); 
-                maintainPreys();
-                ate = true;
-                break;
+                handleProgression(); maintainPreys(); ate = true; break;
             }
         }
 
-        if (!ate) {
-            snake.body.pop(); 
-        }
+        if (!ate) { snake.body.pop(); }
     }
 
     // ==========================================
-    // MOTOR DE RENDERIZAÇÃO ORGÂNICA (SEM NEON)
+    // MOTOR DE RENDERIZAÇÃO REALISTA (TUBULAR)
     // ==========================================
     function drawRealisticSnake(s, isOpponent) {
         if(s.body.length === 0) return;
 
-        // 1. Corpo
-        for (let i = s.body.length - 1; i > 0; i--) {
-            let seg = s.body[i];
-            let px = seg.x * cellW + cellW/2;
-            let py = seg.y * cellH + cellH/2;
-            
-            let radius = (cellW / 2) * 0.95;
-            let tailDist = s.body.length - 1 - i;
-            if (tailDist < 6) { radius = radius * (0.3 + 0.7 * (tailDist / 6)); } // Rabo fino
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-            ctx.beginPath();
-            ctx.arc(px, py, radius, 0, Math.PI * 2);
-            ctx.fillStyle = isOpponent ? s.colorBody : s.colorBody;
-            ctx.fill();
+        // 1. Corpo Contínuo Tubular
+        for (let i = s.body.length - 1; i > 0; i--) {
+            let p1 = s.body[i];
+            let p2 = s.body[i-1];
             
-            // Barriga/Espinha
+            // Impede que desenhe uma linha cortando a tela quando a cobra atravessa a parede
+            if (Math.abs(p1.x - p2.x) > 1 || Math.abs(p1.y - p2.y) > 1) continue;
+
+            let px1 = p1.x * cellW + cellW/2;
+            let py1 = p1.y * cellH + cellH/2;
+            let px2 = p2.x * cellW + cellW/2;
+            let py2 = p2.y * cellH + cellH/2;
+
+            let radius = (cellW / 2) * 1.0;
+            let tailDist = s.body.length - 1 - i;
+            if (tailDist < 8) radius = radius * (0.3 + 0.7 * (tailDist / 8)); // Rabo afinando suavemente
+
+            // Corpo Principal (Verde Escuro)
             ctx.beginPath();
-            ctx.arc(px, py, radius * 0.5, 0, Math.PI * 2);
-            ctx.fillStyle = isOpponent ? s.colorBelly : s.colorBelly;
-            ctx.fill();
+            ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+            ctx.lineWidth = radius * 2;
+            ctx.strokeStyle = isOpponent ? s.colorBody : s.colorBody;
+            ctx.stroke();
+
+            // Textura da Barriga/Costas (Linha Interna mais clara)
+            ctx.beginPath();
+            ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+            ctx.lineWidth = radius * 1.2;
+            ctx.strokeStyle = isOpponent ? s.colorBelly : s.colorBelly;
+            ctx.stroke();
+
+            // Manchas/Escamas Escuras nas Costas
+            if (i % 3 === 0 && tailDist > 3) {
+                ctx.fillStyle = isOpponent ? s.colorSpine : s.colorSpine;
+                ctx.beginPath();
+                ctx.arc((px1+px2)/2, (py1+py2)/2, radius * 0.4, 0, Math.PI*2);
+                ctx.fill();
+            }
         }
 
-        // 2. Cabeça
+        // 2. Cabeça Orgânica (Alinhada com o pescoço)
         let head = s.body[0];
         let px = head.x * cellW + cellW/2;
         let py = head.y * cellH + cellH/2;
@@ -364,12 +392,10 @@
         let dirY = s.dir ? s.dir.y : (s.body.length > 1 ? head.y - s.body[1].y : 0);
         let angle = Math.atan2(dirY, dirX);
 
-        // Lógica de Bote
         let isMouthOpen = false;
         if (!isOpponent) {
             for (let p of preys) {
-                let distToPrey = Math.hypot(head.x - p.x, head.y - p.y);
-                if (distToPrey < 3) { isMouthOpen = true; break; }
+                if (Math.hypot(head.x - p.x, head.y - p.y) < 3) { isMouthOpen = true; break; }
             }
         }
 
@@ -380,29 +406,21 @@
         ctx.translate(px, py);
         ctx.rotate(angle);
 
-        ctx.fillStyle = isOpponent ? s.colorHead : s.colorHead;
+        ctx.fillStyle = isOpponent ? s.colorBody : s.colorBody;
 
         if (isMouthOpen) {
-            // Mandíbulas Abertas
+            // Mandíbula e Dentes
             ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
             ctx.ellipse(headLen/2, 0, headLen, headWid/2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            
             ctx.save(); ctx.rotate(0.35); ctx.beginPath();
             ctx.ellipse(headLen/2, 0, headLen*0.9, headWid/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
             
-            // Fundo da Boca
-            ctx.fillStyle = '#450a0a'; ctx.beginPath();
-            ctx.arc(0, 0, headWid*0.5, -0.4, 0.4); ctx.fill();
-            
-            // Dentes Afiados
+            ctx.fillStyle = '#450a0a'; ctx.beginPath(); ctx.arc(0, 0, headWid*0.5, -0.4, 0.4); ctx.fill();
             ctx.fillStyle = '#f8fafc'; ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
             ctx.moveTo(headLen*0.8, headWid/4); ctx.lineTo(headLen*0.9, headWid/2); ctx.lineTo(headLen*0.7, headWid/4); ctx.fill(); ctx.restore();
         } else {
-            // Boca Fechada
-            ctx.beginPath();
-            ctx.ellipse(headLen/2, 0, headLen, headWid, 0, 0, Math.PI*2); ctx.fill();
-            
-            // Língua
+            // Cabeça Fechada e Língua
+            ctx.beginPath(); ctx.ellipse(headLen/2, 0, headLen, headWid, 0, 0, Math.PI*2); ctx.fill();
             if (Math.random() > 0.85) {
                 ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
                 ctx.beginPath(); ctx.moveTo(headLen, 0); ctx.lineTo(headLen + 8, 0); ctx.lineTo(headLen + 12, -4);
@@ -410,54 +428,43 @@
             }
         }
 
-        // Olhos
+        // Olhos Realistas
         ctx.fillStyle = '#020617'; 
         ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
-        
         ctx.fillStyle = '#eab308'; 
         ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
-
         ctx.restore();
     }
 
     function draw() {
+        // Limpa o canvas para mostrar a imagem de fundo realística do CSS
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Aplica uma camada escurecida para a cobra e as presas destacarem da foto
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Desenha Obstáculos (Pedras)
+        // Desenha Pedras 
         ctx.fillStyle = '#475569';
         for (let o of obstacles) {
-            ctx.beginPath();
-            let px = o.x * cellW + cellW/2;
-            let py = o.y * cellH + cellH/2;
-            // Pedra irregular
-            ctx.moveTo(px - cellW*0.4, py);
-            ctx.lineTo(px - cellW*0.2, py - cellH*0.4);
-            ctx.lineTo(px + cellW*0.3, py - cellH*0.3);
-            ctx.lineTo(px + cellW*0.4, py + cellH*0.2);
-            ctx.lineTo(px, py + cellH*0.4);
-            ctx.fill();
-            
-            // Sombra da pedra
-            ctx.fillStyle = '#334155';
-            ctx.beginPath(); ctx.arc(px + cellW*0.1, py + cellH*0.1, cellW*0.2, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#475569';
+            let px = o.x * cellW + cellW/2; let py = o.y * cellH + cellH/2;
+            ctx.beginPath(); ctx.moveTo(px - cellW*0.4, py); ctx.lineTo(px - cellW*0.2, py - cellH*0.4);
+            ctx.lineTo(px + cellW*0.3, py - cellH*0.3); ctx.lineTo(px + cellW*0.4, py + cellH*0.2);
+            ctx.lineTo(px, py + cellH*0.4); ctx.fill();
+            ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(px + cellW*0.1, py + cellH*0.1, cellW*0.2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#475569';
         }
 
-        // 2. Desenha Múltiplas Presas (Tremendo)
+        // Desenha Presas Vivas
         let wiggle = Math.sin(Date.now() / 80) * 0.15; 
         for (let p of preys) {
-            ctx.save();
-            ctx.translate(p.x * cellW + cellW/2, p.y * cellH + cellH/2);
-            ctx.rotate(wiggle);
-            ctx.font = `${cellW * 1.3}px Arial`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(p.animal, 0, 0);
-            ctx.restore();
+            ctx.save(); ctx.translate(p.x * cellW + cellW/2, p.y * cellH + cellH/2);
+            ctx.rotate(wiggle); ctx.font = `${cellW * 1.3}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(p.animal, 0, 0); ctx.restore();
         }
 
-        // 3. Renderiza Cobras
+        // Desenha as Cobras contínuas
         if (state.mode === 'multi' && opponent.active) drawRealisticSnake(opponent, true);
         drawRealisticSnake(snake, false);
     }
