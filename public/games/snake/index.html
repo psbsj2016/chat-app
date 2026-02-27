@@ -3,73 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Predator 6D: Dimensional Snake</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Predator: Wild Hunt</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* =========================================
-           ARQUITETURA UI / UX
+           ARQUITETURA UI / UX - NATURAL / ORGÂNICO
            ========================================= */
         :root {
-            --bg-color: #05050A;
-            --hud-bg: rgba(15, 23, 42, 0.9);
-            --primary: #06B6D4;
-            --accent: #8B5CF6;
-            --danger: #EF4444;
-            --success: #22C55E;
+            --bg-color: #0c120c;
+            --hud-bg: #1a241a;
+            --primary: #4ade80;
+            --accent: #facc15;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
-        body { background-color: var(--bg-color); font-family: 'Orbitron', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* 1. HEADER / HUD SUPERIOR (LIMPO) */
+        /* 1. HEADER / HUD SUPERIOR (LIMPO - SEM SETA) */
         #hud {
             display: flex; justify-content: center; align-items: center;
-            background: var(--hud-bg); padding: 10px 15px; border-bottom: 2px solid rgba(255,255,255,0.1);
-            color: #fff; z-index: 10; backdrop-filter: blur(10px);
-            height: 70px; flex-shrink: 0;
+            background: var(--hud-bg); padding: 12px 15px; border-bottom: 2px solid #273527;
+            color: var(--text-main); z-index: 10;
+            height: 70px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .hud-center { display: flex; gap: 20px; align-items: center; }
+        .hud-center { display: flex; gap: 30px; align-items: center; }
         .hud-stat { display: flex; flex-direction: column; align-items: center; }
-        .stat-label { font-size: 9px; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-value { font-size: 16px; font-weight: 900; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+        .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+        .stat-value { font-size: 18px; font-weight: 900; color: var(--primary); }
 
-        /* 2. ÁREA DO JOGO (DISPLAY INFINITO) */
+        /* 2. ÁREA DO JOGO (CENÁRIO NATURAL) */
         #game-area {
             flex: 1; position: relative; width: 100%; overflow: hidden;
-            background: radial-gradient(circle at center, #111827 0%, #000000 100%);
-            transition: filter 1s ease;
+            background-color: #2e4a2e; /* Fundo verde escuro (relva) */
+            background-image: radial-gradient(#3a5a3a 10%, transparent 11%), radial-gradient(#3a5a3a 10%, transparent 11%);
+            background-size: 40px 40px; background-position: 0 0, 20px 20px;
         }
-        canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
+        canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
 
         /* 3. CONTROLOS INFERIORES (D-PAD ESPAÇOSO) */
         #controls-wrapper {
-            height: 240px; background: var(--hud-bg); border-top: 2px solid rgba(255,255,255,0.1);
+            height: 250px; background: var(--hud-bg); border-top: 2px solid #273527;
             display: flex; justify-content: center; align-items: center; flex-shrink: 0;
             padding-bottom: 20px;
         }
         
         #d-pad {
             display: grid;
-            grid-template-columns: 65px 65px 65px;
-            grid-template-rows: 65px 65px 65px;
-            gap: 15px; /* ESPAÇAMENTO ENTRE OS BOTÕES */
+            grid-template-columns: 70px 70px 70px;
+            grid-template-rows: 70px 70px 70px;
+            gap: 20px; /* MAIS ESPAÇO ENTRE BOTÕES */
             justify-content: center;
             align-items: center;
         }
         
         .d-btn {
             width: 100%; height: 100%; border-radius: 50%;
-            background: linear-gradient(180deg, #E60012 0%, #8A000A 100%);
-            border: 3px solid #FFFFFF;
-            color: #fff; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.9);
+            background: linear-gradient(180deg, #374151 0%, #1e293b 100%);
+            border: 2px solid #475569;
+            color: #f1f5f9; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.1);
             transition: 0.1s; cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        .d-btn:active { background: linear-gradient(180deg, #FF1A2D 0%, #A6000D 100%); transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.9); }
-        .d-btn .material-icons-round { font-size: 36px; font-weight: bold; }
+        .d-btn:active { background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); border-color: #86efac; transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.5); color: #000; }
+        .d-btn .material-icons-round { font-size: 38px; font-weight: bold; }
         
         .btn-up { grid-column: 2; grid-row: 1; }
         .btn-left { grid-column: 1; grid-row: 2; }
@@ -77,20 +80,21 @@
         .btn-down { grid-column: 2; grid-row: 3; }
 
         /* TELAS DE UI */
-        .overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .overlay { position: absolute; inset: 0; background: rgba(12, 18, 12, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .hidden { display: none !important; }
-        .cyber-btn { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 15px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 16px; margin: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
-        .cyber-btn:hover, .cyber-btn:active { background: var(--primary); color: #000; box-shadow: 0 0 20px var(--primary); }
+        .main-btn { background: var(--primary); border: none; color: #000; padding: 18px 45px; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 16px; margin: 10px; border-radius: 30px; cursor: pointer; transition: 0.2s; text-transform: uppercase; box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3); }
+        .main-btn:active { transform: scale(0.95); box-shadow: 0 4px 10px rgba(74, 222, 128, 0.3); }
+        .secondary-btn { background: transparent; border: 2px solid var(--accent); color: var(--accent); box-shadow: none; }
+        .secondary-btn:active { background: var(--accent); color: #000; }
     </style>
 </head>
 <body>
 
     <header id="hud">
         <div class="hud-center">
-            <div class="hud-stat"><span class="stat-label">Caça</span><span class="stat-value" id="ui-score">0</span></div>
-            <div class="hud-stat"><span class="stat-label">Nível</span><span class="stat-value" id="ui-level" style="color: var(--accent); text-shadow: 0 0 10px var(--accent);">1</span></div>
-            <div class="hud-stat"><span class="stat-label">Vel.</span><span class="stat-value" id="ui-speed">1.0x</span></div>
-            <div class="hud-stat"><span class="stat-label">Modo</span><span class="stat-value" id="ui-mode" style="font-size: 12px; margin-top:3px; color: #fff; text-shadow: none;">SOLO</span></div>
+            <div class="hud-stat"><span class="stat-label">Comprimento</span><span class="stat-value" id="ui-size" style="color: #fff;">3</span></div>
+            <div class="hud-stat"><span class="stat-label">Nível</span><span class="stat-value" id="ui-level" style="color: var(--accent);">1</span></div>
+            <div class="hud-stat"><span class="stat-label">Presas</span><span class="stat-value" id="ui-score">0</span></div>
         </div>
     </header>
 
@@ -98,16 +102,16 @@
         <canvas id="canvas"></canvas>
         
         <div id="start-screen" class="overlay">
-            <h1 style="color: var(--primary); font-size: 40px; margin-bottom: 5px; text-shadow: 0 0 20px var(--primary);">PREDATOR 6D</h1>
-            <p style="color: #94A3B8; margin-bottom: 40px; letter-spacing: 2px;">CADEIA ALIMENTAR REAL</p>
-            <button class="cyber-btn" onclick="initGame('solo')">Caçada Solo</button>
-            <button class="cyber-btn" onclick="initGame('multi')" style="border-color: var(--accent); color: var(--accent);">Duelo Multiplayer</button>
+            <h1 style="color: var(--primary); font-size: 42px; font-weight: 900; margin-bottom: 10px; letter-spacing: -1px;">WILD HUNT</h1>
+            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 14px;">SOBREVIVA. CRESÇA. DOMINE.</p>
+            <button class="main-btn" onclick="initGame('solo')">Caçada Natural</button>
+            <button class="main-btn secondary-btn" onclick="initGame('multi')">Disputar Território</button>
         </div>
 
         <div id="end-screen" class="overlay hidden">
-            <h1 id="end-title" style="color: var(--danger); font-size: 40px;">VOCÊ MORREU</h1>
-            <p id="end-desc" style="color: #fff; margin-bottom: 30px; font-size: 18px;"></p>
-            <button class="cyber-btn" onclick="location.reload()">Renascer</button>
+            <h1 id="end-title" style="color: var(--danger); font-size: 38px; font-weight: 900;">FIM DA LINHA</h1>
+            <p id="end-desc" style="color: #fff; margin-bottom: 30px; font-size: 16px;"></p>
+            <button class="main-btn" onclick="location.reload()">Renascer</button>
         </div>
     </main>
 
@@ -126,26 +130,21 @@
     const ctx = canvas.getContext('2d');
     const gameArea = document.getElementById('game-area');
 
-    let state = { isRunning: false, mode: 'solo', score: 0, level: 1, maxLevel: 10, baseSpeed: 5, currentSpeed: 5, dimension: 1 };
+    let state = { isRunning: false, mode: 'solo', score: 0, level: 1, maxLevel: 10, baseSpeed: 4.5 };
 
-    const cols = 25; 
-    const rows = 25;
+    const cols = 22; 
+    const rows = 22;
     let cellW, cellH;
     
-    let snake = { body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, colorHead: '#06B6D4', colorBody: '#0891B2' };
+    // Cores Naturais da Cobra
+    let snake = { body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, colorHead: '#14532d', colorBody: '#166534', colorBelly: '#4ade80' };
     let currentRoom = null;
-    let opponent = { active: false, id: null, body: [], colorHead: '#EF4444', colorBody: '#7F1D1D' };
+    let opponent = { active: false, id: null, body: [], colorHead: '#7f1d1d', colorBody: '#991b1b', colorBelly: '#fca5a5' };
 
     // Lista Biodiversa de Presas Reais
-    const animaisReais = ['🐭', '🐦', '🐸', '🐰', '🦎', '🐞', '🦇'];
-    let prey = { x: 0, y: 0, type: 'normal', animal: '🐭', color: '#FFF' };
-
-    const dimensions = [
-        { filter: 'hue-rotate(0deg)', head: '#06B6D4', body: '#0891B2' },
-        { filter: 'hue-rotate(90deg)', head: '#22C55E', body: '#166534' },
-        { filter: 'hue-rotate(180deg)', head: '#EF4444', body: '#991B1B' },
-        { filter: 'hue-rotate(270deg)', head: '#A855F7', body: '#6B21A8' }
-    ];
+    const animaisReais = ['🐭', '🐦', '🐸', '🐰', '🦎'];
+    let preys = []; 
+    let obstacles = []; // Pedras
 
     function resize() {
         canvas.width = gameArea.clientWidth;
@@ -158,18 +157,18 @@
 
     function initGame(mode) {
         state.mode = mode;
-        document.getElementById('ui-mode').innerText = mode.toUpperCase();
         document.getElementById('start-screen').classList.add('hidden');
         
         if (mode === 'multi') {
-            document.getElementById('end-title').innerText = "RASTREANDO...";
+            document.getElementById('end-title').innerText = "PROCURANDO...";
             document.getElementById('end-title').style.color = "var(--primary)";
-            document.getElementById('end-desc').innerText = "Aguardando um rival cruzar a fenda dimensional...";
+            document.getElementById('end-desc').innerText = "Aguardando um rival invadir seu território...";
             document.getElementById('end-screen').classList.remove('hidden');
-            socket.emit('join_snake_duel', { profile: { name: 'Predador 6D' } });
+            socket.emit('join_snake_duel', { profile: { name: 'Anaconda' } });
         } else {
             resetSnake(Math.floor(cols/2));
-            spawnPrey();
+            obstacles = [];
+            maintainPreys();
             state.isRunning = true;
             gameLoop();
         }
@@ -186,8 +185,9 @@
         snake.dir = { x: isHost ? 1 : -1, y: 0 }; snake.nextDir = { x: isHost ? 1 : -1, y: 0 };
         opponent.body = [{ x: isHost ? cols - 5 : 5, y: Math.floor(rows/2), dir: {x: isHost ? -1 : 1, y: 0} }];
 
-        spawnPrey();
-        state.score = 0; state.level = 1; state.baseSpeed = 5;
+        obstacles = [];
+        maintainPreys();
+        state.score = 0; state.level = 1; state.baseSpeed = 4.5;
         updateHUD();
         state.isRunning = true; gameLoop();
     });
@@ -196,7 +196,7 @@
         if(opponent.active) { opponent.body = data.history; opponent.dir = data.dir; }
     });
 
-    socket.on('duel_victory', () => { gameOver("VITÓRIA", "O rival virou o seu jantar!", "var(--success)"); });
+    socket.on('duel_victory', () => { gameOver("VITÓRIA", "Você engoliu o rival inteiro!", "var(--success)"); });
 
     function resetSnake(startX) {
         snake.body = [ 
@@ -207,17 +207,33 @@
         snake.dir = { x: 1, y: 0 }; snake.nextDir = { x: 1, y: 0 };
     }
 
-    function spawnPrey() {
-        prey.x = Math.floor(Math.random() * cols);
-        prey.y = Math.floor(Math.random() * rows);
-        
-        let rand = Math.random();
-        if (rand > 0.9) { prey.type = 'time'; prey.animal = '⌛'; } 
-        else if (rand > 0.8) { prey.type = 'dimension'; prey.animal = '🌌'; } 
-        else { 
-            prey.type = 'normal'; 
-            prey.animal = animaisReais[Math.floor(Math.random() * animaisReais.length)];
-        } 
+    // Faz spawn de várias presas simultaneamente
+    function maintainPreys() {
+        let maxPreys = 2 + state.level; // Quanto maior o nível, mais presas no mapa
+        while(preys.length < maxPreys) {
+            let px = Math.floor(Math.random() * cols);
+            let py = Math.floor(Math.random() * rows);
+            
+            // Garante que não faz spawn em cima de obstáculos
+            let valid = true;
+            for(let o of obstacles) { if(o.x === px && o.y === py) valid = false; }
+            if(valid) {
+                preys.push({
+                    x: px, y: py,
+                    animal: animaisReais[Math.floor(Math.random() * animaisReais.length)]
+                });
+            }
+        }
+    }
+
+    function generateObstacles() {
+        obstacles = [];
+        let numObstacles = (state.level - 1) * 3; // Aumenta pedras por nível
+        for(let i=0; i<numObstacles; i++) {
+            let ox = Math.floor(Math.random() * cols);
+            let oy = Math.floor(Math.random() * rows);
+            obstacles.push({x: ox, y: oy});
+        }
     }
 
     function changeDir(x, y) {
@@ -226,35 +242,27 @@
         snake.nextDir = { x, y };
     }
 
-    function handleProgression(pointsGained) {
-        state.score += pointsGained;
+    function handleProgression() {
+        state.score += 10;
         let newLevel = Math.floor(state.score / 100) + 1;
         
         if (newLevel > state.level) {
             state.level = newLevel;
-            if (state.level > state.maxLevel) return gameOver("ALFA DOMINANTE", "Você devorou toda a cadeia alimentar.", "#22C55E");
+            if (state.level > state.maxLevel) return gameOver("SOBREVIVENTE MÁXIMO", "Você está no topo da cadeia alimentar.", "var(--success)");
 
-            let head = snake.body[0];
-            snake.body = [head, {x: head.x - snake.dir.x, y: head.y - snake.dir.y}]; // Reseta o tamanho
-            state.baseSpeed += 1;
-            shiftDimension(); 
+            // A COBRA AGORA NÃO ENCOLHE! Ela cresce infinitamente.
+            state.baseSpeed += 0.5; // Fica ligeiramente mais rápida
+            generateObstacles(); // Adiciona pedras ao mapa
+            
             if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(state.level);
         }
         updateHUD();
     }
 
-    function shiftDimension() {
-        state.dimension = (state.dimension + 1) % dimensions.length;
-        let dim = dimensions[state.dimension];
-        gameArea.style.filter = dim.filter;
-        snake.colorHead = dim.head;
-        snake.colorBody = dim.body;
-    }
-
     function updateHUD() {
+        document.getElementById('ui-size').innerText = snake.body.length;
         document.getElementById('ui-score').innerText = state.score;
         document.getElementById('ui-level').innerText = state.level;
-        document.getElementById('ui-speed').innerText = state.baseSpeed.toFixed(1) + 'x';
     }
 
     let lastTime = 0; let accumulatedTime = 0;
@@ -263,7 +271,7 @@
         let deltaTime = timestamp - lastTime;
         lastTime = timestamp; accumulatedTime += deltaTime;
         
-        let tickInterval = 1000 / (state.baseSpeed * 2); 
+        let tickInterval = 1000 / state.baseSpeed; 
         if (accumulatedTime > tickInterval) { update(); accumulatedTime = 0; }
         
         draw();
@@ -274,11 +282,18 @@
         snake.dir = { ...snake.nextDir };
         let head = { x: snake.body[0].x + snake.dir.x, y: snake.body[0].y + snake.dir.y };
 
+        // Wrap Around (Atravessa bordas)
         if (head.x < 0) head.x = cols - 1; if (head.x >= cols) head.x = 0;
         if (head.y < 0) head.y = rows - 1; if (head.y >= rows) head.y = 0;
 
+        // Auto-Colisão
         for (let i = 0; i < snake.body.length; i++) {
-            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-CANIBA", `Você mordeu o próprio corpo.`, "var(--danger)");
+            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-MORDIDA", `Sua cobra ficou grande demais. Tamanho: ${snake.body.length}`, "var(--danger)");
+        }
+
+        // Colisão com Obstáculos (Pedras)
+        for (let o of obstacles) {
+            if (head.x === o.x && head.y === o.y) return gameOver("ESMAGADA", "Você bateu numa rocha sólida!", "var(--danger)");
         }
 
         snake.body.unshift(head);
@@ -289,51 +304,58 @@
                 for (let pt of opponent.body) {
                     if (head.x === pt.x && head.y === pt.y) {
                         socket.emit('snake_death', { roomId: currentRoom, opponentId: opponent.id });
-                        return gameOver("PRESA", "Você foi engolido pelo Invasor!", "var(--danger)");
+                        return gameOver("PRESA", "Você bateu no Invasor!", "var(--danger)");
                     }
                 }
             }
         }
 
-        if (head.x === prey.x && head.y === prey.y) {
-            let pts = 10;
-            if(prey.type === 'time') { state.baseSpeed -= 1; pts = 20; setTimeout(()=> state.baseSpeed += 1, 5000); }
-            if(prey.type === 'dimension') { shiftDimension(); pts = 50; }
-            handleProgression(pts); spawnPrey();
-        } else {
+        // Caça Múltipla
+        let ate = false;
+        for (let i = 0; i < preys.length; i++) {
+            if (head.x === preys[i].x && head.y === preys[i].y) {
+                preys.splice(i, 1);
+                handleProgression(); 
+                maintainPreys();
+                ate = true;
+                break;
+            }
+        }
+
+        if (!ate) {
             snake.body.pop(); 
         }
     }
 
     // ==========================================
-    // MOTOR DE RENDERIZAÇÃO REALISTA (ANATOMIA)
+    // MOTOR DE RENDERIZAÇÃO ORGÂNICA (SEM NEON)
     // ==========================================
     function drawRealisticSnake(s, isOpponent) {
         if(s.body.length === 0) return;
 
-        // 1. Desenha o Corpo (De trás para a frente para a cabeça ficar por cima)
+        // 1. Corpo
         for (let i = s.body.length - 1; i > 0; i--) {
             let seg = s.body[i];
             let px = seg.x * cellW + cellW/2;
             let py = seg.y * cellH + cellH/2;
             
-            // Rabo afinando nas últimas 5 posições
-            let radius = (cellW / 2) * 0.9;
+            let radius = (cellW / 2) * 0.95;
             let tailDist = s.body.length - 1 - i;
-            if (tailDist < 5) { radius = radius * (0.4 + 0.6 * (tailDist / 5)); }
+            if (tailDist < 6) { radius = radius * (0.3 + 0.7 * (tailDist / 6)); } // Rabo fino
 
-            // Gradiente Radial para Escamas/Volume 3D
-            let grad = ctx.createRadialGradient(px, py, radius*0.3, px, py, radius);
-            grad.addColorStop(0, isOpponent ? '#EF4444' : s.colorHead); // Centro claro (Espinha)
-            grad.addColorStop(1, isOpponent ? '#7F1D1D' : s.colorBody); // Borda escura (Sombra)
-            
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
-            ctx.fillStyle = grad;
+            ctx.fillStyle = isOpponent ? s.colorBody : s.colorBody;
+            ctx.fill();
+            
+            // Barriga/Espinha
+            ctx.beginPath();
+            ctx.arc(px, py, radius * 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = isOpponent ? s.colorBelly : s.colorBelly;
             ctx.fill();
         }
 
-        // 2. Desenha a Cabeça com Rosto e Mandíbula
+        // 2. Cabeça
         let head = s.body[0];
         let px = head.x * cellW + cellW/2;
         let py = head.y * cellH + cellH/2;
@@ -342,83 +364,101 @@
         let dirY = s.dir ? s.dir.y : (s.body.length > 1 ? head.y - s.body[1].y : 0);
         let angle = Math.atan2(dirY, dirX);
 
-        // Lógica de Bote (Abrir a boca perto da presa) - Apenas para a cobra principal
+        // Lógica de Bote
         let isMouthOpen = false;
         if (!isOpponent) {
-            let distToPrey = Math.hypot(head.x - prey.x, head.y - prey.y);
-            if (distToPrey < 4) isMouthOpen = true; // Se a presa está a 3 blocos ou menos
+            for (let p of preys) {
+                let distToPrey = Math.hypot(head.x - p.x, head.y - p.y);
+                if (distToPrey < 3) { isMouthOpen = true; break; }
+            }
         }
 
         let headLen = cellW * 0.9;
-        let headWid = cellW * 0.7;
+        let headWid = cellW * 0.75;
 
         ctx.save();
         ctx.translate(px, py);
         ctx.rotate(angle);
 
-        ctx.fillStyle = isOpponent ? '#EF4444' : s.colorHead;
+        ctx.fillStyle = isOpponent ? s.colorHead : s.colorHead;
 
         if (isMouthOpen) {
-            // Mandíbula Superior
-            ctx.save(); ctx.rotate(-0.3); ctx.beginPath();
-            ctx.ellipse(headLen/2, 0, headLen, headWid/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            // Mandíbula Inferior
-            ctx.save(); ctx.rotate(0.3); ctx.beginPath();
-            ctx.ellipse(headLen/2, 0, headLen*0.9, headWid/3, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            // Mandíbulas Abertas
+            ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
+            ctx.ellipse(headLen/2, 0, headLen, headWid/2, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
             
-            // Fundo da Boca (Vermelho Sangue)
-            ctx.fillStyle = '#4A0000'; ctx.beginPath();
-            ctx.arc(0, 0, headWid*0.5, -0.3, 0.3); ctx.fill();
+            ctx.save(); ctx.rotate(0.35); ctx.beginPath();
+            ctx.ellipse(headLen/2, 0, headLen*0.9, headWid/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
             
-            // Presas (Dentes)
-            ctx.fillStyle = '#FFF'; ctx.save(); ctx.rotate(-0.3); ctx.beginPath();
+            // Fundo da Boca
+            ctx.fillStyle = '#450a0a'; ctx.beginPath();
+            ctx.arc(0, 0, headWid*0.5, -0.4, 0.4); ctx.fill();
+            
+            // Dentes Afiados
+            ctx.fillStyle = '#f8fafc'; ctx.save(); ctx.rotate(-0.35); ctx.beginPath();
             ctx.moveTo(headLen*0.8, headWid/4); ctx.lineTo(headLen*0.9, headWid/2); ctx.lineTo(headLen*0.7, headWid/4); ctx.fill(); ctx.restore();
         } else {
-            // Cabeça Fechada (Oval)
+            // Boca Fechada
             ctx.beginPath();
             ctx.ellipse(headLen/2, 0, headLen, headWid, 0, 0, Math.PI*2); ctx.fill();
             
-            // Língua bifurcada (Animada)
-            if (Math.random() > 0.8) {
-                ctx.strokeStyle = '#EF4444'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+            // Língua
+            if (Math.random() > 0.85) {
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
                 ctx.beginPath(); ctx.moveTo(headLen, 0); ctx.lineTo(headLen + 8, 0); ctx.lineTo(headLen + 12, -4);
                 ctx.moveTo(headLen + 8, 0); ctx.lineTo(headLen + 12, 4); ctx.stroke();
             }
         }
 
-        // Olhos Realistas Frios (Fera)
-        ctx.fillStyle = '#000'; // Fundo do olho
-        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.6, headWid*0.25, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.6, headWid*0.25, 0, Math.PI*2); ctx.fill();
+        // Olhos
+        ctx.fillStyle = '#020617'; 
+        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.25, 0, Math.PI*2); ctx.fill();
         
-        ctx.fillStyle = '#F59E0B'; // Íris Amarela
-        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.6, headWid*0.15, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.6, headWid*0.15, 0, Math.PI*2); ctx.fill();
-        
-        ctx.fillStyle = '#000'; // Pupila Vertical Fenda
-        ctx.beginPath(); ctx.ellipse(headLen*0.3, -headWid*0.6, headWid*0.04, headWid*0.12, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(headLen*0.3, headWid*0.6, headWid*0.04, headWid*0.12, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#eab308'; 
+        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.5, headWid*0.15, 0, Math.PI*2); ctx.fill();
 
         ctx.restore();
     }
 
     function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Desenha Presa Realista (Emoji) com Animação de Medo
-        let wiggle = Math.sin(Date.now() / 80) * 0.15; // Tremor rápido
-        ctx.save();
-        ctx.translate(prey.x * cellW + cellW/2, prey.y * cellH + cellH/2);
-        ctx.rotate(wiggle);
-        ctx.font = `${cellW * 1.5}px Arial`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(prey.animal, 0, 0);
-        ctx.restore();
+        // 1. Desenha Obstáculos (Pedras)
+        ctx.fillStyle = '#475569';
+        for (let o of obstacles) {
+            ctx.beginPath();
+            let px = o.x * cellW + cellW/2;
+            let py = o.y * cellH + cellH/2;
+            // Pedra irregular
+            ctx.moveTo(px - cellW*0.4, py);
+            ctx.lineTo(px - cellW*0.2, py - cellH*0.4);
+            ctx.lineTo(px + cellW*0.3, py - cellH*0.3);
+            ctx.lineTo(px + cellW*0.4, py + cellH*0.2);
+            ctx.lineTo(px, py + cellH*0.4);
+            ctx.fill();
+            
+            // Sombra da pedra
+            ctx.fillStyle = '#334155';
+            ctx.beginPath(); ctx.arc(px + cellW*0.1, py + cellH*0.1, cellW*0.2, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#475569';
+        }
 
-        // Renderiza Invasor
+        // 2. Desenha Múltiplas Presas (Tremendo)
+        let wiggle = Math.sin(Date.now() / 80) * 0.15; 
+        for (let p of preys) {
+            ctx.save();
+            ctx.translate(p.x * cellW + cellW/2, p.y * cellH + cellH/2);
+            ctx.rotate(wiggle);
+            ctx.font = `${cellW * 1.3}px Arial`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(p.animal, 0, 0);
+            ctx.restore();
+        }
+
+        // 3. Renderiza Cobras
         if (state.mode === 'multi' && opponent.active) drawRealisticSnake(opponent, true);
-        // Renderiza Minha Cobra
         drawRealisticSnake(snake, false);
     }
 
