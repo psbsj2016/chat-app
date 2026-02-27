@@ -12,12 +12,18 @@
             --card-bg: rgba(15, 23, 42, 0.6);
             --text-main: #F8FAFC;
             --text-muted: #94A3B8;
+            --primary: #3B82F6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; overflow-y: auto; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; overflow-y: auto; overflow-x: hidden; }
 
-        /* Cabeçalho */
+        /* Telas */
+        #dashboard-screen { transition: opacity 0.3s; }
+        #lesson-screen { position: absolute; top: 0; left: 0; width: 100%; min-height: 100vh; background: var(--bg-color); padding: 20px; z-index: 50; display: flex; flex-direction: column; }
+        .hidden { display: none !important; }
+
+        /* Cabeçalho do Dashboard */
         .academy-header {
             background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
             border-radius: 16px; padding: 25px 20px; display: flex; align-items: center; gap: 15px;
@@ -35,22 +41,37 @@
         }
         .skill-card:active { transform: scale(0.95); }
         .skill-card.listening { border-color: rgba(59, 130, 246, 0.4); background: linear-gradient(180deg, rgba(59, 130, 246, 0.1), transparent); }
-        .skill-card.speaking { border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), transparent); }
+        .skill-card.speaking { border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), transparent); opacity: 0.5; }
         .skill-card.reading { border-color: rgba(245, 158, 11, 0.4); background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), transparent); }
-        .skill-card.writing { border-color: rgba(139, 92, 246, 0.4); background: linear-gradient(180deg, rgba(139, 92, 246, 0.1), transparent); }
+        .skill-card.writing { border-color: rgba(139, 92, 246, 0.4); background: linear-gradient(180deg, rgba(139, 92, 246, 0.1), transparent); opacity: 0.5; }
 
-        /* Ranking Diamante */
+        /* UI do Quiz / Lição */
+        .lesson-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .lesson-title { font-size: 18px; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+        
+        .context-box { background: rgba(255,255,255,0.05); border-left: 4px solid var(--primary); padding: 20px; border-radius: 0 12px 12px 0; margin-bottom: 25px; font-size: 16px; line-height: 1.6; }
+        .play-btn { background: var(--primary); color: white; border: none; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; cursor: pointer; box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4); transition: 0.2s; }
+        .play-btn:active { transform: scale(0.9); }
+
+        .question-text { font-size: 18px; font-weight: 800; margin-bottom: 15px; }
+        .options-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        .option-btn { background: var(--card-bg); border: 2px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; text-align: left; font-size: 15px; color: white; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .option-btn.selected { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
+        .option-btn.correct { border-color: #10B981; background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .option-btn.wrong { border-color: #EF4444; background: rgba(239, 68, 68, 0.1); color: #EF4444; }
+
+        .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 800; width: 100%; cursor: pointer; }
+        .action-btn:disabled { background: #334155; color: #94A3B8; cursor: not-allowed; }
+
+        /* Ranking Diamante (Estático por enquanto) */
         .ranking-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
         .rank-item { background: var(--card-bg); padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; }
-        
         .rank-diamond { background: rgba(6, 182, 212, 0.1); border: 1px solid #06B6D4; box-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
         .rank-gold { border-left: 4px solid #F59E0B; }
         .rank-silver { border-left: 4px solid #94A3B8; }
         .rank-bronze { border-left: 4px solid #B45309; }
-
         .rank-medal { font-size: 28px; width: 40px; text-align: center; }
         .rank-diamond .rank-medal { filter: drop-shadow(0 0 8px rgba(6,182,212,0.8)); font-size: 32px; }
-        
         .rank-info { flex: 1; }
         .rank-name { font-weight: 800; font-size: 15px; }
         .rank-league { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
@@ -59,95 +80,220 @@
 </head>
 <body>
 
-    <div class="academy-header">
-        <div class="header-icon"><span class="material-icons-round" style="color: white; font-size: 36px;">school</span></div>
-        <div>
-            <h1 style="font-size: 24px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">Inglês PTT</h1>
-            <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Training Center</p>
+    <div id="dashboard-screen">
+        <div class="academy-header">
+            <div class="header-icon"><span class="material-icons-round" style="color: white; font-size: 36px;">school</span></div>
+            <div>
+                <h1 style="font-size: 24px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">Inglês PTT</h1>
+                <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Training Center</p>
+            </div>
         </div>
-    </div>
 
-    <div class="section-title"><span class="material-icons-round" style="color: #3B82F6; font-size: 20px;">psychology</span> Áreas de Domínio</div>
-    
-    <div class="skills-grid">
-        <div class="skill-card listening" onclick="trainSkill('Listening')">
-            <span class="material-icons-round" style="font-size: 40px; color: #3B82F6; margin-bottom: 10px;">headphones</span>
-            <h3 style="font-size: 16px; margin: 0 0 4px 0;">Listening</h3>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Compreensão</p>
-        </div>
+        <div class="section-title"><span class="material-icons-round" style="color: #3B82F6; font-size: 20px;">psychology</span> Missões de Treino</div>
         
-        <div class="skill-card speaking" onclick="trainSkill('Speaking')">
-            <span class="material-icons-round" style="font-size: 40px; color: #10B981; margin-bottom: 10px;">mic_none</span>
-            <h3 style="font-size: 16px; margin: 0 0 4px 0;">Speaking</h3>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Pronúncia</p>
+        <div class="skills-grid">
+            <div class="skill-card listening" onclick="startLesson('Listening')">
+                <span class="material-icons-round" style="font-size: 40px; color: #3B82F6; margin-bottom: 10px;">headphones</span>
+                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Listening</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Ouvir e Entender</p>
+            </div>
+            
+            <div class="skill-card reading" onclick="startLesson('Reading')">
+                <span class="material-icons-round" style="font-size: 40px; color: #F59E0B; margin-bottom: 10px;">menu_book</span>
+                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Reading</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Ler e Traduzir</p>
+            </div>
+
+            <div class="skill-card speaking" onclick="alert('Motor de Reconhecimento de Voz será ativado na Fase 4!')">
+                <span class="material-icons-round" style="font-size: 40px; color: #10B981; margin-bottom: 10px;">mic_none</span>
+                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Speaking</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Bloqueado</p>
+            </div>
+
+            <div class="skill-card writing" onclick="alert('Correção Gramatical por IA será ativada na Fase 4!')">
+                <span class="material-icons-round" style="font-size: 40px; color: #8B5CF6; margin-bottom: 10px;">edit_note</span>
+                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Writing</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Bloqueado</p>
+            </div>
         </div>
 
-        <div class="skill-card reading" onclick="trainSkill('Reading')">
-            <span class="material-icons-round" style="font-size: 40px; color: #F59E0B; margin-bottom: 10px;">menu_book</span>
-            <h3 style="font-size: 16px; margin: 0 0 4px 0;">Reading</h3>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Vocabulário</p>
-        </div>
-
-        <div class="skill-card writing" onclick="trainSkill('Writing')">
-            <span class="material-icons-round" style="font-size: 40px; color: #8B5CF6; margin-bottom: 10px;">edit_note</span>
-            <h3 style="font-size: 16px; margin: 0 0 4px 0;">Writing</h3>
-            <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Gramática</p>
+        <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
+        <div class="ranking-list">
+            <div class="rank-item rank-diamond">
+                <div class="rank-medal">💎</div>
+                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 46px; height: 46px; border-radius: 50%; border: 2px solid #06B6D4;">
+                <div class="rank-info"><div class="rank-name" style="color: #06B6D4;">Comandante PTT</div><div class="rank-league" style="color: var(--text-main);">Liga Diamante</div></div>
+                <div class="rank-xp" style="color: #06B6D4;">1500 XP</div>
+            </div>
+            <div class="rank-item rank-gold">
+                <div class="rank-medal">🥇</div>
+                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 40px; height: 40px; border-radius: 50%;">
+                <div class="rank-info"><div class="rank-name">Agente Alpha</div><div class="rank-league" style="color: #F59E0B;">Ouro</div></div>
+                <div class="rank-xp" style="color: #F59E0B;">980 XP</div>
+            </div>
         </div>
     </div>
 
-    <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
-
-    <div class="ranking-list">
-        <div class="rank-item rank-diamond">
-            <div class="rank-medal">💎</div>
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 46px; height: 46px; border-radius: 50%; border: 2px solid #06B6D4;">
-            <div class="rank-info">
-                <div class="rank-name" style="color: #06B6D4;">Comandante PTT</div>
-                <div class="rank-league" style="color: var(--text-main);">Liga Diamante</div>
-            </div>
-            <div class="rank-xp" style="color: #06B6D4;">1500 XP</div>
+    <div id="lesson-screen" class="hidden">
+        <div class="lesson-header">
+            <div class="lesson-title" id="quiz-skill-title">NOME DA SKILL</div>
+            <button class="icon-btn" onclick="closeLesson()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width:40px; height:40px; border:none; color:white; cursor:pointer;"><span class="material-icons-round">close</span></button>
         </div>
 
-        <div class="rank-item rank-gold">
-            <div class="rank-medal">🥇</div>
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 40px; height: 40px; border-radius: 50%;">
-            <div class="rank-info">
-                <div class="rank-name">Agente Alpha</div>
-                <div class="rank-league" style="color: #F59E0B;">Ouro</div>
-            </div>
-            <div class="rank-xp" style="color: #F59E0B;">980 XP</div>
-        </div>
+        <div id="lesson-content-area"></div>
 
-        <div class="rank-item rank-silver">
-            <div class="rank-medal">🥈</div>
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 40px; height: 40px; border-radius: 50%;">
-            <div class="rank-info">
-                <div class="rank-name">Aluno Beta</div>
-                <div class="rank-league" style="color: #94A3B8;">Prata</div>
+        <div class="question-text" id="quiz-question">Pergunta?</div>
+        <div class="options-list" id="quiz-options">
             </div>
-            <div class="rank-xp" style="color: #94A3B8;">850 XP</div>
-        </div>
 
-        <div class="rank-item rank-bronze">
-            <div class="rank-medal">🥉</div>
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 40px; height: 40px; border-radius: 50%;">
-            <div class="rank-info">
-                <div class="rank-name">Soldado Delta</div>
-                <div class="rank-league" style="color: #B45309;">Bronze</div>
-            </div>
-            <div class="rank-xp" style="color: #B45309;">720 XP</div>
-        </div>
+        <button id="btn-verify" class="action-btn" disabled onclick="verifyAnswer()">Verificar Resposta</button>
     </div>
 
     <script>
-        // Função para simular o treino de habilidades e integrar com o XP do ChatPTT
-        function trainSkill(skillName) {
-            alert(`📚 Módulo de ${skillName} ativado!\nEm breve você realizará exercícios interativos aqui.`);
+        // Banco de Dados de Lições
+        const lessonsDB = {
+            'Reading': [
+                {
+                    context: "The artificial intelligence system was updated yesterday. It can now write complete software applications and fix bugs automatically.",
+                    question: "According to the text, what can the AI do now?",
+                    options: ["Cook food and clean", "Write applications and fix bugs", "Drive cars automatically", "Update itself tomorrow"],
+                    answer: 1
+                },
+                {
+                    context: "Remember to lock the doors before leaving the office. The security alarm activates automatically at 8:00 PM.",
+                    question: "When does the security alarm activate?",
+                    options: ["At 8:00 AM", "When the doors are open", "At 8:00 PM", "When you leave the office"],
+                    answer: 2
+                }
+            ],
+            'Listening': [
+                {
+                    context: "Good morning passengers. Flight 450 to New York is now boarding at gate twelve. Have your tickets ready.",
+                    question: "Where is the flight going?",
+                    options: ["London", "Gate 12", "New York", "Paris"],
+                    answer: 2
+                },
+                {
+                    context: "The meeting has been rescheduled to tomorrow at 3 PM because the manager is running late.",
+                    question: "Why was the meeting rescheduled?",
+                    options: ["The room was busy", "The manager is late", "It is raining", "The computer crashed"],
+                    answer: 1
+                }
+            ]
+        };
+
+        let currentLesson = null;
+        let selectedOptionIndex = null;
+        let isAnswerVerified = false;
+
+        // Inicia a lição e sorteia um exercício
+        function startLesson(skill) {
+            const list = lessonsDB[skill];
+            if(!list) return;
             
-            // Injeta 5 XP na conta principal do usuário por usar o App (usando a função mãe)
-            if(window.parent && window.parent.gameEarnXP) {
-                window.parent.gameEarnXP(5);
+            // Sorteia um exercício da lista
+            currentLesson = list[Math.floor(Math.random() * list.length)];
+            
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('lesson-screen').classList.remove('hidden');
+            
+            document.getElementById('quiz-skill-title').innerText = skill + " Training";
+            document.getElementById('quiz-question').innerText = currentLesson.question;
+            
+            const contentArea = document.getElementById('lesson-content-area');
+            if(skill === 'Reading') {
+                contentArea.innerHTML = `<div class="context-box">${currentLesson.context}</div>`;
+            } else if(skill === 'Listening') {
+                // Configura o botão para tocar áudio sintetizado nativamente
+                contentArea.innerHTML = `
+                    <button class="play-btn" onclick="playAudioText('${currentLesson.context.replace(/'/g, "\\'")}')">
+                        <span class="material-icons-round" style="font-size: 32px;">play_arrow</span>
+                    </button>
+                    <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Toque para ouvir a mensagem</p>
+                `;
             }
+
+            renderOptions();
+            resetQuizState();
+        }
+
+        // Toca o áudio em inglês nativo usando Web Speech API
+        function playAudioText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US'; 
+            utterance.rate = 0.9; // Fala um pouco mais devagar para facilitar o estudo
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Renderiza as alternativas
+        function renderOptions() {
+            const container = document.getElementById('quiz-options');
+            container.innerHTML = '';
+            
+            currentLesson.options.forEach((opt, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => selectOption(index);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(index) {
+            if(isAnswerVerified) return; // Se já respondeu, não deixa mudar
+            
+            selectedOptionIndex = index;
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, i) => {
+                if(i === index) btn.classList.add('selected');
+                else btn.classList.remove('selected');
+            });
+            
+            document.getElementById('btn-verify').disabled = false;
+        }
+
+        function verifyAnswer() {
+            if(selectedOptionIndex === null) return;
+            isAnswerVerified = true;
+            
+            const buttons = document.querySelectorAll('.option-btn');
+            const verifyBtn = document.getElementById('btn-verify');
+            
+            // Verifica se acertou
+            if(selectedOptionIndex === currentLesson.answer) {
+                buttons[selectedOptionIndex].classList.add('correct');
+                verifyBtn.innerText = "Excelente! Continuar";
+                verifyBtn.style.background = "#10B981";
+                
+                // MÁGICA: INJETA XP NA CONTA PRINCIPAL!
+                if(window.parent && window.parent.gameEarnXP) {
+                    window.parent.gameEarnXP(20);
+                }
+            } else {
+                buttons[selectedOptionIndex].classList.add('wrong');
+                buttons[currentLesson.answer].classList.add('correct'); // Mostra a correta
+                verifyBtn.innerText = "Ops! Voltar ao Menu";
+                verifyBtn.style.background = "#EF4444";
+            }
+            
+            verifyBtn.onclick = closeLesson;
+        }
+
+        function resetQuizState() {
+            selectedOptionIndex = null;
+            isAnswerVerified = false;
+            const btn = document.getElementById('btn-verify');
+            btn.disabled = true;
+            btn.innerText = "Verificar Resposta";
+            btn.style.background = "var(--primary)";
+            btn.onclick = verifyAnswer;
+            window.speechSynthesis.cancel(); // Para o áudio se ainda estiver a tocar
+        }
+
+        function closeLesson() {
+            resetQuizState();
+            document.getElementById('lesson-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
         }
     </script>
 </body>
