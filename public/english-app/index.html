@@ -63,7 +63,7 @@
         .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 800; width: 100%; cursor: pointer; }
         .action-btn:disabled { background: #334155; color: #94A3B8; cursor: not-allowed; }
 
-        /* Ranking Diamante (Estático por enquanto) */
+        /* Ranking Diamante */
         .ranking-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
         .rank-item { background: var(--card-bg); padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; }
         .rank-diamond { background: rgba(6, 182, 212, 0.1); border: 1px solid #06B6D4; box-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
@@ -118,13 +118,11 @@
         </div>
 
         <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
-       
-    <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
-    
-    <div class="ranking-list" id="real-ranking-list">
-        <div style="text-align:center; color: var(--text-muted); padding: 20px;">Sincronizando satélites...</div>
+        
+        <div class="ranking-list" id="real-ranking-list">
+            <div style="text-align:center; color: var(--text-muted); padding: 20px;">Sincronizando satélites...</div>
+        </div>
     </div>
-   </div>
 
     <div id="lesson-screen" class="hidden">
         <div class="lesson-header">
@@ -135,8 +133,7 @@
         <div id="lesson-content-area"></div>
 
         <div class="question-text" id="quiz-question">Pergunta?</div>
-        <div class="options-list" id="quiz-options">
-            </div>
+        <div class="options-list" id="quiz-options"></div>
 
         <button id="btn-verify" class="action-btn" disabled onclick="verifyAnswer()">Verificar Resposta</button>
     </div>
@@ -178,12 +175,10 @@
         let selectedOptionIndex = null;
         let isAnswerVerified = false;
 
-        // Inicia a lição e sorteia um exercício
         function startLesson(skill) {
             const list = lessonsDB[skill];
             if(!list) return;
             
-            // Sorteia um exercício da lista
             currentLesson = list[Math.floor(Math.random() * list.length)];
             
             document.getElementById('dashboard-screen').classList.add('hidden');
@@ -196,7 +191,6 @@
             if(skill === 'Reading') {
                 contentArea.innerHTML = `<div class="context-box">${currentLesson.context}</div>`;
             } else if(skill === 'Listening') {
-                // Configura o botão para tocar áudio sintetizado nativamente
                 contentArea.innerHTML = `
                     <button class="play-btn" onclick="playAudioText('${currentLesson.context.replace(/'/g, "\\'")}')">
                         <span class="material-icons-round" style="font-size: 32px;">play_arrow</span>
@@ -209,15 +203,13 @@
             resetQuizState();
         }
 
-        // Toca o áudio em inglês nativo usando Web Speech API
         function playAudioText(text) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US'; 
-            utterance.rate = 0.9; // Fala um pouco mais devagar para facilitar o estudo
+            utterance.rate = 0.9;
             window.speechSynthesis.speak(utterance);
         }
 
-        // Renderiza as alternativas
         function renderOptions() {
             const container = document.getElementById('quiz-options');
             container.innerHTML = '';
@@ -232,15 +224,13 @@
         }
 
         function selectOption(index) {
-            if(isAnswerVerified) return; // Se já respondeu, não deixa mudar
-            
+            if(isAnswerVerified) return;
             selectedOptionIndex = index;
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach((btn, i) => {
                 if(i === index) btn.classList.add('selected');
                 else btn.classList.remove('selected');
             });
-            
             document.getElementById('btn-verify').disabled = false;
         }
 
@@ -251,19 +241,17 @@
             const buttons = document.querySelectorAll('.option-btn');
             const verifyBtn = document.getElementById('btn-verify');
             
-            // Verifica se acertou
             if(selectedOptionIndex === currentLesson.answer) {
                 buttons[selectedOptionIndex].classList.add('correct');
-                verifyBtn.innerText = "Excelente! Continuar";
+                verifyBtn.innerText = "Excelente! +20 XP";
                 verifyBtn.style.background = "#10B981";
                 
-                // MÁGICA: INJETA XP NA CONTA PRINCIPAL!
                 if(window.parent && window.parent.gameEarnXP) {
                     window.parent.gameEarnXP(20);
                 }
             } else {
                 buttons[selectedOptionIndex].classList.add('wrong');
-                buttons[currentLesson.answer].classList.add('correct'); // Mostra a correta
+                buttons[currentLesson.answer].classList.add('correct');
                 verifyBtn.innerText = "Ops! Voltar ao Menu";
                 verifyBtn.style.background = "#EF4444";
             }
@@ -279,20 +267,23 @@
             btn.innerText = "Verificar Resposta";
             btn.style.background = "var(--primary)";
             btn.onclick = verifyAnswer;
-            window.speechSynthesis.cancel(); // Para o áudio se ainda estiver a tocar
+            window.speechSynthesis.cancel();
         }
 
         function closeLesson() {
             resetQuizState();
             document.getElementById('lesson-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('hidden');
+            loadLeaderboard(); // Atualiza o ranking ao fechar a lição!
         }
+
         // ==========================================================
-        // 🏆 MOTOR DE RANKING GLOBAL (Sincronizado com o Servidor)
+        // 🏆 MOTOR DE RANKING GLOBAL (Sincronizado)
         // ==========================================================
         async function loadLeaderboard() {
             const list = document.getElementById('real-ranking-list');
             try {
+                // Tenta puxar do servidor principal
                 const res = await fetch('/leaderboard');
                 const users = await res.json();
                 
@@ -303,7 +294,6 @@
                     return;
                 }
 
-                // Configurações das Ligas (Cores e Medalhas)
                 const ranks = [
                     { class: 'rank-diamond', medal: '💎', title: 'Liga Diamante', color: '#06B6D4' },
                     { class: 'rank-gold', medal: '🥇', title: 'Ouro', color: '#F59E0B' },
@@ -311,7 +301,6 @@
                     { class: 'rank-bronze', medal: '🥉', title: 'Bronze', color: '#B45309' }
                 ];
 
-                // Desenha cada utilizador no seu respectivo lugar do pódio
                 users.forEach((user, index) => {
                     const rank = ranks[index] || ranks[3]; 
                     const name = user.displayName || 'Agente Secreto';
@@ -329,18 +318,15 @@
                         </div>
                     `;
                 });
-                
             } catch (e) {
                 list.innerHTML = '<div style="text-align:center; color: #EF4444; padding: 20px;">Falha de comunicação com o servidor.</div>';
             }
         }
 
-        // Estilo extra para a animação do Ranking
         const style = document.createElement('style');
         style.innerHTML = `@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`;
         document.head.appendChild(style);
 
-        // Carrega o ranking assim que a tela abre
         window.addEventListener('DOMContentLoaded', loadLeaderboard);
     </script>
 </body>
