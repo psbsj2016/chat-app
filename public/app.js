@@ -3,7 +3,7 @@ let myId = localStorage.getItem('myId');
 let token = localStorage.getItem('token');
 let currentChatId = null;
 let currentChatEmail = ''; 
-
+let currentVoiceChannelId = null;
 let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
 let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
 let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
@@ -773,18 +773,15 @@ async function openChannel(channelId, channelName, type) {
     if(!box) return;
     box.innerHTML = '<div style="text-align:center; margin-top:20px; color:#64748B;">Sincronizando satélites...</div>';
 
-    // Se for voz...
+    // 🔊 ATUALIZADO: Sincroniza o rádio com o ID do canal
     if(type === 'voice') {
+        currentVoiceChannelId = channelId; // Agora esta variável já existe no topo!
         box.innerHTML = '<div style="text-align:center; color:#10B981; margin-top:50px;"><span class="material-icons-round" style="font-size:50px; margin-bottom:10px;">mic</span><h2>Lounge de Voz</h2><p>Clique em Conectar Rádio acima para falar!</p></div>';
         const inputEl = document.getElementById('community-message-input');
         if(inputEl) inputEl.disabled = true;
         
-        // MOSTRA O PAINEL DE RÁDIO
         document.getElementById('voice-lounge-container').style.display = 'block';
         return;
-    } else {
-        // ESCONDE O PAINEL NOS CANAIS DE TEXTO
-        document.getElementById('voice-lounge-container').style.display = 'none';
     }
 
     const inputEl = document.getElementById('community-message-input');
@@ -933,7 +930,6 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==============================================================
 let localAudioStream = null;
 let peerConnections = {}; // Guarda os túneis para cada usuário
-let currentVoiceChannelId = null;
 
 // Servidores públicos da Google para descobrir IPs (STUN)
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -1060,20 +1056,21 @@ function createPeerConnection(socketId, userProfile) {
         }
     };
 
-    // Recebe o áudio do outro soldado e cria um "alto-falante" invisível
+   // Recebe o áudio do outro soldado e cria um "alto-falante" invisível
     pc.ontrack = (event) => {
         let audioElement = document.getElementById(`audio-${socketId}`);
         if (!audioElement) {
             audioElement = document.createElement('audio');
             audioElement.id = `audio-${socketId}`;
             audioElement.autoplay = true;
+            audioElement.setAttribute('playsinline', 'true'); // Essencial para mobile
             remoteAudiosContainer.appendChild(audioElement);
         }
         audioElement.srcObject = event.streams[0];
+        
+        // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
+        audioElement.play().catch(e => console.log("Áudio aguardando interação..."));
     };
-
-    return pc;
-}
 
 // Desenha o avatar no Radar
 function addParticipantToUI(id, profile) {

@@ -424,11 +424,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('webrtc_signal', (data) => {
-        // Envia as "coordenadas" de rádio diretamente para o alvo
+        // Envia as "coordenadas" e o perfil de quem está a ligar
         io.to(data.to).emit('webrtc_signal', {
             from: socket.id,
             signal: data.signal,
-            userProfile: socket.userProfile
+            userProfile: socket.userProfile // Garante que o receptor saiba quem é você
         });
     });
 
