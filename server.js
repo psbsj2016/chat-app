@@ -689,6 +689,54 @@ io.on('connection', (socket) => {
     socket.on('snake_death', (data) => {
         socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId });
     });
+
+// ==============================================================
+    // 🪩 MOTOR MULTIPLAYER: NEON BOUNCE ARENA (PvP)
+    // ==============================================================
+    let bounceQueue = [];
+
+    socket.on('join_bounce_arena', (data) => {
+        // Evita duplicados na fila
+        if (!bounceQueue.find(p => p.id === socket.id)) {
+            bounceQueue.push({ id: socket.id, profile: data.profile, league: data.league });
+        }
+
+        // Se houver dois jogadores, cria a Arena
+        if (bounceQueue.length >= 2) {
+            const p1 = bounceQueue.shift();
+            const p2 = bounceQueue.shift();
+            const roomId = `bounce_arena_${p1.id}`;
+
+            // Coloca ambos na sala isolada
+            io.sockets.sockets.get(p1.id).join(roomId);
+            io.sockets.sockets.get(p2.id).join(roomId);
+
+            // Semente de Geração (Para o mapa ser 100% igual para os dois)
+            const mapSeed = Math.random();
+
+            // Dispara o início da partida
+            io.to(roomId).emit('bounce_match_start', {
+                roomId: roomId,
+                seed: mapSeed,
+                players: [
+                    { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, // Ciano
+                    { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' }  // Rosa
+                ]
+            });
+        }
+    });
+
+    // Sincroniza a posição (Pulo e Queda)
+    socket.on('bounce_sync_pos', (data) => {
+        socket.to(data.roomId).emit('bounce_opponent_pos', { id: socket.id, y: data.y, vy: data.vy });
+    });
+
+    // Quando alguém morre (Bate no espinho ou cai)
+    socket.on('bounce_player_died', (data) => {
+        // Avisa o outro jogador que ele VENCEU!
+        socket.to(data.roomId).emit('bounce_match_won', { loserId: socket.id });
+    });
+
     socket.on('disconnect', () => { 
         // Lógica existente de presença
         const uid = Object.keys(users).find(key => users[key] === socket.id); 

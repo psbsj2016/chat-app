@@ -316,8 +316,7 @@
         }
 
         if (!ate) {
-            // A cobra só cresce a cada 2 presas, válido para todas as fases
-            if (state.score % 2 !== 0 || state.score === 0) snake.body.pop(); 
+            snake.body.pop(); // Crescimento perfeito: 1 Presa = 1 Segmento
         }
 
         updateHUD();

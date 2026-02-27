@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Bounce Arena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; overflow: hidden; }
+        body { background-color: #050510; font-family: 'Inter', sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; }
+        
+        #ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        
+        /* Placares dos Jogadores */
+        .player-hud { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
+        .hud-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid; }
+        .hud-info { display: flex; flex-direction: column; }
+        .hud-name { font-weight: 800; font-size: 14px; }
+        .hud-league { font-size: 10px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; }
+        
+        .league-bronze { color: #CD7F32; } .league-silver { color: #CBD5E1; } .league-gold { color: #FBBF24; } .league-neon { color: #22D3EE; text-shadow: 0 0 8px #22D3EE; }
+
+        /* Telas de Overlay */
+        .overlay { position: absolute; inset: 0; background: rgba(5,5,16,0.9); z-index: 100; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        h1 { font-family: 'Orbitron'; font-size: 36px; text-transform: uppercase; margin-bottom: 10px; }
+        .main-btn { background: linear-gradient(90deg, #FF007A, #7928CA); border: none; color: white; padding: 15px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; border-radius: 30px; cursor: pointer; box-shadow: 0 10px 30px rgba(255, 0, 122, 0.4); transition: 0.2s; margin-top: 20px; }
+        .main-btn:active { transform: scale(0.95); }
+        
+        .hidden { display: none !important; }
+        #canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="ui-layer">
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+            <div class="player-hud" id="hud-p1" style="opacity: 0;">
+                <img id="p1-avatar" class="hud-avatar" src="" style="border-color: #06B6D4;">
+                <div class="hud-info">
+                    <span id="p1-name" class="hud-name" style="color:#06B6D4;">Você</span>
+                    <span id="p1-league" class="hud-league">League</span>
+                </div>
+            </div>
+            <div class="player-hud" id="hud-p2" style="opacity: 0;">
+                <div class="hud-info" style="text-align: right;">
+                    <span id="p2-name" class="hud-name" style="color:#F43F5E;">Oponente</span>
+                    <span id="p2-league" class="hud-league">League</span>
+                </div>
+                <img id="p2-avatar" class="hud-avatar" src="" style="border-color: #F43F5E;">
+            </div>
+        </div>
+        <h2 id="match-status" style="font-family: 'Orbitron'; text-align: center; color: white; text-shadow: 0 0 10px #FFF; opacity: 0.5;">Aguardando adversário...</h2>
+    </div>
+
+    <div id="screen-start" class="overlay">
+        <h1 style="color: #06B6D4; text-shadow: 0 0 20px #06B6D4;">BOUNCE <span style="color:#F43F5E;">ARENA</span></h1>
+        <p style="color: #94A3B8; max-width: 300px; line-height: 1.5;">O último sobrevivente leva a glória. Toque na tela para pular e desvie dos obstáculos.</p>
+        <button class="main-btn" onclick="joinMatchmaking()">PROCURAR DUELO</button>
+    </div>
+
+    <div id="screen-result" class="overlay hidden">
+        <h1 id="result-title" style="font-size: 45px;">VITÓRIA!</h1>
+        <p id="result-desc" style="color: #CBD5E1; margin-bottom: 20px;">Você esmagou seu oponente.</p>
+        <h2 style="color: #F59E0B; margin-bottom: 20px; font-family:'Orbitron';">+<span id="result-xp">50</span> XP</h2>
+        <button class="main-btn" onclick="location.reload()">NOVA PARTIDA</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
+        window.addEventListener('resize', resize); resize();
+
+        const socket = io();
+        let matchState = 'lobby'; // lobby, searching, playing, ended
+        let roomId = null;
+        let mapSeed = 0;
+        
+        let me = null;
+        let opponent = null;
+
+        // FÍSICA E JOGO
+        const gravity = 0.5;
+        const jumpForce = -9;
+        const gameSpeed = 5;
+        let frames = 0;
+        let obstacles = [];
+        let particles = [];
+
+        class Sphere {
+            constructor(id, color, isMe) {
+                this.id = id;
+                this.x = isMe ? width * 0.3 : width * 0.4; // Oponente fica ligeiramente à frente para não sobrepor
+                this.y = height / 2;
+                this.vy = 0;
+                this.radius = 16;
+                this.color = color;
+                this.isMe = isMe;
+                this.alive = true;
+            }
+            jump() {
+                if(!this.alive) return;
+                this.vy = jumpForce;
+                createParticles(this.x, this.y + this.radius, this.color, 10);
+                if(this.isMe) socket.emit('bounce_sync_pos', { roomId, y: this.y, vy: this.vy });
+            }
+            update() {
+                if(!this.alive) return;
+                this.vy += gravity;
+                this.y += this.vy;
+
+                // Teto e Chão = Morte
+                if(this.y - this.radius <= 0 || this.y + this.radius >= height) {
+                    if(this.isMe) die();
+                }
+            }
+            draw() {
+                if(!this.alive) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFF';
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 20;
+                ctx.fill();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Obstacle {
+            constructor(x, gapY) {
+                this.x = x;
+                this.w = 50;
+                this.gapY = gapY; // Centro do buraco
+                this.gapH = 180;  // Tamanho do buraco
+                this.passed = false;
+            }
+            update() { this.x -= gameSpeed; }
+            draw() {
+                ctx.fillStyle = '#0F172A';
+                ctx.shadowColor = '#8B5CF6';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#8B5CF6';
+                ctx.lineWidth = 2;
+
+                // Tubo Cima
+                ctx.fillRect(this.x, 0, this.w, this.gapY - this.gapH/2);
+                ctx.strokeRect(this.x, 0, this.w, this.gapY - this.gapH/2);
+                // Tubo Baixo
+                ctx.fillRect(this.x, this.gapY + this.gapH/2, this.w, height);
+                ctx.strokeRect(this.x, this.gapY + this.gapH/2, this.w, height);
+                ctx.shadowBlur = 0;
+            }
+            checkCollision(sphere) {
+                if(!sphere.alive || !sphere.isMe) return; // Só calcula colisão localmente
+                if(sphere.x + sphere.radius > this.x && sphere.x - sphere.radius < this.x + this.w) {
+                    if(sphere.y - sphere.radius < this.gapY - this.gapH/2 || sphere.y + sphere.radius > this.gapY + this.gapH/2) {
+                        die();
+                    }
+                }
+            }
+        }
+
+        function createParticles(x, y, color, amount) {
+            for(let i=0; i<amount; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+                    life: 1, color: color
+                });
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DO JOGADOR LOCAL E DADOS
+        // ==========================================
+        function getMyLeague(xp) {
+            if(xp >= 1000) return { name: 'Liga Neon', class: 'league-neon' };
+            if(xp >= 500) return { name: 'Liga Ouro', class: 'league-gold' };
+            if(xp >= 100) return { name: 'Liga Prata', class: 'league-silver' };
+            return { name: 'Liga Bronze', class: 'league-bronze' };
+        }
+
+        const cachedMe = JSON.parse(localStorage.getItem('cacheMe') || '{}');
+        const myProfile = {
+            name: cachedMe.displayName || 'Jogador',
+            photoUrl: cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+        };
+        const myLeagueInfo = getMyLeague(cachedMe.xp || 0);
+
+        function joinMatchmaking() {
+            document.getElementById('screen-start').classList.add('hidden');
+            matchState = 'searching';
+            document.getElementById('match-status').innerText = "Rastreando oponentes...";
+            
+            socket.emit('join_bounce_arena', { 
+                profile: myProfile, 
+                league: myLeagueInfo 
+            });
+        }
+
+        // ==========================================
+        // SOCKETS (REDE MULTIPLAYER)
+        // ==========================================
+        socket.on('bounce_match_start', (data) => {
+            roomId = data.roomId;
+            mapSeed = data.seed;
+            matchState = 'playing';
+            document.getElementById('match-status').innerText = "";
+
+            const p1Data = data.players.find(p => p.id === socket.id);
+            const p2Data = data.players.find(p => p.id !== socket.id);
+
+            // Monta UI
+            document.getElementById('hud-p1').style.opacity = '1';
+            document.getElementById('p1-avatar').src = p1Data.photo;
+            document.getElementById('p1-name').innerText = p1Data.name;
+            document.getElementById('p1-league').innerText = p1Data.league.name;
+            document.getElementById('p1-league').className = `hud-league ${p1Data.league.class}`;
+
+            document.getElementById('hud-p2').style.opacity = '1';
+            document.getElementById('p2-avatar').src = p2Data.photo;
+            document.getElementById('p2-name').innerText = p2Data.name;
+            document.getElementById('p2-league').innerText = p2Data.league.name;
+            document.getElementById('p2-league').className = `hud-league ${p2Data.league.class}`;
+
+            me = new Sphere(p1Data.id, p1Data.color, true);
+            opponent = new Sphere(p2Data.id, p2Data.color, false);
+
+            obstacles = [];
+            particles = [];
+            frames = 0;
+
+            requestAnimationFrame(gameLoop);
+        });
+
+        socket.on('bounce_opponent_pos', (data) => {
+            if(opponent && opponent.alive) {
+                // Interpolação suave
+                opponent.y = data.y;
+                opponent.vy = data.vy;
+                createParticles(opponent.x, opponent.y + opponent.radius, opponent.color, 5);
+            }
+        });
+
+        socket.on('bounce_match_won', (data) => {
+            // Se o outro morreu, EU VENCI!
+            if(matchState !== 'ended') {
+                opponent.alive = false;
+                createParticles(opponent.x, opponent.y, opponent.color, 50);
+                endGame(true);
+            }
+        });
+
+        // ==========================================
+        // LOOP DO JOGO
+        // ==========================================
+        // Pseudo-aleatório para os dois jogadores terem os mesmos buracos
+        function seededRandom() {
+            let x = Math.sin(mapSeed++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        window.addEventListener('pointerdown', () => {
+            if(matchState === 'playing' && me.alive) me.jump();
+        });
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'Space' && matchState === 'playing' && me.alive) me.jump();
+        });
+
+        function die() {
+            me.alive = false;
+            createParticles(me.x, me.y, me.color, 50);
+            socket.emit('bounce_player_died', { roomId });
+            endGame(false);
+        }
+
+        function endGame(isWin) {
+            matchState = 'ended';
+            setTimeout(() => {
+                document.getElementById('screen-result').classList.remove('hidden');
+                const title = document.getElementById('result-title');
+                const desc = document.getElementById('result-desc');
+                
+                if(isWin) {
+                    title.innerText = "VITÓRIA!";
+                    title.style.color = "#06B6D4";
+                    title.style.textShadow = "0 0 20px #06B6D4";
+                    desc.innerText = "Oponente foi esmagado pela Arena.";
+                    document.getElementById('result-xp').innerText = "50";
+                    if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(50);
+                } else {
+                    title.innerText = "ELIMINADO!";
+                    title.style.color = "#EF4444";
+                    title.style.textShadow = "0 0 20px #EF4444";
+                    desc.innerText = "Você não resistiu à pressão.";
+                    document.getElementById('result-xp').innerText = "10"; // Consolação
+                    if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(10);
+                }
+            }, 1000);
+        }
+
+        function gameLoop() {
+            if(matchState !== 'playing') return;
+            ctx.clearRect(0, 0, width, height);
+
+            // Geração Sincronizada de Obstáculos
+            if (frames % 90 === 0) {
+                let minGapY = 150;
+                let maxGapY = height - 150;
+                let gapY = minGapY + seededRandom() * (maxGapY - minGapY);
+                obstacles.push(new Obstacle(width, gapY));
+            }
+
+            // Atualiza Objetos
+            for(let i=obstacles.length-1; i>=0; i--) {
+                obstacles[i].update();
+                obstacles[i].draw();
+                obstacles[i].checkCollision(me);
+                if(obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i, 1);
+            }
+
+            // Partículas
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1;
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Jogadores
+            opponent.update(); opponent.draw();
+            me.update(); me.draw();
+
+            frames++;
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
