@@ -18,12 +18,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; overflow-y: auto; overflow-x: hidden; }
 
-        /* Telas */
         #dashboard-screen { transition: opacity 0.3s; }
         #lesson-screen { position: absolute; top: 0; left: 0; width: 100%; min-height: 100vh; background: var(--bg-color); padding: 20px; z-index: 50; display: flex; flex-direction: column; }
         .hidden { display: none !important; }
 
-        /* Cabeçalho do Dashboard */
+        /* Cabeçalho */
         .academy-header {
             background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
             border-radius: 16px; padding: 25px 20px; display: flex; align-items: center; gap: 15px;
@@ -31,21 +30,19 @@
         }
         .header-icon { background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
 
-        /* Grelha de Habilidades */
+        /* Grelha */
         .section-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
         .skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px; }
         
-        .skill-card {
-            background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px;
-            padding: 20px 15px; text-align: center; cursor: pointer; transition: 0.2s;
-        }
+        .skill-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px 15px; text-align: center; cursor: pointer; transition: 0.2s; }
         .skill-card:active { transform: scale(0.95); }
         .skill-card.listening { border-color: rgba(59, 130, 246, 0.4); background: linear-gradient(180deg, rgba(59, 130, 246, 0.1), transparent); }
-        .skill-card.speaking { border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), transparent); opacity: 0.5; }
+        .skill-card.speaking { border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), transparent); }
         .skill-card.reading { border-color: rgba(245, 158, 11, 0.4); background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), transparent); }
-        .skill-card.writing { border-color: rgba(139, 92, 246, 0.4); background: linear-gradient(180deg, rgba(139, 92, 246, 0.1), transparent); opacity: 0.5; }
+        /* Removida a opacidade para destravar o Writing */
+        .skill-card.writing { border-color: rgba(139, 92, 246, 0.4); background: linear-gradient(180deg, rgba(139, 92, 246, 0.1), transparent); }
 
-        /* UI do Quiz / Lição */
+        /* UI Quiz & Lesson */
         .lesson-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
         .lesson-title { font-size: 18px; font-weight: 800; color: var(--primary); text-transform: uppercase; }
         
@@ -60,10 +57,21 @@
         .option-btn.correct { border-color: #10B981; background: rgba(16, 185, 129, 0.1); color: #10B981; }
         .option-btn.wrong { border-color: #EF4444; background: rgba(239, 68, 68, 0.1); color: #EF4444; }
 
-        .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 800; width: 100%; cursor: pointer; }
+        .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 800; width: 100%; cursor: pointer; transition: 0.2s; }
         .action-btn:disabled { background: #334155; color: #94A3B8; cursor: not-allowed; }
 
-        /* Ranking Diamante */
+        /* Estilos do Módulo Speaking (Voz) */
+        .mic-btn { background: #10B981; color: white; border: none; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: 20px auto; cursor: pointer; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); transition: 0.3s; }
+        .mic-btn.recording { background: #EF4444; animation: pulse 1.5s infinite; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 20px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+        .target-phrase { font-size: 24px; font-weight: 900; text-align: center; color: white; margin: 20px 0; line-height: 1.4; }
+        .spoken-phrase { font-size: 16px; text-align: center; color: var(--text-muted); font-style: italic; min-height: 24px; }
+
+        /* Estilos do Módulo Writing (Teclado) */
+        .writing-textarea { width: 100%; height: 120px; background: var(--card-bg); border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; padding: 15px; font-size: 16px; outline: none; resize: none; margin-bottom: 15px; font-family: 'Inter', sans-serif; transition: border-color 0.2s; }
+        .writing-textarea:focus { border-color: var(--primary); }
+
+        /* Ranking */
         .ranking-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
         .rank-item { background: var(--card-bg); padding: 15px; border-radius: 12px; display: flex; align-items: center; gap: 15px; }
         .rank-diamond { background: rgba(6, 182, 212, 0.1); border: 1px solid #06B6D4; box-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
@@ -95,30 +103,29 @@
             <div class="skill-card listening" onclick="startLesson('Listening')">
                 <span class="material-icons-round" style="font-size: 40px; color: #3B82F6; margin-bottom: 10px;">headphones</span>
                 <h3 style="font-size: 16px; margin: 0 0 4px 0;">Listening</h3>
-                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Ouvir e Entender</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Ouvir</p>
             </div>
             
+            <div class="skill-card speaking" onclick="startLesson('Speaking')">
+                <span class="material-icons-round" style="font-size: 40px; color: #10B981; margin-bottom: 10px;">mic_none</span>
+                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Speaking</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Pronúncia</p>
+            </div>
+
             <div class="skill-card reading" onclick="startLesson('Reading')">
                 <span class="material-icons-round" style="font-size: 40px; color: #F59E0B; margin-bottom: 10px;">menu_book</span>
                 <h3 style="font-size: 16px; margin: 0 0 4px 0;">Reading</h3>
-                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Ler e Traduzir</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Leitura</p>
             </div>
 
-            <div class="skill-card speaking" onclick="alert('Motor de Reconhecimento de Voz será ativado na Fase 4!')">
-                <span class="material-icons-round" style="font-size: 40px; color: #10B981; margin-bottom: 10px;">mic_none</span>
-                <h3 style="font-size: 16px; margin: 0 0 4px 0;">Speaking</h3>
-                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Bloqueado</p>
-            </div>
-
-            <div class="skill-card writing" onclick="alert('Correção Gramatical por IA será ativada na Fase 4!')">
+            <div class="skill-card writing" onclick="startLesson('Writing')">
                 <span class="material-icons-round" style="font-size: 40px; color: #8B5CF6; margin-bottom: 10px;">edit_note</span>
                 <h3 style="font-size: 16px; margin: 0 0 4px 0;">Writing</h3>
-                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Bloqueado</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Escrita</p>
             </div>
         </div>
 
         <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
-        
         <div class="ranking-list" id="real-ranking-list">
             <div style="text-align:center; color: var(--text-muted); padding: 20px;">Sincronizando satélites...</div>
         </div>
@@ -130,52 +137,63 @@
             <button class="icon-btn" onclick="closeLesson()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width:40px; height:40px; border:none; color:white; cursor:pointer;"><span class="material-icons-round">close</span></button>
         </div>
 
-        <div id="lesson-content-area"></div>
-
-        <div class="question-text" id="quiz-question">Pergunta?</div>
-        <div class="options-list" id="quiz-options"></div>
+        <div id="lesson-content-area" style="flex:1;"></div>
 
         <button id="btn-verify" class="action-btn" disabled onclick="verifyAnswer()">Verificar Resposta</button>
     </div>
 
     <script>
-        // Banco de Dados de Lições
+        // Banco de Dados de Lições Completo (Agora com Writing!)
         const lessonsDB = {
             'Reading': [
-                {
-                    context: "The artificial intelligence system was updated yesterday. It can now write complete software applications and fix bugs automatically.",
-                    question: "According to the text, what can the AI do now?",
-                    options: ["Cook food and clean", "Write applications and fix bugs", "Drive cars automatically", "Update itself tomorrow"],
-                    answer: 1
-                },
-                {
-                    context: "Remember to lock the doors before leaving the office. The security alarm activates automatically at 8:00 PM.",
-                    question: "When does the security alarm activate?",
-                    options: ["At 8:00 AM", "When the doors are open", "At 8:00 PM", "When you leave the office"],
-                    answer: 2
-                }
+                { context: "The AI system was updated yesterday. It can now write complete software applications.", question: "According to the text, what can the AI do now?", options: ["Cook food", "Write applications", "Drive cars", "Update tomorrow"], answer: 1 },
+                { context: "Remember to lock the doors before leaving. The alarm activates at 8 PM.", question: "When does the alarm activate?", options: ["At 8 AM", "When doors are open", "At 8 PM", "When you leave"], answer: 2 }
             ],
             'Listening': [
-                {
-                    context: "Good morning passengers. Flight 450 to New York is now boarding at gate twelve. Have your tickets ready.",
-                    question: "Where is the flight going?",
-                    options: ["London", "Gate 12", "New York", "Paris"],
-                    answer: 2
-                },
-                {
-                    context: "The meeting has been rescheduled to tomorrow at 3 PM because the manager is running late.",
-                    question: "Why was the meeting rescheduled?",
-                    options: ["The room was busy", "The manager is late", "It is raining", "The computer crashed"],
-                    answer: 1
-                }
+                { context: "Good morning. Flight 450 to New York is now boarding at gate twelve.", question: "Where is the flight going?", options: ["London", "Gate 12", "New York", "Paris"], answer: 2 },
+                { context: "The meeting has been rescheduled to tomorrow at 3 PM because the manager is late.", question: "Why was the meeting rescheduled?", options: ["Room was busy", "Manager is late", "It is raining", "Computer crashed"], answer: 1 }
+            ],
+            'Speaking': [
+                { targetPhrase: "I would like a cup of coffee" },
+                { targetPhrase: "Where is the train station" },
+                { targetPhrase: "The quick brown fox jumps" }
+            ],
+            'Writing': [
+                { context: "Eu gosto de beber café de manhã.", answer: "I like to drink coffee in the morning" },
+                { context: "Onde fica a estação de trem?", answer: "Where is the train station" },
+                { context: "Eles estão jogando futebol agora.", answer: "They are playing soccer now" }
             ]
         };
 
+        let currentSkill = null;
         let currentLesson = null;
         let selectedOptionIndex = null;
         let isAnswerVerified = false;
 
+        // Configuração de Reconhecimento de Voz
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognizer = null;
+        let isRecording = false;
+
+        if (SpeechRecognition) {
+            recognizer = new SpeechRecognition();
+            recognizer.lang = 'en-US'; 
+            recognizer.interimResults = false;
+            recognizer.maxAlternatives = 1;
+            recognizer.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('spoken-text').innerText = `You said: "${transcript}"`;
+                evaluateSpeaking(transcript);
+            };
+            recognizer.onspeechend = () => stopRecording();
+            recognizer.onerror = () => { stopRecording(); document.getElementById('spoken-text').innerText = "Não entendi, tente de novo."; };
+        }
+
+        // ===============================================
+        // MÁQUINA DE ESTADOS DA LIÇÃO
+        // ===============================================
         function startLesson(skill) {
+            currentSkill = skill;
             const list = lessonsDB[skill];
             if(!list) return;
             
@@ -183,129 +201,220 @@
             
             document.getElementById('dashboard-screen').classList.add('hidden');
             document.getElementById('lesson-screen').classList.remove('hidden');
-            
             document.getElementById('quiz-skill-title').innerText = skill + " Training";
-            document.getElementById('quiz-question').innerText = currentLesson.question;
             
             const contentArea = document.getElementById('lesson-content-area');
-            if(skill === 'Reading') {
-                contentArea.innerHTML = `<div class="context-box">${currentLesson.context}</div>`;
-            } else if(skill === 'Listening') {
-                contentArea.innerHTML = `
-                    <button class="play-btn" onclick="playAudioText('${currentLesson.context.replace(/'/g, "\\'")}')">
-                        <span class="material-icons-round" style="font-size: 32px;">play_arrow</span>
-                    </button>
-                    <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Toque para ouvir a mensagem</p>
-                `;
-            }
-
-            renderOptions();
-            resetQuizState();
-        }
-
-        function playAudioText(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; 
-            utterance.rate = 0.9;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        function renderOptions() {
-            const container = document.getElementById('quiz-options');
-            container.innerHTML = '';
+            const verifyBtn = document.getElementById('btn-verify');
             
-            currentLesson.options.forEach((opt, index) => {
-                const btn = document.createElement('div');
-                btn.className = 'option-btn';
-                btn.innerText = opt;
-                btn.onclick = () => selectOption(index);
-                container.appendChild(btn);
-            });
+            resetQuizState();
+
+            // Módulo: READING e LISTENING
+            if(skill === 'Reading' || skill === 'Listening') {
+                verifyBtn.style.display = 'block';
+                verifyBtn.disabled = true;
+                let html = '';
+                if(skill === 'Reading') {
+                    html += `<div class="context-box">${currentLesson.context}</div>`;
+                } else {
+                    html += `<button class="play-btn" onclick="playAudioText('${currentLesson.context.replace(/'/g, "\\'")}')"><span class="material-icons-round" style="font-size: 32px;">play_arrow</span></button><p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Toque para ouvir</p>`;
+                }
+                html += `<div class="question-text">${currentLesson.question}</div><div class="options-list" id="quiz-options"></div>`;
+                contentArea.innerHTML = html;
+                renderOptions();
+
+            // Módulo: SPEAKING
+            } else if (skill === 'Speaking') {
+                verifyBtn.style.display = 'none';
+                contentArea.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:80%;">
+                        <p style="color: var(--primary); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Leia em voz alta</p>
+                        <div class="target-phrase">"${currentLesson.targetPhrase}"</div>
+                        <div class="spoken-phrase" id="spoken-text"></div>
+                        <button class="mic-btn" id="mic-button" onclick="toggleMicrophone()"><span class="material-icons-round" style="font-size: 40px;">mic</span></button>
+                        <p style="color: var(--text-muted); font-size: 12px; text-align: center;" id="mic-status-text">Toque para falar</p>
+                    </div>
+                `;
+
+            // Módulo: WRITING
+            } else if (skill === 'Writing') {
+                verifyBtn.style.display = 'block';
+                verifyBtn.disabled = false; // Teclado já fica pronto
+                contentArea.innerHTML = `
+                    <div style="padding-top: 20px;">
+                        <p style="color: var(--primary); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Traduza para o Inglês</p>
+                        <div class="target-phrase" style="font-size: 20px; color: var(--text-main); margin: 15px 0;">"${currentLesson.context}"</div>
+                        <textarea id="writing-input" class="writing-textarea" placeholder="Type your answer here..."></textarea>
+                        <p id="writing-feedback" style="font-size: 14px; font-weight: 600; margin-bottom: 15px; min-height: 20px;"></p>
+                    </div>
+                `;
+                // Foca automaticamente no campo de texto
+                setTimeout(() => document.getElementById('writing-input').focus(), 100);
+            }
         }
 
+        // ===============================================
+        // MÓDULO SPEAKING (VOZ)
+        // ===============================================
+        function toggleMicrophone() {
+            if (!recognizer) return alert("Navegador não suporta reconhecimento de voz.");
+            if (isRecording) { stopRecording(); } 
+            else {
+                document.getElementById('spoken-text').innerText = "...";
+                document.getElementById('mic-button').classList.add('recording');
+                document.getElementById('mic-status-text').innerText = "Escutando...";
+                isRecording = true; recognizer.start();
+            }
+        }
+        function stopRecording() {
+            if(recognizer && isRecording) recognizer.stop();
+            const btn = document.getElementById('mic-button');
+            if(btn) btn.classList.remove('recording');
+            const txt = document.getElementById('mic-status-text');
+            if(txt) txt.innerText = "Processando...";
+            isRecording = false;
+        }
+        function evaluateSpeaking(transcript) {
+            let cleanTranscript = transcript.toLowerCase().replace(/[.,!?]/g, '').trim();
+            let cleanTarget = currentLesson.targetPhrase.toLowerCase().replace(/[.,!?]/g, '').trim();
+            const statusText = document.getElementById('mic-status-text');
+            const micBtn = document.getElementById('mic-button');
+
+            if (cleanTranscript.includes(cleanTarget) || cleanTarget.includes(cleanTranscript)) {
+                statusText.innerText = "Pronúncia Perfeita! +20 XP";
+                statusText.style.color = "#10B981";
+                micBtn.style.background = "#10B981";
+                micBtn.innerHTML = `<span class="material-icons-round" style="font-size: 40px;">check</span>`;
+                micBtn.disabled = true;
+                if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(20);
+                setTimeout(closeLesson, 2500); 
+            } else {
+                statusText.innerText = "Incorreto. Tente novamente.";
+                statusText.style.color = "#EF4444";
+            }
+        }
+
+        // ===============================================
+        // AVALIAÇÃO GERAL (QUIZ E WRITING)
+        // ===============================================
         function selectOption(index) {
             if(isAnswerVerified) return;
             selectedOptionIndex = index;
             const buttons = document.querySelectorAll('.option-btn');
-            buttons.forEach((btn, i) => {
-                if(i === index) btn.classList.add('selected');
-                else btn.classList.remove('selected');
-            });
+            buttons.forEach((btn, i) => { btn.classList.toggle('selected', i === index); });
             document.getElementById('btn-verify').disabled = false;
         }
 
         function verifyAnswer() {
-            if(selectedOptionIndex === null) return;
             isAnswerVerified = true;
-            
-            const buttons = document.querySelectorAll('.option-btn');
             const verifyBtn = document.getElementById('btn-verify');
+
+            // Verifica: WRITING
+            if (currentSkill === 'Writing') {
+                const inputEl = document.getElementById('writing-input');
+                const feedbackEl = document.getElementById('writing-feedback');
+                
+                // Limpeza para evitar erros de case sensitive ou espaços extras
+                let typedText = inputEl.value.toLowerCase().replace(/[.,!?]/g, '').replace(/\s+/g, ' ').trim();
+                let correctText = currentLesson.answer.toLowerCase().replace(/[.,!?]/g, '').trim();
+
+                if (typedText === correctText) {
+                    inputEl.style.borderColor = "#10B981";
+                    feedbackEl.innerText = "Tradução perfeita! +20 XP";
+                    feedbackEl.style.color = "#10B981";
+                    verifyBtn.innerText = "Continuar";
+                    verifyBtn.style.background = "#10B981";
+                    if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(20);
+                } else {
+                    inputEl.style.borderColor = "#EF4444";
+                    feedbackEl.innerHTML = `Ops! O correto seria:<br><span style="color:#FFF;">"${currentLesson.answer}"</span>`;
+                    feedbackEl.style.color = "#EF4444";
+                    verifyBtn.innerText = "Voltar ao Menu";
+                    verifyBtn.style.background = "#EF4444";
+                }
+                verifyBtn.onclick = closeLesson;
+                return;
+            }
+
+            // Verifica: READING & LISTENING
+            if(selectedOptionIndex === null) return;
+            const buttons = document.querySelectorAll('.option-btn');
             
             if(selectedOptionIndex === currentLesson.answer) {
                 buttons[selectedOptionIndex].classList.add('correct');
                 verifyBtn.innerText = "Excelente! +20 XP";
                 verifyBtn.style.background = "#10B981";
-                
-                if(window.parent && window.parent.gameEarnXP) {
-                    window.parent.gameEarnXP(20);
-                }
+                if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(20);
             } else {
                 buttons[selectedOptionIndex].classList.add('wrong');
                 buttons[currentLesson.answer].classList.add('correct');
                 verifyBtn.innerText = "Ops! Voltar ao Menu";
                 verifyBtn.style.background = "#EF4444";
             }
-            
             verifyBtn.onclick = closeLesson;
         }
 
+        // ===============================================
+        // UTILITÁRIOS
+        // ===============================================
+        function playAudioText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US'; utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function renderOptions() {
+            const container = document.getElementById('quiz-options');
+            if(!container) return;
+            container.innerHTML = '';
+            currentLesson.options.forEach((opt, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn'; btn.innerText = opt;
+                btn.onclick = () => selectOption(index);
+                container.appendChild(btn);
+            });
+        }
+
         function resetQuizState() {
-            selectedOptionIndex = null;
-            isAnswerVerified = false;
+            selectedOptionIndex = null; isAnswerVerified = false;
             const btn = document.getElementById('btn-verify');
-            btn.disabled = true;
-            btn.innerText = "Verificar Resposta";
-            btn.style.background = "var(--primary)";
-            btn.onclick = verifyAnswer;
+            if(btn) {
+                btn.innerText = "Verificar Resposta";
+                btn.style.background = "var(--primary)"; 
+                btn.onclick = verifyAnswer;
+            }
             window.speechSynthesis.cancel();
         }
 
         function closeLesson() {
             resetQuizState();
+            if(isRecording) stopRecording();
             document.getElementById('lesson-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('hidden');
-            loadLeaderboard(); // Atualiza o ranking ao fechar a lição!
+            loadLeaderboard(); 
         }
 
-        // ==========================================================
-        // 🏆 MOTOR DE RANKING GLOBAL (Sincronizado)
-        // ==========================================================
+        // ===============================================
+        // RANKING GLOBAL
+        // ===============================================
         async function loadLeaderboard() {
             const list = document.getElementById('real-ranking-list');
             try {
-                // Tenta puxar do servidor principal
                 const res = await fetch('/leaderboard');
                 const users = await res.json();
-                
                 list.innerHTML = ''; 
-                
                 if(users.length === 0) {
-                    list.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 20px;">O pódio está vazio. Seja o primeiro a ganhar XP!</div>';
-                    return;
+                    list.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 20px;">O pódio está vazio. Seja o primeiro a ganhar XP!</div>'; return;
                 }
-
                 const ranks = [
                     { class: 'rank-diamond', medal: '💎', title: 'Liga Diamante', color: '#06B6D4' },
                     { class: 'rank-gold', medal: '🥇', title: 'Ouro', color: '#F59E0B' },
                     { class: 'rank-silver', medal: '🥈', title: 'Prata', color: '#94A3B8' },
                     { class: 'rank-bronze', medal: '🥉', title: 'Bronze', color: '#B45309' }
                 ];
-
                 users.forEach((user, index) => {
                     const rank = ranks[index] || ranks[3]; 
                     const name = user.displayName || 'Agente Secreto';
                     const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-                    
                     list.innerHTML += `
                         <div class="rank-item ${rank.class}" style="animation: slideUp 0.3s ease forwards; animation-delay: ${index * 0.1}s; opacity: 0;">
                             <div class="rank-medal">${rank.medal}</div>
@@ -315,8 +424,7 @@
                                 <div class="rank-league" style="color: ${rank.color};">${rank.title}</div>
                             </div>
                             <div class="rank-xp" style="color: ${rank.color};">${user.xp} XP</div>
-                        </div>
-                    `;
+                        </div>`;
                 });
             } catch (e) {
                 list.innerHTML = '<div style="text-align:center; color: #EF4444; padding: 20px;">Falha de comunicação com o servidor.</div>';
@@ -326,7 +434,6 @@
         const style = document.createElement('style');
         style.innerHTML = `@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`;
         document.head.appendChild(style);
-
         window.addEventListener('DOMContentLoaded', loadLeaderboard);
     </script>
 </body>
