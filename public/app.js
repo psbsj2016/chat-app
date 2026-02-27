@@ -196,11 +196,114 @@ async function blockContact(targetId, targetName) { if(!confirm(`🚫 Tem certez
 async function reportContact(targetId, msgId = null) { const reason = prompt("🚨 Qual o motivo da denúncia?"); if(!reason) return; try { await fetch('/report-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reporterId: myId, reportedId: targetId, messageId: msgId, reason: reason }) }); alert("Denúncia enviada."); } catch(e) {} }
 
 async function loadNotes() { if(!myId) return; const list = document.getElementById('notes-list'); try { const res = await fetch(`/notes/${myId}`); currentNotes = await res.json(); renderNotes(); } catch(e) { list.innerHTML = '<div style="text-align:center; color:#ff5252;">Erro ao carregar anotações.</div>'; } }
-function renderNotes() { const list = document.getElementById('notes-list'); list.innerHTML = ''; if(currentNotes.length === 0) { list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--secondary-text);"><span class="material-icons" style="font-size: 50px; color: #ccc; margin-bottom: 10px;">sticky_note_2</span><br>Nenhuma anotação ainda.<br>Clique no botão <b>+</b> para criar.</div>`; return; } currentNotes.forEach(note => { const div = document.createElement('div'); div.className = 'note-card'; const date = new Date(note.timestamp).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); div.innerHTML = `<div style="flex: 1;" onclick="viewNote('${note._id}')"><div class="note-title">${note.title || 'Sem Título'}</div><div class="note-preview">${note.content}</div><div class="note-date">${date}</div></div><button class="icon-btn" onclick="deleteNote('${note._id}')" style="align-self: flex-start; margin-top: -5px;"><span class="material-icons" style="color: #ff5252; font-size: 22px;">delete</span></button>`; list.appendChild(div); }); }
-function openNoteModal() { editingNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').value = ''; showElement('note-modal'); }
-function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').value = note.content || ''; showElement('note-modal'); }
-async function saveNote() { const title = document.getElementById('note-title').value.trim(); const content = document.getElementById('note-content').value.trim(); if(!content) return alert('A anotação não pode estar vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content }) }); } hideElement('note-modal'); loadNotes(); } catch(e) { alert('Erro ao salvar anotação.'); } finally { btn.innerText = 'Salvar'; } }
-async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
+// ==============================================================
+// 📝 MOTOR DO BLOCO DE NOTAS (RICH TEXT)
+// ==============================================================
+let currentNotes = [];
+let editingNoteId = null;
+
+// Função mágica que aplica Negrito, Itálico, etc.
+function formatNote(command) {
+    document.execCommand(command, false, null);
+    document.getElementById('note-content').focus();
+}
+
+async function loadNotes() { 
+    if(!myId) return; 
+    const list = document.getElementById('notes-list'); 
+    try { 
+        const res = await fetch(`/notes/${myId}`); 
+        currentNotes = await res.json(); 
+        renderNotes(); 
+    } catch(e) { 
+        list.innerHTML = '<div style="text-align:center; color:#ff5252;">Erro ao carregar anotações.</div>'; 
+    } 
+}
+
+function renderNotes() { 
+    const list = document.getElementById('notes-list'); 
+    list.innerHTML = ''; 
+    if(currentNotes.length === 0) { 
+        list.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 40px; color: var(--secondary-text);"><span class="material-icons-round" style="font-size: 60px; color: #E2E8F0; margin-bottom: 15px;">sticky_note_2</span><br><h3 style="margin-bottom:5px; color: var(--text-color);">Nenhuma anotação</h3><p>Clique no botão <b>+</b> para registrar sua primeira ideia.</p></div>`; 
+        return; 
+    } 
+    currentNotes.forEach(note => { 
+        const div = document.createElement('div'); 
+        div.className = 'note-card'; 
+        const date = new Date(note.timestamp).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); 
+        
+        // Remove as tags HTML do preview para não bagunçar o card
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = note.content;
+        const plainTextPreview = tempDiv.textContent || tempDiv.innerText || "";
+
+        div.innerHTML = `
+            <div style="flex: 1;" onclick="viewNote('${note._id}')">
+                <div class="note-title">${note.title || 'Sem Título'}</div>
+                <div class="note-preview">${plainTextPreview}</div>
+                <div class="note-date">${date}</div>
+            </div>
+            <button class="icon-btn" onclick="event.stopPropagation(); deleteNote('${note._id}')" style="position: absolute; bottom: 15px; right: 15px; background: rgba(239, 68, 68, 0.1); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-icons-round" style="color: #ef4444; font-size: 18px;">delete</span>
+            </button>
+        `; 
+        list.appendChild(div); 
+    }); 
+}
+
+function openNoteModal() { 
+    editingNoteId = null; 
+    document.getElementById('note-title').value = ''; 
+    document.getElementById('note-content').innerHTML = ''; // Agora usa innerHTML
+    showElement('note-modal'); 
+    setTimeout(() => document.getElementById('note-content').focus(), 100);
+}
+
+function viewNote(id) { 
+    const note = currentNotes.find(n => n._id === id); 
+    if(!note) return; 
+    editingNoteId = note._id; 
+    document.getElementById('note-title').value = note.title || ''; 
+    document.getElementById('note-content').innerHTML = note.content || ''; // Agora carrega o HTML formatado
+    showElement('note-modal'); 
+}
+
+async function saveNote() { 
+    const title = document.getElementById('note-title').value.trim(); 
+    const contentHTML = document.getElementById('note-content').innerHTML.trim(); // Pega o texto formatado
+    
+    // Evita salvar notas vazias
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = contentHTML;
+    if(!tempDiv.textContent.trim() && !contentHTML.includes('<img')) return alert('A anotação não pode estar vazia!'); 
+    
+    const btn = document.querySelector('#note-modal .chic-btn'); 
+    const originalText = btn.innerText;
+    btn.innerText = 'Salvando...'; 
+    try { 
+        if (editingNoteId) { 
+            await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content: contentHTML }) }); 
+        } else { 
+            await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content: contentHTML }) }); 
+        } 
+        hideElement('note-modal'); 
+        loadNotes(); 
+    } catch(e) { 
+        alert('Erro ao salvar anotação.'); 
+    } finally { 
+        btn.innerText = originalText; 
+    } 
+}
+
+async function deleteNote(id) { 
+    if(!confirm("Tem certeza que deseja apagar esta anotação para sempre?")) return; 
+    try { 
+        await fetch(`/notes/${id}`, { method: 'DELETE' }); 
+        loadNotes(); 
+    } catch(e) { 
+        alert("Erro ao apagar."); 
+    } 
+}
 
 // ==============================================================
 // 🎙️ MOTOR DE GRAVAÇÃO DE ÁUDIO (VOZ)

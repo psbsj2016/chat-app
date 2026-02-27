@@ -279,14 +279,28 @@
             <button class="icon-btn" onclick="openNoteModal()"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 28px;">add_circle</span></button>
         </div>
         <div id="notes-list" style="padding: 15px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; gap: 12px;"></div>
-        <div id="note-modal" class="modal-overlay hidden">
-            <div class="modal-content" style="max-width: 90%; height: 60vh; display: flex; flex-direction: column; padding: 20px;">
-                <h3 style="color:var(--brand-primary); margin-bottom: 15px; text-align: left; width: 100%;">Editar Anotação</h3>
-                <input type="text" id="note-title" placeholder="Título (Opcional)" class="chic-input" style="text-align: left; font-weight: bold; font-size: 18px;">
-                <textarea id="note-content" placeholder="Digite sua ideia aqui..." class="chic-input" style="flex: 1; resize: none; text-align: left; margin-bottom: 15px; padding-top: 15px; line-height: 1.5;"></textarea>
-                <div class="modal-actions" style="display: flex; gap: 15px; width: 100%;">
-                    <button onclick="hideElement('note-modal')" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); border-radius: 12px; padding: 12px 0; font-weight: bold; cursor: pointer;">Voltar</button>
-                    <button onclick="saveNote()" class="chic-btn" style="flex: 1; margin: 0;">Salvar</button>
+       <div id="note-modal" class="modal-overlay hidden" style="z-index: 9999;">
+            <div class="modal-content" style="max-width: 600px; width: 90%; height: 75vh; display: flex; flex-direction: column; padding: 0; border-radius: 16px; overflow: hidden; background: var(--bg-color);">
+                
+                <div style="background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="color:var(--brand-primary); margin: 0; font-size: 18px; font-weight: 800;">📝 Bloco de Notas</h3>
+                    <button class="icon-btn" onclick="hideElement('note-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button>
+                </div>
+                
+                <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+                    <input type="text" id="note-title" placeholder="Título da Anotação" style="font-size: 24px; font-weight: 800; border: none; background: transparent; outline: none; color: var(--text-color); margin-bottom: 15px; width: 100%;">
+                    
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 8px; border-radius: 8px;">
+                        <button class="icon-btn" onclick="formatNote('bold')" title="Negrito" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_bold</span></button>
+                        <button class="icon-btn" onclick="formatNote('italic')" title="Itálico" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_italic</span></button>
+                        <button class="icon-btn" onclick="formatNote('insertUnorderedList')" title="Lista" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_list_bulleted</span></button>
+                    </div>
+
+                    <div id="note-content" contenteditable="true" placeholder="Comece a digitar sua ideia aqui..." style="flex: 1; outline: none; font-size: 16px; line-height: 1.6; color: var(--text-color); overflow-y: auto;"></div>
+                </div>
+
+                <div style="padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; justify-content: flex-end;">
+                    <button onclick="saveNote()" class="chic-btn" style="margin: 0; padding: 10px 25px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);">Salvar Anotação</button>
                 </div>
             </div>
         </div>
