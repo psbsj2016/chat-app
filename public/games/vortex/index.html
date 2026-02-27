@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Vortex: Cyber Blast</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
+        body { background-color: #05050A; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        #canvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Grid de Fundo */
+        #bg-grid { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background-image: linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
+
+        /* HUD */
+        #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 10; pointer-events: none; }
+        .hud-panel { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(6, 182, 212, 0.3); border-left: 4px solid #06B6D4; padding: 10px 20px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .hud-label { font-size: 10px; color: #06B6D4; text-transform: uppercase; letter-spacing: 2px; }
+        .hud-value { font-size: 24px; font-weight: 900; text-shadow: 0 0 10px #06B6D4; }
+
+        /* Telas de UI */
+        .overlay { position: absolute; inset: 0; background: rgba(5, 5, 10, 0.85); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(10px); }
+        .hidden { display: none !important; }
+        
+        h1 { font-size: 45px; color: #FFF; text-shadow: 0 0 20px #8B5CF6, 0 0 40px #8B5CF6; margin-bottom: 10px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        p { color: #A78BFA; margin-bottom: 30px; font-size: 14px; letter-spacing: 1px; font-weight: 700; }
+        
+        .cyber-btn { background: #8B5CF6; border: none; color: #FFF; padding: 15px 40px; font-size: 18px; font-family: 'Orbitron', sans-serif; font-weight: 900; cursor: pointer; border-radius: 30px; box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4); transition: 0.2s; text-transform: uppercase; letter-spacing: 2px; }
+        .cyber-btn:active { transform: scale(0.95); box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4); }
+    </style>
+</head>
+<body>
+
+    <div id="bg-grid"></div>
+
+    <div id="hud" class="hidden">
+        <div class="hud-panel">
+            <div class="hud-label">Pontuação</div>
+            <div class="hud-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="hud-panel" style="border-left-color: #EC4899;">
+            <div class="hud-label" style="color: #EC4899;">Multiplicador</div>
+            <div class="hud-value" id="levelDisplay" style="text-shadow: 0 0 10px #EC4899;">x1</div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="startScreen" class="overlay">
+        <h1>NEON VORTEX</h1>
+        <p>ARRASTE PARA MOVER • O TIRO É AUTOMÁTICO</p>
+        <button class="cyber-btn" onclick="startGame()">INICIAR COMBATE</button>
+    </div>
+
+    <div id="gameOverScreen" class="overlay hidden">
+        <h1 style="color: #EF4444; text-shadow: 0 0 20px #EF4444;">NAVE DESTRUÍDA</h1>
+        <p id="finalScoreText" style="color: #FFF;">Inimigos Eliminados: 0</p>
+        <button class="cyber-btn" style="background: #EF4444; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);" onclick="startGame()">REINICIAR SISTEMA</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let isPlaying = false;
+        let animationId;
+
+        // Variáveis de Jogo
+        let score = 0; let multiplier = 1; let frames = 0;
+        let player = { x: 0, y: 0, radius: 15, color: '#06B6D4' };
+        let pointer = { x: 0, y: 0, active: false };
+        let projectiles = [];
+        let enemies = [];
+        let particles = [];
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; player.x = width/2; player.y = height/2; pointer.x = width/2; pointer.y = height/2; }
+        window.addEventListener('resize', resize); resize();
+
+        // Controles de Toque/Mouse
+        window.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; });
+        window.addEventListener('pointerdown', e => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; });
+        window.addEventListener('pointerup', () => pointer.active = false);
+
+        // Classes do Jogo
+        class Projectile {
+            constructor(x, y, angle) {
+                this.x = x; this.y = y;
+                this.vx = Math.cos(angle) * 12;
+                this.vy = Math.sin(angle) * 12;
+                this.radius = 4; this.color = '#FDE047';
+            }
+            update() { this.x += this.vx; this.y += this.vy; }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = this.color; ctx.shadowBlur = 10; ctx.shadowColor = this.color; ctx.fill(); ctx.shadowBlur = 0;
+            }
+        }
+
+        class Enemy {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                let speed = Math.random() * 1.5 + 1 + (multiplier * 0.2);
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.radius = Math.random() * 10 + 10;
+                this.color = Math.random() > 0.8 ? '#EC4899' : '#8B5CF6';
+                this.angle = 0; this.spin = (Math.random() - 0.5) * 0.1;
+            }
+            update() {
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.vx += Math.cos(angle) * 0.02; this.vy += Math.sin(angle) * 0.02; // Persegue
+                this.x += this.vx; this.y += this.vy;
+                this.angle += this.spin;
+            }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+                ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+                ctx.beginPath(); ctx.rect(-this.radius, -this.radius, this.radius*2, this.radius*2); ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * (Math.random() * 10);
+                this.vy = (Math.random() - 0.5) * (Math.random() * 10);
+                this.radius = Math.random() * 3 + 1;
+                this.color = color;
+                this.alpha = 1;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.alpha -= 0.02; }
+            draw() {
+                ctx.save(); ctx.globalAlpha = this.alpha; ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            }
+        }
+
+        function spawnEnemy() {
+            let x, y;
+            if (Math.random() < 0.5) { x = Math.random() < 0.5 ? 0 - 30 : width + 30; y = Math.random() * height; } 
+            else { x = Math.random() * width; y = Math.random() < 0.5 ? 0 - 30 : height + 30; }
+            enemies.push(new Enemy(x, y));
+        }
+
+        function createExplosion(x, y, color) { for(let i=0; i<15; i++) particles.push(new Particle(x, y, color)); }
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            score = 0; multiplier = 1; frames = 0;
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('levelDisplay').innerText = `x${multiplier}`;
+            projectiles = []; enemies = []; particles = [];
+            player.x = width/2; player.y = height/2;
+            isPlaying = true;
+            cancelAnimationFrame(animationId);
+            gameLoop();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            createExplosion(player.x, player.y, '#06B6D4');
+            document.getElementById('finalScoreText').innerText = `Inimigos Eliminados: ${score}`;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            
+            // Injeção de XP no ChatPTT
+            if(window.parent && window.parent.gameEarnXP && score > 10) {
+                window.parent.gameEarnXP(Math.floor(score / 2));
+            }
+        }
+
+        function gameLoop() {
+            if(!isPlaying) return;
+            ctx.fillStyle = 'rgba(5, 5, 10, 0.3)'; // Motion Blur
+            ctx.fillRect(0, 0, width, height);
+
+            frames++;
+
+            // Movimento Fluido do Jogador
+            if(pointer.active) {
+                player.x += (pointer.x - player.x) * 0.15;
+                player.y += (pointer.y - player.y) * 0.15;
+            }
+
+            // Auto-Tiro (Atira no inimigo mais próximo a cada 10 frames)
+            if(frames % Math.max(5, 15 - multiplier) === 0 && enemies.length > 0) {
+                let closest = enemies[0]; let minDist = Infinity;
+                enemies.forEach(e => { let d = Math.hypot(player.x - e.x, player.y - e.y); if(d < minDist) { minDist = d; closest = e; } });
+                const angle = Math.atan2(closest.y - player.y, closest.x - player.x);
+                projectiles.push(new Projectile(player.x, player.y, angle));
+            }
+
+            // Spawn de Inimigos
+            if(frames % Math.max(20, 60 - (multiplier * 5)) === 0) spawnEnemy();
+
+            // Atualiza e Desenha Partículas
+            particles.forEach((p, index) => {
+                if (p.alpha <= 0) particles.splice(index, 1);
+                else { p.update(); p.draw(); }
+            });
+
+            // Atualiza e Desenha Projéteis
+            projectiles.forEach((p, pIndex) => {
+                p.update(); p.draw();
+                if(p.x < 0 || p.x > width || p.y < 0 || p.y > height) projectiles.splice(pIndex, 1);
+            });
+
+            // Atualiza e Desenha Inimigos & Colisões
+            enemies.forEach((e, eIndex) => {
+                e.update(); e.draw();
+
+                // Colisão com Jogador
+                if (Math.hypot(player.x - e.x, player.y - e.y) < player.radius + e.radius) gameOver();
+
+                // Colisão com Tiro
+                projectiles.forEach((p, pIndex) => {
+                    if (Math.hypot(p.x - e.x, p.y - e.y) < e.radius + p.radius) {
+                        createExplosion(e.x, e.y, e.color);
+                        enemies.splice(eIndex, 1);
+                        projectiles.splice(pIndex, 1);
+                        score++;
+                        document.getElementById('scoreDisplay').innerText = score;
+                        
+                        // Evolução
+                        if(score % 25 === 0) {
+                            multiplier++;
+                            document.getElementById('levelDisplay').innerText = `x${multiplier}`;
+                            if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(multiplier);
+                        }
+                    }
+                });
+            });
+
+            // Desenha Jogador (Nave)
+            if(isPlaying) {
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                // Rotação em direção ao movimento
+                let dx = pointer.x - player.x; let dy = pointer.y - player.y;
+                if(Math.abs(dx) > 1 || Math.abs(dy) > 1) ctx.rotate(Math.atan2(dy, dx) + Math.PI/2);
+                
+                ctx.shadowBlur = 20; ctx.shadowColor = player.color; ctx.fillStyle = player.color;
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(12, 10); ctx.lineTo(-12, 10); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
