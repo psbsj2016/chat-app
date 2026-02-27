@@ -386,6 +386,7 @@
     </div>
 
     <div id="chat-screen" class="app-screen hidden">
+        <span class="material-icons-round" style="color: #10B981; font-size: 28px; cursor: pointer; margin-right: 15px;" onclick="initVideoCall(currentChatId)" title="Videochamada">videocam</span>
         <div class="chat-header">
             <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
             <div class="chat-info clickable" onclick="viewContactProfile()" style="display: flex; align-items: center; justify-content: flex-end; flex: 1;">
@@ -786,6 +787,30 @@
             <input type="text" id="new-comm-name" placeholder="Nome da Tropa/Comunidade" class="chic-input">
             <textarea id="new-comm-desc" placeholder="Qual o propósito deste servidor?" class="chic-input" style="resize:none; height:70px;"></textarea>
             <button onclick="submitNewCommunity()" class="chic-btn" style="background: var(--brand-primary); margin-top: 10px;">Forjar Servidor</button>
+        </div>
+    </div>
+    <div id="incoming-call-modal" class="modal-overlay hidden" style="z-index: 10000; background: rgba(5, 5, 10, 0.95); backdrop-filter: blur(15px);">
+        <div style="display:flex; flex-direction:column; align-items:center; color:white; text-align: center;">
+            <img id="caller-photo" src="" style="width:120px; height:120px; border-radius:50%; margin-bottom:20px; border: 4px solid #10B981; animation: pulse 1.5s infinite; object-fit: cover;">
+            <h2 id="caller-name" style="margin-bottom: 5px; font-size: 24px; font-weight: 900;">Contato</h2>
+            <p style="color: #10B981; margin-bottom: 40px; font-weight: 600; letter-spacing: 1px;">Chamada de Vídeo Recebida...</p>
+            <div style="display:flex; gap:40px;">
+                <button onclick="rejectCall()" style="background:#EF4444; border:none; width:70px; height:70px; border-radius:50%; color:white; cursor:pointer; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;"><span class="material-icons-round" style="font-size:35px;">call_end</span></button>
+                <button onclick="acceptCall()" style="background:#10B981; border:none; width:70px; height:70px; border-radius:50%; color:white; cursor:pointer; box-shadow: 0 10px 25px rgba(16,185,129,0.5); transition: 0.2s;"><span class="material-icons-round" style="font-size:35px;">videocam</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="video-call-screen" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; z-index: 10001; display:flex; flex-direction:column;">
+        
+        <video id="remote-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+        
+        <video id="local-video" autoplay playsinline muted style="position:absolute; top:20px; right:20px; width:110px; height:160px; object-fit:cover; border-radius:16px; border:2px solid rgba(255,255,255,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 2;"></video>
+        
+        <div style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; gap:20px; background:rgba(15,23,42,0.8); padding:15px 30px; border-radius:40px; backdrop-filter:blur(10px); z-index: 3; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <button onclick="toggleVideoMic()" id="btn-toggle-mic" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">mic</span></button>
+            <button onclick="toggleVideoCam()" id="btn-toggle-cam" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">videocam</span></button>
+            <button onclick="endVideoCall()" style="background:#EF4444; border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">call_end</span></button>
         </div>
     </div>
   <script src="/socket.io/socket.io.js"></script>

@@ -1261,3 +1261,172 @@ function submitNewCommunity() {
     document.getElementById('new-comm-name').value = '';
     document.getElementById('new-comm-desc').value = '';
 }
+
+// ==============================================================
+// 📹 MOTOR DE VIDEOCHAMADAS (HOLOGRÁFICO P2P)
+// ==============================================================
+let videoStream = null;
+let videoPC = null;
+let currentCallTarget = null;
+let incomingCallData = null;
+
+const videoRtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+// 1. INICIAR CHAMADA
+async function initVideoCall(targetId) {
+    if (!targetId) return;
+    if (isGroupChat) return alert("As videochamadas só estão disponíveis para conversas privadas (1 a 1).");
+    
+    try {
+        // Pede permissão de câmera e microfone
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local-video').srcObject = videoStream;
+        currentCallTarget = targetId;
+        
+        showElement('video-call-screen');
+        
+        const myName = localStorage.getItem('displayName') || 'Contato';
+        const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        
+        // Toca para o servidor
+        socket.emit('call_user', { targetId: targetId, callerId: myId, callerName: myName, callerPhoto: myPhoto });
+        
+    } catch (e) {
+        alert("Permissão de câmera/microfone negada ou dispositivo indisponível!");
+    }
+}
+
+// 2. RECEBER O TOQUE (TRRRRIIIIM)
+socket.on('incoming_call', (data) => {
+    incomingCallData = data;
+    document.getElementById('caller-name').innerText = data.callerName;
+    document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    showElement('incoming-call-modal');
+    playNotificationSound('bell');
+});
+
+// 3. ATENDER
+async function acceptCall() {
+    hideElement('incoming-call-modal');
+    currentCallTarget = incomingCallData.callerId;
+    
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local-video').srcObject = videoStream;
+        showElement('video-call-screen');
+        
+        socket.emit('accept_call', { targetId: currentCallTarget, callerId: currentCallTarget, answererId: myId });
+        createVideoPeerConnection(currentCallTarget);
+        
+    } catch (e) {
+        alert("Erro ao aceder à câmera.");
+        rejectCall();
+    }
+}
+
+// 4. REJEITAR
+function rejectCall() {
+    hideElement('incoming-call-modal');
+    if (incomingCallData) {
+        socket.emit('reject_call', { callerId: incomingCallData.callerId });
+        incomingCallData = null;
+    }
+    stopVideoMedia();
+}
+
+socket.on('call_rejected', () => {
+    alert("O contato recusou a chamada ou está indisponível.");
+    endVideoCall(false);
+});
+
+// 5. O ALVO ATENDEU (Cria o túnel P2P)
+socket.on('call_accepted', async (data) => {
+    createVideoPeerConnection(currentCallTarget);
+    const offer = await videoPC.createOffer();
+    await videoPC.setLocalDescription(offer);
+    socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: offer });
+});
+
+// 6. NEGOCIAÇÃO DE IMAGEM E REDE (SINAIS WEBRTC)
+socket.on('video_signal', async (data) => {
+    if (!videoPC) createVideoPeerConnection(currentCallTarget);
+    
+    if (data.signal.type === 'offer') {
+        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal));
+        const answer = await videoPC.createAnswer();
+        await videoPC.setLocalDescription(answer);
+        socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: answer });
+    } else if (data.signal.type === 'answer') {
+        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal));
+    } else if (data.signal.candidate) {
+        await videoPC.addIceCandidate(new RTCIceCandidate(data.signal));
+    }
+});
+
+// 7. CONSTRUTOR DO TÚNEL DE VÍDEO
+function createVideoPeerConnection(target) {
+    videoPC = new RTCPeerConnection(videoRtcConfig);
+    
+    // Injeta o meu vídeo e áudio no túnel
+    videoStream.getTracks().forEach(track => videoPC.addTrack(track, videoStream));
+    
+    // Busca a melhor rota de internet
+    videoPC.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit('video_signal', { targetId: target, from: myId, signal: event.candidate });
+        }
+    };
+    
+    // Recebe o vídeo do contato e exibe na tela grande
+    videoPC.ontrack = (event) => {
+        document.getElementById('remote-video').srcObject = event.streams[0];
+    };
+}
+
+// 8. DESLIGAR NA CARA
+function endVideoCall(emitSignal = true) {
+    if (emitSignal && currentCallTarget) {
+        socket.emit('end_call', { targetId: currentCallTarget });
+    }
+    
+    if (videoPC) {
+        videoPC.close();
+        videoPC = null;
+    }
+    stopVideoMedia();
+    hideElement('video-call-screen');
+    currentCallTarget = null;
+    incomingCallData = null;
+}
+
+socket.on('call_ended', () => {
+    endVideoCall(false); // O outro desligou
+});
+
+function stopVideoMedia() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    document.getElementById('local-video').srcObject = null;
+    document.getElementById('remote-video').srcObject = null;
+}
+
+// 9. BOTÕES DE LIGA/DESLIGA (MIC E CÂMERA)
+function toggleVideoMic() {
+    if (!videoStream) return;
+    const audioTrack = videoStream.getAudioTracks()[0];
+    audioTrack.enabled = !audioTrack.enabled;
+    const btn = document.getElementById('btn-toggle-mic');
+    btn.style.background = audioTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444';
+    btn.innerHTML = audioTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">mic</span>' : '<span class="material-icons-round" style="font-size: 28px;">mic_off</span>';
+}
+
+function toggleVideoCam() {
+    if (!videoStream) return;
+    const videoTrack = videoStream.getVideoTracks()[0];
+    videoTrack.enabled = !videoTrack.enabled;
+    const btn = document.getElementById('btn-toggle-cam');
+    btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444';
+    btn.innerHTML = videoTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="font-size: 28px;">videocam_off</span>';
+}

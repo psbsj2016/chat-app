@@ -417,7 +417,35 @@ io.on('connection', (socket) => {
     socket.emit('check_app_version', SERVER_VERSION); // Envia a mesma versão sempre
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
+        
+        // ==============================================================
+        // 📹 SINAIS DE VIDEOCHAMADA P2P
+        // ==============================================================
+        socket.on('call_user', (data) => {
+            const targetSocket = users[data.targetId];
+            // Se o alvo estiver online, envia o sinal de telefone a tocar
+            if (targetSocket) io.to(targetSocket).emit('incoming_call', { callerId: data.callerId, callerName: data.callerName, callerPhoto: data.callerPhoto });
+        });
 
+        socket.on('accept_call', (data) => {
+            const callerSocket = users[data.callerId];
+            if (callerSocket) io.to(callerSocket).emit('call_accepted', { answererId: data.answererId });
+        });
+
+        socket.on('reject_call', (data) => {
+            const callerSocket = users[data.callerId];
+            if (callerSocket) io.to(callerSocket).emit('call_rejected');
+        });
+
+        socket.on('video_signal', (data) => {
+            const targetSocket = users[data.targetId];
+            if (targetSocket) io.to(targetSocket).emit('video_signal', { from: data.from, signal: data.signal });
+        });
+
+        socket.on('end_call', (data) => {
+            const targetSocket = users[data.targetId];
+            if (targetSocket) io.to(targetSocket).emit('call_ended');
+        });
     // === SOCKETS DAS COMUNIDADES ===
     socket.on('join_community_channel', (channelId) => {
         // Sai do canal anterior para não ler mensagens vazadas
