@@ -100,7 +100,35 @@ const UserSchema = new mongoose.Schema({
     unlockedItems: [{ type: String }] // NOVO: Itens da Loja Neon
 });
 const User = mongoose.model('User', UserSchema);
+// ==============================================================
+// 📸 MODELO DE STATUS EFÊMEROS (STORIES - 24 HORAS)
+// ==============================================================
+const statusSchema = new mongoose.Schema({
+    senderId: String,
+    senderName: String,
+    senderPhoto: String,
+    type: { type: String, default: 'text' }, // 'text' ou 'image'
+    content: String, // O texto ou a imagem
+    bgColor: { type: String, default: '#3B82F6' },
+    createdAt: { type: Date, default: Date.now, expires: 86400 } // Apaga sozinho em 24h
+});
+const StatusMsg = mongoose.model('StatusMsg', statusSchema);
 
+app.get('/api/statuses', async (req, res) => {
+    try {
+        const statuses = await StatusMsg.find().sort({ createdAt: 1 });
+        res.json(statuses);
+    } catch(e) { res.status(500).json([]); }
+});
+
+app.post('/api/status', async (req, res) => {
+    try {
+        const newStatus = new StatusMsg(req.body);
+        await newStatus.save();
+        io.emit('new_status_published', newStatus);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ error: 'Erro ao postar status' }); }
+});
 const GroupSchema = new mongoose.Schema({ name: { type: String, required: true }, admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } });
 const Group = mongoose.model('Group', GroupSchema);
 

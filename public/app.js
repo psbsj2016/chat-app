@@ -1430,3 +1430,158 @@ function toggleVideoCam() {
     btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444';
     btn.innerHTML = videoTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="font-size: 28px;">videocam_off</span>';
 }
+
+// ==============================================================
+// 📸 MOTOR DE STATUS (STORIES 24H)
+// ==============================================================
+let allStatuses = [];
+let groupedStatuses = {};
+let currentStoryQueue = [];
+let currentStoryIndex = 0;
+let storyTimer;
+let storyProgressInterval;
+const STORY_DURATION = 5000; 
+const statusColors = ['#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#EC4899', '#0F172A'];
+let currentStatusColorIndex = 0;
+let statusBase64Image = null;
+
+setTimeout(() => {
+    const myImg = document.getElementById('my-status-tray-avatar');
+    if (myImg) myImg.src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    fetchStatuses();
+}, 2000);
+
+async function fetchStatuses() {
+    try {
+        const res = await fetch('/api/statuses');
+        allStatuses = await res.json();
+        renderStatusTray();
+    } catch(e) { console.error("Erro status", e); }
+}
+
+socket.on('new_status_published', (newStatus) => {
+    allStatuses.push(newStatus);
+    renderStatusTray();
+    playNotificationSound('pop');
+});
+
+function renderStatusTray() {
+    const container = document.getElementById('dynamic-statuses');
+    if(!container) return;
+    container.innerHTML = '';
+    groupedStatuses = {};
+
+    allStatuses.forEach(s => {
+        if(!groupedStatuses[s.senderId]) groupedStatuses[s.senderId] = [];
+        groupedStatuses[s.senderId].push(s);
+    });
+
+    const otherUsers = Object.keys(groupedStatuses).filter(id => id !== myId);
+
+    otherUsers.forEach(userId => {
+        const userStatuses = groupedStatuses[userId];
+        const lastStatus = userStatuses[userStatuses.length - 1];
+        container.innerHTML += `
+            <div class="status-item" onclick="openStoryViewer('${userId}')">
+                <div class="status-avatar-wrapper"><img src="${lastStatus.senderPhoto}" class="status-avatar"></div>
+                <span class="status-name">${lastStatus.senderName.split(' ')[0]}</span>
+            </div>`;
+    });
+}
+
+function openCreateStatusModal() {
+    showElement('create-status-modal');
+    statusBase64Image = null;
+    document.getElementById('status-image-preview').classList.add('hidden');
+    document.getElementById('status-text-input').classList.remove('hidden');
+    document.getElementById('status-text-input').value = '';
+    changeStatusColor(0);
+}
+
+function changeStatusColor(forceIndex = null) {
+    currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length;
+    document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex];
+}
+
+function previewStatusImage(event) {
+    const file = event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        statusBase64Image = e.target.result;
+        document.getElementById('status-image-preview').src = statusBase64Image;
+        document.getElementById('status-image-preview').classList.remove('hidden');
+        document.getElementById('status-text-input').classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+async function publishStatus() {
+    const textInput = document.getElementById('status-text-input').value.trim();
+    if (!textInput && !statusBase64Image) return alert("Escreva algo ou envie uma foto!");
+
+    const payload = {
+        senderId: myId, senderName: localStorage.getItem('displayName'), senderPhoto: localStorage.getItem('photoUrl'),
+        type: statusBase64Image ? 'image' : 'text', content: statusBase64Image || textInput, bgColor: statusColors[currentStatusColorIndex]
+    };
+
+    hideElement('create-status-modal');
+    try {
+        await fetch('/api/status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+        if(typeof gameEarnXP === 'function') gameEarnXP(10);
+    } catch(e) { alert("Erro ao publicar."); }
+}
+
+function openStoryViewer(userId) {
+    currentStoryQueue = groupedStatuses[userId];
+    if(!currentStoryQueue || currentStoryQueue.length === 0) return;
+    currentStoryIndex = 0;
+    showElement('story-viewer-modal');
+    renderStoryBars(); playStory(currentStoryIndex);
+}
+
+function renderStoryBars() {
+    const container = document.getElementById('story-progress-container');
+    container.innerHTML = '';
+    currentStoryQueue.forEach((_, i) => { container.innerHTML += `<div class="story-progress-bar"><div class="story-progress-fill" id="story-fill-${i}"></div></div>`; });
+}
+
+function playStory(index) {
+    clearTimeout(storyTimer); clearInterval(storyProgressInterval);
+    currentStoryQueue.forEach((_, i) => {
+        const fill = document.getElementById(`story-fill-${i}`);
+        fill.style.width = i < index ? '100%' : '0%';
+    });
+
+    const story = currentStoryQueue[index];
+    document.getElementById('story-author-name').innerText = story.senderName;
+    document.getElementById('story-author-photo').src = story.senderPhoto;
+    
+    const diffMins = Math.floor((Date.now() - new Date(story.createdAt).getTime()) / 60000);
+    document.getElementById('story-time').innerText = diffMins < 60 ? `Há ${diffMins} min` : `Há ${Math.floor(diffMins/60)} h`;
+
+    const contentArea = document.getElementById('story-content-area');
+    const txtDisplay = document.getElementById('story-text-display');
+    const imgDisplay = document.getElementById('story-image-display');
+
+    if(story.type === 'text') {
+        contentArea.style.background = story.bgColor;
+        txtDisplay.innerText = story.content; txtDisplay.classList.remove('hidden'); imgDisplay.classList.add('hidden');
+    } else {
+        contentArea.style.background = '#000';
+        imgDisplay.src = story.content; imgDisplay.classList.remove('hidden'); txtDisplay.classList.add('hidden');
+    }
+
+    let startTime = Date.now();
+    const currentFill = document.getElementById(`story-fill-${index}`);
+    storyProgressInterval = setInterval(() => {
+        let percentage = ((Date.now() - startTime) / STORY_DURATION) * 100;
+        if(percentage <= 100) currentFill.style.width = percentage + '%';
+    }, 50);
+
+    storyTimer = setTimeout(nextStory, STORY_DURATION);
+}
+
+function nextStory() { currentStoryIndex < currentStoryQueue.length - 1 ? playStory(++currentStoryIndex) : closeStoryViewer(); }
+function prevStory() { currentStoryIndex > 0 ? playStory(--currentStoryIndex) : playStory(0); }
+function closeStoryViewer() { clearTimeout(storyTimer); clearInterval(storyProgressInterval); hideElement('story-viewer-modal'); }
