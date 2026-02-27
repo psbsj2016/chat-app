@@ -233,6 +233,22 @@ app.post('/notes', async (req, res) => { try { const note = new Note(req.body); 
 app.put('/notes/:id', async (req, res) => { try { await Note.findByIdAndUpdate(req.params.id, req.body); res.json({msg:'ok'}); } catch(e) { res.status(500).json({error:'Erro'}); } });
 app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelete(req.params.id); res.json({msg: 'ok'}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
 app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
+
+// 🚀 NOVAS ROTAS DE LEITURA E CANCELAMENTO (COLE AQUI)
+app.get('/scheduled-messages/:userId', async (req, res) => { 
+    try { 
+        const msgs = await ScheduledMsg.find({ senderId: req.params.userId, status: 'pending' }).sort('scheduledTime'); 
+        res.json(msgs); 
+    } catch(e) { res.status(500).json([]); } 
+});
+
+app.delete('/schedule-message/:id', async (req, res) => { 
+    try { 
+        await ScheduledMsg.findByIdAndDelete(req.params.id); 
+        res.json({success: true}); 
+    } catch(e) { res.status(500).json({error: 'Erro'}); } 
+});
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 
 // ==============================================================

@@ -437,7 +437,85 @@ function viewMyProfilePhoto() { document.getElementById('viewer-photo').src = do
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; if(!confirm("Substituir foto?")) return; const avatarImg = document.getElementById('config-avatar'); const spinner = document.getElementById('profile-photo-spinner'); avatarImg.src = URL.createObjectURL(file); if(spinner) spinner.classList.remove('hidden'); const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); avatarImg.src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) { } finally { if(spinner) spinner.classList.add('hidden'); input.value = ''; } }
 async function openScheduleModal() { const targetSelect = document.getElementById('schedule-target'); targetSelect.innerHTML = '<option value="">Selecione o destinatário...</option>'; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedUsers.forEach(u => { targetSelect.innerHTML += `<option value="user_${u._id}">${u.displayName || u.email}</option>`; }); cachedGroups.forEach(g => { targetSelect.innerHTML += `<option value="group_${g._id}">Grupo: ${g.name}</option>`; }); document.getElementById('schedule-datetime').value = ''; document.getElementById('schedule-text').value = ''; showElement('schedule-modal'); }
-async function saveScheduledMessage() { const target = document.getElementById('schedule-target').value; const time = document.getElementById('schedule-datetime').value; const content = document.getElementById('schedule-text').value; if(!target || !time || !content) return alert("Preencha todos os campos!"); const isGroup = target.startsWith('group_'); const targetId = target.replace('user_', '').replace('group_', ''); const btn = document.querySelector('#schedule-modal .chic-btn'); btn.innerText = "Agendando..."; btn.disabled = true; try { const res = await fetch('/schedule-message', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senderId: myId, targetId: targetId, isGroup: isGroup, content: content, time: time }) }); if(res.ok) { alert("Agendada!"); hideElement('schedule-modal'); } } catch(e) {} finally { btn.innerText = "Agendar"; btn.disabled = false; } }
+// ==============================================================
+// ⏱️ MOTOR DE AGENDAMENTO (OFFLINE READY)
+// ==============================================================
+async function saveScheduledMessage() { 
+    const target = document.getElementById('schedule-target').value; 
+    const time = document.getElementById('schedule-datetime').value; 
+    const content = document.getElementById('schedule-text').value; 
+    
+    if(!target || !time || !content) return alert("Preencha todos os campos!"); 
+    
+    // 🚀 CORREÇÃO VITAL: Converte a hora local para um formato UTC seguro para o Servidor
+    const localDate = new Date(time);
+    const utcIsoString = localDate.toISOString(); 
+
+    const isGroup = target.startsWith('group_'); 
+    const targetId = target.replace('user_', '').replace('group_', ''); 
+    const btn = document.querySelector('#schedule-modal .chic-btn'); 
+    
+    btn.innerText = "Agendando..."; btn.disabled = true; 
+    try { 
+        const res = await fetch('/schedule-message', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            // 🚨 Correção: Mudei de 'time' para 'scheduledTime' para casar perfeitamente com o Banco de Dados
+            body: JSON.stringify({ senderId: myId, targetId: targetId, isGroup: isGroup, content: content, scheduledTime: utcIsoString }) 
+        }); 
+        
+        if(res.ok) { 
+            alert("Missão Agendada! O Servidor enviará o torpedo na hora exata, mesmo que feche o aplicativo."); 
+            hideElement('schedule-modal'); 
+            document.getElementById('schedule-datetime').value = '';
+            document.getElementById('schedule-text').value = '';
+        } 
+    } catch(e) {
+        alert("Falha na conexão.");
+    } finally { 
+        btn.innerText = "Agendar"; btn.disabled = false; 
+    } 
+}
+
+// 👁️ Função para abrir o Radar de Mensagens Futuras
+async function openScheduledList() {
+    showElement('scheduled-list-modal');
+    const container = document.getElementById('scheduled-messages-container');
+    container.innerHTML = '<div style="text-align:center; color: var(--brand-secondary); margin-top: 20px;">Rastreando agendamentos...</div>';
+    
+    try {
+        const res = await fetch(`/scheduled-messages/${myId}`);
+        const msgs = await res.json();
+        container.innerHTML = '';
+        
+        if (msgs.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color: var(--secondary-text); margin-top: 20px;">O radar está limpo. Nenhuma mensagem programada.</div>';
+            return;
+        }
+        
+        msgs.forEach(m => {
+            const dateStr = new Date(m.scheduledTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            container.innerHTML += `
+                <div style="background: var(--input-bg); padding: 12px; border-radius: 12px; margin-bottom: 10px; border-left: 3px solid var(--brand-secondary);">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--brand-secondary); margin-bottom: 5px; text-transform: uppercase;">⏰ Disparo: ${dateStr}</div>
+                    <div style="color: var(--text-color); font-size: 14px; margin-bottom: 10px; line-height: 1.4;">"${m.content}"</div>
+                    <button onclick="cancelScheduledMessage('${m._id}')" class="chic-btn" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444; margin: 0; padding: 6px 12px; width: auto; font-size: 12px;">Abortar Missão</button>
+                </div>
+            `;
+        });
+    } catch(e) { 
+        container.innerHTML = '<div style="color: #EF4444; text-align:center;">Erro ao ligar ao servidor.</div>'; 
+    }
+}
+
+// 🚫 Função para cancelar um agendamento
+async function cancelScheduledMessage(id) {
+    if(!confirm('Tem certeza que deseja abortar este disparo programado?')) return;
+    try {
+        await fetch(`/schedule-message/${id}`, { method: 'DELETE' });
+        openScheduledList(); // Atualiza a lista automaticamente
+    } catch(e) { alert("Erro ao cancelar."); }
+}
 function applyUnlockedItems() { document.body.classList.remove('theme-matrix', 'bubble-cyber'); const dName = document.getElementById('drawer-name'); if (dName) dName.innerHTML = dName.innerHTML.replace(/ <span class="material-icons-round vip-badge-icon".*?<\/span>/g, ''); if (!cachedMe.unlockedItems) return; const equippedTheme = localStorage.getItem('equipped_theme'); if (equippedTheme === 'theme_matrix' && cachedMe.unlockedItems.includes('theme_matrix')) { document.body.classList.add('theme-matrix'); } const equippedBubble = localStorage.getItem('equipped_bubble'); if (equippedBubble === 'bubble_cyber' && cachedMe.unlockedItems.includes('bubble_cyber')) { document.body.classList.add('bubble-cyber'); } const equippedBadge = localStorage.getItem('equipped_badge'); if (equippedBadge === 'badge_vip' && cachedMe.unlockedItems.includes('badge_vip')) { if (dName && !dName.innerHTML.includes('workspace_premium')) { dName.innerHTML += ' <span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:18px; vertical-align:middle;" title="VIP">workspace_premium</span>'; } } ['theme_matrix', 'bubble_cyber', 'badge_vip'].forEach(id => { if (cachedMe.unlockedItems.includes(id)) { const btn = document.getElementById('btn-' + id); if(btn) { btn.innerText = 'Adquirido'; btn.disabled = true; btn.style.background = 'var(--input-bg)'; btn.style.color = 'var(--secondary-text)'; } } }); }
 function equipItem(type, itemId) { if (itemId) { localStorage.setItem(`equipped_${type}`, itemId); } else { localStorage.removeItem(`equipped_${type}`); } applyUnlockedItems(); renderInventory(); }
 function renderInventory() { const list = document.getElementById('inventory-list'); if(!list) return; list.innerHTML = ''; const items = [ { id: 'theme_matrix', name: 'Tema Matrix', icon: 'terminal', type: 'theme', color: '#10B981' }, { id: 'bubble_cyber', name: 'Balão Cyber', icon: 'chat_bubble', type: 'bubble', color: '#06B6D4' }, { id: 'badge_vip', name: 'Selo VIP', icon: 'workspace_premium', type: 'badge', color: '#F59E0B' } ]; const unlocked = cachedMe.unlockedItems || []; const categories = { 'theme': 'Temas Globais', 'bubble': 'Estilo de Balões', 'badge': 'Emblemas de Perfil' }; for (let type in categories) { let catHtml = `<div style="font-size: 13px; font-weight: 800; margin-top: 10px;">${categories[type]}</div><div style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">`; const isDefaultActive = !localStorage.getItem(`equipped_${type}`); catHtml += `<div onclick="equipItem('${type}', null)" style="min-width: 100px; padding: 10px; border-radius: 12px; background: var(--card-bg); border: 2px solid ${isDefaultActive ? 'var(--brand-primary)' : 'transparent'}; text-align: center; cursor: pointer;"><span class="material-icons-round" style="font-size: 28px; color: var(--secondary-text);">layers_clear</span><div style="font-size: 12px; font-weight: bold; margin-top: 5px;">Padrão</div></div>`; items.filter(i => i.type === type).forEach(item => { const hasItem = unlocked.includes(item.id); const isEquipped = localStorage.getItem(`equipped_${type}`) === item.id; if (hasItem) { catHtml += `<div onclick="equipItem('${type}', '${item.id}')" style="min-width: 100px; padding: 10px; border-radius: 12px; background: ${item.color}15; border: 2px solid ${isEquipped ? item.color : 'transparent'}; text-align: center; cursor: pointer;"><span class="material-icons-round" style="font-size: 28px; color: ${item.color};">${item.icon}</span><div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: ${item.color};">${item.name}</div></div>`; } else { catHtml += `<div style="min-width: 100px; padding: 10px; border-radius: 12px; background: var(--input-bg); opacity: 0.5;"><span class="material-icons-round" style="font-size: 28px;">lock</span></div>`; } }); catHtml += `</div>`; list.innerHTML += catHtml; } }

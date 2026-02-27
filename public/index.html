@@ -258,6 +258,7 @@
             
             <div class="drawer-section-title">Ferramentas</div>
             <div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div>
+            <div class="drawer-item" onclick="openScheduledList(); toggleDrawer()"><span class="material-icons-round" style="color: var(--brand-secondary);">event_note</span> Meus Agendamentos</div>
             <div class="drawer-item" onclick="document.getElementById('admin-modal').classList.remove('hidden'); toggleDrawer()"><span class="material-icons-round" style="color:#F59E0B">campaign</span> Aviso Geral</div>
             
             <div class="drawer-section-title">Conta</div>
@@ -576,6 +577,17 @@
 
     <div id="schedule-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px; font-size:22px; font-weight:800;">Agendar Mensagem</h3><select id="schedule-target" class="chic-input" style="padding:12px; margin-bottom:15px;"></select><input type="datetime-local" id="schedule-datetime" class="chic-input" style="padding:12px; margin-bottom:15px;"><textarea id="schedule-text" placeholder="Escreva a mensagem futura..." class="chic-input" style="resize:none; height:80px; padding:12px; margin-bottom:20px;"></textarea><div class="modal-actions" style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('schedule-modal')" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="saveScheduledMessage()" class="chic-btn" style="flex:1; margin:0;">Agendar</button></div></div></div>
     
+   <div id="scheduled-list-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; padding: 20px;">
+            <h3 style="color:var(--brand-secondary); margin-bottom:15px; font-size:20px; font-weight:800;"><span class="material-icons-round" style="vertical-align: middle;">event_note</span> Radar de Disparos</h3>
+            
+            <div id="scheduled-messages-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding-right: 5px;">
+                </div>
+            
+            <button onclick="hideElement('scheduled-list-modal')" class="chic-btn" style="background:transparent; border:1px solid var(--input-bg); color:var(--secondary-text); margin: 0;">Recolher Radar</button>
+        </div>
+    </div>
+
    <div id="create-group-modal" class="modal-overlay hidden" style="z-index: 9999;">
         <div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;">
             

@@ -23,51 +23,60 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
         body { background-color: var(--bg-color); font-family: 'Orbitron', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* 1. HEADER / HUD SUPERIOR */
+        /* 1. HEADER / HUD SUPERIOR (LIMPO) */
         #hud {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: center; align-items: center;
             background: var(--hud-bg); padding: 10px 15px; border-bottom: 2px solid rgba(255,255,255,0.1);
             color: #fff; z-index: 10; backdrop-filter: blur(10px);
             height: 70px; flex-shrink: 0;
         }
-        .hud-center { display: flex; gap: 15px; align-items: center; }
+        .hud-center { display: flex; gap: 20px; align-items: center; }
         .hud-stat { display: flex; flex-direction: column; align-items: center; }
         .stat-label { font-size: 9px; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
         .stat-value { font-size: 16px; font-weight: 900; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
-        .icon-btn { background: transparent; border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 5px; }
 
         /* 2. ÁREA DO JOGO (DISPLAY INFINITO) */
         #game-area {
             flex: 1; position: relative; width: 100%; overflow: hidden;
             background: radial-gradient(circle at center, #111827 0%, #000000 100%);
-            transition: filter 1s ease; /* Efeito Transição de Dimensão */
+            transition: filter 1s ease;
         }
         canvas { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
 
-        /* 3. CONTROLOS INFERIORES (D-PAD) */
+        /* 3. CONTROLOS INFERIORES (D-PAD ESPAÇOSO) */
         #controls-wrapper {
-            height: 180px; background: var(--hud-bg); border-top: 2px solid rgba(255,255,255,0.1);
+            height: 240px; background: var(--hud-bg); border-top: 2px solid rgba(255,255,255,0.1);
             display: flex; justify-content: center; align-items: center; flex-shrink: 0;
-            padding-bottom: 10px;
+            padding-bottom: 20px;
         }
         
         #d-pad {
-            position: relative; width: 150px; height: 150px;
+            display: grid;
+            grid-template-columns: 65px 65px 65px;
+            grid-template-rows: 65px 65px 65px;
+            gap: 15px; /* ESPAÇAMENTO ENTRE OS BOTÕES */
+            justify-content: center;
+            align-items: center;
         }
-        .d-btn {
-            position: absolute; width: 50px; height: 50px; border-radius: 12px;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.1s; cursor: pointer;
-        }
-        .d-btn:active { background: rgba(6, 182, 212, 0.3); transform: scale(0.9); border-color: var(--primary); box-shadow: 0 0 15px var(--primary); }
         
-        .btn-up { top: 0; left: 50px; }
-        .btn-down { bottom: 0; left: 50px; }
-        .btn-left { top: 50px; left: 0; }
-        .btn-right { top: 50px; right: 0; }
+        .d-btn {
+            width: 100%; height: 100%; border-radius: 50%;
+            background: linear-gradient(180deg, #E60012 0%, #8A000A 100%);
+            border: 3px solid #FFFFFF;
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.9);
+            transition: 0.1s; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .d-btn:active { background: linear-gradient(180deg, #FF1A2D 0%, #A6000D 100%); transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.9); }
+        .d-btn .material-icons-round { font-size: 36px; font-weight: bold; }
+        
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 3; }
 
-        /* TELAS DE UI (OVERLAYS) */
+        /* TELAS DE UI */
         .overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .hidden { display: none !important; }
         .cyber-btn { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 15px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 16px; margin: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
@@ -77,16 +86,12 @@
 <body>
 
     <header id="hud">
-        <button class="icon-btn" onclick="goBack()"><span class="material-icons-round" style="font-size: 28px;">arrow_back</span></button>
-        
         <div class="hud-center">
-            <div class="hud-stat"><span class="stat-label">Presas</span><span class="stat-value" id="ui-score">0</span></div>
+            <div class="hud-stat"><span class="stat-label">Caça</span><span class="stat-value" id="ui-score">0</span></div>
             <div class="hud-stat"><span class="stat-label">Nível</span><span class="stat-value" id="ui-level" style="color: var(--accent); text-shadow: 0 0 10px var(--accent);">1</span></div>
             <div class="hud-stat"><span class="stat-label">Vel.</span><span class="stat-value" id="ui-speed">1.0x</span></div>
             <div class="hud-stat"><span class="stat-label">Modo</span><span class="stat-value" id="ui-mode" style="font-size: 12px; margin-top:3px; color: #fff; text-shadow: none;">SOLO</span></div>
         </div>
-
-        <button class="icon-btn"><span class="material-icons-round" style="font-size: 28px;">menu</span></button>
     </header>
 
     <main id="game-area">
@@ -94,15 +99,15 @@
         
         <div id="start-screen" class="overlay">
             <h1 style="color: var(--primary); font-size: 40px; margin-bottom: 5px; text-shadow: 0 0 20px var(--primary);">PREDATOR 6D</h1>
-            <p style="color: #94A3B8; margin-bottom: 40px; letter-spacing: 2px;">ALÉM DO ESPAÇO E DO TEMPO</p>
-            <button class="cyber-btn" onclick="initGame('solo')">Modo Solo (Offline)</button>
-            <button class="cyber-btn" onclick="initGame('multi')" style="border-color: var(--accent); color: var(--accent);">Modo Multiplayer</button>
+            <p style="color: #94A3B8; margin-bottom: 40px; letter-spacing: 2px;">CADEIA ALIMENTAR REAL</p>
+            <button class="cyber-btn" onclick="initGame('solo')">Caçada Solo</button>
+            <button class="cyber-btn" onclick="initGame('multi')" style="border-color: var(--accent); color: var(--accent);">Duelo Multiplayer</button>
         </div>
 
         <div id="end-screen" class="overlay hidden">
-            <h1 id="end-title" style="color: var(--danger); font-size: 40px;">SINAL PERDIDO</h1>
+            <h1 id="end-title" style="color: var(--danger); font-size: 40px;">VOCÊ MORREU</h1>
             <p id="end-desc" style="color: #fff; margin-bottom: 30px; font-size: 18px;"></p>
-            <button class="cyber-btn" onclick="location.reload()">Reiniciar Loop</button>
+            <button class="cyber-btn" onclick="location.reload()">Renascer</button>
         </div>
     </main>
 
@@ -121,43 +126,25 @@
     const ctx = canvas.getContext('2d');
     const gameArea = document.getElementById('game-area');
 
-    // === MÁQUINA DE ESTADOS E MULTIPLAYER ===
-    let state = {
-        isRunning: false, mode: 'solo',
-        score: 0, level: 1, maxLevel: 10,
-        baseSpeed: 5, currentSpeed: 5,
-        dimension: 1 
-    };
+    let state = { isRunning: false, mode: 'solo', score: 0, level: 1, maxLevel: 10, baseSpeed: 5, currentSpeed: 5, dimension: 1 };
 
-    // Grade Lógica Fixa (Garante que o ecrã do telemóvel e do PC sincronizem os corpos perfeitamente)
-    const cols = 30; 
-    const rows = 30;
+    const cols = 25; 
+    const rows = 25;
     let cellW, cellH;
     
-    let snake = {
-        body: [],
-        dir: { x: 1, y: 0 },
-        nextDir: { x: 1, y: 0 },
-        colorHead: '#06B6D4', colorBody: '#0891B2'
-    };
-
-    // Oponente (Invasor Dimensional)
+    let snake = { body: [], dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, colorHead: '#06B6D4', colorBody: '#0891B2' };
     let currentRoom = null;
-    let opponent = {
-        active: false,
-        id: null,
-        body: [],
-        colorHead: '#EF4444', 
-        colorBody: '#7F1D1D'
-    };
+    let opponent = { active: false, id: null, body: [], colorHead: '#EF4444', colorBody: '#7F1D1D' };
 
-    let prey = { x: 0, y: 0, type: 'normal', color: '#FDE047' };
+    // Lista Biodiversa de Presas Reais
+    const animaisReais = ['🐭', '🐦', '🐸', '🐰', '🦎', '🐞', '🦇'];
+    let prey = { x: 0, y: 0, type: 'normal', animal: '🐭', color: '#FFF' };
 
     const dimensions = [
-        { filter: 'hue-rotate(0deg)', bg: '#000', head: '#06B6D4' },
-        { filter: 'hue-rotate(90deg)', bg: '#0A0500', head: '#22C55E' },
-        { filter: 'hue-rotate(180deg)', bg: '#05000A', head: '#EF4444' },
-        { filter: 'hue-rotate(270deg)', bg: '#000A0A', head: '#A855F7' }
+        { filter: 'hue-rotate(0deg)', head: '#06B6D4', body: '#0891B2' },
+        { filter: 'hue-rotate(90deg)', head: '#22C55E', body: '#166534' },
+        { filter: 'hue-rotate(180deg)', head: '#EF4444', body: '#991B1B' },
+        { filter: 'hue-rotate(270deg)', head: '#A855F7', body: '#6B21A8' }
     ];
 
     function resize() {
@@ -169,7 +156,6 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // === NÚCLEO DO JOGO ===
     function initGame(mode) {
         state.mode = mode;
         document.getElementById('ui-mode').innerText = mode.toUpperCase();
@@ -180,8 +166,6 @@
             document.getElementById('end-title').style.color = "var(--primary)";
             document.getElementById('end-desc').innerText = "Aguardando um rival cruzar a fenda dimensional...";
             document.getElementById('end-screen').classList.remove('hidden');
-            
-            // Entra na fila do servidor ChatPTT
             socket.emit('join_snake_duel', { profile: { name: 'Predador 6D' } });
         } else {
             resetSnake(Math.floor(cols/2));
@@ -191,44 +175,35 @@
         }
     }
 
-    // === SINAIS DO MULTIVERSO (SOCKETS) ===
     socket.on('snake_duel_start', (data) => {
         const me = data.players.find(p => p.id === socket.id);
         const them = data.players.find(p => p.id !== socket.id);
-        
-        currentRoom = data.roomId;
-        opponent.id = them.id;
-        opponent.active = true;
-
+        currentRoom = data.roomId; opponent.id = them.id; opponent.active = true;
         document.getElementById('end-screen').classList.add('hidden');
 
-        // Um nasce na esquerda, outro na direita
         const isHost = data.players[0].id === socket.id;
         resetSnake(isHost ? 5 : cols - 5);
-        snake.dir = { x: isHost ? 1 : -1, y: 0 };
-        snake.nextDir = { x: isHost ? 1 : -1, y: 0 };
-
-        opponent.body = [{ x: isHost ? cols - 5 : 5, y: Math.floor(rows/2) }];
+        snake.dir = { x: isHost ? 1 : -1, y: 0 }; snake.nextDir = { x: isHost ? 1 : -1, y: 0 };
+        opponent.body = [{ x: isHost ? cols - 5 : 5, y: Math.floor(rows/2), dir: {x: isHost ? -1 : 1, y: 0} }];
 
         spawnPrey();
         state.score = 0; state.level = 1; state.baseSpeed = 5;
         updateHUD();
-
-        state.isRunning = true;
-        gameLoop();
+        state.isRunning = true; gameLoop();
     });
 
     socket.on('opponent_move', (data) => {
-        if(opponent.active) opponent.body = data.history; // history contém o array do corpo
+        if(opponent.active) { opponent.body = data.history; opponent.dir = data.dir; }
     });
 
-    socket.on('duel_victory', () => {
-        gameOver("VITÓRIA", "O rival foi desintegrado da linha do tempo!", "var(--success)");
-    });
+    socket.on('duel_victory', () => { gameOver("VITÓRIA", "O rival virou o seu jantar!", "var(--success)"); });
 
-    // === MECÂNICAS ===
     function resetSnake(startX) {
-        snake.body = [ { x: startX, y: Math.floor(rows/2) } ];
+        snake.body = [ 
+            { x: startX, y: Math.floor(rows/2) },
+            { x: startX-1, y: Math.floor(rows/2) },
+            { x: startX-2, y: Math.floor(rows/2) }
+        ];
         snake.dir = { x: 1, y: 0 }; snake.nextDir = { x: 1, y: 0 };
     }
 
@@ -237,9 +212,12 @@
         prey.y = Math.floor(Math.random() * rows);
         
         let rand = Math.random();
-        if (rand > 0.9) { prey.type = 'time'; prey.color = '#3B82F6'; } 
-        else if (rand > 0.8) { prey.type = 'dimension'; prey.color = '#D946EF'; } 
-        else { prey.type = 'normal'; prey.color = '#FDE047'; } 
+        if (rand > 0.9) { prey.type = 'time'; prey.animal = '⌛'; } 
+        else if (rand > 0.8) { prey.type = 'dimension'; prey.animal = '🌌'; } 
+        else { 
+            prey.type = 'normal'; 
+            prey.animal = animaisReais[Math.floor(Math.random() * animaisReais.length)];
+        } 
     }
 
     function changeDir(x, y) {
@@ -254,9 +232,10 @@
         
         if (newLevel > state.level) {
             state.level = newLevel;
-            if (state.level > state.maxLevel) return gameOver("TRANSCENDÊNCIA", "Você dominou a 6ª Dimensão!", "#22C55E");
+            if (state.level > state.maxLevel) return gameOver("ALFA DOMINANTE", "Você devorou toda a cadeia alimentar.", "#22C55E");
 
-            snake.body = [snake.body[0]]; // Volta a ser pequeno
+            let head = snake.body[0];
+            snake.body = [head, {x: head.x - snake.dir.x, y: head.y - snake.dir.y}]; // Reseta o tamanho
             state.baseSpeed += 1;
             shiftDimension(); 
             if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(state.level);
@@ -269,6 +248,7 @@
         let dim = dimensions[state.dimension];
         gameArea.style.filter = dim.filter;
         snake.colorHead = dim.head;
+        snake.colorBody = dim.body;
     }
 
     function updateHUD() {
@@ -277,9 +257,7 @@
         document.getElementById('ui-speed').innerText = state.baseSpeed.toFixed(1) + 'x';
     }
 
-    // === UPDATE E RENDER ===
     let lastTime = 0; let accumulatedTime = 0;
-
     function gameLoop(timestamp = 0) {
         if (!state.isRunning) return;
         let deltaTime = timestamp - lastTime;
@@ -296,32 +274,27 @@
         snake.dir = { ...snake.nextDir };
         let head = { x: snake.body[0].x + snake.dir.x, y: snake.body[0].y + snake.dir.y };
 
-        // Wrap Around Infinito
         if (head.x < 0) head.x = cols - 1; if (head.x >= cols) head.x = 0;
         if (head.y < 0) head.y = rows - 1; if (head.y >= rows) head.y = 0;
 
-        // Auto-Colisão
         for (let i = 0; i < snake.body.length; i++) {
-            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("COLAPSO", `Auto-devoração no nível ${state.level}`, "var(--danger)");
+            if (head.x === snake.body[i].x && head.y === snake.body[i].y) return gameOver("AUTO-CANIBA", `Você mordeu o próprio corpo.`, "var(--danger)");
         }
 
         snake.body.unshift(head);
 
-        // Comunicação Multiplayer e Colisão Tática
         if (state.mode === 'multi') {
-            socket.emit('snake_move', { roomId: currentRoom, head: head, history: snake.body, angle: 0 });
-            
+            socket.emit('snake_move', { roomId: currentRoom, head: head, history: snake.body, dir: snake.dir });
             if (opponent.active) {
                 for (let pt of opponent.body) {
                     if (head.x === pt.x && head.y === pt.y) {
                         socket.emit('snake_death', { roomId: currentRoom, opponentId: opponent.id });
-                        return gameOver("SINAL PERDIDO", "Você bateu no corpo do Invasor!", "var(--danger)");
+                        return gameOver("PRESA", "Você foi engolido pelo Invasor!", "var(--danger)");
                     }
                 }
             }
         }
 
-        // Comer Presa
         if (head.x === prey.x && head.y === prey.y) {
             let pts = 10;
             if(prey.type === 'time') { state.baseSpeed -= 1; pts = 20; setTimeout(()=> state.baseSpeed += 1, 5000); }
@@ -332,39 +305,121 @@
         }
     }
 
-    function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Motion Blur
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // ==========================================
+    // MOTOR DE RENDERIZAÇÃO REALISTA (ANATOMIA)
+    // ==========================================
+    function drawRealisticSnake(s, isOpponent) {
+        if(s.body.length === 0) return;
 
-        // Desenha Presa
-        let pulse = Math.abs(Math.sin(Date.now() / 200)) * 4;
-        ctx.fillStyle = prey.color; ctx.shadowBlur = 15; ctx.shadowColor = prey.color;
-        ctx.beginPath();
-        ctx.ellipse(prey.x * cellW + cellW/2, prey.y * cellH + cellH/2, (cellW/2 - 2) + pulse/2, (cellH/2 - 2) + pulse/2, 0, 0, Math.PI*2);
-        ctx.fill();
+        // 1. Desenha o Corpo (De trás para a frente para a cabeça ficar por cima)
+        for (let i = s.body.length - 1; i > 0; i--) {
+            let seg = s.body[i];
+            let px = seg.x * cellW + cellW/2;
+            let py = seg.y * cellH + cellH/2;
+            
+            // Rabo afinando nas últimas 5 posições
+            let radius = (cellW / 2) * 0.9;
+            let tailDist = s.body.length - 1 - i;
+            if (tailDist < 5) { radius = radius * (0.4 + 0.6 * (tailDist / 5)); }
 
-        // Desenha Invasor (Multiplayer)
-        if (state.mode === 'multi' && opponent.active) {
-            opponent.body.forEach((seg, i) => {
-                let isHead = i===0;
-                ctx.fillStyle = isHead ? opponent.colorHead : opponent.colorBody;
-                ctx.shadowBlur = isHead ? 15 : 0; ctx.shadowColor = opponent.colorHead;
-                let mX = isHead ? 0 : i * 0.05 * cellW; if(mX > cellW/2-2) mX = cellW/2-2;
-                let mY = isHead ? 0 : i * 0.05 * cellH; if(mY > cellH/2-2) mY = cellH/2-2;
-                ctx.fillRect(seg.x * cellW + mX, seg.y * cellH + mY, cellW - mX*2, cellH - mY*2);
-            });
+            // Gradiente Radial para Escamas/Volume 3D
+            let grad = ctx.createRadialGradient(px, py, radius*0.3, px, py, radius);
+            grad.addColorStop(0, isOpponent ? '#EF4444' : s.colorHead); // Centro claro (Espinha)
+            grad.addColorStop(1, isOpponent ? '#7F1D1D' : s.colorBody); // Borda escura (Sombra)
+            
+            ctx.beginPath();
+            ctx.arc(px, py, radius, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
         }
 
-        // Desenha Minha Cobra
-        snake.body.forEach((seg, i) => {
-            let isHead = i===0;
-            ctx.fillStyle = isHead ? snake.colorHead : snake.colorBody;
-            ctx.shadowBlur = isHead ? 10 : 0; ctx.shadowColor = snake.colorHead;
-            let mX = isHead ? 0 : i * 0.05 * cellW; if(mX > cellW/2-2) mX = cellW/2-2;
-            let mY = isHead ? 0 : i * 0.05 * cellH; if(mY > cellH/2-2) mY = cellH/2-2;
-            ctx.fillRect(seg.x * cellW + mX, seg.y * cellH + mY, cellW - mX*2, cellH - mY*2);
-        });
-        ctx.shadowBlur = 0;
+        // 2. Desenha a Cabeça com Rosto e Mandíbula
+        let head = s.body[0];
+        let px = head.x * cellW + cellW/2;
+        let py = head.y * cellH + cellH/2;
+        
+        let dirX = s.dir ? s.dir.x : (s.body.length > 1 ? head.x - s.body[1].x : 1);
+        let dirY = s.dir ? s.dir.y : (s.body.length > 1 ? head.y - s.body[1].y : 0);
+        let angle = Math.atan2(dirY, dirX);
+
+        // Lógica de Bote (Abrir a boca perto da presa) - Apenas para a cobra principal
+        let isMouthOpen = false;
+        if (!isOpponent) {
+            let distToPrey = Math.hypot(head.x - prey.x, head.y - prey.y);
+            if (distToPrey < 4) isMouthOpen = true; // Se a presa está a 3 blocos ou menos
+        }
+
+        let headLen = cellW * 0.9;
+        let headWid = cellW * 0.7;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
+
+        ctx.fillStyle = isOpponent ? '#EF4444' : s.colorHead;
+
+        if (isMouthOpen) {
+            // Mandíbula Superior
+            ctx.save(); ctx.rotate(-0.3); ctx.beginPath();
+            ctx.ellipse(headLen/2, 0, headLen, headWid/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            // Mandíbula Inferior
+            ctx.save(); ctx.rotate(0.3); ctx.beginPath();
+            ctx.ellipse(headLen/2, 0, headLen*0.9, headWid/3, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            
+            // Fundo da Boca (Vermelho Sangue)
+            ctx.fillStyle = '#4A0000'; ctx.beginPath();
+            ctx.arc(0, 0, headWid*0.5, -0.3, 0.3); ctx.fill();
+            
+            // Presas (Dentes)
+            ctx.fillStyle = '#FFF'; ctx.save(); ctx.rotate(-0.3); ctx.beginPath();
+            ctx.moveTo(headLen*0.8, headWid/4); ctx.lineTo(headLen*0.9, headWid/2); ctx.lineTo(headLen*0.7, headWid/4); ctx.fill(); ctx.restore();
+        } else {
+            // Cabeça Fechada (Oval)
+            ctx.beginPath();
+            ctx.ellipse(headLen/2, 0, headLen, headWid, 0, 0, Math.PI*2); ctx.fill();
+            
+            // Língua bifurcada (Animada)
+            if (Math.random() > 0.8) {
+                ctx.strokeStyle = '#EF4444'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+                ctx.beginPath(); ctx.moveTo(headLen, 0); ctx.lineTo(headLen + 8, 0); ctx.lineTo(headLen + 12, -4);
+                ctx.moveTo(headLen + 8, 0); ctx.lineTo(headLen + 12, 4); ctx.stroke();
+            }
+        }
+
+        // Olhos Realistas Frios (Fera)
+        ctx.fillStyle = '#000'; // Fundo do olho
+        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.6, headWid*0.25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.6, headWid*0.25, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = '#F59E0B'; // Íris Amarela
+        ctx.beginPath(); ctx.arc(headLen*0.3, -headWid*0.6, headWid*0.15, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(headLen*0.3, headWid*0.6, headWid*0.15, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = '#000'; // Pupila Vertical Fenda
+        ctx.beginPath(); ctx.ellipse(headLen*0.3, -headWid*0.6, headWid*0.04, headWid*0.12, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(headLen*0.3, headWid*0.6, headWid*0.04, headWid*0.12, 0, 0, Math.PI*2); ctx.fill();
+
+        ctx.restore();
+    }
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Desenha Presa Realista (Emoji) com Animação de Medo
+        let wiggle = Math.sin(Date.now() / 80) * 0.15; // Tremor rápido
+        ctx.save();
+        ctx.translate(prey.x * cellW + cellW/2, prey.y * cellH + cellH/2);
+        ctx.rotate(wiggle);
+        ctx.font = `${cellW * 1.5}px Arial`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(prey.animal, 0, 0);
+        ctx.restore();
+
+        // Renderiza Invasor
+        if (state.mode === 'multi' && opponent.active) drawRealisticSnake(opponent, true);
+        // Renderiza Minha Cobra
+        drawRealisticSnake(snake, false);
     }
 
     function gameOver(title, desc, color) {
@@ -374,11 +429,6 @@
         document.getElementById('end-desc').innerText = desc;
         document.getElementById('end-screen').classList.remove('hidden');
         if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(state.score);
-    }
-
-    function goBack() {
-        if(window.parent && window.parent.closeImmersiveGame) window.parent.closeImmersiveGame();
-        else location.reload();
     }
 
     window.addEventListener('keydown', e => {
