@@ -556,6 +556,52 @@ io.on('connection', (socket) => {
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
+    // ==============================================================
+    // 🐍 MOTOR MULTIPLAYER: NEON SERPENT DUEL
+    // ==============================================================
+    let snakeQueue = []; // Fila de espera para duelos
+
+    socket.on('join_snake_duel', (data) => {
+        // Evita duplicados na fila
+        if (!snakeQueue.find(p => p.id === socket.id)) {
+            snakeQueue.push({ id: socket.id, profile: data.profile });
+        }
+
+        // Se houver dois jogadores, inicia a partida
+        if (snakeQueue.length >= 2) {
+            const p1 = snakeQueue.shift();
+            const p2 = snakeQueue.shift();
+            const roomId = `snake_room_${p1.id}`;
+
+            // Coloca ambos na mesma "Arena Virtual"
+            io.sockets.sockets.get(p1.id).join(roomId);
+            io.sockets.sockets.get(p2.id).join(roomId);
+
+            // Avisa os jogadores que o duelo começou
+            io.to(roomId).emit('snake_duel_start', {
+                roomId: roomId,
+                players: [
+                    { id: p1.id, profile: p1.profile, startPos: { x: 100, y: 300 }, color: '#0FF' },
+                    { id: p2.id, profile: p2.profile, startPos: { x: 500, y: 300 }, color: '#F0F' }
+                ]
+            });
+        }
+    });
+
+    // Sincronização de Posição em Tempo Real (60fps)
+    socket.on('snake_move', (data) => {
+        socket.to(data.roomId).emit('opponent_move', {
+            id: socket.id,
+            head: data.head,
+            history: data.history,
+            angle: data.angle
+        });
+    });
+
+    // Alerta de Destruição (Morte no Online)
+    socket.on('snake_death', (data) => {
+        socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId });
+    });
     socket.on('disconnect', () => { 
         // Lógica existente de presença
         const uid = Object.keys(users).find(key => users[key] === socket.id); 

@@ -5,449 +5,178 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Neon Serpent: Viper Protocol</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: none; }
-        body {
-            background-color: #030308;
-            color: #0FF;
-            font-family: 'Orbitron', sans-serif;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* Grid Holográfico Animado */
-        #grid-bg {
-            position: absolute;
-            top: -50%; left: -50%; width: 200%; height: 200%;
-            background-image: 
-                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(500px) rotateX(45deg);
-            animation: gridMove 10s linear infinite;
-            z-index: 1;
-            pointer-events: none;
-        }
-        @keyframes gridMove {
-            0% { transform: perspective(500px) rotateX(45deg) translateY(0); }
-            100% { transform: perspective(500px) rotateX(45deg) translateY(50px); }
-        }
-
-        /* Interface HUD Tecnológica */
-        #hud {
-            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
-            display: flex; justify-content: space-between; align-items: flex-start;
-            z-index: 10; pointer-events: none;
-            background: linear-gradient(180deg, rgba(3,3,8,0.9) 0%, transparent 100%);
-        }
-        .hud-panel {
-            background: rgba(0, 255, 255, 0.05);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            border-left: 4px solid #0FF;
-            padding: 10px 20px;
-            border-radius: 4px;
-            backdrop-filter: blur(5px);
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
-        }
-        .hud-title { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
-        .hud-value { font-size: 24px; font-weight: 900; color: #FFF; text-shadow: 0 0 10px #0FF; }
-        .hud-value span { color: #0FF; font-size: 16px; }
-
-        /* Barra de Energia (Dash) */
-        .energy-container { width: 150px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 8px; overflow: hidden; position: relative;}
-        #energy-bar { height: 100%; width: 100%; background: #F0F; box-shadow: 0 0 10px #F0F; transition: width 0.1s; }
-
-        /* Canvas Game */
-        #gameCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;
-        }
-
-        /* Telas de Overlay (Morte / Start) */
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 3, 8, 0.85); z-index: 20;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            backdrop-filter: blur(10px); text-align: center;
-        }
+        /* Estilos Cyberpunk Mantidos */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
+        body { background-color: #030308; color: #0FF; font-family: 'Orbitron', sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
+        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 3, 8, 0.9); z-index: 20; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(10px); text-align: center; }
         .hidden { display: none !important; }
-        h1 { font-size: 40px; color: #FFF; text-shadow: 0 0 20px #0FF, 0 0 40px #0FF; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 4px; }
-        p { color: #888; margin-bottom: 30px; font-size: 14px; letter-spacing: 1px; }
-        .cyber-btn {
-            background: transparent; border: 2px solid #0FF; color: #0FF;
-            padding: 15px 40px; font-size: 18px; font-family: 'Orbitron', sans-serif;
-            font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2) inset; transition: 0.2s;
-        }
-        .cyber-btn:hover, .cyber-btn:active { background: #0FF; color: #000; box-shadow: 0 0 30px #0FF; }
-
-        /* Avisos de Sistema */
-        #system-alert {
-            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
-            color: #F0F; font-size: 20px; font-weight: 900; letter-spacing: 3px;
-            text-shadow: 0 0 15px #F0F; z-index: 15; opacity: 0; pointer-events: none;
-            transition: opacity 0.3s; text-transform: uppercase;
-        }
+        .cyber-btn { background: transparent; border: 2px solid #0FF; color: #0FF; padding: 15px; width: 250px; font-family: 'Orbitron', sans-serif; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s; margin-bottom: 10px; }
+        .cyber-btn:hover { background: rgba(0, 255, 255, 0.1); box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
+        .primary { background: #0FF; color: #000; }
+        .secondary { border-color: #F0F; color: #F0F; }
     </style>
 </head>
 <body>
-
-    <div id="grid-bg"></div>
-
-    <div id="hud">
-        <div class="hud-panel">
-            <div class="hud-title">Sinal de Dados</div>
-            <div class="hud-value" id="scoreDisplay">000</div>
-        </div>
-        <div class="hud-panel" style="border-left-color: #F0F;">
-            <div class="hud-title">Nível Viper</div>
-            <div class="hud-value" id="levelDisplay"><span>LVL</span> 1</div>
-            <div class="energy-container"><div id="energy-bar"></div></div>
-        </div>
-    </div>
-
-    <div id="system-alert">Anomalia Detectada!</div>
-
     <canvas id="gameCanvas"></canvas>
 
     <div id="startScreen" class="overlay">
-        <h1 style="font-size:30px;">Viper Protocol</h1>
-        <p>ARRASTE PARA GUIAR • SEGURE PARA DASH MÁXIMO</p>
-        <button class="cyber-btn" onclick="startGame()">Iniciar Link</button>
+        <h1 style="margin-bottom:20px; font-size: 32px;">Viper Protocol</h1>
+        <button class="cyber-btn primary" onclick="initGame('solo')">Protocolo Solo</button>
+        <button class="cyber-btn secondary" id="btn-multi" onclick="initGame('multiplayer')">Duelo Online</button>
+        <p id="status-msg" style="margin-top:15px; font-size:12px; color:#888;">Selecione o modo</p>
     </div>
 
     <div id="gameOverScreen" class="overlay hidden">
-        <h1 style="color: #F00; text-shadow: 0 0 20px #F00;">Sinal Perdido</h1>
+        <h1 id="gameResultTitle" style="color: #F00;">Sinal Perdido</h1>
         <p id="finalScoreText">Dados Extraídos: 0</p>
-        <button class="cyber-btn" style="border-color: #F00; color: #F00;" onclick="startGame()">Reconectar</button>
-        <button class="cyber-btn" style="margin-top:15px; border:none; box-shadow:none; font-size:12px;" onclick="closeGame()">Sair para o Hub</button>
+        <button class="cyber-btn primary" onclick="location.reload()">Reiniciar</button>
     </div>
 
     <script>
+        const socket = io();
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        
-        let width, height;
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
+        const ctx = canvas.getContext('2d');
+        let width, height, isPlaying = false, gameMode = 'solo';
+        let currentRoom = null, opponentId = null;
+
+        // Entidades
+        const snake = { head: {x:0, y:0}, history: [], angle: 0, length: 20, color: '#0FF', speed: 4 };
+        const opponent = { head: {x:0, y:0}, history: [], angle: 0, color: '#F0F', active: false };
+        let pointer = { x: 0, y: 0 };
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
         resize();
 
-        // Variáveis Globais
-        let gameLoopId;
-        let isPlaying = false;
-        let score = 0;
-        let level = 1;
-        let energy = 100;
-        let pointer = { x: width/2, y: height/2, isDown: false };
-        
-        // Fila de partículas e efeitos
-        let particles = [];
-        let nodes = []; // Alvos (comida)
-        let hazards = []; // Eventos (Buraco Negro)
+        window.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
 
-        // A Serpente
-        const snake = {
-            segments: [],
-            history: [], // Histórico de posições para fluidez
-            head: { x: 0, y: 0 },
-            baseSpeed: 4,
-            currentSpeed: 4,
-            angle: 0,
-            color: '#0FF',
-            size: 8,
-            length: 20, // Quantidade inicial de segmentos
-            spacing: 4  // Distância no histórico entre cada segmento
-        };
-
-        // Inputs (Touch e Mouse fluido)
-        window.addEventListener('pointermove', (e) => {
-            pointer.x = e.clientX;
-            pointer.y = e.clientY;
-        });
-        window.addEventListener('pointerdown', (e) => { pointer.isDown = true; pointer.x = e.clientX; pointer.y = e.clientY; });
-        window.addEventListener('pointerup', () => pointer.isDown = false );
-
-        function spawnNode() {
-            nodes.push({
-                x: Math.random() * (width - 100) + 50,
-                y: Math.random() * (height - 100) + 50,
-                radius: 6,
-                pulse: 0,
-                color: Math.random() > 0.8 ? '#F0F' : '#0FF', // 20% chance de nó especial
-                value: 10
-            });
-        }
-
-        function createParticles(x, y, color, amount) {
-            for (let i = 0; i < amount; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() - 0.5) * 8,
-                    life: 1,
-                    decay: Math.random() * 0.05 + 0.02,
-                    color: color
-                });
+        function initGame(mode) {
+            gameMode = mode;
+            if(mode === 'solo') {
+                startGame();
+            } else {
+                document.getElementById('status-msg').innerText = "A procurar oponente no radar...";
+                document.getElementById('btn-multi').disabled = true;
+                // Envia o perfil para o servidor
+                socket.emit('join_snake_duel', { profile: { name: 'Agente' } });
             }
         }
 
-        function systemAlert(msg, color) {
-            const el = document.getElementById('system-alert');
-            el.innerText = msg;
-            el.style.color = color;
-            el.style.textShadow = `0 0 15px ${color}`;
-            el.style.opacity = 1;
-            setTimeout(() => el.style.opacity = 0, 2000);
-        }
+        socket.on('snake_duel_start', (data) => {
+            const me = data.players.find(p => p.id === socket.id);
+            const them = data.players.find(p => p.id !== socket.id);
+            
+            currentRoom = data.roomId;
+            opponentId = them.id;
+            
+            // Configura posições iniciais do duelo
+            snake.head = {...me.startPos};
+            snake.color = me.color;
+            opponent.head = {...them.startPos};
+            opponent.color = them.color;
+            opponent.active = true;
+
+            startGame();
+        });
 
         function startGame() {
             document.getElementById('startScreen').classList.add('hidden');
-            document.getElementById('gameOverScreen').classList.add('hidden');
-            
-            score = 0; level = 1; energy = 100;
-            document.getElementById('scoreDisplay').innerText = '000';
-            document.getElementById('levelDisplay').innerHTML = `<span>LVL</span> 1`;
-            
-            snake.head = { x: width/2, y: height/2 };
-            snake.history = [];
-            for(let i=0; i<300; i++) snake.history.push({...snake.head});
-            snake.length = 25;
-            snake.baseSpeed = 4;
-            
-            nodes = []; particles = []; hazards = [];
-            spawnNode(); spawnNode();
-            
             isPlaying = true;
-            pointer.x = width/2; pointer.y = height/4; // Aponta pra cima inicialmente
-            
-            systemAlert('Sinal Estabelecido', '#0FF');
-            cancelAnimationFrame(gameLoopId);
-            gameLoop();
+            if(gameMode === 'solo') snake.head = {x: width/2, y: height/2};
+            requestAnimationFrame(gameLoop);
         }
 
-        function gameOver() {
-            isPlaying = false;
-            createParticles(snake.head.x, snake.head.y, '#F00', 50);
-            
-            // Integração XP ChatPTT
-            if(window.parent && window.parent.gameEarnXP && score > 50) {
-                window.parent.gameEarnXP(Math.floor(score / 2)); // Dá XP baseado no score
-            }
+        socket.on('opponent_move', (data) => {
+            opponent.head = data.head;
+            opponent.history = data.history;
+            opponent.angle = data.angle;
+        });
 
-            document.getElementById('finalScoreText').innerText = `Dados Extraídos: ${score}`;
-            setTimeout(() => {
-                document.getElementById('gameOverScreen').classList.remove('hidden');
-            }, 1000);
-        }
+        socket.on('duel_victory', () => {
+            endGame("VITÓRIA: ALVO ELIMINADO", "#0FF");
+        });
 
-        function closeGame() {
-            if(window.parent && window.parent.closeImmersiveGame) {
-                window.parent.closeImmersiveGame();
-            }
+        function gameLoop() {
+            if(!isPlaying) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
         }
 
         function update() {
-            if (!isPlaying) return;
-
-            // Motor de Movimento Fluido (Persegue o Pointer)
+            // Movimento fluido em direção ao toque
             let dx = pointer.x - snake.head.x;
             let dy = pointer.y - snake.head.y;
             let targetAngle = Math.atan2(dy, dx);
-            
-            // Curva Suave (Interpolação de Ângulo)
             let diff = targetAngle - snake.angle;
-            // Normaliza a diferença para o caminho mais curto
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
-            
-            snake.angle += diff * 0.15; // Velocidade de curva
+            snake.angle += diff * 0.1;
 
-            // Mecânica de Dash (Gasta energia)
-            if (pointer.isDown && energy > 2) {
-                snake.currentSpeed = snake.baseSpeed * 2.2;
-                energy -= 1;
-                createParticles(snake.head.x, snake.head.y, '#F0F', 1);
-            } else {
-                snake.currentSpeed = snake.baseSpeed;
-                if(energy < 100) energy += 0.3;
-            }
-            document.getElementById('energy-bar').style.width = `${energy}%`;
+            snake.head.x += Math.cos(snake.angle) * snake.speed;
+            snake.head.y += Math.sin(snake.angle) * snake.speed;
 
-            // Move a Cabeça
-            snake.head.x += Math.cos(snake.angle) * snake.currentSpeed;
-            snake.head.y += Math.sin(snake.angle) * snake.currentSpeed;
+            // Histórico para o rastro
+            snake.history.unshift({...snake.head});
+            if(snake.history.length > 100) snake.history.pop();
 
-            // Grava Histórico (Guarda coordenadas a cada frame)
-            snake.history.unshift({ x: snake.head.x, y: snake.head.y });
-            if (snake.history.length > snake.length * snake.spacing) {
-                snake.history.pop();
-            }
+            // Sincroniza com o servidor se for multiplayer
+            if(gameMode === 'multiplayer') {
+                socket.emit('snake_move', {
+                    roomId: currentRoom,
+                    head: snake.head,
+                    history: snake.history.slice(0, 20), // Envia apenas pedaço pro rastro ser leve
+                    angle: snake.angle
+                });
 
-            // Colisão com Paredes (Mortal)
-            if (snake.head.x < 0 || snake.head.x > width || snake.head.y < 0 || snake.head.y > height) {
-                gameOver();
-            }
-
-            // Colisão com o Próprio Corpo
-            for (let i = 10 * snake.spacing; i < snake.history.length; i += snake.spacing) {
-                let seg = snake.history[i];
-                if (seg) {
-                    let dist = Math.hypot(snake.head.x - seg.x, snake.head.y - seg.y);
-                    if (dist < snake.size) {
-                        gameOver();
+                // Detecção de Colisão Online (Se tocar no rastro do inimigo)
+                opponent.history.forEach(pos => {
+                    if(Math.hypot(snake.head.x - pos.x, snake.head.y - pos.y) < 10) {
+                        socket.emit('snake_death', { roomId: currentRoom, opponentId: opponentId });
+                        endGame("DERROTA: LINK CORROMPIDO", "#F00");
                     }
-                }
+                });
             }
 
-            // Coleta de Nodes (Comida)
-            for (let i = nodes.length - 1; i >= 0; i--) {
-                let n = nodes[i];
-                n.pulse += 0.1;
-                let dist = Math.hypot(snake.head.x - n.x, snake.head.y - n.y);
-                if (dist < snake.size + n.radius + 10) {
-                    createParticles(n.x, n.y, n.color, 15);
-                    score += n.value;
-                    snake.length += 3;
-                    energy = Math.min(100, energy + 15);
-                    nodes.splice(i, 1);
-                    spawnNode();
-                    document.getElementById('scoreDisplay').innerText = score.toString().padStart(3, '0');
-
-                    // Progressão de Nível
-                    if (score % 100 === 0) {
-                        level++;
-                        snake.baseSpeed += 0.5;
-                        document.getElementById('levelDisplay').innerHTML = `<span>LVL</span> ${level}`;
-                        systemAlert(`Nível ${level} Atingido`, '#FFF');
-                        if(level % 3 === 0) spawnHazard(); // Adiciona perigo a cada 3 níveis
-                        
-                        // Envia Level Up para o ChatPTT
-                        if(window.parent && window.parent.gameLevelUp) {
-                            window.parent.gameLevelUp(level);
-                        }
-                    }
-                }
+            // Colisão com bordas
+            if(snake.head.x < 0 || snake.head.x > width || snake.head.y < 0 || snake.head.y > height) {
+                if(gameMode === 'multiplayer') socket.emit('snake_death', { roomId: currentRoom, opponentId: opponentId });
+                endGame("SINAL PERDIDO", "#F00");
             }
-
-            // Atualiza Perigos (Buraco Negro)
-            for (let i = hazards.length - 1; i >= 0; i--) {
-                let h = hazards[i];
-                h.angle += 0.05;
-                // Atrai a cobra
-                let hdx = h.x - snake.head.x;
-                let hdy = h.y - snake.head.y;
-                let hDist = Math.hypot(hdx, hdy);
-                if(hDist < 150) {
-                    snake.head.x += (hdx / hDist) * 1.5; // Puxa
-                    snake.head.y += (hdy / hDist) * 1.5;
-                }
-                if(hDist < h.radius) gameOver(); // Morte
-            }
-
-            // Atualiza Partículas
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy;
-                p.life -= p.decay;
-                if (p.life <= 0) particles.splice(i, 1);
-            }
-        }
-
-        function spawnHazard() {
-            hazards.push({
-                x: Math.random() * (width - 200) + 100,
-                y: Math.random() * (height - 200) + 100,
-                radius: 25,
-                angle: 0
-            });
-            systemAlert("Ruptura Espacial Detectada!", "#F00");
         }
 
         function draw() {
-            // Limpa com rastro (Motion Blur)
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.fillStyle = 'rgba(3, 3, 8, 0.3)';
+            ctx.fillStyle = 'rgba(3, 3, 8, 0.2)';
             ctx.fillRect(0, 0, width, height);
 
-            ctx.globalCompositeOperation = 'lighter'; // Efeito Neon Aditivo
-
-            // Desenha Perigos (Buracos Negros)
-            hazards.forEach(h => {
+            // Desenha Inimigo
+            if(opponent.active) {
+                ctx.strokeStyle = opponent.color;
+                ctx.lineWidth = 15;
                 ctx.beginPath();
-                ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#000';
-                ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#F00';
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#F00';
-                ctx.setLineDash([10, 10]);
-                ctx.lineDashOffset = -h.angle * 20;
+                opponent.history.forEach((p, i) => { if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
                 ctx.stroke();
-                ctx.setLineDash([]);
-            });
-
-            // Desenha Nodes
-            nodes.forEach(n => {
-                ctx.beginPath();
-                let r = n.radius + Math.sin(n.pulse) * 2;
-                ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-                ctx.fillStyle = n.color;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = n.color;
-                ctx.fill();
-            });
-
-            // Desenha Cobra
-            ctx.shadowBlur = pointer.isDown ? 25 : 10;
-            ctx.shadowColor = pointer.isDown ? '#F0F' : snake.color;
-            ctx.lineWidth = snake.size * 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = pointer.isDown ? '#F0F' : snake.color;
-
-            ctx.beginPath();
-            ctx.moveTo(snake.head.x, snake.head.y);
-            
-            // Loop para desenhar os segmentos lendo o histórico
-            for (let i = 0; i < snake.length; i++) {
-                let index = i * snake.spacing;
-                if (index < snake.history.length) {
-                    let pos = snake.history[index];
-                    ctx.lineTo(pos.x, pos.y);
-                }
             }
-            ctx.stroke();
 
-            // Cabeça brilhante
+            // Desenha Minha Cobra
+            ctx.strokeStyle = snake.color;
+            ctx.lineWidth = 15;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = snake.color;
             ctx.beginPath();
-            ctx.arc(snake.head.x, snake.head.y, snake.size, 0, Math.PI * 2);
-            ctx.fillStyle = '#FFF';
-            ctx.fill();
-
-            // Partículas
-            particles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life;
-                ctx.fill();
-            });
-            ctx.globalAlpha = 1.0;
+            snake.history.forEach((p, i) => { if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+            ctx.stroke();
         }
 
-        function gameLoop() {
-            update();
-            draw();
-            gameLoopId = requestAnimationFrame(gameLoop);
+        function endGame(title, color) {
+            isPlaying = false;
+            document.getElementById('gameResultTitle').innerText = title;
+            document.getElementById('gameResultTitle').style.color = color;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
         }
-
-        // Fundo renderizado inicialmente
-        ctx.fillStyle = '#030308';
-        ctx.fillRect(0, 0, width, height);
     </script>
 </body>
 </html>
