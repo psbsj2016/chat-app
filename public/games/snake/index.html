@@ -21,8 +21,48 @@
         .value { font-size: 22px; font-weight: 900; color: #fff; }
 
         /* Controles Orgânicos (D-PAD) */
-        #controls { position: absolute; bottom: 30px; left: 30px; display: grid; grid-template-columns: repeat(3, 65px); grid-template-rows: repeat(2, 65px); gap: 10px; z-index: 15; }
-        .ctrl-btn { width: 65px; height: 65px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.1s; }
+        /* Controles Clássicos Redondos (Estilo Arcade) */
+        #controls { 
+            position: absolute; 
+            bottom: 40px; 
+            left: 30px; 
+            width: 170px; /* Área total do D-Pad */
+            height: 170px; 
+            z-index: 15; 
+        }
+        
+        .ctrl-btn { 
+            position: absolute;
+            width: 56px; 
+            height: 56px; 
+            border-radius: 50%; /* Deixa perfeitamente redondo */
+            background: linear-gradient(180deg, #E60012 0%, #8A000A 100%); /* Vermelho Profundo */
+            border: 3px solid #FFFFFF; /* Borda interna branca */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.9); /* Anel externo branco e sombra */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #fff; 
+            cursor: pointer; 
+            transition: 0.1s; 
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .ctrl-btn:active { 
+            transform: scale(0.92); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.9); 
+            background: linear-gradient(180deg, #FF1A2D 0%, #A6000D 100%);
+        }
+        
+        .ctrl-btn .material-icons-round { font-size: 32px; font-weight: bold; }
+
+        /* Posições em formato de Cruz (Diamante) */
+        .btn-up { top: 0; left: 57px; }
+        .btn-down { bottom: 0; left: 57px; }
+        .btn-left { top: 57px; left: 0; }
+        .btn-right { top: 57px; right: 0; } 
+        
         .ctrl-btn:active { background: rgba(255, 255, 255, 0.2); transform: scale(0.95); }
 
         /* Botão de Bote (Dash) */
@@ -50,10 +90,10 @@
     <canvas id="canvas"></canvas>
 
     <div id="controls" class="hidden">
-        <div style="grid-column: 2;"><button class="ctrl-btn" onpointerdown="setDir(0,-1)"><span class="material-icons-round">arrow_upward</span></button></div>
-        <button class="ctrl-btn" onpointerdown="setDir(-1,0)"><span class="material-icons-round">arrow_back</span></button>
-        <button class="ctrl-btn" onpointerdown="setDir(0,1)"><span class="material-icons-round">arrow_downward</span></button>
-        <button class="ctrl-btn" onpointerdown="setDir(1,0)"><span class="material-icons-round">arrow_forward</span></button>
+        <button class="ctrl-btn btn-up" onpointerdown="setDir(0,-1)"><span class="material-icons-round">arrow_upward</span></button>
+        <button class="ctrl-btn btn-left" onpointerdown="setDir(-1,0)"><span class="material-icons-round">arrow_back</span></button>
+        <button class="ctrl-btn btn-right" onpointerdown="setDir(1,0)"><span class="material-icons-round">arrow_forward</span></button>
+        <button class="ctrl-btn btn-down" onpointerdown="setDir(0,1)"><span class="material-icons-round">arrow_downward</span></button>
     </div>
     
     <button id="dash-btn" class="hidden" onpointerdown="toggleDash(true)" onpointerup="toggleDash(false)">
