@@ -751,7 +751,17 @@
             </div>
         </div>
     </div>
-
+     <div id="create-community-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 350px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: var(--brand-primary); font-weight: 800;"><span class="material-icons-round" style="vertical-align: middle;">add_box</span> Novo Servidor</h3>
+                <button class="icon-btn" onclick="hideElement('create-community-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <input type="text" id="new-comm-name" placeholder="Nome da Tropa/Comunidade" class="chic-input">
+            <textarea id="new-comm-desc" placeholder="Qual o propósito deste servidor?" class="chic-input" style="resize:none; height:70px;"></textarea>
+            <button onclick="submitNewCommunity()" class="chic-btn" style="background: var(--brand-primary); margin-top: 10px;">Forjar Servidor</button>
+        </div>
+    </div>
   <script src="/socket.io/socket.io.js"></script>
     <script>
         // BOMBA DE CACHE: Força o PWA a ler sempre a versão mais recente do JS

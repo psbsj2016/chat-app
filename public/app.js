@@ -1031,12 +1031,12 @@ function createPeerConnection(socketId, userProfile) {
         }
         audioElement.srcObject = event.streams[0];
         
-       // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
+        // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
         audioElement.play().catch(e => console.log("Áudio aguardando interação..."));
     };
 
-    return pc; // 🚀 ADICIONE ESTA LINHA
-} // 🚀 ADICIONE ESTA CHAVETA DE FECHO
+    return pc; // 🚀 CORREÇÃO CRÍTICA: RETORNO DO TÚNEL
+} // 🚀 CORREÇÃO CRÍTICA: FECHAMENTO DA FUNÇÃO
 
 // Desenha o avatar no Radar
 function addParticipantToUI(id, profile) {
@@ -1062,4 +1062,21 @@ function removeParticipantFromUI(id) {
     if (a) a.remove();
 }
 
-// ATENÇÃO: Para mostrar o Lounge, execute voiceLoungeContainer.style.display = 'block'; onde você abre as comunidades!
+// ==============================================================
+// 🏰 FUNÇÕES FALTANTES: GERENCIADOR DE COMUNIDADES
+// ==============================================================
+function openCreateCommunityModal() {
+    showElement('create-community-modal');
+}
+
+function submitNewCommunity() {
+    const name = document.getElementById('new-comm-name').value.trim();
+    const desc = document.getElementById('new-comm-desc').value.trim();
+    
+    if(!name) return alert("⚠️ Dê um nome à sua Comunidade!");
+    
+    createNewCommunity(name, desc);
+    hideElement('create-community-modal');
+    document.getElementById('new-comm-name').value = '';
+    document.getElementById('new-comm-desc').value = '';
+}

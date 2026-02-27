@@ -3,72 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Viper Protocol: Synthetic Hunt</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Predator 4D: Nature Survival</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; }
-        body { background-color: #020205; color: #0FF; font-family: 'Orbitron', sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; font-family: 'Inter', sans-serif; }
+        body { background-color: #0a0f0d; color: #e2e8f0; overflow: hidden; width: 100vw; height: 100vh; }
         
-        /* Grid de Fundo Infinito */
-        #game-container { position: relative; width: 100%; height: 100%; overflow: hidden; }
-        #canvas { position: absolute; top: 0; left: 0; z-index: 5; }
+        #game-container { position: relative; width: 100%; height: 100%; overflow: hidden; background: radial-gradient(circle at center, #132219 0%, #050806 100%); }
+        #canvas { position: absolute; top: 0; left: 0; z-index: 5; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
 
-        /* Interface HUD Futurista */
+        /* Interface HUD Realista / Vidro */
         #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; z-index: 10; pointer-events: none; }
-        .stat-box { background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2); padding: 10px 20px; border-radius: 8px; backdrop-filter: blur(10px); text-align: center; }
-        .label { font-size: 10px; color: #64748B; text-transform: uppercase; letter-spacing: 2px; }
-        .value { font-size: 20px; font-weight: 900; color: #FFF; text-shadow: 0 0 10px #0FF; }
+        .stat-box { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 24px; border-radius: 16px; backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .value { font-size: 22px; font-weight: 900; color: #fff; }
 
-        /* Controles Direcionais (D-PAD) */
-        #controls { position: absolute; bottom: 30px; left: 30px; display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 60px); gap: 10px; z-index: 15; }
-        .ctrl-btn { width: 60px; height: 60px; background: rgba(0, 255, 255, 0.1); border: 2px solid #0FF; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #0FF; cursor: pointer; backdrop-filter: blur(5px); }
-        .ctrl-btn:active { background: #0FF; color: #000; box-shadow: 0 0 20px #0FF; }
+        /* Controles Orgânicos (D-PAD) */
+        #controls { position: absolute; bottom: 30px; left: 30px; display: grid; grid-template-columns: repeat(3, 65px); grid-template-rows: repeat(2, 65px); gap: 10px; z-index: 15; }
+        .ctrl-btn { width: 65px; height: 65px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.1s; }
+        .ctrl-btn:active { background: rgba(255, 255, 255, 0.2); transform: scale(0.95); }
 
-        /* Botão de Dash */
-        #dash-btn { position: absolute; bottom: 40px; right: 40px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255, 0, 255, 0.1); border: 3px solid #F0F; color: #F0F; display: flex; align-items: center; justify-content: center; z-index: 15; }
+        /* Botão de Bote (Dash) */
+        #dash-btn { position: absolute; bottom: 40px; right: 40px; width: 85px; height: 85px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; color: #ef4444; display: flex; align-items: center; justify-content: center; z-index: 15; backdrop-filter: blur(8px); transition: 0.1s; }
+        #dash-btn:active { background: #ef4444; color: #fff; transform: scale(0.9); box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
 
         /* Telas de Overlay */
-        .overlay { position: absolute; inset: 0; background: rgba(2, 2, 5, 0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(15px); }
+        .overlay { position: absolute; inset: 0; background: rgba(5, 8, 6, 0.85); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; backdrop-filter: blur(20px); }
         .hidden { display: none !important; }
-        .menu-btn { background: transparent; border: 2px solid #0FF; color: #0FF; padding: 15px 40px; margin: 10px; font-family: 'Orbitron'; font-weight: 900; letter-spacing: 3px; cursor: pointer; transition: 0.3s; }
-        .menu-btn:hover { background: #0FF; color: #000; box-shadow: 0 0 30px #0FF; }
+        .menu-btn { background: #22c55e; border: none; color: #fff; padding: 18px 45px; margin: 10px; border-radius: 30px; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.2s; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3); }
+        .menu-btn:active { transform: scale(0.95); }
+        .menu-btn.multi { background: transparent; border: 2px solid #3b82f6; color: #3b82f6; box-shadow: none; }
+        .menu-btn.multi:active { background: #3b82f6; color: #fff; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="hud">
-        <div class="stat-box"><div class="label">Bio-Massa</div><div id="score" class="value">0</div></div>
-        <div class="stat-box"><div class="label">Nível Evolutivo</div><div id="level" class="value">1</div></div>
+    <div id="hud" class="hidden">
+        <div class="stat-box"><div class="label">Presas</div><div id="score" class="value">0</div></div>
+        <div class="stat-box"><div class="label">Tamanho</div><div id="level" class="value">1</div></div>
         <div class="stat-box"><div class="label">Modo</div><div id="mode-text" class="value">SOLO</div></div>
     </div>
 
     <canvas id="canvas"></canvas>
 
-    <div id="controls">
-        <div style="grid-column: 2;"><button class="ctrl-btn" onpointerdown="setDir(0,-1)"><span class="material-icons-round">expand_less</span></button></div>
-        <button class="ctrl-btn" onpointerdown="setDir(-1,0)"><span class="material-icons-round">chevron_left</span></button>
-        <button class="ctrl-btn" onpointerdown="setDir(0,1)"><span class="material-icons-round">expand_more</span></button>
-        <button class="ctrl-btn" onpointerdown="setDir(1,0)"><span class="material-icons-round">chevron_right</span></button>
+    <div id="controls" class="hidden">
+        <div style="grid-column: 2;"><button class="ctrl-btn" onpointerdown="setDir(0,-1)"><span class="material-icons-round">arrow_upward</span></button></div>
+        <button class="ctrl-btn" onpointerdown="setDir(-1,0)"><span class="material-icons-round">arrow_back</span></button>
+        <button class="ctrl-btn" onpointerdown="setDir(0,1)"><span class="material-icons-round">arrow_downward</span></button>
+        <button class="ctrl-btn" onpointerdown="setDir(1,0)"><span class="material-icons-round">arrow_forward</span></button>
     </div>
     
-    <button id="dash-btn" onpointerdown="toggleDash(true)" onpointerup="toggleDash(false)">
-        <span class="material-icons-round" style="font-size: 40px;">bolt</span>
+    <button id="dash-btn" class="hidden" onpointerdown="toggleDash(true)" onpointerup="toggleDash(false)">
+        <span class="material-icons-round" style="font-size: 45px;">flash_on</span>
     </button>
 
     <div id="menu" class="overlay">
-        <h1 style="font-size: 40px; text-shadow: 0 0 20px #0FF;">VIPER PROTOCOL</h1>
-        <p style="color: #64748B; margin-bottom: 30px;">SIMULAÇÃO DE CAÇA SINTÉTICA</p>
-        <button class="menu-btn" onclick="start('solo')">INICIAR SOLO</button>
-        <button class="menu-btn" onclick="start('multi')" style="border-color: #F0F; color: #F0F;">DUELO ONLINE</button>
+        <h1 style="font-size: 42px; font-weight: 900; margin-bottom: 10px; color: #4ade80;">PREDATOR 4D</h1>
+        <p style="color: #94a3b8; margin-bottom: 40px; font-weight: 600;">SIMULAÇÃO DE CAÇA REALISTA</p>
+        <button class="menu-btn" onclick="start('solo')">CAÇADA SOLO</button>
+        <button class="menu-btn multi" id="btn-multi" onclick="start('multi')">DUELO ONLINE</button>
+        <p id="status-msg" style="margin-top: 20px; font-size: 13px; color: #64748B;"></p>
     </div>
 
     <div id="death-screen" class="overlay hidden">
-        <h1 id="death-title" style="color: #F00;">SINAL CORROMPIDO</h1>
-        <p id="reward-text" style="margin-bottom: 20px;">Premiação: 0 XP</p>
-        <button class="menu-btn" onclick="location.reload()">REINICIAR</button>
+        <h1 id="death-title" style="color: #ef4444; font-size: 38px; font-weight: 900;">CADEIA ALIMENTAR</h1>
+        <p id="reward-text" style="margin-bottom: 30px; font-size: 18px; color: #cbd5e1;">Você virou presa.</p>
+        <button class="menu-btn" onclick="location.reload()">NOVA VIDA</button>
     </div>
 </div>
 
@@ -77,65 +80,166 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     let width, height, isPlaying = false, mode = 'solo';
+    let currentRoom = null, opponentId = null;
     
-    // Configurações do Jogo
-    let score = 0, level = 1, speed = 4;
-    let snake = { x: 0, y: 0, dx: 4, dy: 0, body: [], size: 12, dash: false };
-    let preys = []; // As "Criaturas" (Bio-Synths)
-    let opponent = { active: false, body: [] };
+    // Configurações do Organismo
+    let score = 0, level = 1, speed = 3.5;
+    let snake = { x: 0, y: 0, dx: 3.5, dy: 0, body: [], size: 14, dash: false, color1: '#4ade80', color2: '#14532d' };
+    let preys = []; 
+    let opponent = { active: false, history: [], color1: '#ef4444', color2: '#7f1d1d' };
+    let dustParticles = []; // Efeito 4D de profundidade (Esporos na floresta)
 
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
+        initDust();
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // Comandos de Direção
+    // Partículas de Fundo (Simula 4D / Profundidade de Campo)
+    function initDust() {
+        dustParticles = [];
+        for(let i=0; i<40; i++) {
+            dustParticles.push({
+                x: Math.random() * width, y: Math.random() * height,
+                radius: Math.random() * 3 + 1,
+                vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+                alpha: Math.random() * 0.5 + 0.1
+            });
+        }
+    }
+
+    // Controles Touch
     function setDir(x, y) {
         if ((x !== 0 && snake.dx === 0) || (y !== 0 && snake.dy === 0)) {
             snake.dx = x * speed;
             snake.dy = y * speed;
         }
     }
+    function toggleDash(val) { snake.dash = val; speed = val ? 7 : 3.5 + (level * 0.3); }
 
-    function toggleDash(val) { snake.dash = val; speed = val ? 8 : 4 + (level * 0.5); }
-
+    // Ratos e Sapos (Anatomia Realista Top-Down)
     function spawnPrey() {
         preys.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            type: Math.random() > 0.8 ? 'rare' : 'normal',
-            angle: 0
+            x: Math.random() * (width - 60) + 30,
+            y: Math.random() * (height - 60) + 30,
+            type: Math.random() > 0.85 ? 'frog' : 'mouse', // 15% Sapo Dourado, 85% Rato Silvestre
+            angle: Math.random() * Math.PI * 2,
+            wiggle: 0
         });
     }
 
+    // Lógica Multiplayer (Integrada da versão anterior)
+    socket.on('snake_duel_start', (data) => {
+        const me = data.players.find(p => p.id === socket.id);
+        const them = data.players.find(p => p.id !== socket.id);
+        currentRoom = data.roomId; opponentId = them.id;
+        snake.x = me.startPos.x; snake.y = me.startPos.y;
+        opponent.active = true;
+        beginSimulation();
+    });
+
+    socket.on('opponent_move', (data) => {
+        if(opponent.active) {
+            opponent.x = data.head.x; opponent.y = data.head.y;
+            opponent.history = data.history;
+            opponent.angle = data.angle;
+        }
+    });
+
+    socket.on('duel_victory', () => { endGame("VITÓRIA: PREDADOR ALFA", "#22c55e"); });
+
     function start(m) {
         mode = m;
+        if(mode === 'solo') {
+            snake.x = width / 2; snake.y = height / 2;
+            beginSimulation();
+        } else {
+            document.getElementById('status-msg').innerText = "Farejando outro predador na floresta...";
+            document.getElementById('btn-multi').disabled = true;
+            socket.emit('join_snake_duel', { profile: { name: 'Predador' } });
+        }
+    }
+
+    function beginSimulation() {
         document.getElementById('menu').classList.add('hidden');
-        document.getElementById('mode-text').innerText = m.toUpperCase();
-        snake.x = width / 2; snake.y = height / 2;
-        for(let i=0; i<5; i++) spawnPrey();
+        document.getElementById('hud').classList.remove('hidden');
+        document.getElementById('controls').classList.remove('hidden');
+        document.getElementById('dash-btn').classList.remove('hidden');
+        document.getElementById('mode-text').innerText = mode.toUpperCase();
+        for(let i=0; i<6; i++) spawnPrey();
         isPlaying = true;
         loop();
     }
 
-    function drawHead(x, y, angle) {
+    // Desenha as presas realistas
+    function drawPrey(p) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle + Math.sin(p.wiggle) * 0.2); // Animação de respiração/medo
+        p.wiggle += 0.1;
+
+        if (p.type === 'mouse') {
+            // Corpo do Rato
+            let grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+            grad.addColorStop(0, '#8B5A2B'); grad.addColorStop(1, '#3E2723');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI*2); ctx.fill();
+            // Orelhas
+            ctx.fillStyle = '#6d4c41';
+            ctx.beginPath(); ctx.arc(8, -6, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(8, 6, 4, 0, Math.PI*2); ctx.fill();
+            // Focinho
+            ctx.fillStyle = '#ffbcaaa';
+            ctx.beginPath(); ctx.arc(12, 0, 2, 0, Math.PI*2); ctx.fill();
+            // Rabo longo
+            ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-20, Math.sin(p.wiggle)*10, -35, 0); ctx.stroke();
+        } else {
+            // Sapo Dourado 4D (Brilha)
+            ctx.shadowBlur = 20; ctx.shadowColor = '#fbbf24';
+            let grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 14);
+            grad.addColorStop(0, '#fcd34d'); grad.addColorStop(1, '#b45309');
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.ellipse(0, 0, 10, 12, 0, 0, Math.PI*2); ctx.fill();
+            // Patas
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath(); ctx.ellipse(-8, -10, 6, 4, Math.PI/4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(-8, 10, 6, 4, -Math.PI/4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(6, -10, 5, 3, -Math.PI/4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(6, 10, 5, 3, Math.PI/4, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+    }
+
+    // Desenha Cabeça da Cobra (Visor Volumétrico)
+    function drawHead(x, y, dx, dy, color1, color2, isDash) {
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(Math.atan2(snake.dy, snake.dx));
+        ctx.rotate(Math.atan2(dy, dx));
         
-        // Rosto Tecnológico (Visor Neon)
-        ctx.beginPath();
-        ctx.fillStyle = snake.dash ? '#F0F' : '#0FF';
-        ctx.roundRect(-15, -10, 30, 20, 5);
-        ctx.fill();
-        ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
+        // Cabeça Oval com Escamas
+        let hGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, snake.size + 4);
+        hGrad.addColorStop(0, color1); hGrad.addColorStop(1, color2);
+        ctx.fillStyle = hGrad;
+        ctx.beginPath(); ctx.ellipse(4, 0, snake.size + 6, snake.size + 2, 0, 0, Math.PI*2); ctx.fill();
         
-        // Olhos/Sensores
-        ctx.fillStyle = '#FFF';
-        ctx.fillRect(8, -5, 4, 2);
-        ctx.fillRect(8, 3, 4, 2);
+        // Olhos de Fera (Pupila Vertical)
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(10, -6, 2, 4, Math.PI/6, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(10, 6, 2, 4, -Math.PI/6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = isDash ? '#ef4444' : '#facc15'; // Olho fica vermelho ao dar o bote
+        ctx.beginPath(); ctx.arc(10, -6, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, 6, 1.5, 0, Math.PI*2); ctx.fill();
+
+        // Língua Bifurcada Animação
+        if (Math.random() > 0.8) {
+            ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(26, 0); ctx.lineTo(30, -3);
+            ctx.moveTo(26, 0); ctx.lineTo(30, 3); ctx.stroke();
+        }
         ctx.restore();
     }
 
@@ -146,60 +250,106 @@
         snake.x += snake.dx;
         snake.y += snake.dy;
 
-        // SEM LIMITES: Wrap Around (Atravessa a parede e sai do outro lado)
-        if (snake.x < 0) snake.x = width;
-        if (snake.x > width) snake.x = 0;
-        if (snake.y < 0) snake.y = height;
-        if (snake.y > height) snake.y = 0;
+        // Wrap Around (Atravessa Paredes da Floresta)
+        if (snake.x < 0) snake.x = width; if (snake.x > width) snake.x = 0;
+        if (snake.y < 0) snake.y = height; if (snake.y > height) snake.y = 0;
 
-        // Atualiza Corpo
+        // Grava Corpo Orgânico
         snake.body.unshift({ x: snake.x, y: snake.y });
-        if (snake.body.length > 20 + (score / 2)) snake.body.pop();
+        let maxSize = 15 + Math.floor(score / 2);
+        if (snake.body.length > maxSize) snake.body.pop();
 
-        // Comer Criaturas
+        // Multiplayer Emits e Colisão
+        if(mode === 'multi') {
+            socket.emit('snake_move', {
+                roomId: currentRoom, head: {x: snake.x, y: snake.y},
+                history: snake.body.slice(0, 30), angle: Math.atan2(snake.dy, snake.dx)
+            });
+            if(opponent.active) {
+                opponent.history.forEach(pos => {
+                    if(Math.hypot(snake.x - pos.x, snake.y - pos.y) < snake.size) {
+                        socket.emit('snake_death', { roomId: currentRoom, opponentId: opponentId });
+                        endGame("VOCÊ FOI CAÇADO", "#ef4444");
+                    }
+                });
+            }
+        }
+
+        // Caça (Comer Presas)
         preys.forEach((p, i) => {
-            if (Math.hypot(snake.x - p.x, snake.y - p.y) < 25) {
-                score += p.type === 'rare' ? 50 : 10;
+            if (Math.hypot(snake.x - p.x, snake.y - p.y) < snake.size + 10) {
+                let xpGain = p.type === 'frog' ? 50 : 10;
+                score += xpGain;
                 document.getElementById('score').innerText = score;
                 preys.splice(i, 1);
                 spawnPrey();
                 
-                // Evolução
+                // Evolução XP Hub
                 if (score % 100 === 0) {
-                    level++;
-                    speed += 0.5;
+                    level++; speed += 0.3;
                     document.getElementById('level').innerText = level;
+                    if(window.parent && window.parent.gameLevelUp) window.parent.gameLevelUp(level);
                 }
             }
         });
     }
 
     function draw() {
-        ctx.fillStyle = 'rgba(2, 2, 5, 0.3)'; // Motion Blur
-        ctx.fillRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
 
-        // Desenhar Criaturas (Bio-Synths)
-        preys.forEach(p => {
-            ctx.shadowBlur = 10; ctx.shadowColor = p.type === 'rare' ? '#F0F' : '#0FF';
-            ctx.fillStyle = p.type === 'rare' ? '#F0F' : '#0FF';
-            ctx.beginPath();
-            // Criaturas geométricas modernas
-            ctx.moveTo(p.x, p.y - 10); ctx.lineTo(p.x + 10, p.y + 10); ctx.lineTo(p.x - 10, p.y + 10);
-            ctx.fill();
+        // Desenha Fundo 4D (Esporos flutuantes)
+        dustParticles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if(p.x < 0) p.x = width; if(p.x > width) p.x = 0;
+            if(p.y < 0) p.y = height; if(p.y > height) p.y = 0;
+            ctx.fillStyle = `rgba(134, 239, 172, ${p.alpha})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill();
         });
 
-        // Desenhar Rastro da Cobra
-        ctx.beginPath();
-        ctx.strokeStyle = snake.dash ? '#F0F' : '#0FF';
-        ctx.lineWidth = 15;
-        ctx.lineCap = 'round';
-        snake.body.forEach((pt, i) => {
-            if (i === 0) ctx.moveTo(pt.x, pt.y);
-            else ctx.lineTo(pt.x, pt.y);
-        });
-        ctx.stroke();
+        // Desenha Presas
+        preys.forEach(p => drawPrey(p));
 
-        drawHead(snake.x, snake.y);
+        // Desenha Oponente (Se Online)
+        if (opponent.active && opponent.history.length > 0) {
+            opponent.history.reverse().forEach((pt, i) => {
+                let r = snake.size - (i * 0.15); if(r < 3) r = 3;
+                let grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r);
+                grad.addColorStop(0, opponent.color1); grad.addColorStop(1, opponent.color2);
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI*2); ctx.fill();
+            });
+            opponent.history.reverse();
+            let oh = opponent.history[0];
+            drawHead(oh.x, oh.y, Math.cos(opponent.angle), Math.sin(opponent.angle), opponent.color1, opponent.color2, false);
+        }
+
+        // Desenha Cobra Principal (Corpo Volumétrico)
+        // Reverte a array para desenhar o rabo primeiro (sobreposição 3D correta)
+        [...snake.body].reverse().forEach((pt, i) => {
+            let actualIndex = snake.body.length - 1 - i;
+            let radius = snake.size - (actualIndex * 0.15); 
+            if(radius < 3) radius = 3; // O rabo afina
+            
+            let grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, radius);
+            grad.addColorStop(0, snake.dash ? '#fcd34d' : snake.color1); 
+            grad.addColorStop(1, snake.dash ? '#b45309' : snake.color2);
+            
+            ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(pt.x, pt.y, radius, 0, Math.PI*2); ctx.fill();
+        });
+
+        drawHead(snake.x, snake.y, snake.dx, snake.dy, snake.dash ? '#fcd34d' : snake.color1, snake.dash ? '#b45309' : snake.color2, snake.dash);
+    }
+
+    function endGame(title, color) {
+        isPlaying = false;
+        document.getElementById('death-title').innerText = title;
+        document.getElementById('death-title').style.color = color;
+        document.getElementById('reward-text').innerText = `Bio-massa Absorvida: ${score} XP`;
+        document.getElementById('death-screen').classList.remove('hidden');
+        if(window.parent && window.parent.gameEarnXP && score > 0) {
+            window.parent.gameEarnXP(score);
+        }
     }
 
     function loop() {
