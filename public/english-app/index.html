@@ -118,20 +118,11 @@
         </div>
 
         <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
-        <div class="ranking-list">
-            <div class="rank-item rank-diamond">
-                <div class="rank-medal">💎</div>
-                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 46px; height: 46px; border-radius: 50%; border: 2px solid #06B6D4;">
-                <div class="rank-info"><div class="rank-name" style="color: #06B6D4;">Comandante PTT</div><div class="rank-league" style="color: var(--text-main);">Liga Diamante</div></div>
-                <div class="rank-xp" style="color: #06B6D4;">1500 XP</div>
-            </div>
-            <div class="rank-item rank-gold">
-                <div class="rank-medal">🥇</div>
-                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 40px; height: 40px; border-radius: 50%;">
-                <div class="rank-info"><div class="rank-name">Agente Alpha</div><div class="rank-league" style="color: #F59E0B;">Ouro</div></div>
-                <div class="rank-xp" style="color: #F59E0B;">980 XP</div>
-            </div>
-        </div>
+       
+    <div class="section-title"><span class="material-icons-round" style="color: #F59E0B; font-size: 20px;">emoji_events</span> Pódio da Semana</div>
+    
+    <div class="ranking-list" id="real-ranking-list">
+        <div style="text-align:center; color: var(--text-muted); padding: 20px;">Sincronizando satélites...</div>
     </div>
 
     <div id="lesson-screen" class="hidden">
@@ -295,6 +286,61 @@
             document.getElementById('lesson-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('hidden');
         }
+        // ==========================================================
+        // 🏆 MOTOR DE RANKING GLOBAL (Sincronizado com o Servidor)
+        // ==========================================================
+        async function loadLeaderboard() {
+            const list = document.getElementById('real-ranking-list');
+            try {
+                const res = await fetch('/leaderboard');
+                const users = await res.json();
+                
+                list.innerHTML = ''; 
+                
+                if(users.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 20px;">O pódio está vazio. Seja o primeiro a ganhar XP!</div>';
+                    return;
+                }
+
+                // Configurações das Ligas (Cores e Medalhas)
+                const ranks = [
+                    { class: 'rank-diamond', medal: '💎', title: 'Liga Diamante', color: '#06B6D4' },
+                    { class: 'rank-gold', medal: '🥇', title: 'Ouro', color: '#F59E0B' },
+                    { class: 'rank-silver', medal: '🥈', title: 'Prata', color: '#94A3B8' },
+                    { class: 'rank-bronze', medal: '🥉', title: 'Bronze', color: '#B45309' }
+                ];
+
+                // Desenha cada utilizador no seu respectivo lugar do pódio
+                users.forEach((user, index) => {
+                    const rank = ranks[index] || ranks[3]; 
+                    const name = user.displayName || 'Agente Secreto';
+                    const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                    
+                    list.innerHTML += `
+                        <div class="rank-item ${rank.class}" style="animation: slideUp 0.3s ease forwards; animation-delay: ${index * 0.1}s; opacity: 0;">
+                            <div class="rank-medal">${rank.medal}</div>
+                            <img src="${photo}" style="width: 46px; height: 46px; border-radius: 50%; border: 2px solid ${rank.color}; object-fit: cover;">
+                            <div class="rank-info">
+                                <div class="rank-name" style="color: ${index === 0 ? rank.color : 'var(--text-main)'};">${name}</div>
+                                <div class="rank-league" style="color: ${rank.color};">${rank.title}</div>
+                            </div>
+                            <div class="rank-xp" style="color: ${rank.color};">${user.xp} XP</div>
+                        </div>
+                    `;
+                });
+                
+            } catch (e) {
+                list.innerHTML = '<div style="text-align:center; color: #EF4444; padding: 20px;">Falha de comunicação com o servidor.</div>';
+            }
+        }
+
+        // Estilo extra para a animação do Ranking
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`;
+        document.head.appendChild(style);
+
+        // Carrega o ranking assim que a tela abre
+        window.addEventListener('DOMContentLoaded', loadLeaderboard);
     </script>
 </body>
 </html>
