@@ -671,33 +671,63 @@ function completeFocusMode() { clearInterval(focusInterval); hideElement('focus-
 async function buyItem(itemId, cost) { if (!myId) return; if ((cachedMe.xp || 0) < cost) return alert("❌ XP insuficiente!"); if (cachedMe.unlockedItems && cachedMe.unlockedItems.includes(itemId)) return alert("Já possui!"); try { const btn = document.getElementById('btn-' + itemId); if(btn) btn.innerText = "Comprando..."; const res = await fetch('/buy-item', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, itemId: itemId, cost: cost }) }); const data = await res.json(); if (data.success) { cachedMe.xp = data.xp; cachedMe.unlockedItems = data.unlockedItems; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); document.getElementById('drawer-xp').innerText = data.xp; alert("💎 Compra realizada!"); applyUnlockedItems(); } else { alert(data.error); if(btn) btn.innerText = cost + " XP"; } } catch (e) {} }
 
 // ==============================================================
-// 🚀 INICIALIZAÇÃO MASTER E AUTH
+// 🚀 INICIALIZAÇÃO MASTER E AUTH (CADASTRO DIRETO)
 // ==============================================================
 let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); hideElement('forgot-pass-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); showElement('forgot-pass-text'); } }
 
 async function handleAuth() { 
-    const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-pass').value; const name = document.getElementById('auth-name').value; const btn = document.getElementById('auth-btn'); 
+    const email = document.getElementById('auth-email').value; 
+    const password = document.getElementById('auth-pass').value; 
+    const name = document.getElementById('auth-name').value; 
+    const btn = document.getElementById('auth-btn'); 
+    
     if (!email || !password) return alert("Preencha todos os campos!"); 
+    
     btn.innerText = "Processando..."; btn.disabled = true; 
     try { 
-        const endpoint = isRegistering ? '/register' : '/login'; const body = isRegistering ? { email, password, displayName: name } : { email, password }; 
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); 
+        const endpoint = isRegistering ? '/register' : '/login'; 
+        const body = isRegistering ? { email, password, displayName: name } : { email, password }; 
+        
+        let res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); 
+        let data = await res.json(); 
+        
         if (res.ok) { 
-            if (isRegistering) { alert('✅ Código enviado para o seu e-mail!'); const code = prompt("Digite o Código que chegou no seu e-mail:"); if(code) verifyCodeManual(email, code); } 
-            else { 
-                token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); currentSectors = data.sectors || []; cachedMe.unlockedItems = data.unlockedItems || []; 
-                if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } 
-                const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); 
-                if (data.notificationSound) localStorage.setItem('notificationSound', data.notificationSound); 
-                applyUnlockedItems(); 
-                if (localStorage.getItem('isFirstLogin') === 'true') { localStorage.removeItem('isFirstLogin'); showWelcomeScreen(); } else { checkAndShowPermissions(); } 
+            // 🚀 SE FOR REGISTRO, FAZ O LOGIN AUTOMÁTICO IMEDIATAMENTE!
+            if (isRegistering) { 
+                res = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+                data = await res.json();
+                if(!res.ok) throw new Error(data.error || "Erro ao entrar após o cadastro.");
             } 
-        } else { alert(data.error || 'Erro na autenticação.'); } 
-    } catch (e) { alert("🚨 Servidor recusou conexão."); } finally { btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; } 
+            
+            // 🔓 SALVA OS DADOS E ABRE A PORTA DO CHAT
+            token = data.token; myId = data.myId; localStorage.setItem('token', token); localStorage.setItem('myId', myId); 
+            localStorage.setItem('displayName', data.displayName || ''); localStorage.setItem('photoUrl', data.photoUrl || ''); 
+            currentSectors = data.sectors || []; cachedMe.unlockedItems = data.unlockedItems || []; 
+            
+            if(data.theme === 'dark') { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); } 
+            const savedFont = data.fontSize || 'medium'; document.body.classList.add(`font-${savedFont}`); localStorage.setItem('fontSize', savedFont); 
+            if (data.notificationSound) localStorage.setItem('notificationSound', data.notificationSound); 
+            
+            applyUnlockedItems(); 
+            
+            if (isRegistering) { 
+                localStorage.setItem('isFirstLogin', 'true'); 
+                showWelcomeScreen(); 
+            } else { 
+                checkAndShowPermissions(); 
+            } 
+            
+        } else { 
+            alert(data.error || 'Erro na autenticação.'); 
+        } 
+    } catch (e) { 
+        alert("🚨 Ocorreu um erro: " + e.message); 
+    } finally { 
+        btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; 
+        btn.disabled = false; 
+    } 
 }
-
-async function verifyCodeManual(email, code) { try { const res = await fetch('/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) }); if(res.ok) { alert("Cadastro verificado! Faça login."); localStorage.setItem('isFirstLogin', 'true'); toggleAuthMode(); } else { alert("Código inválido!"); } } catch(e) {} }
 
 async function initApp() { 
     const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 

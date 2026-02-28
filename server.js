@@ -210,57 +210,33 @@ async function initializeAIBot() {
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 2525, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
 // ==============================================================
-// 🔐 SISTEMA DE AUTENTICAÇÃO BLINDADO
+// ⚡ SISTEMA DE AUTENTICAÇÃO DIRETO (SEM CÓDIGO)
 // ==============================================================
 
 app.post('/register', rateLimiter, async (req, res) => { 
     const { email, password, displayName } = req.body; 
     try { 
-        let user = await User.findOne({ email }); 
+        const userExists = await User.findOne({ email }); 
         
-        if (user && user.isVerified) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
+        // Bloqueia se o e-mail já estiver no banco de dados
+        if (userExists) return res.status(400).json({ error: 'Este e-mail já está em uso.' }); 
 
         const hashedPassword = await bcrypt.hash(password, 10); 
-        const code = Math.floor(100000 + Math.random() * 900000).toString(); 
 
-        if (user) {
-            user.password = hashedPassword;
-            user.code = code;
-            user.displayName = displayName || email.split('@')[0];
-            await user.save();
-        } else {
-            user = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
-            await user.save(); 
-        }
+        // 🚀 Cria o utilizador já com 'isVerified: true' (Acesso Livre Imediato)
+        const newUser = new User({ 
+            email, 
+            password: hashedPassword, 
+            displayName: displayName || email.split('@')[0],
+            isVerified: true 
+        }); 
+        await newUser.save(); 
 
-        try {
-            await transporter.sendMail({ 
-                from: '"Chat PTT" <psbsj.2020@outlook.com>', 
-                to: email, 
-                subject: 'Seu Código de Acesso - ChatPTT', 
-                html: `<div style="text-align:center; font-family:sans-serif;">
-                        <h2 style="color:#4F46E5;">Código de Verificação</h2>
-                        <h1 style="background:#F1F5F9; display:inline-block; padding:10px 20px; border-radius:10px;">${code}</h1>
-                       </div>` 
-            });
-            res.json({ message: 'Enviado' }); 
-        } catch (mailErr) {
-            console.error("Erro SMTP:", mailErr);
-            res.status(500).json({ error: 'Erro ao enviar e-mail. Verifique o Spam.' });
-        }
-    } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } 
-});
-
-app.post('/verify', async (req, res) => {
-    const { email, code } = req.body;
-    try {
-        const user = await User.findOne({ email, code });
-        if (!user) return res.status(400).json({ error: 'Código inválido' });
-        user.isVerified = true;
-        user.code = null; 
-        await user.save();
-        res.json({ message: 'Ok' });
-    } catch (e) { res.status(500).json({ error: 'Erro' }); }
+        // Retorna sucesso instantâneo
+        res.json({ message: 'Conta criada com sucesso!' }); 
+    } catch (e) { 
+        res.status(500).json({ error: 'Erro interno no servidor' }); 
+    } 
 });
 
 app.post('/login', rateLimiter, async (req, res) => { 
@@ -268,11 +244,15 @@ app.post('/login', rateLimiter, async (req, res) => {
     try { 
         const user = await User.findOne({ email }); 
         if (!user) return res.status(400).json({ error: 'E-mail não encontrado' });
-        
-        if (!user.isVerified) return res.status(400).json({ error: 'VERIFY_REQUIRED' }); 
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' }); 
+
+        // 🛡️ Prevenção: Se tiver alguma conta sua antiga bloqueada, isto liberta-a agora
+        if (!user.isVerified) {
+            user.isVerified = true;
+            await user.save();
+        }
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'SEGREDO', { expiresIn: '7d' }); 
         res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); 
