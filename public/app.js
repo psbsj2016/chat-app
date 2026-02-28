@@ -115,62 +115,76 @@ socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
 // ==============================================================
-// ⚡ MOTOR DE RECEÇÃO INSTANTÂNEA E INJEÇÃO DE CONTATOS
+// ⚡ MOTOR DE RECEÇÃO INSTANTÂNEA (CORRIGIDO PARA VELOCIDADE DA LUZ)
 // ==============================================================
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId;
     const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender };
     const senderId = senderObj._id;
-    const targetId = isGroup ? msg.groupId : senderId;
-
-    // 1. SE O CHAT ESTIVER ABERTO: Mostra a mensagem na hora!
-    if (currentChatId === targetId) {
-        // Tenta chamar a sua função de carregar mensagens para atualizar a tela instantaneamente
-        if (typeof loadMessages === 'function') {
-            loadMessages(currentChatId, isGroup);
-        }
-        
-        // Marca como lida na mesma fração de segundo
-        if (!isGroup) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId });
+    
+    // 🚀 CORREÇÃO 1: Identifica a janela correta mesmo quando VOCÊ envia a mensagem
+    let targetId;
+    if (isGroup) {
+        targetId = msg.groupId;
     } else {
-        // 2. SE O CHAT ESTIVER FECHADO: Sobe a bolinha vermelha e toca o som
-        if (isGroup) {
-            unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1;
-            localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
-        } else {
-            unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1;
-            localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
-        }
-        
-        if (typeof updateUnreadBadges === 'function') updateUnreadBadges();
-        
-        // Dispara o alerta sonoro (se existir)
-        const sound = localStorage.getItem('notificationSound') || 'modern';
-        const audio = new Audio(`/sounds/${sound}.mp3`);
-        audio.play().catch(e => console.log("Áudio bloqueado pelo navegador até o usuário interagir."));
+        const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver;
+        targetId = (senderId === myId) ? receiverId : senderId;
     }
 
-    // 3. 🚀 MÁGICA DO NOVO CONTATO: Aparece na lista sem precisar recarregar a página!
+    // 1. SE O CHAT ESTIVER ABERTO: Injeta na tela na mesma fração de segundo!
+    if (currentChatId === targetId) {
+        
+        // 🚀 CORREÇÃO 2: Apenas desenha a mensagem na tela, sem travar o app baixando tudo de novo
+        if (!document.getElementById(`msg-${msg._id}`)) {
+            displayMessage(msg);
+            
+            // Atualiza o cache de memória invisível
+            if (!messageCache[currentChatId]) messageCache[currentChatId] = [];
+            messageCache[currentChatId].push(msg);
+        }
+        
+        // Marca como lida na mesma hora (se não foi você que enviou)
+        if (!isGroup && senderId !== myId) {
+            socket.emit('mark_as_read', { senderId: senderId, receiverId: myId });
+        }
+        
+    } else {
+        // 2. SE O CHAT ESTIVER FECHADO E A MENSAGEM FOR DE OUTRA PESSOA: Toca o som
+        if (senderId !== myId) {
+            if (isGroup) {
+                unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1;
+                localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
+            } else {
+                unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1;
+                localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+            }
+            
+            if (typeof updateUnreadBadges === 'function') updateUnreadBadges();
+            
+            const sound = localStorage.getItem('notificationSound') || 'modern';
+            const audio = new Audio(`/sounds/${sound}.mp3`);
+            audio.play().catch(e => console.log("Áudio bloqueado."));
+        }
+    }
+
+    // 3. MÁGICA DO NOVO CONTATO: Vai para o topo da lista
     if (!isGroup && senderObj.displayName && senderId !== myId) {
         let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
         const existingIndex = cachedUsers.findIndex(u => u._id === senderId);
         
         if (existingIndex === -1) {
-            // É UM ALVO NOVO! Adiciona no topo da lista instantaneamente
             cachedUsers.unshift(senderObj);
         } else {
-            // O contato já existe, mas enviou mensagem nova. Move-o para o TOPO da lista (estilo WhatsApp)
             const userToMove = cachedUsers.splice(existingIndex, 1)[0];
-            userToMove.displayName = senderObj.displayName; // Atualiza o nome se ele tiver mudado
-            userToMove.photoUrl = senderObj.photoUrl;       // Atualiza a foto se ele tiver mudado
+            userToMove.displayName = senderObj.displayName;
+            userToMove.photoUrl = senderObj.photoUrl;
             cachedUsers.unshift(userToMove);
         }
         
         localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers));
-        
-        // Força a tela de contatos a desenhar-se novamente na mesma hora
         if (typeof loadContacts === 'function') loadContacts();
-    } else if (isGroup) {
+    } else {
+        // Recarrega apenas a prévia da última mensagem na tela principal
         if (typeof loadContacts === 'function') loadContacts();
     }
 });
