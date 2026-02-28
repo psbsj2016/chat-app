@@ -496,7 +496,40 @@ function openAddContactScreen() { hideAllTabs(); showElement('add-contact-screen
 async function executeExactSearch() { const query = document.getElementById('exact-search-input').value.trim(); const resultContainer = document.getElementById('exact-search-result'); if(!query) return alert('Digite um e-mail ou celular!'); resultContainer.innerHTML = '<div style="text-align:center; color: var(--brand-secondary);">Buscando...</div>'; try { const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) }); const data = await res.json(); if(data.found && data.user) { const u = data.user; const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = u.displayName || u.email.split('@')[0]; const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email; const userJson = encodeURIComponent(JSON.stringify(u)); resultContainer.innerHTML = `<div class="explore-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; cursor: pointer; border: 2px solid var(--brand-primary);" onclick="showStartChatConfirmation('${userJson}')"><img src="${photo}" style="width: 55px; height: 55px; border-radius: 50%;"><div style="flex: 1;"><div style="font-size: 18px; font-weight: 800;">${name}</div><div style="font-size: 13px;">${matchedInfo}</div></div></div>`; } else { resultContainer.innerHTML = '<div style="color: #ff5252;">Alvo não localizado.</div>'; } } catch(e) { resultContainer.innerHTML = 'Erro.'; } }
 function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURIComponent(userJsonStr)); document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0]; document.getElementById('start-chat-info').innerText = u.email; document.getElementById('btn-confirm-start-chat').onclick = () => { hideElement('start-chat-modal'); if (hiddenChats.includes(u._id)) { hiddenChats = hiddenChats.filter(id => id !== u._id); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); } openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user'); }; showElement('start-chat-modal'); }
 
-function openClassificationModal(userId, name) { targetContactId = userId; hideElement(`contact-menu-${userId}`); document.getElementById('sector-modal-title').innerText = 'Classificar Contato'; document.getElementById('sector-target-name').innerText = name; const list = document.getElementById('sector-checkbox-list'); list.innerHTML = ''; currentSectors.forEach((sec, idx) => { const isAlreadyIn = sec.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''}> ${sec.name}</label>`; }); showElement('sector-modal'); }
+function openClassificationModal(userId, name) { 
+    targetContactId = userId; 
+    hideElement(`contact-menu-${userId}`); 
+    
+    document.getElementById('sector-modal-title').innerText = 'Classificar Contato'; 
+    document.getElementById('sector-target-name').innerText = name; 
+    
+    const list = document.getElementById('sector-checkbox-list'); 
+    list.innerHTML = ''; 
+    
+    // 🚀 Verifica se existem etiquetas criadas. Se não existir, mostra o botão para criar!
+    if (!currentSectors || currentSectors.length === 0) {
+        list.innerHTML = `
+            <div style="text-align:center; padding: 20px; background: var(--input-bg); border-radius: 12px; margin-bottom: 10px;">
+                <span class="material-icons-round" style="color:var(--brand-secondary); font-size:36px; margin-bottom:10px;">label_off</span><br>
+                <span style="color:var(--secondary-text); font-size:13.5px; line-height: 1.5; display: block; margin-bottom: 15px;">Você ainda não criou nenhuma etiqueta ou setor para organizar os seus contatos.</span>
+                <button onclick="hideElement('sector-modal'); openClassificationsSettings();" class="chic-btn" style="width:100%; margin:0; font-size:14px; background:var(--brand-primary);"><span class="material-icons-round" style="font-size: 16px; vertical-align: middle; margin-right: 5px;">add_circle</span> Criar Etiquetas</button>
+            </div>
+        `;
+    } else {
+        // Se já existirem etiquetas, lista-as lindamente
+        currentSectors.forEach((sec, idx) => { 
+            const isAlreadyIn = sec.members.includes(userId); 
+            list.innerHTML += `
+                <label class="checkbox-item" style="display:flex; align-items:center; gap:12px; padding:12px 15px; background:var(--input-bg); border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s;">
+                    <input type="checkbox" value="${idx}" ${isAlreadyIn ? 'checked' : ''} style="width:20px; height:20px; accent-color:var(--brand-primary);"> 
+                    <span style="font-weight:700; color:var(--text-color); font-size: 15px;">${sec.name}</span>
+                </label>
+            `; 
+        }); 
+    }
+    
+    showElement('sector-modal'); 
+}
 
 function openClassificationsSettings() { hideElement('settings-screen'); showElement('classifications-screen'); renderClassificationsList(); }
 async function submitSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); let changed = false; checkboxes.forEach(cb => { const idx = cb.value; const isChecked = cb.checked; const inSector = currentSectors[idx].members.includes(targetContactId); if (isChecked && !inSector) { currentSectors[idx].members.push(targetContactId); changed = true; } else if (!isChecked && inSector) { currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); changed = true; } }); if (changed) { await saveProfile({ sectors: currentSectors }); loadContacts(); } hideElement('sector-modal'); }
