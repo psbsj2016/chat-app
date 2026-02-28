@@ -291,16 +291,18 @@ app.post('/login', rateLimiter, async (req, res) => {
     const { email, password } = req.body; 
     try { 
         const user = await User.findOne({ email }); 
-        
         if (!user) return res.status(400).json({ error: 'E-mail não encontrado' });
         
-        // Verifica se a conta já foi validada pelo e-mail
-        if (!user.isVerified) return res.status(400).json({ error: 'E-mail ainda não verificado' });
+        // Bloqueio total se não estiver verificado
+        if (!user.isVerified) return res.status(400).json({ error: 'VERIFY_REQUIRED' }); 
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' }); 
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'SEGREDO', { expiresIn: '7d' }); 
+        res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, xp: user.xp, level: user.level }); 
+    } catch (e) { res.status(500).json({ error: 'Erro no login' }); } 
+}); 
         
         res.json({ 
             token, 
@@ -344,25 +346,52 @@ app.post('/block-user', async (req, res) => { try { const user = await User.find
 app.post('/report-user', async (req, res) => { try { const report = new Report(req.body); await report.save(); res.json({ success: true }); } catch(e) { res.status(500).json({error: 'Erro ao denunciar'}); } });
 
 app.get('/user/:id', async (req, res) => { try { const u = await User.findById(req.params.id).select('-password'); res.json(u || {}); } catch (e) { res.status(500).json({error:'Erro'}); } });
-app.get('/users/:myId', async (req, res) => { try { res.json(await User.find({ _id: { $ne: req.params.myId } }).select('-password -code')); } catch (e) { res.status(500).json([]); } });
+app.get('/users/:myId', async (req, res) => { 
+    try { 
+        // Agora só retorna quem já confirmou o e-mail
+        res.json(await User.find({ _id: { $ne: req.params.myId }, isVerified: true }).select('-password -code')); 
+    } catch (e) { res.status(500).json([]); } 
+});
 app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId).select('-password')); } catch(e){ res.status(500).json({}); } }); 
 // ==============================================================
 // 🏆 SISTEMA DE RANKING GLOBAL (LEADERBOARD)
 // ==============================================================
 app.get('/leaderboard', async (req, res) => {
     try {
-        // Busca os 4 utilizadores com mais XP, ordenados do maior para o menor
-        const topUsers = await User.find({ xp: { $gt: 0 } })
+        // Filtro isVerified adicionado para evitar "fantasmas" no topo
+        const topUsers = await User.find({ xp: { $gt: 0 }, isVerified: true })
                                    .sort({ xp: -1 })
                                    .limit(4)
                                    .select('displayName photoUrl xp level');
         res.json(topUsers);
-    } catch (e) {
-        res.status(500).json([]);
-    }
+    } catch (e) { res.status(500).json([]); }
 });
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
-app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
+app.get('/search', async (req, res) => { 
+    const { query, myId } = req.query; 
+    if (!query || !myId) return res.json({ users: [], messages: [] }); 
+    
+    try { 
+        // 🛡️ Filtro Tático: Adicionamos 'isVerified: true' na busca de usuários
+        const users = await User.find({ 
+            _id: { $ne: myId }, 
+            isVerified: true, 
+            displayName: { $regex: query, $options: 'i' } 
+        }).select('displayName photoUrl email'); 
+
+        const messages = await Message.find({ 
+            $or: [ 
+                { sender: myId, content: { $regex: query, $options: 'i' } }, 
+                { receiver: myId, content: { $regex: query, $options: 'i' } } 
+            ] 
+        }).populate('sender receiver', 'displayName photoUrl'); 
+
+        res.json({ users, messages }); 
+    } catch (e) { 
+        res.status(500).json({ users:[], messages:[] }); 
+    } 
+});
+
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
 // Rota de Upload Tratada
