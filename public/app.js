@@ -114,12 +114,65 @@ socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
-socket.on('receive_message', (msg) => { 
-    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const groupIdStr = msg.groupId ? ((typeof msg.groupId === 'object') ? msg.groupId._id : msg.groupId) : null; const targetId = groupIdStr ? groupIdStr : senderIdStr; const chatPartner = senderIdStr === myId ? msg.receiver : senderIdStr;
-    if (!groupIdStr && hiddenChats.includes(chatPartner)) { hiddenChats = hiddenChats.filter(id => id !== chatPartner); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); loadContacts(); }
-    if (senderIdStr !== myId) { const soundPref = localStorage.getItem('notificationSound') || 'modern'; playNotificationSound(soundPref); }
-    let cacheTargetId = groupIdStr ? groupIdStr : chatPartner; if (!messageCache[cacheTargetId]) messageCache[cacheTargetId] = []; if (!messageCache[cacheTargetId].find(m => m._id === msg._id)) messageCache[cacheTargetId].push(msg); 
-    if (isGroupChat && groupIdStr === currentChatId && !document.hidden) { displayMessage(msg); } else if (!isGroupChat && (senderIdStr === myId || (senderIdStr === currentChatId && msg.receiver === myId)) && !document.hidden) { displayMessage(msg); if(senderIdStr === currentChatId) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); } else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); renderContactsList(JSON.parse(localStorage.getItem('cacheGroups')) || [], JSON.parse(localStorage.getItem('cacheUsers')) || []); updateAppBadge(); } 
+// ==============================================================
+// ⚡ MOTOR DE RECEÇÃO INSTANTÂNEA E INJEÇÃO DE CONTATOS
+// ==============================================================
+socket.on('receive_message', (msg) => {
+    const isGroup = !!msg.groupId;
+    const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender };
+    const senderId = senderObj._id;
+    const targetId = isGroup ? msg.groupId : senderId;
+
+    // 1. SE O CHAT ESTIVER ABERTO: Mostra a mensagem na hora!
+    if (currentChatId === targetId) {
+        // Tenta chamar a sua função de carregar mensagens para atualizar a tela instantaneamente
+        if (typeof loadMessages === 'function') {
+            loadMessages(currentChatId, isGroup);
+        }
+        
+        // Marca como lida na mesma fração de segundo
+        if (!isGroup) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId });
+    } else {
+        // 2. SE O CHAT ESTIVER FECHADO: Sobe a bolinha vermelha e toca o som
+        if (isGroup) {
+            unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1;
+            localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups));
+        } else {
+            unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1;
+            localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+        }
+        
+        if (typeof updateUnreadBadges === 'function') updateUnreadBadges();
+        
+        // Dispara o alerta sonoro (se existir)
+        const sound = localStorage.getItem('notificationSound') || 'modern';
+        const audio = new Audio(`/sounds/${sound}.mp3`);
+        audio.play().catch(e => console.log("Áudio bloqueado pelo navegador até o usuário interagir."));
+    }
+
+    // 3. 🚀 MÁGICA DO NOVO CONTATO: Aparece na lista sem precisar recarregar a página!
+    if (!isGroup && senderObj.displayName && senderId !== myId) {
+        let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        const existingIndex = cachedUsers.findIndex(u => u._id === senderId);
+        
+        if (existingIndex === -1) {
+            // É UM ALVO NOVO! Adiciona no topo da lista instantaneamente
+            cachedUsers.unshift(senderObj);
+        } else {
+            // O contato já existe, mas enviou mensagem nova. Move-o para o TOPO da lista (estilo WhatsApp)
+            const userToMove = cachedUsers.splice(existingIndex, 1)[0];
+            userToMove.displayName = senderObj.displayName; // Atualiza o nome se ele tiver mudado
+            userToMove.photoUrl = senderObj.photoUrl;       // Atualiza a foto se ele tiver mudado
+            cachedUsers.unshift(userToMove);
+        }
+        
+        localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers));
+        
+        // Força a tela de contatos a desenhar-se novamente na mesma hora
+        if (typeof loadContacts === 'function') loadContacts();
+    } else if (isGroup) {
+        if (typeof loadContacts === 'function') loadContacts();
+    }
 });
 
 // ==============================================================
@@ -192,6 +245,42 @@ async function openForwardModal() { showElement('forward-modal'); const h3 = doc
 // ==============================================================
 async function deleteChatFromList(targetId, targetName) { hideElement(`contact-menu-${targetId}`); if(!confirm(`⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODA a conversa com ${targetName}?\nA mídia será excluída e o contato sumirá desta lista.`)) return; try { const res = await fetch(`/messages/${myId}/${targetId}`, { method: 'DELETE' }); if (res.ok) { messageCache[targetId] = []; if(!hiddenChats.includes(targetId)) { hiddenChats.push(targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Chat apagado com sucesso!"); loadContacts(); } } catch(e) { alert("Erro ao apagar chat."); } }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; toggleMenu('attach-menu'); if(!hiddenChats.includes(currentChatId)) { hiddenChats.push(currentChatId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Conversa apagada!"); backToMain(); loadContacts(); } } catch (e) { } }
+// Função Mestre para Excluir um Grupo (Apenas para o Administrador)
+async function deleteGroup(groupId) {
+    // 1. Confirmação de Segurança
+    if (!confirm("⚠️ ATENÇÃO EXTREMA!\nTem certeza que deseja apagar este Grupo para sempre? Todas as mensagens e mídias serão destruídas para todos os membros.")) return;
+    
+    try {
+        // 2. Dispara o torpedo para o servidor (exige o ID do grupo e o seu ID como Admin)
+        const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' });
+        
+        if (res.ok) {
+            alert("💥 Grupo desintegrado com sucesso!");
+            
+            // 3. Se você estiver com o chat deste grupo aberto, fecha ele e limpa a tela
+            if (currentChatId === groupId) {
+                currentChatId = null;
+                document.getElementById('chat-box').innerHTML = '';
+                backToMain();
+            }
+            
+            // 4. Limpa do cache e atualiza a sua lista visual instantaneamente
+            let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+            cachedGroups = cachedGroups.filter(g => g._id !== groupId);
+            localStorage.setItem('cacheGroups', JSON.stringify(cachedGroups));
+            
+            loadContacts(); 
+            
+            // 5. Avisa o servidor para forçar o recarregamento na tela dos outros membros
+            socket.emit('group_updated'); 
+        } else {
+            const data = await res.json();
+            alert(data.error || "Erro ao excluir o grupo (Apenas o criador pode excluí-lo).");
+        }
+    } catch (e) {
+        alert("Falha na conexão com o servidor.");
+    }
+}
 async function blockContact(targetId, targetName) { if(!confirm(`🚫 Tem certeza que deseja BLOQUEAR ${targetName}?`)) return; try { await fetch('/block-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ myId: myId, targetId: targetId }) }); alert("Bloqueado."); backToMain(); loadContacts(); } catch(e) {} }
 async function reportContact(targetId, msgId = null) { const reason = prompt("🚨 Qual o motivo da denúncia?"); if(!reason) return; try { await fetch('/report-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reporterId: myId, reportedId: targetId, messageId: msgId, reason: reason }) }); alert("Denúncia enviada."); } catch(e) {} }
 
@@ -1376,6 +1465,7 @@ let videoStream = null;
 let videoPC = null;
 let currentCallTarget = null;
 let incomingCallData = null;
+let currentFacingMode = 'user'; // 'user' = Frontal, 'environment' = Traseira
 
 const videoRtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -1536,6 +1626,45 @@ function toggleVideoCam() {
     const btn = document.getElementById('btn-toggle-cam');
     btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444';
     btn.innerHTML = videoTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="font-size: 28px;">videocam_off</span>';
+}
+
+// 10. INVERTER A LENTE DA CÂMERA (FRONTAL <-> TRASEIRA)
+async function flipCamera() {
+    if (!videoStream || !videoPC) return;
+
+    // Altera o estado (Se estava frontal, vai para traseira, e vice-versa)
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+    try {
+        // Pede ao dispositivo APENAS a nova câmera de vídeo (sem pedir áudio para não interromper a voz)
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: currentFacingMode } }
+        });
+
+        const newVideoTrack = newStream.getVideoTracks()[0];
+
+        // 🚀 O Segredo WebRTC: Substitui a faixa de vídeo diretamente no túnel de transmissão!
+        const sender = videoPC.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(newVideoTrack);
+        }
+
+        // Remove a câmera velha da memória e adiciona a nova ao nosso visor local
+        const oldVideoTrack = videoStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+            oldVideoTrack.stop(); // Desliga a luzinha da câmera velha
+            videoStream.removeTrack(oldVideoTrack);
+        }
+        videoStream.addTrack(newVideoTrack);
+        
+        // Atualiza o quadradinho da tela com a nova visão
+        document.getElementById('local-video').srcObject = videoStream;
+
+    } catch (e) {
+        alert("Não foi possível alternar. O seu dispositivo pode não ter duas câmeras compatíveis.");
+        // Reverte o status interno se falhar
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    }
 }
 
 // ==============================================================
@@ -1706,3 +1835,149 @@ function playStory(index) {
 function nextStory() { currentStoryIndex < currentStoryQueue.length - 1 ? playStory(++currentStoryIndex) : closeStoryViewer(); }
 function prevStory() { currentStoryIndex > 0 ? playStory(--currentStoryIndex) : playStory(0); }
 function closeStoryViewer() { clearTimeout(storyTimer); clearInterval(storyProgressInterval); hideElement('story-viewer-modal'); }
+// ==============================================================
+// 📷 MOTOR DE INTERCEPTAÇÃO DA CÂMERA RÁPIDA
+// ==============================================================
+let tempQuickPhotoFile = null;
+let tempQuickPhotoBase64 = null;
+
+function handleQuickCamera(input) {
+    const file = input.files[0];
+    if (!file) return;
+    tempQuickPhotoFile = file;
+
+    // Converte para mostrar o preview na tela
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        tempQuickPhotoBase64 = e.target.result;
+        document.getElementById('quick-photo-preview').src = tempQuickPhotoBase64;
+        showElement('quick-photo-dest-modal');
+        input.value = ''; // Reseta o input para permitir novas fotos
+    };
+    reader.readAsDataURL(file);
+}
+
+// Opção A: Mandar para o Status
+function postQuickPhotoToStatus() {
+    hideElement('quick-photo-dest-modal');
+    openCreateStatusModal();
+    // Injeta a imagem automaticamente no editor de Status
+    statusBase64Image = tempQuickPhotoBase64;
+    document.getElementById('status-image-preview').src = statusBase64Image;
+    document.getElementById('status-image-preview').classList.remove('hidden');
+    document.getElementById('status-text-input').classList.add('hidden');
+}
+
+// Opção B: Escolher alguém para enviar
+function openQuickPhotoChatSelector() {
+    hideElement('quick-photo-dest-modal');
+    showElement('quick-photo-chat-modal');
+    
+    const list = document.getElementById('quick-photo-contacts-list');
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+    
+    list.innerHTML = '';
+    
+    // Lista os Grupos primeiro
+    if(cachedGroups.length > 0) {
+        const gTitle = document.createElement('div'); gTitle.innerHTML = '<b>Grupos</b>'; gTitle.style = 'padding:5px 10px; color:var(--brand-secondary); font-size:12px; text-transform:uppercase;'; list.appendChild(gTitle);
+        cachedGroups.forEach(g => {
+            const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer; padding:8px 10px; margin-bottom: 2px;';
+            div.innerHTML = `<img src="${g.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" class="avatar-small"> <span class="contact-name">${g.name}</span>`;
+            div.onclick = () => sendQuickPhotoToTarget(g._id, true);
+            list.appendChild(div);
+        });
+    }
+    
+    // Lista os Contatos Individuais
+    if(cachedUsers.length > 0) {
+        const uTitle = document.createElement('div'); uTitle.innerHTML = '<b>Contatos</b>'; uTitle.style = 'padding:5px 10px; color:var(--brand-primary); font-size:12px; text-transform:uppercase; margin-top:10px;'; list.appendChild(uTitle);
+        cachedUsers.filter(u => !hiddenChats.includes(u._id)).forEach(user => {
+            const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer; padding:8px 10px; margin-bottom: 2px;';
+            div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`;
+            div.onclick = () => sendQuickPhotoToTarget(user._id, false);
+            list.appendChild(div);
+        });
+    }
+}
+
+// Motor de Envio Direto (Upload + Disparo)
+async function sendQuickPhotoToTarget(targetId, isGroup) {
+    hideElement('quick-photo-chat-modal');
+    
+    // Notificação visual nativa do App
+    const btnIcon = document.getElementById('main-fab-btn');
+    if(btnIcon) btnIcon.innerHTML = '<span class="material-icons-round" style="animation: spin 1s linear infinite;">sync</span>';
+    
+    const formData = new FormData();
+    formData.append('file', tempQuickPhotoFile);
+    
+    try {
+        // Envia para a nuvem (Cloudinary)
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        
+        // Dispara a mensagem via Sockets
+        const msgData = { 
+            senderId: myId, 
+            receiverId: isGroup ? null : targetId, 
+            groupId: isGroup ? targetId : null, 
+            content: '📷 Foto rápida enviada.', 
+            fileUrl: data.url, 
+            fileType: 'image' 
+        };
+        socket.emit('private_message', msgData);
+        
+        // Limpa a memória
+        tempQuickPhotoFile = null;
+        tempQuickPhotoBase64 = null;
+        
+        alert("✅ Foto entregue com sucesso!");
+    } catch (e) {
+        alert("❌ Falha no envio da foto.");
+    } finally {
+        if(btnIcon) btnIcon.innerHTML = '<span class="material-icons-round" style="transition: transform 0.3s; font-size: 32px;">add</span>';
+    }
+}
+
+// ==============================================================
+// 😀 MOTOR DE EMOJIS (PICKER)
+// ==============================================================
+
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emoji-picker');
+    if (picker) {
+        picker.classList.toggle('hidden');
+    }
+}
+
+// Inicializador de Eventos do Teclado de Emojis
+setTimeout(() => {
+    const picker = document.getElementById('emoji-picker');
+    const msgInput = document.getElementById('message-input');
+    
+    if (picker && msgInput) {
+        // Escuta o clique num emoji dentro do painel
+        picker.addEventListener('emoji-click', event => {
+            // Insere o emoji no campo de texto (que é um contenteditable)
+            msgInput.innerHTML += event.detail.unicode;
+            
+            // Dispara o alerta de "digitando..." para o outro usuário
+            emitTypingStatus('typing');
+            
+            // Opcional: Esconder o painel após escolher um emoji
+            // picker.classList.add('hidden'); 
+        });
+    }
+    
+    // Sistema para esconder o painel de emojis ao clicar fora dele
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('emoji-picker') && !e.target.closest('button[onclick="toggleEmojiPicker()"]')) {
+            if (picker && !picker.classList.contains('hidden')) {
+                picker.classList.add('hidden');
+            }
+        }
+    });
+}, 1000);
