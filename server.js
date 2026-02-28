@@ -100,6 +100,7 @@ const UserSchema = new mongoose.Schema({
     unlockedItems: [{ type: String }] // NOVO: Itens da Loja Neon
 });
 const User = mongoose.model('User', UserSchema);
+
 // ==============================================================
 // 📸 MODELO DE STATUS EFÊMEROS (STORIES - 24 HORAS)
 // ==============================================================
@@ -107,10 +108,10 @@ const statusSchema = new mongoose.Schema({
     senderId: String,
     senderName: String,
     senderPhoto: String,
-    type: { type: String, default: 'text' }, // 'text' ou 'image'
-    content: String, // O texto ou a imagem
+    type: { type: String, default: 'text' }, 
+    content: String, 
     bgColor: { type: String, default: '#3B82F6' },
-    createdAt: { type: Date, default: Date.now, expires: 86400 } // Apaga sozinho em 24h
+    createdAt: { type: Date, default: Date.now, expires: 86400 } 
 });
 const StatusMsg = mongoose.model('StatusMsg', statusSchema);
 
@@ -129,6 +130,7 @@ app.post('/api/status', async (req, res) => {
         res.json({ success: true });
     } catch(e) { res.status(500).json({ error: 'Erro ao postar status' }); }
 });
+
 const GroupSchema = new mongoose.Schema({ name: { type: String, required: true }, admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } });
 const Group = mongoose.model('Group', GroupSchema);
 
@@ -175,6 +177,7 @@ const CommunityMemberSchema = new mongoose.Schema({
     joinedAt: { type: Date, default: Date.now }
 });
 const CommunityMember = mongoose.model('CommunityMember', CommunityMemberSchema);
+
 const CommunityMessageSchema = new mongoose.Schema({
     channelId: { type: mongoose.Schema.Types.ObjectId, ref: 'CommunityChannel' },
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -184,6 +187,7 @@ const CommunityMessageSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 const CommunityMessage = mongoose.model('CommunityMessage', CommunityMessageSchema);
+
 const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
 const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
 
@@ -205,19 +209,22 @@ async function initializeAIBot() {
 
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
-// === SISTEMA DE AUTENTICAÇÃO BLINDADO ===
+// ==============================================================
+// 🔐 SISTEMA DE AUTENTICAÇÃO BLINDADO
+// ==============================================================
 
 app.post('/register', rateLimiter, async (req, res) => { 
     const { email, password, displayName } = req.body; 
     try { 
         let user = await User.findOne({ email }); 
         
-        // Se já existe e está verificado, bloqueia
+        // Bloqueia se já estiver registrado E verificado
         if (user && user.isVerified) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
 
         const hashedPassword = await bcrypt.hash(password, 10); 
         const code = Math.floor(100000 + Math.random() * 900000).toString(); 
 
+        // Substitui a "conta fantasma" ou cria uma nova
         if (user) {
             user.password = hashedPassword;
             user.code = code;
@@ -228,10 +235,9 @@ app.post('/register', rateLimiter, async (req, res) => {
             await user.save(); 
         }
 
-        // 🚀 AWAIT vital para capturar erro da Brevo
         try {
             await transporter.sendMail({ 
-                from: '"Chat PTT" <psbsj.2020@outlook.com>', // Nome idêntico ao painel Brevo
+                from: '"Chat PTT" <psbsj.2020@outlook.com>', // Configurado igual a Brevo
                 to: email, 
                 subject: 'Seu Código de Acesso - ChatPTT', 
                 html: `<div style="text-align:center; font-family:sans-serif;">
@@ -247,14 +253,13 @@ app.post('/register', rateLimiter, async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } 
 });
 
-// 🚀 ROTA FALTANTE: VERIFY (Sem ela o registro trava no processando)
 app.post('/verify', async (req, res) => {
     const { email, code } = req.body;
     try {
         const user = await User.findOne({ email, code });
         if (!user) return res.status(400).json({ error: 'Código inválido' });
         user.isVerified = true;
-        user.code = null;
+        user.code = null; // Apaga o código após a verificação
         await user.save();
         res.json({ message: 'Ok' });
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
@@ -266,64 +271,20 @@ app.post('/login', rateLimiter, async (req, res) => {
         const user = await User.findOne({ email }); 
         if (!user) return res.status(400).json({ error: 'E-mail não encontrado' });
         
-        // Permite login de contas antigas que não tinham isVerified ou marcando como true ao logar
-        if (!user.isVerified) {
-            // Se você quiser forçar a verificação de todos, mantenha o bloqueio abaixo. 
-            // Para liberar as antigas, vamos marcar como verificado no primeiro login bem-sucedido.
-            const passOk = await bcrypt.compare(password, user.password);
-            if (passOk) {
-                user.isVerified = true;
-                await user.save();
-            } else {
-                return res.status(400).json({ error: 'Senha incorreta' });
-            }
-        } else {
-            if (!(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Senha incorreta' });
-        }
-
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'SEGREDO', { expiresIn: '7d' }); 
-        res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); 
-    } catch (e) { res.status(500).json({ error: 'Erro no login' }); } 
-});
-
-// 3. ROTA DE LOGIN (Atualizada)
-app.post('/login', rateLimiter, async (req, res) => { 
-    const { email, password } = req.body; 
-    try { 
-        const user = await User.findOne({ email }); 
-        if (!user) return res.status(400).json({ error: 'E-mail não encontrado' });
-        
-        // Bloqueio total se não estiver verificado
+        // 🛡️ BLOQUEIO TOTAL: O e-mail DEVE ser verificado
         if (!user.isVerified) return res.status(400).json({ error: 'VERIFY_REQUIRED' }); 
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Senha incorreta' }); 
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'SEGREDO', { expiresIn: '7d' }); 
-        res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, xp: user.xp, level: user.level }); 
+        res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); 
     } catch (e) { res.status(500).json({ error: 'Erro no login' }); } 
-}); 
-        
-        res.json({ 
-            token, 
-            myId: user._id, 
-            email: user.email, 
-            displayName: user.displayName, 
-            photoUrl: user.photoUrl, 
-            sectors: user.sectors, 
-            theme: user.theme, 
-            fontSize: user.fontSize, 
-            notificationSound: user.notificationSound, 
-            xp: user.xp, 
-            level: user.level, 
-            unlockedItems: user.unlockedItems 
-        }); 
-    } catch (e) { 
-        res.status(500).json({ error: 'Erro no login' }); 
-    } 
 });
 
-// === ROTA DO MERCADO NEON ===
+// ==============================================================
+// 🛍️ ROTA DO MERCADO NEON & XP
+// ==============================================================
 app.post('/buy-item', async (req, res) => {
     try {
         const { userId, itemId, cost } = req.body;
@@ -344,21 +305,21 @@ app.post('/add-xp', async (req, res) => { try { const { userId, xpAmount, isSurp
 app.put('/settings', async (req, res) => { try { const u = await User.findById(req.body.userId); if (!u) return res.status(404).json({error: 'Not found'}); if(req.body.theme !== undefined) u.theme = req.body.theme; if(req.body.sectors !== undefined) u.sectors = req.body.sectors; if(req.body.displayName !== undefined) u.displayName = req.body.displayName; if(req.body.photoUrl !== undefined) u.photoUrl = req.body.photoUrl; if(req.body.phone !== undefined) u.phone = req.body.phone; if(req.body.bio !== undefined) u.bio = req.body.bio; if(req.body.chatWallpaper !== undefined) u.chatWallpaper = req.body.chatWallpaper; if(req.body.fontSize !== undefined) u.fontSize = req.body.fontSize; if(req.body.notificationSound !== undefined) u.notificationSound = req.body.notificationSound; await u.save(); res.json(u); } catch (e) { res.status(500).json({error: 'Erro interno'}); } });
 app.post('/block-user', async (req, res) => { try { const user = await User.findById(req.body.myId); if(user && !user.blockedUsers.includes(req.body.targetId)) { user.blockedUsers.push(req.body.targetId); await user.save(); } res.json({ success: true }); } catch(e) { res.status(500).json({error: 'Erro ao bloquear'}); } });
 app.post('/report-user', async (req, res) => { try { const report = new Report(req.body); await report.save(); res.json({ success: true }); } catch(e) { res.status(500).json({error: 'Erro ao denunciar'}); } });
-
 app.get('/user/:id', async (req, res) => { try { const u = await User.findById(req.params.id).select('-password'); res.json(u || {}); } catch (e) { res.status(500).json({error:'Erro'}); } });
+
+// ==============================================================
+// 🛡️ ROTAS DE BUSCA BLINDADAS (isVerified: true)
+// ==============================================================
 app.get('/users/:myId', async (req, res) => { 
     try { 
-        // Agora só retorna quem já confirmou o e-mail
         res.json(await User.find({ _id: { $ne: req.params.myId }, isVerified: true }).select('-password -code')); 
     } catch (e) { res.status(500).json([]); } 
 });
+
 app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(botUserId).select('-password')); } catch(e){ res.status(500).json({}); } }); 
-// ==============================================================
-// 🏆 SISTEMA DE RANKING GLOBAL (LEADERBOARD)
-// ==============================================================
+
 app.get('/leaderboard', async (req, res) => {
     try {
-        // Filtro isVerified adicionado para evitar "fantasmas" no topo
         const topUsers = await User.find({ xp: { $gt: 0 }, isVerified: true })
                                    .sort({ xp: -1 })
                                    .limit(4)
@@ -366,13 +327,14 @@ app.get('/leaderboard', async (req, res) => {
         res.json(topUsers);
     } catch (e) { res.status(500).json([]); }
 });
+
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
+
 app.get('/search', async (req, res) => { 
     const { query, myId } = req.query; 
     if (!query || !myId) return res.json({ users: [], messages: [] }); 
     
     try { 
-        // 🛡️ Filtro Tático: Adicionamos 'isVerified: true' na busca de usuários
         const users = await User.find({ 
             _id: { $ne: myId }, 
             isVerified: true, 
@@ -392,13 +354,27 @@ app.get('/search', async (req, res) => {
     } 
 });
 
-app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/find-contact', async (req, res) => { 
+    const { query, myId } = req.body; 
+    try { 
+        const user = await User.findOne({ 
+            $and: [ 
+                { _id: { $ne: myId } }, 
+                { isVerified: true },
+                { $or: [{ email: query }, { phone: query }] } 
+            ] 
+        }).select('-password -code'); 
+        res.json(user ? { found: true, user } : { found: false }); 
+    } catch (e) { res.status(500).json({ error: 'Erro' }); } 
+});
 
-// Rota de Upload Tratada
+// ==============================================================
+// ⚙️ ROTAS GERAIS E GRUPOS
+// ==============================================================
 app.post('/upload', (req, res) => { upload.single('file')(req, res, function (err) { if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'O arquivo ultrapassou o limite de 50MB.' }); } else if (err) { return res.status(500).json({ error: 'A Nuvem rejeitou este formato.' }); } if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); res.json({ url: req.file.path, type: req.file.mimetype }); }); });
 
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: '"Chat PTT" <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Ok!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
@@ -417,9 +393,7 @@ app.post('/notes', async (req, res) => { try { const note = new Note(req.body); 
 app.put('/notes/:id', async (req, res) => { try { await Note.findByIdAndUpdate(req.params.id, req.body); res.json({msg:'ok'}); } catch(e) { res.status(500).json({error:'Erro'}); } });
 app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelete(req.params.id); res.json({msg: 'ok'}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
 app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 
-// 🚀 NOVAS ROTAS DE LEITURA E CANCELAMENTO (COLE AQUI)
 app.get('/scheduled-messages/:userId', async (req, res) => { 
     try { 
         const msgs = await ScheduledMsg.find({ senderId: req.params.userId, status: 'pending' }).sort('scheduledTime'); 
@@ -433,6 +407,7 @@ app.delete('/schedule-message/:id', async (req, res) => {
         res.json({success: true}); 
     } catch(e) { res.status(500).json({error: 'Erro'}); } 
 });
+
 app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
 
 // ==============================================================
@@ -441,20 +416,15 @@ app.post('/subscribe', async (req, res) => { const { userId, subscription } = re
 app.post('/communities', async (req, res) => {
     try {
         const { name, description, ownerId, isPublic, category } = req.body;
-        
-        // 1. Cria a Comunidade
         const comm = new Community({ name, description, ownerId, isPublic, category });
         await comm.save();
 
-        // 2. Cria Cargo de Dono Mestre
         const ownerRole = new CommunityRole({ communityId: comm._id, name: 'Fundador', color: '#F59E0B', permissions: { canManageChannels: true, canDeleteMessages: true, canKickUsers: true } });
         await ownerRole.save();
 
-        // 3. Adiciona você como membro com cargo de dono
         const member = new CommunityMember({ communityId: comm._id, userId: ownerId, roleId: ownerRole._id });
         await member.save();
 
-        // 4. Cria Canais Padrão Discord
         await new CommunityChannel({ communityId: comm._id, name: 'avisos', type: 'announcement', order: 1 }).save();
         await new CommunityChannel({ communityId: comm._id, name: 'chat-geral', type: 'text', order: 2 }).save();
 
@@ -462,9 +432,6 @@ app.post('/communities', async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Erro ao criar comunidade' }); }
 });
 
-// --- FASE 4: EXPLORAR, ENTRAR E CRIAR CANAIS ---
-
-// Explorar Comunidades Públicas
 app.get('/communities-explore', async (req, res) => {
     try {
         const comms = await Community.find({ isPublic: true }).sort('-createdAt').limit(20);
@@ -472,29 +439,24 @@ app.get('/communities-explore', async (req, res) => {
     } catch (e) { res.status(500).json([]); }
 });
 
-// Entrar numa Comunidade
 app.post('/communities/join', async (req, res) => {
     try {
         const { userId, communityId } = req.body;
-        // 1. Verifica se já está lá dentro
         let member = await CommunityMember.findOne({ communityId, userId });
         if (member) return res.json({ success: true, message: 'Já é membro' });
 
-        // 2. Busca o cargo base de "Membro", se não existir, cria-o
         let baseRole = await CommunityRole.findOne({ communityId, name: 'Membro' });
         if (!baseRole) {
             baseRole = new CommunityRole({ communityId, name: 'Membro', color: '#CBD5E1', permissions: { canManageChannels: false, canDeleteMessages: false, canKickUsers: false } });
             await baseRole.save();
         }
 
-        // 3. Adiciona o usuário
         member = new CommunityMember({ communityId, userId, roleId: baseRole._id });
         await member.save();
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: 'Erro ao entrar na comunidade' }); }
 });
 
-// Criar novo Canal
 app.post('/communities/channels', async (req, res) => {
     try {
         const { communityId, name, type } = req.body;
@@ -505,9 +467,6 @@ app.post('/communities/channels', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao criar canal' }); }
 });
 
-// --- FASE 5: MODERAÇÃO E GESTÃO (MISSÃO A) ---
-
-// Apagar um Canal Específico
 app.delete('/communities/channels/:id', async (req, res) => {
     try {
         const { userId, commId } = req.body;
@@ -520,7 +479,6 @@ app.delete('/communities/channels/:id', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao deletar canal' }); }
 });
 
-// Destruir a Comunidade Inteira
 app.delete('/communities/:id', async (req, res) => {
     try {
         const { userId } = req.body;
@@ -541,7 +499,6 @@ app.delete('/communities/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro ao deletar comunidade' }); }
 });
 
-// Membro Normal Sair da Comunidade
 app.post('/communities/leave', async (req, res) => {
     try {
         const { userId, communityId } = req.body;
@@ -550,7 +507,6 @@ app.post('/communities/leave', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao sair' }); }
 });
 
-// Buscar Membros e Cargos da Comunidade (MISSÃO B)
 app.get('/communities/:id/members', async (req, res) => {
     try {
         const members = await CommunityMember.find({ communityId: req.params.id })
@@ -578,46 +534,43 @@ app.get('/communities/channels/:id/messages', async (req, res) => {
     catch (e) { res.status(500).json([]); }
 });
 
-// === WEBSOCKETS (CHAT E IA) ===
+// ==============================================================
+// 🔌 WEBSOCKETS (CHAT, IA, E MULTIPLAYER)
+// ==============================================================
 let users = {};
-const SERVER_VERSION = Date.now().toString(); // Gera a versão apenas UMA VEZ ao ligar o servidor
+const SERVER_VERSION = Date.now().toString(); 
 
 io.on('connection', (socket) => {
-    socket.emit('check_app_version', SERVER_VERSION); // Envia a mesma versão sempre
+    socket.emit('check_app_version', SERVER_VERSION); 
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
     socket.on('join_group', (groupId) => { socket.join(groupId); });
         
-        // ==============================================================
-        // 📹 SINAIS DE VIDEOCHAMADA P2P
-        // ==============================================================
-        socket.on('call_user', (data) => {
-            const targetSocket = users[data.targetId];
-            // Se o alvo estiver online, envia o sinal de telefone a tocar
-            if (targetSocket) io.to(targetSocket).emit('incoming_call', { callerId: data.callerId, callerName: data.callerName, callerPhoto: data.callerPhoto });
-        });
+    socket.on('call_user', (data) => {
+        const targetSocket = users[data.targetId];
+        if (targetSocket) io.to(targetSocket).emit('incoming_call', { callerId: data.callerId, callerName: data.callerName, callerPhoto: data.callerPhoto });
+    });
 
-        socket.on('accept_call', (data) => {
-            const callerSocket = users[data.callerId];
-            if (callerSocket) io.to(callerSocket).emit('call_accepted', { answererId: data.answererId });
-        });
+    socket.on('accept_call', (data) => {
+        const callerSocket = users[data.callerId];
+        if (callerSocket) io.to(callerSocket).emit('call_accepted', { answererId: data.answererId });
+    });
 
-        socket.on('reject_call', (data) => {
-            const callerSocket = users[data.callerId];
-            if (callerSocket) io.to(callerSocket).emit('call_rejected');
-        });
+    socket.on('reject_call', (data) => {
+        const callerSocket = users[data.callerId];
+        if (callerSocket) io.to(callerSocket).emit('call_rejected');
+    });
 
-        socket.on('video_signal', (data) => {
-            const targetSocket = users[data.targetId];
-            if (targetSocket) io.to(targetSocket).emit('video_signal', { from: data.from, signal: data.signal });
-        });
+    socket.on('video_signal', (data) => {
+        const targetSocket = users[data.targetId];
+        if (targetSocket) io.to(targetSocket).emit('video_signal', { from: data.from, signal: data.signal });
+    });
 
-        socket.on('end_call', (data) => {
-            const targetSocket = users[data.targetId];
-            if (targetSocket) io.to(targetSocket).emit('call_ended');
-        });
-    // === SOCKETS DAS COMUNIDADES ===
+    socket.on('end_call', (data) => {
+        const targetSocket = users[data.targetId];
+        if (targetSocket) io.to(targetSocket).emit('call_ended');
+    });
+
     socket.on('join_community_channel', (channelId) => {
-        // Sai do canal anterior para não ler mensagens vazadas
         if(socket.currentCommChannel) socket.leave(socket.currentCommChannel);
         socket.join(channelId);
         socket.currentCommChannel = channelId;
@@ -625,39 +578,23 @@ io.on('connection', (socket) => {
 
     socket.on('send_channel_message', async (data) => {
         try {
-            // Guarda na Coleção Específica da Comunidade
             const msg = new CommunityMessage({ channelId: data.channelId, senderId: data.senderId, content: data.content, fileType: 'text' });
             await msg.save();
-            
-            // Popula os dados de quem enviou e dispara PARA O CANAL
             const popMsg = await CommunityMessage.findById(msg._id).populate('senderId', 'displayName photoUrl');
             io.to(data.channelId).emit('receive_channel_message', popMsg);
         } catch(e) { console.error("Erro ao enviar msg de comunidade:", e); }
     });
     
-    // ==============================================================
-    // 🎙️ SINALIZAÇÃO WEBRTC (LOUNGE DE VOZ DAS COMUNIDADES)
-    // ==============================================================
     socket.on('join_voice_channel', (data) => {
         const roomName = `voice_${data.channelId}`;
         socket.join(roomName);
         socket.voiceChannel = roomName;
-        socket.userProfile = data.userProfile; // { id, name, photoUrl }
-        
-        // Avisa a todos que já estão na sala que você chegou (para eles ligarem para você)
-        socket.to(roomName).emit('user_joined_voice', {
-            socketId: socket.id,
-            userProfile: data.userProfile
-        });
+        socket.userProfile = data.userProfile; 
+        socket.to(roomName).emit('user_joined_voice', { socketId: socket.id, userProfile: data.userProfile });
     });
 
     socket.on('webrtc_signal', (data) => {
-        // Envia as "coordenadas" e o perfil de quem está a ligar
-        io.to(data.to).emit('webrtc_signal', {
-            from: socket.id,
-            signal: data.signal,
-            userProfile: socket.userProfile // Garante que o receptor saiba quem é você
-        });
+        io.to(data.to).emit('webrtc_signal', { from: socket.id, signal: data.signal, userProfile: socket.userProfile });
     });
 
     socket.on('leave_voice_channel', () => {
@@ -730,36 +667,28 @@ io.on('connection', (socket) => {
                 if (rSocket) io.to(rSocket).emit('receive_message', populatedMsg); 
                 socket.emit('receive_message', populatedMsg); 
 
-                  // 🧠 CÉREBRO DA IA (NUVEM 24/7 - GOOGLE GEMINI)
+                // 🧠 CÉREBRO DA IA
                 if (String(data.receiverId) === String(botUserId) && data.content) {
                     socket.emit('typing', { senderId: botUserId, senderName: '🤖 CPTT IA', action: 'typing' });
                     try {
                         const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
                         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
                         const aiRes = await fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: `Você é o assistente inteligente do aplicativo ChatPTT. Responda de forma amigável e direta a esta mensagem do usuário: ${data.content}` }] }]
-                            })
+                            body: JSON.stringify({ contents: [{ parts: [{ text: `Você é o assistente inteligente do aplicativo ChatPTT. Responda de forma amigável e direta a esta mensagem do usuário: ${data.content}` }] }] })
                         });
-
                         const aiData = await aiRes.json();
                         let replyText = "Tive um branco nas nuvens...";
-                        
-                        // Extrai a resposta da estrutura do Gemini
                         if (aiData.candidates && aiData.candidates.length > 0) {
                             replyText = aiData.candidates[0].content.parts[0].text;
                         } else {
                             replyText = "Desculpe, os meus circuitos estão a recarregar.";
                         }
-
                         socket.emit('stop_typing', { senderId: botUserId });
                         const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
                         socket.emit('receive_message', await Message.findById(botMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
-
                     } catch (netError) {
                         socket.emit('stop_typing', { senderId: botUserId });
                         const errorMsg = new Message({ sender: botUserId, receiver: data.senderId, content: `🚨 Conexão com a Nuvem falhou.`, status: 'sent', _id: new mongoose.Types.ObjectId() });
@@ -767,7 +696,6 @@ io.on('connection', (socket) => {
                         socket.emit('receive_message', await Message.findById(errorMsg._id).populate('sender', 'displayName photoUrl unlockedItems'));
                     }
                 } else {
-
                     const receiver = await User.findById(data.receiverId);
                     if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                         const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
@@ -784,28 +712,15 @@ io.on('connection', (socket) => {
     socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { const rSocket = users[data.receiverId]; if(rSocket) io.to(rSocket).emit('message_reacted', data); socket.emit('message_reacted', data); } });
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
-    // ==============================================================
-    // 🐍 MOTOR MULTIPLAYER: NEON SERPENT DUEL
-    // ==============================================================
-    let snakeQueue = []; // Fila de espera para duelos
 
+    // 🐍 MULTIPLAYER: NEON SERPENT DUEL
+    let snakeQueue = []; 
     socket.on('join_snake_duel', (data) => {
-        // Evita duplicados na fila
-        if (!snakeQueue.find(p => p.id === socket.id)) {
-            snakeQueue.push({ id: socket.id, profile: data.profile });
-        }
-
-        // Se houver dois jogadores, inicia a partida
+        if (!snakeQueue.find(p => p.id === socket.id)) { snakeQueue.push({ id: socket.id, profile: data.profile }); }
         if (snakeQueue.length >= 2) {
-            const p1 = snakeQueue.shift();
-            const p2 = snakeQueue.shift();
+            const p1 = snakeQueue.shift(); const p2 = snakeQueue.shift();
             const roomId = `snake_room_${p1.id}`;
-
-            // Coloca ambos na mesma "Arena Virtual"
-            io.sockets.sockets.get(p1.id).join(roomId);
-            io.sockets.sockets.get(p2.id).join(roomId);
-
-            // Avisa os jogadores que o duelo começou
+            io.sockets.sockets.get(p1.id).join(roomId); io.sockets.sockets.get(p2.id).join(roomId);
             io.to(roomId).emit('snake_duel_start', {
                 roomId: roomId,
                 players: [
@@ -816,80 +731,35 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Sincronização de Posição em Tempo Real (60fps)
-    socket.on('snake_move', (data) => {
-        socket.to(data.roomId).emit('opponent_move', {
-            id: socket.id,
-            head: data.head,
-            history: data.history,
-            angle: data.angle
-        });
-    });
+    socket.on('snake_move', (data) => { socket.to(data.roomId).emit('opponent_move', { id: socket.id, head: data.head, history: data.history, angle: data.angle }); });
+    socket.on('snake_death', (data) => { socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId }); });
 
-    // Alerta de Destruição (Morte no Online)
-    socket.on('snake_death', (data) => {
-        socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId });
-    });
-
-// ==============================================================
-    // 🪩 MOTOR MULTIPLAYER: NEON BOUNCE ARENA (PvP)
-    // ==============================================================
+    // 🪩 MULTIPLAYER: NEON BOUNCE ARENA
     let bounceQueue = [];
-
     socket.on('join_bounce_arena', (data) => {
-        // Evita duplicados na fila
-        if (!bounceQueue.find(p => p.id === socket.id)) {
-            bounceQueue.push({ id: socket.id, profile: data.profile, league: data.league });
-        }
-
-        // Se houver dois jogadores, cria a Arena
+        if (!bounceQueue.find(p => p.id === socket.id)) { bounceQueue.push({ id: socket.id, profile: data.profile, league: data.league }); }
         if (bounceQueue.length >= 2) {
-            const p1 = bounceQueue.shift();
-            const p2 = bounceQueue.shift();
+            const p1 = bounceQueue.shift(); const p2 = bounceQueue.shift();
             const roomId = `bounce_arena_${p1.id}`;
-
-            // Coloca ambos na sala isolada
-            io.sockets.sockets.get(p1.id).join(roomId);
-            io.sockets.sockets.get(p2.id).join(roomId);
-
-            // Semente de Geração (Para o mapa ser 100% igual para os dois)
+            io.sockets.sockets.get(p1.id).join(roomId); io.sockets.sockets.get(p2.id).join(roomId);
             const mapSeed = Math.random();
-
-            // Dispara o início da partida
             io.to(roomId).emit('bounce_match_start', {
-                roomId: roomId,
-                seed: mapSeed,
+                roomId: roomId, seed: mapSeed,
                 players: [
-                    { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, // Ciano
-                    { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' }  // Rosa
+                    { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, 
+                    { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' } 
                 ]
             });
         }
     });
 
-    // Sincroniza a posição (Pulo e Queda)
-    socket.on('bounce_sync_pos', (data) => {
-        socket.to(data.roomId).emit('bounce_opponent_pos', { id: socket.id, y: data.y, vy: data.vy });
-    });
-
-    // Quando alguém morre (Bate no espinho ou cai)
-    socket.on('bounce_player_died', (data) => {
-        // Avisa o outro jogador que ele VENCEU!
-        socket.to(data.roomId).emit('bounce_match_won', { loserId: socket.id });
-    });
+    socket.on('bounce_sync_pos', (data) => { socket.to(data.roomId).emit('bounce_opponent_pos', { id: socket.id, y: data.y, vy: data.vy }); });
+    socket.on('bounce_player_died', (data) => { socket.to(data.roomId).emit('bounce_match_won', { loserId: socket.id }); });
 
     socket.on('disconnect', () => { 
-        // Lógica existente de presença
         const uid = Object.keys(users).find(key => users[key] === socket.id); 
-        if (uid) { 
-            delete users[uid]; 
-            io.emit('online_users', Object.keys(users)); 
-        }
-
-        // NOVA Lógica do Rádio: Avisa a sala se o soldado cair
-        if (socket.voiceChannel) {
-            socket.to(socket.voiceChannel).emit('user_left_voice', socket.id);
-        }
+        if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); }
+        if (socket.voiceChannel) { socket.to(socket.voiceChannel).emit('user_left_voice', socket.id); }
     });
 });
 
