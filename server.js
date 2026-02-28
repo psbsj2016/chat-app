@@ -710,43 +710,78 @@ io.on('connection', (socket) => {
     socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
+    // ==============================================================
     // 🐍 MULTIPLAYER: NEON SERPENT DUEL
+    // ==============================================================
     let snakeQueue = []; 
     socket.on('join_snake_duel', (data) => {
         if (!snakeQueue.find(p => p.id === socket.id)) { snakeQueue.push({ id: socket.id, profile: data.profile }); }
+        
+        // 🛡️ BLINDAGEM: Remove da fila quem fechou o jogo antes de achar oponente
+        snakeQueue = snakeQueue.filter(p => io.sockets.sockets.get(p.id));
+
         if (snakeQueue.length >= 2) {
-            const p1 = snakeQueue.shift(); const p2 = snakeQueue.shift();
-            const roomId = `snake_room_${p1.id}`;
-            io.sockets.sockets.get(p1.id).join(roomId); io.sockets.sockets.get(p2.id).join(roomId);
-            io.to(roomId).emit('snake_duel_start', {
-                roomId: roomId,
-                players: [
-                    { id: p1.id, profile: p1.profile, startPos: { x: 100, y: 300 }, color: '#0FF' },
-                    { id: p2.id, profile: p2.profile, startPos: { x: 500, y: 300 }, color: '#F0F' }
-                ]
-            });
+            const p1 = snakeQueue.shift(); 
+            const p2 = snakeQueue.shift();
+            
+            const socket1 = io.sockets.sockets.get(p1.id);
+            const socket2 = io.sockets.sockets.get(p2.id);
+
+            if (socket1 && socket2) {
+                const roomId = `snake_room_${p1.id}`;
+                socket1.join(roomId); 
+                socket2.join(roomId);
+                io.to(roomId).emit('snake_duel_start', {
+                    roomId: roomId,
+                    players: [
+                        { id: p1.id, profile: p1.profile, startPos: { x: 100, y: 300 }, color: '#0FF' },
+                        { id: p2.id, profile: p2.profile, startPos: { x: 500, y: 300 }, color: '#F0F' }
+                    ]
+                });
+            } else {
+                if (socket1) snakeQueue.push(p1);
+                if (socket2) snakeQueue.push(p2);
+            }
         }
     });
 
     socket.on('snake_move', (data) => { socket.to(data.roomId).emit('opponent_move', { id: socket.id, head: data.head, history: data.history, angle: data.angle }); });
     socket.on('snake_death', (data) => { socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId }); });
 
+    // ==============================================================
     // 🪩 MULTIPLAYER: NEON BOUNCE ARENA
+    // ==============================================================
     let bounceQueue = [];
     socket.on('join_bounce_arena', (data) => {
         if (!bounceQueue.find(p => p.id === socket.id)) { bounceQueue.push({ id: socket.id, profile: data.profile, league: data.league }); }
+        
+        // 🛡️ BLINDAGEM: Limpeza de fila
+        bounceQueue = bounceQueue.filter(p => io.sockets.sockets.get(p.id));
+
         if (bounceQueue.length >= 2) {
-            const p1 = bounceQueue.shift(); const p2 = bounceQueue.shift();
-            const roomId = `bounce_arena_${p1.id}`;
-            io.sockets.sockets.get(p1.id).join(roomId); io.sockets.sockets.get(p2.id).join(roomId);
-            const mapSeed = Math.random();
-            io.to(roomId).emit('bounce_match_start', {
-                roomId: roomId, seed: mapSeed,
-                players: [
-                    { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, 
-                    { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' } 
-                ]
-            });
+            const p1 = bounceQueue.shift(); 
+            const p2 = bounceQueue.shift();
+            
+            const socket1 = io.sockets.sockets.get(p1.id);
+            const socket2 = io.sockets.sockets.get(p2.id);
+
+            if (socket1 && socket2) {
+                const roomId = `bounce_arena_${p1.id}`;
+                socket1.join(roomId); 
+                socket2.join(roomId);
+                const mapSeed = Math.random();
+                io.to(roomId).emit('bounce_match_start', {
+                    roomId: roomId, seed: mapSeed,
+                    players: [
+                        { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, 
+                        { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' } 
+                    ]
+                });
+            } else {
+                // Se alguém tiver desconectado de repente, devolve o outro pra fila
+                if (socket1) bounceQueue.push(p1);
+                if (socket2) bounceQueue.push(p2);
+            }
         }
     });
 
