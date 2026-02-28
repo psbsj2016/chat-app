@@ -207,7 +207,7 @@ async function initializeAIBot() {
     } catch(e) {}
 }
 
-const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
+const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 2525, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
 // ==============================================================
 // 🔐 SISTEMA DE AUTENTICAÇÃO BLINDADO
