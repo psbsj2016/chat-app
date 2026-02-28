@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Bounce Rush</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@600;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; touch-action: none; overflow: hidden; }
+        body { background-color: #030308; font-family: 'Inter', sans-serif; color: white; display: flex; flex-direction: column; height: 100vh; }
+        
+        #ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        
+        /* Barra de Progresso */
+        .progress-container { width: 100%; max-width: 600px; margin: 0 auto; background: rgba(255,255,255,0.1); height: 10px; border-radius: 10px; position: relative; border: 1px solid rgba(255,255,255,0.2); }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3B82F6, #EC4899); border-radius: 10px; transition: width 0.1s linear; box-shadow: 0 0 10px #EC4899; }
+        .opponent-marker { position: absolute; top: -5px; width: 4px; height: 20px; background: white; border-radius: 2px; box-shadow: 0 0 8px white; transition: left 0.1s linear; z-index: 2; }
+        
+        /* Placares */
+        .hud-top { display: flex; justify-content: space-between; width: 100%; max-width: 600px; margin: 10px auto 0 auto; }
+        .player-info { display: flex; flex-direction: column; text-transform: uppercase; font-family: 'Orbitron'; font-size: 14px; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .combo-counter { position: absolute; top: 100px; right: 20px; font-family: 'Orbitron'; font-size: 30px; font-weight: 900; color: #F59E0B; text-shadow: 0 0 20px #F59E0B; transition: transform 0.1s; }
+
+        .overlay { position: absolute; inset: 0; background: rgba(3,3,8,0.9); z-index: 100; pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        h1 { font-family: 'Orbitron'; font-size: 42px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 2px; }
+        .main-btn { background: linear-gradient(90deg, #3B82F6, #06B6D4); border: none; color: white; padding: 15px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; border-radius: 30px; cursor: pointer; box-shadow: 0 10px 30px rgba(6, 182, 212, 0.4); transition: 0.2s; margin-top: 20px; }
+        .main-btn:active { transform: scale(0.95); }
+        
+        #match-status { font-family: 'Orbitron'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; color: white; text-shadow: 0 0 20px #FFF; text-align: center; z-index: 50; }
+
+        .hidden { display: none !important; }
+        #canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="ui-layer">
+        <div style="width: 100%;">
+            <div class="progress-container">
+                <div class="progress-fill" id="my-progress"></div>
+                <div class="opponent-marker" id="opponent-marker" style="left: 0%;"></div>
+            </div>
+            <div class="hud-top">
+                <div class="player-info" id="p1-name" style="color:#06B6D4;">Você</div>
+                <div class="player-info" id="p2-name" style="color:#EC4899; text-align:right;">Oponente</div>
+            </div>
+        </div>
+        <div class="combo-counter hidden" id="combo-display">x1</div>
+    </div>
+    
+    <div id="match-status"></div>
+
+    <div id="screen-start" class="overlay">
+        <h1 style="color: #FFF; text-shadow: 0 0 20px #3B82F6;">COLOR <span style="color:#EC4899;">RUSH</span></h1>
+        <p style="color: #94A3B8; max-width: 320px; line-height: 1.5; margin-bottom: 20px;">Corra, salte e cruze a barreira da sua cor. Se falhar, volta ao último checkpoint.</p>
+        <button class="main-btn" onclick="joinMatchmaking()">CORRIDA RANQUEADA</button>
+        <button class="main-btn" style="background: transparent; border: 1px solid #4ade80; box-shadow: none; padding: 10px 20px; font-size: 14px; margin-top: 15px;" onclick="window.parent.closeImmersiveGame()">Sair</button>
+    </div>
+
+    <div id="screen-result" class="overlay hidden">
+        <h1 id="result-title" style="font-size: 50px;">VITÓRIA!</h1>
+        <p id="result-desc" style="color: #CBD5E1; margin-bottom: 20px;">Você dominou o percurso.</p>
+        <h2 style="color: #F59E0B; margin-bottom: 20px; font-family:'Orbitron';">+<span id="result-xp">100</span> XP</h2>
+        <button class="main-btn" onclick="location.reload()">NOVA CORRIDA</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
+        window.addEventListener('resize', resize); resize();
+
+        const socket = io();
+        let matchState = 'lobby'; 
+        let roomId = null;
+        let mapSeed = 0;
+        
+        // Cores do Jogo
+        const COLORS = {
+            BLUE: '#3B82F6',
+            PINK: '#EC4899',
+            TURQ: '#06B6D4',
+            YELL: '#F59E0B'
+        };
+        const colorKeys = Object.keys(COLORS);
+
+        // Constantes Físicas
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -8.5;
+        const BASE_SPEED = 6.0;
+        const LEVEL_LENGTH = 20000; // Distância total da corrida
+
+        let cameraX = 0;
+        let particles = [];
+        let trail = [];
+        let obstacles = [];
+        let portals = [];
+        let checkpoints = [];
+
+        let me = { x: 0, y: 0, vy: 0, color: COLORS.BLUE, alive: true, checkpointX: 0, combo: 0 };
+        let opponent = { x: 0, y: 0, color: COLORS.PINK, alive: true };
+
+        const cachedMe = JSON.parse(localStorage.getItem('cacheMe') || '{}');
+        const myProfile = { name: cachedMe.displayName || 'Corredor', photoUrl: cachedMe.photoUrl };
+
+        function joinMatchmaking() {
+            document.getElementById('screen-start').classList.add('hidden');
+            matchState = 'searching';
+            document.getElementById('match-status').innerText = "Rastreando corredores...";
+            socket.emit('join_color_bounce', { profile: myProfile });
+        }
+
+        socket.on('color_bounce_start', (data) => {
+            roomId = data.roomId;
+            mapSeed = data.seed;
+            document.getElementById('match-status').innerText = "";
+
+            const p1 = data.players.find(p => p.id === socket.id);
+            const p2 = data.players.find(p => p.id !== socket.id);
+
+            document.getElementById('p1-name').innerText = p1.name;
+            document.getElementById('p2-name').innerText = p2.name;
+
+            resetGame();
+            generateCourse();
+            
+            startCountdown();
+            requestAnimationFrame(gameLoop);
+        });
+
+        // ==========================================
+        // GERAÇÃO PROCEDURAL BASEADA NA SEMENTE
+        // ==========================================
+        function seededRandom() {
+            let x = Math.sin(mapSeed++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        function generateCourse() {
+            obstacles = []; portals = []; checkpoints = [];
+            let currentX = 1500; // Primeiro obstáculo
+
+            while (currentX < LEVEL_LENGTH) {
+                // 1. Barreira de Cores (O jogador tem que passar na faixa da cor dele)
+                obstacles.push({ x: currentX, passed: false });
+                
+                // 2. Portal de Troca de Cor (Logo após a barreira)
+                if (seededRandom() > 0.3) {
+                    let newColor = COLORS[colorKeys[Math.floor(seededRandom() * colorKeys.length)]];
+                    portals.push({ x: currentX + 400, y: height/2 + (seededRandom()-0.5)*200, color: newColor, active: true });
+                }
+
+                // 3. Checkpoint a cada 3000 pixels
+                if (currentX % 3000 < 600) {
+                    checkpoints.push({ x: currentX + 800 });
+                }
+
+                currentX += 800 + (seededRandom() * 400); // Distância entre obstáculos
+            }
+        }
+
+        function resetGame() {
+            me.x = 0; me.y = height / 2; me.vy = 0; me.color = COLORS.BLUE; me.alive = true; me.checkpointX = 0; me.combo = 0;
+            opponent.x = 0; opponent.y = height / 2;
+            cameraX = 0; particles = []; trail = [];
+            portals.forEach(p => p.active = true);
+            obstacles.forEach(o => o.passed = false);
+        }
+
+        function startCountdown() {
+            matchState = 'countdown';
+            let count = 3;
+            const statusEl = document.getElementById('match-status');
+            statusEl.style.color = '#F59E0B'; statusEl.innerText = count;
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    statusEl.innerText = count;
+                } else {
+                    clearInterval(interval);
+                    statusEl.style.color = '#10B981'; statusEl.innerText = "RUSH!";
+                    me.vy = JUMP_FORCE;
+                    matchState = 'playing';
+                    setTimeout(() => { statusEl.innerText = ""; }, 800);
+                }
+            }, 1000);
+        }
+
+        // ==========================================
+        // CONTROLES E FÍSICA
+        // ==========================================
+        window.addEventListener('pointerdown', jump);
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') jump(); });
+
+        function jump() {
+            if(matchState === 'playing' && me.alive) {
+                me.vy = JUMP_FORCE;
+                createParticles(me.x - cameraX, me.y, 10, '#FFF');
+            }
+        }
+
+        function spawnDeathParticles(x, y, color) {
+            for(let i=0; i<40; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15,
+                    life: 1, color: color, size: Math.random() * 6 + 2
+                });
+            }
+        }
+
+        function createParticles(x, y, amount, color) {
+            for(let i=0; i<amount; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5,
+                    life: 1, color: color, size: Math.random() * 3 + 1
+                });
+            }
+        }
+
+        function die() {
+            if(!me.alive) return;
+            me.alive = false;
+            me.combo = 0; document.getElementById('combo-display').classList.add('hidden');
+            spawnDeathParticles(me.x - cameraX, me.y, me.color);
+            
+            // Efeito visual impactante (Flash Vermelho)
+            document.body.style.background = '#450a0a';
+            setTimeout(() => document.body.style.background = '#030308', 100);
+
+            // Respawna no último checkpoint após 1 segundo
+            setTimeout(() => {
+                me.x = me.checkpointX;
+                me.y = height / 2;
+                me.vy = 0;
+                me.alive = true;
+                cameraX = me.x - width * 0.2; // Ajusta a câmera instantaneamente
+                
+                // Reativa portais à frente do checkpoint
+                portals.forEach(p => { if(p.x >= me.checkpointX) p.active = true; });
+                obstacles.forEach(o => { if(o.x >= me.checkpointX) o.passed = false; });
+            }, 1000);
+        }
+
+        function win() {
+            matchState = 'ended';
+            socket.emit('color_bounce_finish', { roomId: roomId });
+            showEndScreen(true);
+        }
+
+        function showEndScreen(isWin) {
+            matchState = 'ended';
+            document.getElementById('screen-result').classList.remove('hidden');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            
+            if(isWin) {
+                title.innerText = "1º LUGAR!"; title.style.color = "#06B6D4"; title.style.textShadow = "0 0 20px #06B6D4";
+                desc.innerText = "Velocidade e Precisão Absolutas."; document.getElementById('result-xp').innerText = "100";
+                if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(100);
+            } else {
+                title.innerText = "DERROTA!"; title.style.color = "#EF4444"; title.style.textShadow = "0 0 20px #EF4444";
+                desc.innerText = "O oponente cruzou a linha de chegada primeiro."; document.getElementById('result-xp').innerText = "20"; 
+                if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(20);
+            }
+        }
+
+        // REDE
+        socket.on('color_bounce_sync', (data) => {
+            if(data.id !== socket.id) {
+                opponent.x = data.x;
+                opponent.y = data.y;
+                opponent.color = data.color;
+            }
+        });
+
+        socket.on('color_bounce_win', (data) => {
+            if(matchState !== 'ended' && data.winnerId !== socket.id) {
+                showEndScreen(false);
+            }
+        });
+
+        // ==========================================
+        // MOTOR DE RENDERIZAÇÃO E FÍSICA
+        // ==========================================
+        function gameLoop() {
+            if(matchState === 'lobby' || matchState === 'searching') return;
+            
+            ctx.clearRect(0, 0, width, height);
+
+            // Grade de Fundo Futurista
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            const offsetX = cameraX % 100;
+            for(let i = -offsetX; i < width; i += 100) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
+            }
+
+            if(matchState === 'playing') {
+                if(me.alive) {
+                    // Física
+                    me.vy += GRAVITY;
+                    me.y += me.vy;
+                    
+                    // Velocidade base + Aceleração do Combo
+                    let speedBoost = Math.min(me.combo * 0.2, 3.0);
+                    me.x += BASE_SPEED + speedBoost; 
+
+                    // Limites da tela (Teto e Chão = Morte)
+                    if(me.y <= 0 || me.y >= height) die();
+
+                    // Câmera segue o jogador
+                    let targetCameraX = me.x - width * 0.2;
+                    cameraX += (targetCameraX - cameraX) * 0.1; // Smooth follow
+
+                    // Sincronização de Rede
+                    if(Math.random() < 0.3) socket.emit('color_bounce_sync', { roomId, x: me.x, y: me.y, color: me.color });
+
+                    // Chegou ao fim?
+                    if(me.x >= LEVEL_LENGTH) win();
+                }
+
+                // Atualiza UI
+                document.getElementById('my-progress').style.width = `${Math.min((me.x / LEVEL_LENGTH) * 100, 100)}%`;
+                document.getElementById('opponent-marker').style.left = `${Math.min((opponent.x / LEVEL_LENGTH) * 100, 100)}%`;
+            }
+
+            // --- RENDERIZAÇÃO DO MUNDO (Relativo à Câmera) ---
+
+            // 1. Linha de Chegada
+            const finishLineX = LEVEL_LENGTH - cameraX;
+            if(finishLineX < width && finishLineX > -100) {
+                ctx.fillStyle = '#10B981';
+                ctx.shadowColor = '#10B981'; ctx.shadowBlur = 30;
+                ctx.fillRect(finishLineX, 0, 50, height);
+                ctx.shadowBlur = 0;
+            }
+
+            // 2. Checkpoints
+            checkpoints.forEach(cp => {
+                const drawX = cp.x - cameraX;
+                if(drawX > -100 && drawX < width) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.setLineDash([10, 10]); ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(drawX, 0); ctx.lineTo(drawX, height); ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    if(me.alive && me.x > cp.x && me.checkpointX !== cp.x) {
+                        me.checkpointX = cp.x;
+                        createParticles(drawX, height/2, 20, '#FFF'); // Feedback de Checkpoint salvo
+                    }
+                }
+            });
+
+            // 3. Portais de Cor
+            portals.forEach(p => {
+                const drawX = p.x - cameraX;
+                if(p.active && drawX > -100 && drawX < width) {
+                    // Desenha o portal
+                    ctx.beginPath(); ctx.arc(drawX, p.y, 25, 0, Math.PI*2);
+                    ctx.fillStyle = '#111'; ctx.fill();
+                    ctx.strokeStyle = p.color; ctx.lineWidth = 6;
+                    ctx.shadowColor = p.color; ctx.shadowBlur = 20;
+                    ctx.stroke(); ctx.shadowBlur = 0;
+
+                    // Colisão com o Portal
+                    if(me.alive && Math.hypot(me.x - p.x, me.y - p.y) < 40) {
+                        p.active = false;
+                        me.color = p.color;
+                        createParticles(drawX, p.y, 30, p.color);
+                    }
+                }
+            });
+
+            // 4. Barreiras (Obstáculos)
+            obstacles.forEach(obs => {
+                const drawX = obs.x - cameraX;
+                if(drawX > -100 && drawX < width) {
+                    const blockHeight = height / 4;
+                    
+                    // Desenha as 4 faixas de cores
+                    for(let i=0; i<4; i++) {
+                        let sectionColor = COLORS[colorKeys[i]];
+                        let yPos = i * blockHeight;
+                        
+                        ctx.fillStyle = sectionColor;
+                        ctx.shadowColor = sectionColor; ctx.shadowBlur = 10;
+                        
+                        // Faixa mais escura com borda brilhante
+                        ctx.globalAlpha = 0.8;
+                        ctx.fillRect(drawX, yPos, 40, blockHeight);
+                        ctx.globalAlpha = 1;
+                        
+                        ctx.strokeStyle = '#FFF'; ctx.lineWidth = 1;
+                        ctx.strokeRect(drawX, yPos, 40, blockHeight);
+                        ctx.shadowBlur = 0;
+
+                        // Colisão Frontal Letal (Se não for da mesma cor)
+                        if(me.alive && !obs.passed && me.x + 15 > obs.x && me.x - 15 < obs.x + 40) {
+                            if(me.y > yPos && me.y < yPos + blockHeight) {
+                                if(me.color !== sectionColor) {
+                                    die();
+                                } else {
+                                    obs.passed = true;
+                                    me.combo++;
+                                    const comboEl = document.getElementById('combo-display');
+                                    comboEl.innerText = `x${me.combo}`;
+                                    comboEl.classList.remove('hidden');
+                                    comboEl.style.transform = 'scale(1.5)';
+                                    setTimeout(() => comboEl.style.transform = 'scale(1)', 100);
+                                    createParticles(drawX, me.y, 15, sectionColor);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 5. Partículas
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+                ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+                ctx.shadowColor = p.color; ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+
+            // 6. Rastro (Trail)
+            if(me.alive && matchState === 'playing') {
+                trail.push({ x: me.x - cameraX, y: me.y, life: 1 });
+                if(trail.length > 20) trail.shift();
+            }
+            ctx.beginPath();
+            for(let i=0; i<trail.length; i++) {
+                let t = trail[i];
+                t.x -= BASE_SPEED; // Move o rastro para trás com a câmera
+                t.life -= 0.05;
+                if(i === 0) ctx.moveTo(t.x, t.y); else ctx.lineTo(t.x, t.y);
+            }
+            ctx.strokeStyle = me.color; ctx.lineWidth = 10; ctx.lineCap = 'round';
+            ctx.shadowColor = me.color; ctx.shadowBlur = 20;
+            ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+            // 7. Oponente (Holograma fantasma)
+            if(opponent.x > 0 && opponent.x < LEVEL_LENGTH) {
+                const oppDrawX = opponent.x - cameraX;
+                ctx.beginPath(); ctx.arc(oppDrawX, opponent.y, 15, 0, Math.PI * 2);
+                ctx.fillStyle = opponent.color; ctx.globalAlpha = 0.4; // Meio transparente
+                ctx.shadowColor = opponent.color; ctx.shadowBlur = 15;
+                ctx.fill(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+                
+                // Nome do Oponente flutuando
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px Orbitron'; ctx.textAlign = 'center';
+                ctx.fillText(document.getElementById('p2-name').innerText, oppDrawX, opponent.y - 25);
+            }
+
+            // 8. Jogador Principal (A Bola)
+            if(me.alive) {
+                const myDrawX = me.x - cameraX;
+                ctx.beginPath(); ctx.arc(myDrawX, me.y, 16, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFF'; 
+                ctx.shadowColor = me.color; ctx.shadowBlur = 30; // Brilho intenso da cor atual
+                ctx.fill();
+                ctx.strokeStyle = me.color; ctx.lineWidth = 4; ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>

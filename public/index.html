@@ -855,9 +855,11 @@
         
         <video id="local-video" autoplay playsinline muted style="position:absolute; top:20px; right:20px; width:110px; height:160px; object-fit:cover; border-radius:16px; border:2px solid rgba(255,255,255,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 2;"></video>
         
-        <div style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; gap:20px; background:rgba(15,23,42,0.8); padding:15px 30px; border-radius:40px; backdrop-filter:blur(10px); z-index: 3; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; gap:15px; background:rgba(15,23,42,0.8); padding:15px 25px; border-radius:40px; backdrop-filter:blur(10px); z-index: 3; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <button onclick="toggleVideoMic()" id="btn-toggle-mic" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">mic</span></button>
             <button onclick="toggleVideoCam()" id="btn-toggle-cam" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">videocam</span></button>
+            <button onclick="flipCamera()" id="btn-flip-cam" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">cameraswitch</span></button>
+            
             <button onclick="endVideoCall()" style="background:#EF4444; border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">call_end</span></button>
         </div>
     </div>
@@ -901,6 +903,27 @@
         <div onclick="prevStory()" style="position: absolute; top:0; left:0; width:30%; height:100%; z-index: 5;"></div>
         <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
     </div>
+
+    <div id="quick-photo-dest-modal" class="modal-overlay hidden" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <h3 style="color: var(--brand-primary); margin-bottom: 15px;">Destino da Foto</h3>
+            <img id="quick-photo-preview" src="" style="width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; border: 2px solid var(--input-bg);">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button onclick="postQuickPhotoToStatus()" class="chic-btn" style="background: linear-gradient(135deg, #8B5CF6, #EC4899); margin: 0;"><span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">data_usage</span> Adicionar ao Status</button>
+                <button onclick="openQuickPhotoChatSelector()" class="chic-btn" style="background: var(--brand-primary); margin: 0;"><span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">send</span> Enviar num Chat</button>
+                <button onclick="hideElement('quick-photo-dest-modal')" class="chic-btn" style="background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="quick-photo-chat-modal" class="modal-overlay hidden" style="z-index: 10001;">
+        <div class="modal-content" style="max-width: 320px; height: 70%; display: flex; flex-direction: column;">
+            <h3 style="color: var(--brand-primary); margin-bottom: 10px;">Enviar para...</h3>
+            <div id="quick-photo-contacts-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; margin-bottom: 15px;"></div>
+            <button onclick="hideElement('quick-photo-chat-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text); margin: 0;">Voltar</button>
+        </div>
+    </div>    
+
   <script src="/socket.io/socket.io.js"></script>
     <script>
         // BOMBA DE CACHE: Força o PWA a ler sempre a versão mais recente do JS
