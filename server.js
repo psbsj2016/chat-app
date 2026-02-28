@@ -537,6 +537,10 @@ app.get('/communities/channels/:id/messages', async (req, res) => {
 let users = {};
 const SERVER_VERSION = Date.now().toString(); 
 
+// 🚀 CORREÇÃO: As filas agora são GLOBAIS (fora da conexão individual)
+let snakeQueue = []; 
+let bounceQueue = [];
+
 io.on('connection', (socket) => {
     socket.emit('check_app_version', SERVER_VERSION); 
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
@@ -579,7 +583,7 @@ io.on('connection', (socket) => {
             await msg.save();
             const popMsg = await CommunityMessage.findById(msg._id).populate('senderId', 'displayName photoUrl');
             io.to(data.channelId).emit('receive_channel_message', popMsg);
-        } catch(e) { console.error("Erro ao enviar msg de comunidade:", e); }
+        } catch(e) { console.error("Erro msg comunidade:", e); }
     });
     
     socket.on('join_voice_channel', (data) => {
@@ -673,15 +677,11 @@ io.on('connection', (socket) => {
                         const aiRes = await fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contents: [{ parts: [{ text: `Você é o assistente inteligente do aplicativo ChatPTT. Responda de forma amigável e direta a esta mensagem do usuário: ${data.content}` }] }] })
+                            body: JSON.stringify({ contents: [{ parts: [{ text: `Você é o assistente inteligente do ChatPTT: ${data.content}` }] }] })
                         });
                         const aiData = await aiRes.json();
                         let replyText = "Tive um branco nas nuvens...";
-                        if (aiData.candidates && aiData.candidates.length > 0) {
-                            replyText = aiData.candidates[0].content.parts[0].text;
-                        } else {
-                            replyText = "Desculpe, os meus circuitos estão a recarregar.";
-                        }
+                        if (aiData.candidates && aiData.candidates.length > 0) { replyText = aiData.candidates[0].content.parts[0].text; }
                         socket.emit('stop_typing', { senderId: botUserId });
                         const botMsg = new Message({ sender: botUserId, receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
                         await botMsg.save();
@@ -696,8 +696,7 @@ io.on('connection', (socket) => {
                     const receiver = await User.findById(data.receiverId);
                     if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                         const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
-                        const senderName = senderUser ? senderUser.displayName : 'Nova Mensagem';
-                        const payload = JSON.stringify({ title: `CPTT: ${senderName}`, body: 'Nova Mensagem', unreadCount });
+                        const payload = JSON.stringify({ title: `CPTT: ${senderUser ? senderUser.displayName : 'Nova Mensagem'}`, body: 'Nova Mensagem', unreadCount });
                         receiver.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
                     }
                 }
@@ -711,26 +710,22 @@ io.on('connection', (socket) => {
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
     // ==============================================================
-    // 🐍 MULTIPLAYER: NEON SERPENT DUEL
+    // 🐍 MULTIPLAYER: NEON SERPENT DUEL (Blindado)
     // ==============================================================
-    let snakeQueue = []; 
     socket.on('join_snake_duel', (data) => {
-        if (!snakeQueue.find(p => p.id === socket.id)) { snakeQueue.push({ id: socket.id, profile: data.profile }); }
+        // Limpa a fila de fantasmas e impede o mesmo utilizador 2 vezes
+        snakeQueue = snakeQueue.filter(p => p.socket.connected && p.id !== socket.id);
         
-        // 🛡️ BLINDAGEM: Remove da fila quem fechou o jogo antes de achar oponente
-        snakeQueue = snakeQueue.filter(p => io.sockets.sockets.get(p.id));
+        snakeQueue.push({ id: socket.id, socket: socket, profile: data.profile });
 
         if (snakeQueue.length >= 2) {
             const p1 = snakeQueue.shift(); 
             const p2 = snakeQueue.shift();
             
-            const socket1 = io.sockets.sockets.get(p1.id);
-            const socket2 = io.sockets.sockets.get(p2.id);
-
-            if (socket1 && socket2) {
+            if (p1.socket.connected && p2.socket.connected) {
                 const roomId = `snake_room_${p1.id}`;
-                socket1.join(roomId); 
-                socket2.join(roomId);
+                p1.socket.join(roomId); 
+                p2.socket.join(roomId);
                 io.to(roomId).emit('snake_duel_start', {
                     roomId: roomId,
                     players: [
@@ -739,8 +734,8 @@ io.on('connection', (socket) => {
                     ]
                 });
             } else {
-                if (socket1) snakeQueue.push(p1);
-                if (socket2) snakeQueue.push(p2);
+                if (p1.socket.connected) snakeQueue.push(p1);
+                if (p2.socket.connected) snakeQueue.push(p2);
             }
         }
     });
@@ -749,38 +744,33 @@ io.on('connection', (socket) => {
     socket.on('snake_death', (data) => { socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId }); });
 
     // ==============================================================
-    // 🪩 MULTIPLAYER: NEON BOUNCE ARENA
+    // 🪩 MULTIPLAYER: NEON BOUNCE ARENA (Blindado)
     // ==============================================================
-    let bounceQueue = [];
     socket.on('join_bounce_arena', (data) => {
-        if (!bounceQueue.find(p => p.id === socket.id)) { bounceQueue.push({ id: socket.id, profile: data.profile, league: data.league }); }
+        bounceQueue = bounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
         
-        // 🛡️ BLINDAGEM: Limpeza de fila
-        bounceQueue = bounceQueue.filter(p => io.sockets.sockets.get(p.id));
+        bounceQueue.push({ id: socket.id, socket: socket, profile: data.profile, league: data.league });
 
         if (bounceQueue.length >= 2) {
             const p1 = bounceQueue.shift(); 
             const p2 = bounceQueue.shift();
-            
-            const socket1 = io.sockets.sockets.get(p1.id);
-            const socket2 = io.sockets.sockets.get(p2.id);
 
-            if (socket1 && socket2) {
+            if (p1.socket.connected && p2.socket.connected) {
                 const roomId = `bounce_arena_${p1.id}`;
-                socket1.join(roomId); 
-                socket2.join(roomId);
+                p1.socket.join(roomId); 
+                p2.socket.join(roomId);
+                
                 const mapSeed = Math.random();
                 io.to(roomId).emit('bounce_match_start', {
                     roomId: roomId, seed: mapSeed,
                     players: [
-                        { id: p1.id, name: p1.profile.name, photo: p1.profile.photoUrl, league: p1.league, color: '#06B6D4' }, 
-                        { id: p2.id, name: p2.profile.name, photo: p2.profile.photoUrl, league: p2.league, color: '#F43F5E' } 
+                        { id: p1.id, name: p1.profile?.name || 'P1', photo: p1.profile?.photoUrl, league: p1.league, color: '#06B6D4' }, 
+                        { id: p2.id, name: p2.profile?.name || 'P2', photo: p2.profile?.photoUrl, league: p2.league, color: '#F43F5E' } 
                     ]
                 });
             } else {
-                // Se alguém tiver desconectado de repente, devolve o outro pra fila
-                if (socket1) bounceQueue.push(p1);
-                if (socket2) bounceQueue.push(p2);
+                if (p1.socket.connected) bounceQueue.push(p1);
+                if (p2.socket.connected) bounceQueue.push(p2);
             }
         }
     });
