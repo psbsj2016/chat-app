@@ -206,38 +206,8 @@ async function initializeAIBot() {
 const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 587, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
 // === ROTAS ===
-app.post('/register', rateLimiter, async (req, res) => { 
-    const { email, password, displayName } = req.body; 
-    try { 
-        if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
-        
-        const hashedPassword = await bcrypt.hash(password, 10); 
-        const code = Math.floor(100000 + Math.random() * 900000).toString(); 
-        const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
-        await newUser.save(); 
-
-        // 🚀 TENTA ENVIAR O E-MAIL ANTES DE DAR SUCESSO
-        try {
-            await transporter.sendMail({ 
-                from: 'ChatPTT <psbsj.2020@outlook.com>', 
-                to: email, 
-                subject: 'Seu Código de Acesso - ChatPTT', 
-                html: `<div style="font-family: Arial; color: #333; text-align: center; padding: 20px;">
-                        <h2>Bem-vindo ao ChatPTT!</h2>
-                        <p>O seu código de verificação é:</p>
-                        <h1 style="color: #4F46E5; letter-spacing: 5px;">${code}</h1>
-                       </div>` 
-            });
-            res.json({ message: 'Enviado' }); 
-        } catch (mailError) {
-            console.error("🚨 ERRO SMTP (Brevo) no Registro:", mailError);
-            res.status(500).json({ error: 'Falha no envio do e-mail. Tente novamente.' });
-        }
-        
-    } catch (e) { 
-        res.status(500).json({ error: 'Erro no servidor' }); 
-    } 
-});
+app.post('/register', rateLimiter, async (req, res) => { const { email, password, displayName } = req.body; try { if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); const hashedPassword = await bcrypt.hash(password, 10); const code = Math.floor(100000 + Math.random() * 900000).toString(); const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); await newUser.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Código', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado' }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
+app.post('/login', rateLimiter, async (req, res) => { const { email, password } = req.body; try { const user = await User.findOne({ email }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Incorreto' }); const token = jwt.sign({ id: user._id }, 'SEGREDO', { expiresIn: '1h' }); res.json({ token, myId: user._id, email: user.email, displayName: user.displayName, photoUrl: user.photoUrl, sectors: user.sectors, theme: user.theme, fontSize: user.fontSize, notificationSound: user.notificationSound, xp: user.xp, level: user.level, dailyMessagesSent: user.dailyMessagesSent, dailyMissionCompleted: user.dailyMissionCompleted, lastActiveDate: user.lastActiveDate, blockedUsers: user.blockedUsers, unlockedItems: user.unlockedItems }); } catch (e) { res.status(500).json({ error: 'Erro no servidor' }); } });
 
 // === ROTA DO MERCADO NEON ===
 app.post('/buy-item', async (req, res) => {
