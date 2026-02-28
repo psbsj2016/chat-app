@@ -1265,58 +1265,48 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==============================================================
-// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ EM TEMPO REAL
+// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ EM TEMPO REAL (MESH MULTI-PEER)
 // ==============================================================
 let localAudioStream = null;
-let peerConnections = {}; // Guarda os túneis para cada usuário
+let peerConnections = {}; 
 let currentVoiceChannelId = null;
 
-// Servidores públicos da Google para descobrir IPs (STUN)
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-// Elementos da Interface
 const btnJoinVoice = document.getElementById('btn-join-voice');
 const btnLeaveVoice = document.getElementById('btn-leave-voice');
 const participantsGrid = document.getElementById('voice-participants-grid');
 const remoteAudiosContainer = document.getElementById('remote-audios-container');
-const voiceLoungeContainer = document.getElementById('voice-lounge-container');
 
-// Função 1: Ligar o Rádio (Entrar na Sala)
 async function joinVoiceChannel(channelId) {
     try {
-        // Pede permissão e liga o microfone
         localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        currentVoiceChannelId = channelId;
+        currentVoiceChannelId = channelId || currentChannelId;
 
-        // Atualiza os Botões
-        btnJoinVoice.style.display = 'none';
-        btnLeaveVoice.style.display = 'inline-block';
+        if(btnJoinVoice) btnJoinVoice.style.display = 'none';
+        if(btnLeaveVoice) btnLeaveVoice.style.display = 'inline-block';
         
-        // Adiciona o seu próprio avatar no radar (assumindo que tem as variáveis de usuário)
         const myName = localStorage.getItem('displayName') || 'Eu';
         const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         addParticipantToUI(socket.id, { name: myName, photoUrl: myPhoto });
 
-        // Avisa a Central Telefônica (Servidor) que entrou
         socket.emit('join_voice_channel', { 
-            channelId: channelId, 
+            channelId: currentVoiceChannelId, 
             userProfile: { name: myName, photoUrl: myPhoto } 
         });
         
     } catch (error) {
-        console.error("Erro no Rádio:", error);
-        alert("Comandante, preciso de permissão para aceder ao Microfone! 🎙️");
+        alert("Permissão de microfone negada! Verifique as permissões do seu navegador/telemóvel.");
     }
 }
 
-// Função 2: Desligar o Rádio (Sair da Sala)
 function leaveVoiceChannel() {
     if (localAudioStream) {
-        localAudioStream.getTracks().forEach(track => track.stop()); // Desliga microfone
+        localAudioStream.getTracks().forEach(track => track.stop());
         localAudioStream = null;
     }
     
-    // Fecha todos os túneis de conexão
+    // Destrói todos os túneis de quem estava conectado a você
     for (let id in peerConnections) {
         peerConnections[id].close();
         delete peerConnections[id];
@@ -1325,52 +1315,53 @@ function leaveVoiceChannel() {
     socket.emit('leave_voice_channel');
     currentVoiceChannelId = null;
 
-    // Reseta a Interface
-    btnJoinVoice.style.display = 'inline-block';
-    btnLeaveVoice.style.display = 'none';
-    participantsGrid.innerHTML = '';
-    remoteAudiosContainer.innerHTML = '';
+    if(btnJoinVoice) btnJoinVoice.style.display = 'inline-block';
+    if(btnLeaveVoice) btnLeaveVoice.style.display = 'none';
+    if(participantsGrid) participantsGrid.innerHTML = '';
+    if(remoteAudiosContainer) remoteAudiosContainer.innerHTML = '';
 }
 
-// Ouvintes de Botões
-if(btnJoinVoice) btnJoinVoice.onclick = () => joinVoiceChannel(currentVoiceChannelId || 'Lobby-Geral');
+// Botões da Tela
+if(btnJoinVoice) btnJoinVoice.onclick = () => joinVoiceChannel(currentVoiceChannelId || currentChannelId);
 if(btnLeaveVoice) btnLeaveVoice.onclick = () => leaveVoiceChannel();
 
-// --- RESPOSTAS AOS SINAIS DA CENTRAL TELEFÔNICA (SOCKETS) ---
-
-// Quando alguém entra na sala, eu ligo para ele (Crio a Oferta)
+// Quando um novo membro entra na sala, VOCÊ cria um túnel e liga para ele
 socket.on('user_joined_voice', async (data) => {
-    const pc = createPeerConnection(data.socketId, data.userProfile);
+    const peerSocketId = data.socketId;
+    if(peerConnections[peerSocketId]) return; // Evita eco duplicado
+    
+    const pc = createPeerConnection(peerSocketId, data.userProfile);
+    addParticipantToUI(peerSocketId, data.userProfile);
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    socket.emit('webrtc_signal', { to: data.socketId, signal: offer });
-    addParticipantToUI(data.socketId, data.userProfile);
+    socket.emit('webrtc_signal', { to: peerSocketId, signal: { type: 'offer', sdp: offer } });
 });
 
-// Recebendo coordenadas de rádio (Sinais WebRTC)
+// Recebendo e processando os cabos de rede (Sinais)
 socket.on('webrtc_signal', async (data) => {
-    let pc = peerConnections[data.from];
+    const peerSocketId = data.from;
+    const signal = data.signal;
     
-    // Se não tiver conexão com ele, cria uma agora
+    let pc = peerConnections[peerSocketId];
     if (!pc) {
-        pc = createPeerConnection(data.from, data.userProfile);
-        addParticipantToUI(data.from, data.userProfile);
+        pc = createPeerConnection(peerSocketId, data.userProfile);
+        addParticipantToUI(peerSocketId, data.userProfile);
     }
 
-    // Negociação de túnel
-    if (data.signal.type === 'offer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
+    if (signal.type === 'offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        socket.emit('webrtc_signal', { to: data.from, signal: answer });
-    } else if (data.signal.type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.signal));
-    } else if (data.signal.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(data.signal));
+        socket.emit('webrtc_signal', { to: peerSocketId, signal: { type: 'answer', sdp: answer } });
+    } else if (signal.type === 'answer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+    } else if (signal.candidate) {
+        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
     }
 });
 
-// Quando um soldado sai da sala
+// Desconectando pessoas individuais
 socket.on('user_left_voice', (socketId) => {
     if (peerConnections[socketId]) {
         peerConnections[socketId].close();
@@ -1379,45 +1370,41 @@ socket.on('user_left_voice', (socketId) => {
     removeParticipantFromUI(socketId);
 });
 
-// Construtor do Túnel (PeerConnection)
+// O Motor Central de Túneis
 function createPeerConnection(socketId, userProfile) {
     const pc = new RTCPeerConnection(rtcConfig);
     peerConnections[socketId] = pc;
 
-    // Injeta o meu áudio no túnel
     if(localAudioStream) {
         localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
     }
 
-    // Procura o melhor caminho de rede (ICE Candidates)
     pc.onicecandidate = (event) => {
         if (event.candidate) {
-            socket.emit('webrtc_signal', { to: socketId, signal: event.candidate });
+            socket.emit('webrtc_signal', { to: socketId, signal: { candidate: event.candidate } });
         }
     };
 
-   // Recebe o áudio do outro soldado e cria um "alto-falante" invisível
     pc.ontrack = (event) => {
         let audioElement = document.getElementById(`audio-${socketId}`);
         if (!audioElement) {
             audioElement = document.createElement('audio');
             audioElement.id = `audio-${socketId}`;
             audioElement.autoplay = true;
-            audioElement.setAttribute('playsinline', 'true'); // Essencial para mobile
-            remoteAudiosContainer.appendChild(audioElement);
+            audioElement.setAttribute('playsinline', 'true');
+            if(remoteAudiosContainer) remoteAudiosContainer.appendChild(audioElement);
         }
         audioElement.srcObject = event.streams[0];
-        
-        // 🔊 FORÇA O PLAY: Ignora bloqueios de silêncio do navegador
-        audioElement.play().catch(e => console.log("Áudio aguardando interação..."));
+        // Força a reprodução no celular
+        audioElement.play().catch(e => console.log("Áudio bloqueado pelo Safari/Chrome até interação do usuário."));
     };
 
-    return pc; // 🚀 CORREÇÃO CRÍTICA: RETORNO DO TÚNEL
-} // 🚀 CORREÇÃO CRÍTICA: FECHAMENTO DA FUNÇÃO
+    return pc;
+}
 
-// Desenha o avatar no Radar
+// UI: Mostra o Avatar na tela
 function addParticipantToUI(id, profile) {
-    if (document.getElementById(`participant-${id}`)) return;
+    if (!participantsGrid || document.getElementById(`participant-${id}`)) return;
     const div = document.createElement('div');
     div.id = `participant-${id}`;
     div.style = "display: flex; flex-direction: column; align-items: center; width: 70px; animation: fadeIn 0.3s;";
@@ -1431,7 +1418,6 @@ function addParticipantToUI(id, profile) {
     participantsGrid.appendChild(div);
 }
 
-// Remove o avatar do Radar e apaga o alto-falante
 function removeParticipantFromUI(id) {
     const p = document.getElementById(`participant-${id}`);
     if (p) p.remove();
