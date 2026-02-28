@@ -12,10 +12,10 @@
         #ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
         
         /* Placares dos Jogadores */
-        .player-hud { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); }
+        .player-hud { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); transition: 0.3s; }
         .hud-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid; }
         .hud-info { display: flex; flex-direction: column; }
-        .hud-name { font-weight: 800; font-size: 14px; }
+        .hud-name { font-weight: 800; font-size: 14px; text-transform: uppercase; }
         .hud-league { font-size: 10px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; }
         
         .league-bronze { color: #CD7F32; } .league-silver { color: #CBD5E1; } .league-gold { color: #FBBF24; } .league-neon { color: #22D3EE; text-shadow: 0 0 8px #22D3EE; }
@@ -26,6 +26,8 @@
         .main-btn { background: linear-gradient(90deg, #FF007A, #7928CA); border: none; color: white; padding: 15px 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 18px; border-radius: 30px; cursor: pointer; box-shadow: 0 10px 30px rgba(255, 0, 122, 0.4); transition: 0.2s; margin-top: 20px; }
         .main-btn:active { transform: scale(0.95); }
         
+        #match-status { font-family: 'Orbitron'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; color: white; text-shadow: 0 0 20px #FF007A; text-align: center; transition: 0.2s; z-index: 50; }
+
         .hidden { display: none !important; }
         #canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
     </style>
@@ -36,14 +38,14 @@
 
     <div id="ui-layer">
         <div style="display: flex; justify-content: space-between; width: 100%;">
-            <div class="player-hud" id="hud-p1" style="opacity: 0;">
+            <div class="player-hud" id="hud-p1" style="opacity: 0; transform: translateX(-50px);">
                 <img id="p1-avatar" class="hud-avatar" src="" style="border-color: #06B6D4;">
                 <div class="hud-info">
                     <span id="p1-name" class="hud-name" style="color:#06B6D4;">Você</span>
                     <span id="p1-league" class="hud-league">League</span>
                 </div>
             </div>
-            <div class="player-hud" id="hud-p2" style="opacity: 0;">
+            <div class="player-hud" id="hud-p2" style="opacity: 0; transform: translateX(50px);">
                 <div class="hud-info" style="text-align: right;">
                     <span id="p2-name" class="hud-name" style="color:#F43F5E;">Oponente</span>
                     <span id="p2-league" class="hud-league">League</span>
@@ -51,18 +53,21 @@
                 <img id="p2-avatar" class="hud-avatar" src="" style="border-color: #F43F5E;">
             </div>
         </div>
-        <h2 id="match-status" style="font-family: 'Orbitron'; text-align: center; color: white; text-shadow: 0 0 10px #FFF; opacity: 0.5;">Aguardando adversário...</h2>
+        <h2 id="status-text" style="font-family: 'Orbitron'; text-align: center; color: white; text-shadow: 0 0 10px #FFF; opacity: 0.5;"></h2>
     </div>
+    
+    <div id="match-status"></div>
 
     <div id="screen-start" class="overlay">
         <h1 style="color: #06B6D4; text-shadow: 0 0 20px #06B6D4;">BOUNCE <span style="color:#F43F5E;">ARENA</span></h1>
-        <p style="color: #94A3B8; max-width: 300px; line-height: 1.5;">O último sobrevivente leva a glória. Toque na tela para pular e desvie dos obstáculos.</p>
+        <p style="color: #94A3B8; max-width: 300px; line-height: 1.5;">Modo Competitivo. Sobreviva aos obstáculos. O último a cair vence.</p>
         <button class="main-btn" onclick="joinMatchmaking()">PROCURAR DUELO</button>
+        <button class="main-btn" style="background: transparent; border: 1px solid #4ade80; box-shadow: none; padding: 10px 20px; font-size: 14px; margin-top: 15px;" onclick="window.parent.closeImmersiveGame()">Sair</button>
     </div>
 
     <div id="screen-result" class="overlay hidden">
         <h1 id="result-title" style="font-size: 45px;">VITÓRIA!</h1>
-        <p id="result-desc" style="color: #CBD5E1; margin-bottom: 20px;">Você esmagou seu oponente.</p>
+        <p id="result-desc" style="color: #CBD5E1; margin-bottom: 20px;">Você esmagou o seu oponente.</p>
         <h2 style="color: #F59E0B; margin-bottom: 20px; font-family:'Orbitron';">+<span id="result-xp">50</span> XP</h2>
         <button class="main-btn" onclick="location.reload()">NOVA PARTIDA</button>
     </div>
@@ -77,17 +82,17 @@
         window.addEventListener('resize', resize); resize();
 
         const socket = io();
-        let matchState = 'lobby'; // lobby, searching, playing, ended
+        let matchState = 'lobby'; // lobby, searching, countdown, playing, ended
         let roomId = null;
         let mapSeed = 0;
         
         let me = null;
         let opponent = null;
 
-        // FÍSICA E JOGO
-        const gravity = 0.5;
-        const jumpForce = -9;
-        const gameSpeed = 5;
+        // COMPETITIVE PHYSICS
+        const gravity = 0.45; // Mais leve que antes
+        const jumpForce = -8.5; // Salto mais controlado
+        const gameSpeed = 4.5; // Velocidade ligeiramente menor para focar na estratégia
         let frames = 0;
         let obstacles = [];
         let particles = [];
@@ -95,7 +100,7 @@
         class Sphere {
             constructor(id, color, isMe) {
                 this.id = id;
-                this.x = isMe ? width * 0.3 : width * 0.4; // Oponente fica ligeiramente à frente para não sobrepor
+                this.x = isMe ? width * 0.3 : width * 0.4;
                 this.y = height / 2;
                 this.vy = 0;
                 this.radius = 16;
@@ -104,17 +109,17 @@
                 this.alive = true;
             }
             jump() {
-                if(!this.alive) return;
+                if(!this.alive || matchState !== 'playing') return;
                 this.vy = jumpForce;
                 createParticles(this.x, this.y + this.radius, this.color, 10);
                 if(this.isMe) socket.emit('bounce_sync_pos', { roomId, y: this.y, vy: this.vy });
             }
             update() {
-                if(!this.alive) return;
+                if(!this.alive || matchState !== 'playing') return;
                 this.vy += gravity;
                 this.y += this.vy;
 
-                // Teto e Chão = Morte
+                // Teto e Chão = Morte Súbita
                 if(this.y - this.radius <= 0 || this.y + this.radius >= height) {
                     if(this.isMe) die();
                 }
@@ -137,18 +142,20 @@
         class Obstacle {
             constructor(x, gapY) {
                 this.x = x;
-                this.w = 50;
+                this.w = 60; // Pilares um pouco mais grossos
                 this.gapY = gapY; // Centro do buraco
-                this.gapH = 180;  // Tamanho do buraco
+                this.gapH = 200;  // Buraco mais largo para perdoar pequenos erros
                 this.passed = false;
             }
-            update() { this.x -= gameSpeed; }
+            update() { 
+                if(matchState === 'playing') this.x -= gameSpeed; 
+            }
             draw() {
                 ctx.fillStyle = '#0F172A';
                 ctx.shadowColor = '#8B5CF6';
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 15;
                 ctx.strokeStyle = '#8B5CF6';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
 
                 // Tubo Cima
                 ctx.fillRect(this.x, 0, this.w, this.gapY - this.gapH/2);
@@ -159,9 +166,13 @@
                 ctx.shadowBlur = 0;
             }
             checkCollision(sphere) {
-                if(!sphere.alive || !sphere.isMe) return; // Só calcula colisão localmente
-                if(sphere.x + sphere.radius > this.x && sphere.x - sphere.radius < this.x + this.w) {
-                    if(sphere.y - sphere.radius < this.gapY - this.gapH/2 || sphere.y + sphere.radius > this.gapY + this.gapH/2) {
+                if(!sphere.alive || !sphere.isMe || matchState !== 'playing') return;
+                
+                // Hitbox um pouco mais tolerante (10% menor que o visual)
+                let hitRadius = sphere.radius * 0.8; 
+
+                if(sphere.x + hitRadius > this.x && sphere.x - hitRadius < this.x + this.w) {
+                    if(sphere.y - hitRadius < this.gapY - this.gapH/2 || sphere.y + hitRadius > this.gapY + this.gapH/2) {
                         die();
                     }
                 }
@@ -172,15 +183,12 @@
             for(let i=0; i<amount; i++) {
                 particles.push({
                     x: x, y: y,
-                    vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
                     life: 1, color: color
                 });
             }
         }
 
-        // ==========================================
-        // LÓGICA DO JOGADOR LOCAL E DADOS
-        // ==========================================
         function getMyLeague(xp) {
             if(xp >= 1000) return { name: 'Liga Neon', class: 'league-neon' };
             if(xp >= 500) return { name: 'Liga Ouro', class: 'league-gold' };
@@ -198,38 +206,34 @@
         function joinMatchmaking() {
             document.getElementById('screen-start').classList.add('hidden');
             matchState = 'searching';
-            document.getElementById('match-status').innerText = "Rastreando oponentes...";
-            
-            socket.emit('join_bounce_arena', { 
-                profile: myProfile, 
-                league: myLeagueInfo 
-            });
+            document.getElementById('status-text').innerText = "Rastreando oponentes na rede...";
+            socket.emit('join_bounce_arena', { profile: myProfile, league: myLeagueInfo });
         }
 
-        // ==========================================
-        // SOCKETS (REDE MULTIPLAYER)
-        // ==========================================
         socket.on('bounce_match_start', (data) => {
             roomId = data.roomId;
             mapSeed = data.seed;
-            matchState = 'playing';
-            document.getElementById('match-status').innerText = "";
+            document.getElementById('status-text').innerText = "";
 
             const p1Data = data.players.find(p => p.id === socket.id);
             const p2Data = data.players.find(p => p.id !== socket.id);
 
-            // Monta UI
-            document.getElementById('hud-p1').style.opacity = '1';
+            // Animação da UI deslizando para a tela
+            const hud1 = document.getElementById('hud-p1');
+            const hud2 = document.getElementById('hud-p2');
+            
             document.getElementById('p1-avatar').src = p1Data.photo;
             document.getElementById('p1-name').innerText = p1Data.name;
             document.getElementById('p1-league').innerText = p1Data.league.name;
             document.getElementById('p1-league').className = `hud-league ${p1Data.league.class}`;
 
-            document.getElementById('hud-p2').style.opacity = '1';
             document.getElementById('p2-avatar').src = p2Data.photo;
             document.getElementById('p2-name').innerText = p2Data.name;
             document.getElementById('p2-league').innerText = p2Data.league.name;
             document.getElementById('p2-league').className = `hud-league ${p2Data.league.class}`;
+
+            setTimeout(() => { hud1.style.opacity = '1'; hud1.style.transform = 'translateX(0)'; }, 100);
+            setTimeout(() => { hud2.style.opacity = '1'; hud2.style.transform = 'translateX(0)'; }, 300);
 
             me = new Sphere(p1Data.id, p1Data.color, true);
             opponent = new Sphere(p2Data.id, p2Data.color, false);
@@ -237,21 +241,54 @@
             obstacles = [];
             particles = [];
             frames = 0;
-
+            
+            startCountdown(); // Inicia o motor competitivo
             requestAnimationFrame(gameLoop);
         });
 
+        // ==========================================
+        // MOTOR COMPETITIVO: CONTAGEM DECRESCENTE
+        // ==========================================
+        function startCountdown() {
+            matchState = 'countdown';
+            let count = 3;
+            const statusEl = document.getElementById('match-status');
+            statusEl.style.fontSize = '80px';
+            statusEl.style.color = '#F59E0B';
+            statusEl.innerText = count;
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    statusEl.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    setTimeout(() => statusEl.style.transform = 'translate(-50%, -50%) scale(1)', 100);
+                    statusEl.innerText = count;
+                } else {
+                    clearInterval(interval);
+                    statusEl.style.color = '#10B981';
+                    statusEl.style.fontSize = '100px';
+                    statusEl.innerText = "GO!";
+                    
+                    // O Salto Automático
+                    me.vy = jumpForce * 0.8; 
+                    socket.emit('bounce_sync_pos', { roomId, y: me.y, vy: me.vy });
+                    
+                    matchState = 'playing';
+
+                    setTimeout(() => { statusEl.innerText = ""; }, 1000);
+                }
+            }, 1000);
+        }
+
         socket.on('bounce_opponent_pos', (data) => {
             if(opponent && opponent.alive) {
-                // Interpolação suave
                 opponent.y = data.y;
                 opponent.vy = data.vy;
-                createParticles(opponent.x, opponent.y + opponent.radius, opponent.color, 5);
+                if (matchState === 'playing') createParticles(opponent.x, opponent.y + opponent.radius, opponent.color, 5);
             }
         });
 
         socket.on('bounce_match_won', (data) => {
-            // Se o outro morreu, EU VENCI!
             if(matchState !== 'ended') {
                 opponent.alive = false;
                 createParticles(opponent.x, opponent.y, opponent.color, 50);
@@ -259,21 +296,13 @@
             }
         });
 
-        // ==========================================
-        // LOOP DO JOGO
-        // ==========================================
-        // Pseudo-aleatório para os dois jogadores terem os mesmos buracos
         function seededRandom() {
             let x = Math.sin(mapSeed++) * 10000;
             return x - Math.floor(x);
         }
 
-        window.addEventListener('pointerdown', () => {
-            if(matchState === 'playing' && me.alive) me.jump();
-        });
-        window.addEventListener('keydown', (e) => {
-            if(e.code === 'Space' && matchState === 'playing' && me.alive) me.jump();
-        });
+        window.addEventListener('pointerdown', () => { if(matchState === 'playing' && me.alive) me.jump(); });
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space' && matchState === 'playing' && me.alive) me.jump(); });
 
         function die() {
             me.alive = false;
@@ -293,38 +322,43 @@
                     title.innerText = "VITÓRIA!";
                     title.style.color = "#06B6D4";
                     title.style.textShadow = "0 0 20px #06B6D4";
-                    desc.innerText = "Oponente foi esmagado pela Arena.";
+                    desc.innerText = "O seu oponente não aguentou a pressão.";
                     document.getElementById('result-xp').innerText = "50";
                     if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(50);
                 } else {
                     title.innerText = "ELIMINADO!";
                     title.style.color = "#EF4444";
                     title.style.textShadow = "0 0 20px #EF4444";
-                    desc.innerText = "Você não resistiu à pressão.";
-                    document.getElementById('result-xp').innerText = "10"; // Consolação
+                    desc.innerText = "Foco, Comandante. Tente novamente.";
+                    document.getElementById('result-xp').innerText = "10"; 
                     if(window.parent && window.parent.gameEarnXP) window.parent.gameEarnXP(10);
                 }
-            }, 1000);
+            }, 1500);
         }
 
         function gameLoop() {
-            if(matchState !== 'playing') return;
+            if(matchState !== 'playing' && matchState !== 'countdown') return;
             ctx.clearRect(0, 0, width, height);
 
-            // Geração Sincronizada de Obstáculos
-            if (frames % 90 === 0) {
-                let minGapY = 150;
-                let maxGapY = height - 150;
-                let gapY = minGapY + seededRandom() * (maxGapY - minGapY);
-                obstacles.push(new Obstacle(width, gapY));
-            }
+            if(matchState === 'playing') {
+                // Obstáculos só começam a nascer após 100 frames (quase 2 segundos de folga)
+                if (frames > 100 && frames % 110 === 0) {
+                    let minGapY = 200;
+                    let maxGapY = height - 200;
+                    let gapY = minGapY + seededRandom() * (maxGapY - minGapY);
+                    obstacles.push(new Obstacle(width, gapY));
+                }
 
-            // Atualiza Objetos
-            for(let i=obstacles.length-1; i>=0; i--) {
-                obstacles[i].update();
-                obstacles[i].draw();
-                obstacles[i].checkCollision(me);
-                if(obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i, 1);
+                for(let i=obstacles.length-1; i>=0; i--) {
+                    obstacles[i].update();
+                    obstacles[i].draw();
+                    obstacles[i].checkCollision(me);
+                    if(obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i, 1);
+                }
+
+                opponent.update(); 
+                me.update(); 
+                frames++;
             }
 
             // Partículas
@@ -338,11 +372,10 @@
                 if(p.life <= 0) particles.splice(i, 1);
             }
 
-            // Jogadores
-            opponent.update(); opponent.draw();
-            me.update(); me.draw();
+            // Oponentes são desenhados mesmo durante a contagem
+            opponent.draw();
+            me.draw();
 
-            frames++;
             requestAnimationFrame(gameLoop);
         }
     </script>
