@@ -209,14 +209,30 @@ const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', p
 app.post('/register', rateLimiter, async (req, res) => { 
     const { email, password, displayName } = req.body; 
     try { 
-        if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
-        
+        // 1. Procura se o e-mail já existe
+        let user = await User.findOne({ email }); 
+
+        // 2. Se existe e JÁ FOI VERIFICADO (conta ativa real), bloqueia!
+        if (user && user.isVerified) {
+            return res.status(400).json({ error: 'E-mail já cadastrado e ativo.' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10); 
         const code = Math.floor(100000 + Math.random() * 900000).toString(); 
-        const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
-        await newUser.save(); 
 
-        // 🚀 TENTA ENVIAR O E-MAIL ANTES DE DAR SUCESSO
+        // 3. Se a conta existe mas NUNCA foi verificada (conta fantasma), nós a atualizamos!
+        if (user && !user.isVerified) {
+            user.password = hashedPassword;
+            user.code = code;
+            user.displayName = displayName || email.split('@')[0];
+            await user.save();
+        } else {
+            // Se não existe de forma alguma, cria do zero
+            user = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
+            await user.save(); 
+        }
+
+        // 4. Tenta enviar o e-mail
         try {
             await transporter.sendMail({ 
                 from: 'ChatPTT <psbsj.2020@outlook.com>', 
@@ -230,8 +246,8 @@ app.post('/register', rateLimiter, async (req, res) => {
             });
             res.json({ message: 'Enviado' }); 
         } catch (mailError) {
-            console.error("🚨 ERRO SMTP (Brevo) no Registro:", mailError);
-            res.status(500).json({ error: 'Falha no envio do e-mail. Tente novamente.' });
+            console.error("🚨 ERRO SMTP no Registro:", mailError);
+            res.status(500).json({ error: 'Falha no servidor de e-mail. Tente novamente mais tarde.' });
         }
         
     } catch (e) { 
