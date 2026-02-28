@@ -517,82 +517,11 @@ app.get('/communities/channels/:id/messages', async (req, res) => {
 let users = {};
 const SERVER_VERSION = Date.now().toString(); 
 
-// 🚀 CORREÇÃO: As filas agora são GLOBAIS (fora da conexão individual)
+// 🚀 As filas agora são GLOBAIS e estão declaradas antes das conexões
 let snakeQueue = []; 
 let bounceQueue = [];
-// ==============================================================
-    // 🎨 MULTIPLAYER: COLOR BOUNCE RUSH (PvP Racing)
-    // ==============================================================
-    let colorBounceQueue = [];
-    
-    socket.on('join_color_bounce', (data) => {
-        // Limpa fantasmas da fila
-        colorBounceQueue = colorBounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
-        
-        colorBounceQueue.push({ id: socket.id, socket: socket, profile: data.profile });
+let colorBounceQueue = [];
 
-        if (colorBounceQueue.length >= 2) {
-            const p1 = colorBounceQueue.shift(); 
-            const p2 = colorBounceQueue.shift();
-
-            if (p1.socket.connected && p2.socket.connected) {
-                const roomId = `color_rush_${p1.id}`;
-                p1.socket.join(roomId); 
-                p2.socket.join(roomId);
-                
-                // Semente igual garante que as cores e obstáculos sejam 100% iguais para os dois!
-                const mapSeed = Math.random();
-                
-                io.to(roomId).emit('color_bounce_start', {
-                    roomId: roomId, seed: mapSeed,
-                    players: [
-                        { id: p1.id, name: p1.profile?.name || 'Piloto 1' }, 
-                        { id: p2.id, name: p2.profile?.name || 'Piloto 2' } 
-                    ]
-                });
-            } else {
-                if (p1.socket.connected) colorBounceQueue.push(p1);
-                if (p2.socket.connected) colorBounceQueue.push(p2);
-            }
-        } else {
-            // IA Bot - Oponentes Offline (Após 3 segundos)
-            setTimeout(() => {
-                const stillInQueue = colorBounceQueue.find(p => p.id === socket.id);
-                if (stillInQueue && colorBounceQueue.length === 1) {
-                    colorBounceQueue = colorBounceQueue.filter(p => p.id !== socket.id);
-                    const roomId = `color_rush_bot_${socket.id}`;
-                    socket.join(roomId);
-                    io.to(roomId).emit('color_bounce_start', {
-                        roomId: roomId, seed: Math.random(),
-                        players: [
-                            { id: socket.id, name: data.profile?.name || 'Você' }, 
-                            { id: 'bot_ia', name: '🤖 Piloto IA' } 
-                        ]
-                    });
-                    
-                    // IA do Color Bounce corre de forma independente no servidor simulado
-                    let botX = 0;
-                    let botInterval = setInterval(() => {
-                        botX += 7.0; // Velocidade do Bot (Ligeiramente mais rápida ou perfeita)
-                        io.to(roomId).emit('color_bounce_sync', { id: 'bot_ia', x: botX, y: 300, color: '#EC4899' });
-                        if(botX > 20000) { // Fim da fase
-                            io.to(roomId).emit('color_bounce_win', { winnerId: 'bot_ia' });
-                            clearInterval(botInterval);
-                        }
-                    }, 50);
-                    socket.on('disconnect', () => clearInterval(botInterval));
-                }
-            }, 3000);
-        }
-    });
-
-    socket.on('color_bounce_sync', (data) => {
-        socket.to(data.roomId).emit('color_bounce_sync', { id: socket.id, x: data.x, y: data.y, color: data.color });
-    });
-
-    socket.on('color_bounce_finish', (data) => {
-        socket.to(data.roomId).emit('color_bounce_win', { winnerId: socket.id });
-    });
 io.on('connection', (socket) => {
     socket.emit('check_app_version', SERVER_VERSION); 
     socket.on('join_room', (userId) => { users[userId] = socket.id; socket.join(userId); io.emit('online_users', Object.keys(users)); });
@@ -762,12 +691,10 @@ io.on('connection', (socket) => {
     socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
     // ==============================================================
-    // 🐍 MULTIPLAYER: NEON SERPENT DUEL (Blindado)
+    // 🐍 MULTIPLAYER: NEON SERPENT DUEL
     // ==============================================================
     socket.on('join_snake_duel', (data) => {
-        // Limpa a fila de fantasmas e impede o mesmo utilizador 2 vezes
         snakeQueue = snakeQueue.filter(p => p.socket.connected && p.id !== socket.id);
-        
         snakeQueue.push({ id: socket.id, socket: socket, profile: data.profile });
 
         if (snakeQueue.length >= 2) {
@@ -795,8 +722,8 @@ io.on('connection', (socket) => {
     socket.on('snake_move', (data) => { socket.to(data.roomId).emit('opponent_move', { id: socket.id, head: data.head, history: data.history, angle: data.angle }); });
     socket.on('snake_death', (data) => { socket.to(data.roomId).emit('duel_victory', { winnerId: data.opponentId }); });
 
-   // ==============================================================
-    // 🪩 MULTIPLAYER: NEON BOUNCE ARENA (Blindado)
+    // ==============================================================
+    // 🪩 MULTIPLAYER: NEON BOUNCE ARENA
     // ==============================================================
     socket.on('join_bounce_arena', (data) => {
         bounceQueue = bounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
@@ -849,15 +776,12 @@ io.on('connection', (socket) => {
     // 🎨 MULTIPLAYER: COLOR BOUNCE RUSH (PvP Racing)
     // ==============================================================
     socket.on('join_color_bounce', (data) => {
-        // Inicializa a fila globalmente se ainda não existir
-        if (typeof global.colorBounceQueue === 'undefined') global.colorBounceQueue = [];
-        
-        global.colorBounceQueue = global.colorBounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
-        global.colorBounceQueue.push({ id: socket.id, socket: socket, profile: data.profile });
+        colorBounceQueue = colorBounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
+        colorBounceQueue.push({ id: socket.id, socket: socket, profile: data.profile });
 
-        if (global.colorBounceQueue.length >= 2) {
-            const p1 = global.colorBounceQueue.shift(); 
-            const p2 = global.colorBounceQueue.shift();
+        if (colorBounceQueue.length >= 2) {
+            const p1 = colorBounceQueue.shift(); 
+            const p2 = colorBounceQueue.shift();
 
             if (p1.socket.connected && p2.socket.connected) {
                 const roomId = `color_rush_${p1.id}`;
@@ -873,14 +797,14 @@ io.on('connection', (socket) => {
                     ]
                 });
             } else {
-                if (p1.socket.connected) global.colorBounceQueue.push(p1);
-                if (p2.socket.connected) global.colorBounceQueue.push(p2);
+                if (p1.socket.connected) colorBounceQueue.push(p1);
+                if (p2.socket.connected) colorBounceQueue.push(p2);
             }
         } else {
             setTimeout(() => {
-                const stillInQueue = global.colorBounceQueue.find(p => p.id === socket.id);
-                if (stillInQueue && global.colorBounceQueue.length === 1) {
-                    global.colorBounceQueue = global.colorBounceQueue.filter(p => p.id !== socket.id);
+                const stillInQueue = colorBounceQueue.find(p => p.id === socket.id);
+                if (stillInQueue && colorBounceQueue.length === 1) {
+                    colorBounceQueue = colorBounceQueue.filter(p => p.id !== socket.id);
                     const roomId = `color_rush_bot_${socket.id}`;
                     socket.join(roomId);
                     io.to(roomId).emit('color_bounce_start', {
@@ -923,7 +847,7 @@ io.on('connection', (socket) => {
         if (socket.voiceChannel) { socket.to(socket.voiceChannel).emit('user_left_voice', socket.id); }
     });
 
-}); // ⚠️ FECHAMENTO MESTRE DO MOTOR WEBSOCKET (ISTO RESOLVE O CRASH!)
+}); // ⚠️ FECHAMENTO MESTRE DO MOTOR WEBSOCKET
 
 // ==============================================================
 // ⏱️ MOTOR DE AGENDAMENTO DE MENSAGENS E SERVIDOR
