@@ -97,7 +97,7 @@ const UserSchema = new mongoose.Schema({
     dailyMissionCompleted: { type: Boolean, default: false },
     lastActiveDate: { type: String, default: '' },
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    unlockedItems: [{ type: String }] // NOVO: Itens da Loja Neon
+    unlockedItems: [{ type: String }] 
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -218,13 +218,11 @@ app.post('/register', rateLimiter, async (req, res) => {
     try { 
         let user = await User.findOne({ email }); 
         
-        // Bloqueia se já estiver registrado E verificado
         if (user && user.isVerified) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
 
         const hashedPassword = await bcrypt.hash(password, 10); 
         const code = Math.floor(100000 + Math.random() * 900000).toString(); 
 
-        // Substitui a "conta fantasma" ou cria uma nova
         if (user) {
             user.password = hashedPassword;
             user.code = code;
@@ -237,7 +235,7 @@ app.post('/register', rateLimiter, async (req, res) => {
 
         try {
             await transporter.sendMail({ 
-                from: '"Chat PTT" <psbsj.2020@outlook.com>', // Configurado igual a Brevo
+                from: '"Chat PTT" <psbsj.2020@outlook.com>', 
                 to: email, 
                 subject: 'Seu Código de Acesso - ChatPTT', 
                 html: `<div style="text-align:center; font-family:sans-serif;">
@@ -259,7 +257,7 @@ app.post('/verify', async (req, res) => {
         const user = await User.findOne({ email, code });
         if (!user) return res.status(400).json({ error: 'Código inválido' });
         user.isVerified = true;
-        user.code = null; // Apaga o código após a verificação
+        user.code = null; 
         await user.save();
         res.json({ message: 'Ok' });
     } catch (e) { res.status(500).json({ error: 'Erro' }); }
@@ -271,7 +269,6 @@ app.post('/login', rateLimiter, async (req, res) => {
         const user = await User.findOne({ email }); 
         if (!user) return res.status(400).json({ error: 'E-mail não encontrado' });
         
-        // 🛡️ BLOQUEIO TOTAL: O e-mail DEVE ser verificado
         if (!user.isVerified) return res.status(400).json({ error: 'VERIFY_REQUIRED' }); 
 
         const isMatch = await bcrypt.compare(password, user.password);
