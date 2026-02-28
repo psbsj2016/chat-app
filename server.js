@@ -209,30 +209,14 @@ const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', p
 app.post('/register', rateLimiter, async (req, res) => { 
     const { email, password, displayName } = req.body; 
     try { 
-        // 1. Procura se o e-mail já existe
-        let user = await User.findOne({ email }); 
-
-        // 2. Se existe e JÁ FOI VERIFICADO (conta ativa real), bloqueia!
-        if (user && user.isVerified) {
-            return res.status(400).json({ error: 'E-mail já cadastrado e ativo.' });
-        }
-
+        if (await User.findOne({ email })) return res.status(400).json({ error: 'E-mail já cadastrado' }); 
+        
         const hashedPassword = await bcrypt.hash(password, 10); 
         const code = Math.floor(100000 + Math.random() * 900000).toString(); 
+        const newUser = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
+        await newUser.save(); 
 
-        // 3. Se a conta existe mas NUNCA foi verificada (conta fantasma), nós a atualizamos!
-        if (user && !user.isVerified) {
-            user.password = hashedPassword;
-            user.code = code;
-            user.displayName = displayName || email.split('@')[0];
-            await user.save();
-        } else {
-            // Se não existe de forma alguma, cria do zero
-            user = new User({ email, password: hashedPassword, code, displayName: displayName || email.split('@')[0] }); 
-            await user.save(); 
-        }
-
-        // 4. Tenta enviar o e-mail
+        // 🚀 TENTA ENVIAR O E-MAIL ANTES DE DAR SUCESSO
         try {
             await transporter.sendMail({ 
                 from: 'ChatPTT <psbsj.2020@outlook.com>', 
@@ -246,8 +230,8 @@ app.post('/register', rateLimiter, async (req, res) => {
             });
             res.json({ message: 'Enviado' }); 
         } catch (mailError) {
-            console.error("🚨 ERRO SMTP no Registro:", mailError);
-            res.status(500).json({ error: 'Falha no servidor de e-mail. Tente novamente mais tarde.' });
+            console.error("🚨 ERRO SMTP (Brevo) no Registro:", mailError);
+            res.status(500).json({ error: 'Falha no envio do e-mail. Tente novamente.' });
         }
         
     } catch (e) { 
@@ -303,39 +287,8 @@ app.post('/find-contact', async (req, res) => { const { query, myId } = req.body
 app.post('/upload', (req, res) => { upload.single('file')(req, res, function (err) { if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'O arquivo ultrapassou o limite de 50MB.' }); } else if (err) { return res.status(500).json({ error: 'A Nuvem rejeitou este formato.' }); } if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); res.json({ url: req.file.path, type: req.file.mimetype }); }); });
 
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/forgot-password', async (req, res) => { 
-    const { email } = req.body; 
-    try { 
-        const user = await User.findOne({ email }); 
-        if (!user) return res.status(404).json({ error: 'Não encontrado.' }); 
-        
-        const code = Math.floor(100000 + Math.random() * 900000).toString(); 
-        user.code = code; 
-        await user.save(); 
-
-        // 🚀 TENTA ENVIAR O E-MAIL ANTES DE DAR SUCESSO
-        try {
-            await transporter.sendMail({ 
-                from: 'ChatPTT <psbsj.2020@outlook.com>', 
-                to: email, 
-                subject: 'Recuperação de Senha - ChatPTT', 
-                html: `<div style="font-family: Arial; color: #333; text-align: center; padding: 20px;">
-                        <h2>Recuperação de Conta</h2>
-                        <p>O seu código para redefinir a senha é:</p>
-                        <h1 style="color: #EF4444; letter-spacing: 5px;">${code}</h1>
-                       </div>` 
-            });
-            res.json({ message: 'Enviado!' }); 
-        } catch (mailError) {
-            console.error("🚨 ERRO SMTP (Brevo) na Recuperação:", mailError);
-            res.status(500).json({ error: 'Erro ao enviar e-mail de recuperação.' });
-        }
-
-    } catch (e) { 
-        res.status(500).json({ error: 'Erro' }); 
-    } 
-});
-
+app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: 'Chat App <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Ok!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
