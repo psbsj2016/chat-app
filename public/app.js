@@ -818,26 +818,48 @@ async function handleAuth() {
     } 
 }
 
+// ==============================================================
+// 🚀 INICIALIZAÇÃO TURBO (SEM PISCAR A TELA DE LOGIN)
+// ==============================================================
 async function initApp() { 
-    const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
+    const localFont = localStorage.getItem('fontSize') || 'medium'; 
+    document.body.classList.add(`font-${localFont}`); 
+    
     if(token && myId) { 
-        const headerAvatar = document.getElementById('header-my-avatar'); if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
+        // 🚀 AÇÃO IMEDIATA: Esconde o login e carrega a tela de contatos na mesma fração de segundo!
+        hideElement('auth-screen');
+        checkAndShowPermissions(); 
+
+        const headerAvatar = document.getElementById('header-my-avatar'); 
+        if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
         if(cachedMe && cachedMe.chatWallpaper) document.body.style.setProperty('--chat-bg-image', `url('${cachedMe.chatWallpaper}')`);
+        
         try { 
-            applyUnlockedItems(); const res = await fetch(`/user/${myId}`); 
+            applyUnlockedItems(); 
+            // A sincronização com a nuvem agora acontece invisível no fundo
+            const res = await fetch(`/user/${myId}`); 
             if(res.ok) { 
-                const me = await res.json(); cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); 
-                currentSectors = me.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
+                const me = await res.json(); 
+                cachedMe = me; 
+                localStorage.setItem('cacheMe', JSON.stringify(me)); 
+                currentSectors = me.sectors || []; 
+                localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
+                
                 const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
                 const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
                 const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
-                if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; applyUnlockedItems();
+                if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+                
+                applyUnlockedItems();
             } 
-        } catch(e){} checkAndShowPermissions(); 
-    } else { showElement('auth-screen'); } 
+        } catch(e){} 
+    } else { 
+        // Só mostra o login se realmente não houver conta salva
+        showElement('auth-screen'); 
+    } 
 }
 
-// O RADAR FOI DELETADO. A NAVEGAÇÃO AGORA É 100% DIRETA E SEGURA!
+// Inicializa o Motor
 initApp();
 
 // ==============================================================
