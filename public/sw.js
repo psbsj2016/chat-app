@@ -1,5 +1,57 @@
 // ==============================================================
-// 🛡️ CHATPTT SERVICE WORKER (Fica ativo em 2º plano)
+// 🛡️ CHATPTT SERVICE WORKER V2 (Notificações e Gestão de Cache)
+// ==============================================================
+
+const CACHE_NAME = 'chatptt-cache-v2'; // 💣 A Bomba: Mudar este nome no futuro força a limpeza
+
+const urlsToCache = [
+    '/',
+    '/index.html',
+    '/style.css',
+    '/js/core.js',
+    '/js/ui.js',
+    '/js/chat.js',
+    '/js/webrtc.js',
+    '/js/features.js',
+    '/favicon.png'
+];
+
+// 1. INSTALAÇÃO: Puxa a nova arquitetura para a memória do telemóvel
+self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Força a atualização imediata sem esperar o utilizador fechar o app
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(urlsToCache);
+        })
+    );
+});
+
+// 2. ATIVAÇÃO (A BOMBA): Destrói os fantasmas do passado (como o antigo app.js)
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    // Se encontrar um cache com nome diferente de 'chatptt-cache-v2', APAGA!
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim()) // Assume o controlo das páginas abertas imediatamente
+    );
+});
+
+// 3. INTERCEPTADOR DE REDE: Tenta buscar da internet primeiro (para ter o código fresco), se falhar, usa o Cache
+self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
+    event.respondWith(
+        fetch(event.request).catch(() => caches.match(event.request))
+    );
+});
+
+// ==============================================================
+// 🔔 MOTOR DE NOTIFICAÇÕES PUSH (O seu código original intacto)
 // ==============================================================
 
 self.addEventListener('push', function(event) {
@@ -9,18 +61,16 @@ self.addEventListener('push', function(event) {
         const options = {
             body: data.body || 'Você tem uma nova mensagem no ChatPTT.',
             icon: '/favicon.png',
-            badge: '/favicon.png', // Ícone pequeno para a barra de topo do Android
-            vibrate: [200, 100, 200, 100, 200], // Vibração tática
+            badge: '/favicon.png', 
+            vibrate: [200, 100, 200, 100, 200], 
             data: data,
-            requireInteraction: true // Faz a notificação ficar na tela até o utilizador tocar
+            requireInteraction: true 
         };
 
-        // 1. Mostra a notificação Pop-up no telemóvel
         event.waitUntil(
             self.registration.showNotification(title, options)
         );
 
-        // 2. MÁGICA: Atualiza a bolinha vermelha no Ícone do App (Badging API)
         if (data.unreadCount && navigator.setAppBadge) {
             navigator.setAppBadge(data.unreadCount).catch((error) => {
                 console.error("Erro ao atualizar o ícone:", error);
@@ -29,15 +79,12 @@ self.addEventListener('push', function(event) {
     }
 });
 
-// 3. Quando o utilizador toca na notificação
 self.addEventListener('notificationclick', function(event) {
-    event.notification.close(); // Fecha a notificação
+    event.notification.close(); 
 
-    // Verifica se o app já está aberto em alguma aba/janela oculta
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
             if (clientList.length > 0) {
-                // Se estiver aberto, apenas puxa para a frente
                 let client = clientList[0];
                 for (let i = 0; i < clientList.length; i++) {
                     if (clientList[i].focused) {
@@ -46,12 +93,10 @@ self.addEventListener('notificationclick', function(event) {
                 }
                 return client.focus();
             }
-            // Se o app estiver fechado, abre-o!
             return clients.openWindow('/');
         })
     );
 
-    // Limpa a bolinha vermelha quando ele entra no app
     if (navigator.clearAppBadge) {
         navigator.clearAppBadge();
     }
