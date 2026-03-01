@@ -182,7 +182,33 @@ function openNotificationsSettings() { hideElement('settings-screen'); showEleme
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); const emailEl = document.getElementById('config-email'); if(emailEl) emailEl.innerText = cachedMe.email || 'Carregando...'; }
 function viewMyProfilePhoto() { document.getElementById('viewer-photo').src = document.getElementById('config-avatar').src; showElement('photo-viewer-modal'); }
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
-async function uploadProfilePhoto(input) { const file = input.files[0]; if(!file) return; if(!confirm("Substituir foto?")) return; const avatarImg = document.getElementById('config-avatar'); const spinner = document.getElementById('profile-photo-spinner'); avatarImg.src = URL.createObjectURL(file); if(spinner) spinner.classList.remove('hidden'); const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); avatarImg.src = data.url; saveProfile({ photoUrl: data.url }); } catch (e) { } finally { if(spinner) spinner.classList.add('hidden'); input.value = ''; } }
+
+// 📸 Correção 1: Atualiza o avatar do topo instantaneamente ao selecionar a foto
+async function uploadProfilePhoto(input) { 
+    const file = input.files[0]; if(!file) return; 
+    if(!confirm("Substituir foto?")) return; 
+    const avatarImg = document.getElementById('config-avatar'); 
+    const spinner = document.getElementById('profile-photo-spinner'); 
+    const localUrl = URL.createObjectURL(file);
+    avatarImg.src = localUrl; 
+    
+    // Injeta a foto provisória no topo enquanto carrega
+    const headerAvatar = document.getElementById('header-my-avatar');
+    if(headerAvatar) headerAvatar.src = localUrl;
+
+    if(spinner) spinner.classList.remove('hidden'); 
+    const formData = new FormData(); formData.append('file', file); 
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        const data = await res.json(); 
+        avatarImg.src = data.url; 
+        saveProfile({ photoUrl: data.url }); 
+    } catch (e) { 
+    } finally { 
+        if(spinner) spinner.classList.add('hidden'); input.value = ''; 
+    } 
+}
+
 function editName() { const curr = document.getElementById('config-name').innerText; const newName = prompt("Novo nome:", curr); if(newName) { document.getElementById('config-name').innerText = newName; saveProfile({ displayName: newName }); } }
 function editBio() { const curr = document.getElementById('config-bio').innerText; const newBio = prompt("Recado:", curr); if(newBio) { document.getElementById('config-bio').innerText = newBio; saveProfile({ bio: newBio }); } }
 function editPhone() { const curr = document.getElementById('config-phone').innerText; const newPhone = prompt("Telefone:", curr); if(newPhone) { document.getElementById('config-phone').innerText = newPhone; saveProfile({ phone: newPhone }); } }
@@ -192,7 +218,31 @@ function createNewClassification() { const name = prompt("Nome da nova Classific
 function renderClassificationsList() { const list = document.getElementById('classifications-list'); list.innerHTML = ''; if(currentSectors.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px;">Nenhuma classificação criada.</div>'; return; } const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; currentSectors.forEach((sec, sIdx) => { let membersHtml = ''; if(sec.members.length === 0) { membersHtml = '<div style="padding: 10px 15px; font-size: 13px;">Nenhum contato classificado aqui</div>'; } else { sec.members.forEach(memberId => { const u = cachedUsers.find(user => user._id === memberId); if(u) { membersHtml += `<div style="padding: 10px 15px; display:flex; align-items:center; gap:10px;"><img src="${u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;"> <span style="font-size: 14px; font-weight:600;">${u.displayName || u.email}</span></div>`; } }); } list.innerHTML += `<div class="settings-group" style="margin-bottom: 15px;"><div style="padding: 15px; display:flex; justify-content:space-between; align-items:center; font-weight: 800;">${sec.name} <span class="material-icons-round" style="color:#EF4444; font-size:20px; cursor:pointer;" onclick="deleteClassification(${sIdx})">delete</span></div>${membersHtml}</div>`; }); }
 function deleteClassification(index) { if(confirm('Excluir esta classificação?')) { currentSectors.splice(index, 1); renderClassificationsList(); saveProfile({ sectors: currentSectors }); loadContacts(); } }
 function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); saveProfile({ theme: 'light' }); } }
-async function saveProfile(dataToUpdate) { try { await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); } catch(e) {} }
+
+// 💾 Correção 2: Atualiza todas as variáveis da memória interna imediatamente
+async function saveProfile(dataToUpdate) { 
+    if (dataToUpdate.photoUrl) {
+        cachedMe.photoUrl = dataToUpdate.photoUrl; 
+        localStorage.setItem('photoUrl', dataToUpdate.photoUrl);
+        const headerAvatar = document.getElementById('header-my-avatar'); 
+        if (headerAvatar) headerAvatar.src = dataToUpdate.photoUrl;
+        const drawerAvatar = document.getElementById('drawer-avatar');
+        if (drawerAvatar) drawerAvatar.src = dataToUpdate.photoUrl;
+    }
+    if (dataToUpdate.displayName) {
+        cachedMe.displayName = dataToUpdate.displayName; 
+        localStorage.setItem('displayName', dataToUpdate.displayName);
+        const drawerName = document.getElementById('drawer-name'); 
+        if (drawerName) drawerName.innerText = dataToUpdate.displayName;
+    }
+    localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
+
+    try { 
+        await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); 
+        socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); 
+    } catch(e) {} 
+}
+
 function openChangePasswordModal() { showElement('change-password-modal'); }
 function closeChangePasswordModal() { hideElement('change-password-modal'); }
 async function submitChangePassword() { const currentPassword = document.getElementById('cp-current').value; const newPassword = document.getElementById('cp-new').value; const confirmPassword = document.getElementById('cp-confirm').value; if (!currentPassword || !newPassword || !confirmPassword) return alert("Preencha tudo!"); if (newPassword !== confirmPassword) return alert("Senhas não batem!"); try { const res = await fetch('/change-password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, currentPassword, newPassword }) }); if (res.ok) { alert("Senha alterada!"); closeChangePasswordModal(); } } catch (e) {} }
