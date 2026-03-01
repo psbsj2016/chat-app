@@ -234,7 +234,21 @@ function drawAudioVisualizer() {
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
 socket.on('connect', () => { if (myId) { socket.emit('join_room', myId); const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups.forEach(g => socket.emit('join_group', g._id)); } });
-socket.on('online_users', (list) => { onlineUsersList = list; document.querySelectorAll('.contact-status-dot').forEach(dot => { const uid = dot.getAttribute('data-userid'); dot.className = `status-dot contact-status-dot ${onlineUsersList.includes(uid) ? 'status-online' : 'status-offline'}`; }); if (currentChatId && !isGroupChat) { const headerDot = document.getElementById('chat-header-status'); if (headerDot) headerDot.className = `status-dot ${onlineUsersList.includes(currentChatId) ? 'status-online' : 'status-offline'}`; } });
+socket.on('online_users', (list) => { 
+    onlineUsersList = list; 
+    document.querySelectorAll('.contact-status-dot').forEach(dot => { 
+        const uid = dot.getAttribute('data-userid'); 
+        dot.className = `status-dot contact-status-dot ${onlineUsersList.includes(uid) ? 'status-online' : 'status-offline'}`; 
+    }); 
+    if (currentChatId && !isGroupChat) { 
+        const headerDot = document.getElementById('chat-header-status'); 
+        const headerText = document.getElementById('chat-header-status-text');
+        const isOnline = onlineUsersList.includes(currentChatId);
+        
+        if (headerDot) headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+        if (headerText) headerText.innerText = isOnline ? 'Online' : 'Offline';
+    } 
+});
 
 function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
@@ -271,7 +285,43 @@ socket.on('receive_message', (msg) => {
 // ==============================================================
 // 💬 AÇÕES E RENDERIZAÇÃO DE MENSAGENS
 // ==============================================================
-function openChat(id, name, photo, email, type = 'user') { currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; const contactDiv = document.getElementById(`contact-${id}`); if (contactDiv) { contactDiv.classList.remove('has-unread'); const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } } if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); const headerDot = document.getElementById('chat-header-status'); if (headerDot) { if (isGroupChat) headerDot.style.display = 'none'; else { headerDot.style.display = 'block'; headerDot.className = `status-dot ${onlineUsersList.includes(id) ? 'status-online' : 'status-offline'}`; } } if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } }
+function openChat(id, name, photo, email, type = 'user') { 
+    currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
+    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+    updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
+    
+    document.getElementById('chat-title').innerText = name; 
+    document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
+    document.getElementById('chat-box').innerHTML = ''; 
+    
+    const contactDiv = document.getElementById(`contact-${id}`); 
+    if (contactDiv) { 
+        contactDiv.classList.remove('has-unread'); 
+        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); 
+        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
+        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
+    } 
+    
+    if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
+    
+    const headerDot = document.getElementById('chat-header-status'); 
+    const headerText = document.getElementById('chat-header-status-text');
+    
+    if (headerDot && headerText) { 
+        if (isGroupChat) { 
+            headerDot.style.display = 'none'; 
+            headerText.innerText = 'Toque para ver membros'; 
+        } else { 
+            headerDot.style.display = 'block'; 
+            const isOnline = onlineUsersList.includes(id);
+            headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+            headerText.innerText = isOnline ? 'Online' : 'Offline';
+        } 
+    } 
+    
+    if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
+}
 async function loadContacts() { if(!myId) return; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); updateAppBadge(); } try { const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); groups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(groups, users); updateAppBadge(); } catch(e) {} }
 
 function renderContactsList(groups, users) {
@@ -301,9 +351,65 @@ function renderContactsList(groups, users) {
     });
 }
 
-function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); toggleMenu('attach-menu'); }
-async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.size > 50 * 1024 * 1024) { alert("⚠️ Limite de 50MB."); input.value = ''; return; } let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); }
-async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); if (!res.ok) throw new Error(); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Falha no envio."); } finally { document.getElementById('file-input').value = ''; } }
+function triggerUpload(type) { 
+    const input = document.getElementById('file-input'); 
+    input.accept = type; 
+    input.click(); 
+    hideElement('attach-menu'); 
+}
+
+async function handleFileUpload(input) { 
+    const file = input.files[0]; 
+    if(!file) return; 
+    if (file.size > 50 * 1024 * 1024) { 
+        alert("⚠️ Limite de 50MB."); 
+        input.value = ''; 
+        return; 
+    } 
+    let type = 'file'; 
+    if(file.type.startsWith('image/')) type = 'image'; 
+    else if(file.type.startsWith('video/')) type = 'video'; 
+    else if(file.type.startsWith('audio/')) type = 'audio'; 
+    else if(file.type === 'application/pdf') type = 'pdf'; 
+    executeUpload(file, type); 
+}
+
+async function executeUpload(file, type) { 
+    const tempId = 'temp-' + Date.now(); 
+    const localUrl = URL.createObjectURL(file); 
+    hideElement('attach-menu'); 
+    
+    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
+    displayMessage(tempMsg); 
+    
+    const tempDiv = document.getElementById(`msg-${tempId}`); 
+    if(tempDiv) { 
+        tempDiv.classList.add('uploading-msg'); 
+        const info = tempDiv.querySelector('.msg-info'); 
+        if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; 
+    } 
+    
+    const formData = new FormData(); 
+    formData.append('file', file); 
+    
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        if (!res.ok) throw new Error(); 
+        const data = await res.json(); 
+        
+        if(tempDiv) tempDiv.remove(); 
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        socket.emit('private_message', msgData); 
+        
+        clearTimeout(typingTimeout); 
+        emitStopTypingStatus(); 
+    } catch (e) { 
+        if(tempDiv) tempDiv.remove(); 
+        alert("❌ Falha no envio."); 
+    } finally { 
+        document.getElementById('file-input').value = ''; 
+    } 
+}
 
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { 
     const input = document.getElementById('message-input'); 

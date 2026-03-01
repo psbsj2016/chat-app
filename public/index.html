@@ -471,7 +471,7 @@
             <span class="material-icons-round" style="color: var(--secondary-text); cursor: pointer; padding: 5px; font-size: 20px;" onclick="cancelReply()">close</span>
         </div>
 
-        <div id="attach-menu" class="dropdown-menu right-menu hidden" style="bottom: 70px; top: auto; right: 15px; min-width: 240px; padding: 10px 0;">
+        <div id="attach-menu" class="dropdown-menu right-menu hidden" style="bottom: 70px; top: auto; right: 15px; min-width: 240px; padding: 10px 0; z-index: 1000;">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
             <div class="menu-item" onclick="triggerUpload('image/*')">
                 <span class="material-icons-round" style="color: var(--brand-secondary);">image</span> 
@@ -523,7 +523,7 @@
 
                 <div id="message-input" contenteditable="true" data-placeholder="Sua mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; color: var(--text-color); padding: 8px 0;"></div>
                 
-                <span id="btn-attach" class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; margin-left: 10px; transform: rotate(-45deg);" onclick="toggleMenu('attach-menu')">attach_file</span>
+                <span id="btn-attach" class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; margin-left: 10px; transform: rotate(-45deg);" onclick="toggleMenu('attach-menu'); event.stopPropagation();">attach_file</span>
             </div>
 
             <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()">

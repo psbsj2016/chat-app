@@ -976,3 +976,43 @@ body.bubble-cyber {
     background: var(--input-bg);
     border: none;
 }
+
+/* ========================================================= */
+/* INDICADOR ONLINE/OFFLINE SOBREPOSTO À FOTO                */
+/* ========================================================= */
+.user-avatar-container {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-right: 15px; /* A margem passa a ser do container e não da foto */
+}
+.avatar-small { 
+    margin-right: 0 !important; /* Limpa o código antigo para a foto encaixar perfeita */
+}
+.status-dot { 
+    position: absolute; 
+    bottom: 2px; 
+    right: 0px; 
+    width: 15px; 
+    height: 15px; 
+    border-radius: 50%; 
+    border: 2.5px solid var(--card-bg); 
+    z-index: 5; 
+    background-color: #94A3B8; /* Cor Offline (Cinza) */
+    transition: background-color 0.3s;
+}
+.status-online { 
+    background-color: #10B981 !important; /* Verde Neon Online */
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+/* ========================================================= */
+/* CORREÇÃO DE CORES NO CHAT DA COMUNIDADE                   */
+/* ========================================================= */
+#community-message-input {
+    color: #F8FAFC !important; /* Texto Branco Brilhante ao Digitar */
+}
+#community-message-input::placeholder {
+    color: #94A3B8 !important; /* Texto Cinza Claro (Placeholder) */
+    opacity: 1;
+}
