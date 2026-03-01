@@ -122,7 +122,7 @@ async function saveNote() { const title = document.getElementById('note-title').
 async function deleteNote(id) { if(!confirm("Tem certeza que deseja apagar?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) { alert("Erro ao apagar."); } }
 
 // ==============================================================
-// 📸 MOTOR DE STATUS (STORIES 24H) E CÂMERA RÁPIDA
+// 📸 MOTOR DE STATUS E CÂMERA RÁPIDA
 // ==============================================================
 let allStatuses = []; let groupedStatuses = {}; let currentStoryQueue = []; let currentStoryIndex = 0; let storyTimer; let storyProgressInterval; const STORY_DURATION = 5000; const statusColors = ['#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#EC4899', '#0F172A']; let currentStatusColorIndex = 0; let statusBase64Image = null; let tempQuickPhotoFile = null; let tempQuickPhotoBase64 = null;
 
