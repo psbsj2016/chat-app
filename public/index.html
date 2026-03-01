@@ -468,12 +468,34 @@
             <span class="material-icons-round" style="color: var(--secondary-text); cursor: pointer; padding: 5px; font-size: 20px;" onclick="cancelReply()">close</span>
         </div>
 
-        <div id="attach-menu" class="dropdown-menu right-menu hidden" style="bottom: 70px; top: auto; right: 15px;">
+        <div id="attach-menu" class="dropdown-menu right-menu hidden" style="bottom: 70px; top: auto; right: 15px; min-width: 240px; padding: 10px 0;">
             <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-            <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color:var(--brand-secondary)">image</span> Imagem</div>
-            <div class="menu-item" onclick="triggerUpload('video/*')"><span class="material-icons-round" style="color:#8B5CF6">videocam</span> Vídeo</div>
-            <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons-round" style="color:#EF4444">picture_as_pdf</span> Documento</div>
-        </div>
+            
+            <div class="menu-item" onclick="triggerUpload('image/*')">
+                <span class="material-icons-round" style="color: var(--brand-secondary);">image</span> 
+                <span style="font-weight: 600;">Enviar Foto</span>
+            </div>
+            
+            <div class="menu-item" onclick="triggerUpload('video/*')">
+                <span class="material-icons-round" style="color: #8B5CF6;">videocam</span> 
+                <span style="font-weight: 600;">Enviar Vídeo</span>
+            </div>
+            
+            <div class="menu-item" onclick="triggerUpload('application/pdf')">
+                <span class="material-icons-round" style="color: #EF4444;">picture_as_pdf</span> 
+                <span style="font-weight: 600;">Enviar PDF</span>
+            </div>
+            
+            <div class="menu-separator" style="margin: 8px 0;"></div>
+            
+            <div class="menu-item" onclick="triggerUpload('audio/*')">
+                <span class="material-icons-round" style="color: #10B981;">audio_file</span> 
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 600;">Arquivo de Áudio</span>
+                    <span style="font-size: 11px; color: var(--secondary-text); font-weight: 500;">Lim. recomendado: Até 10 min</span>
+                </div>
+            </div>
+        </div>        
 
         <emoji-picker id="emoji-picker" class="hidden" style="position: absolute; bottom: 80px; left: 10px; z-index: 100; --num-columns: 8; width: 320px; height: 320px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);"></emoji-picker>
 
