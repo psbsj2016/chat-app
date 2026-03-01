@@ -5,12 +5,16 @@ let searchTimeout = null;
 let pressTimer = null;
 let currentSelectedMsgElement = null;
 let selectedMsgData = null;
-let audioChunks = [];
-let audioStream = null;
 
 // ==============================================================
-// 🎯 NOVO: MOTOR DO BOTÃO DINÂMICO (MIC / ENVIAR) E INPUT
+// 🎙️ MOTOR DE ÁUDIO AVANÇADO E BOTÃO DINÂMICO
 // ==============================================================
+let audioChunks = [];
+let audioStream = null;
+let isRecordingCancelled = false;
+let showPreviewAfterStop = false;
+let previewAudioObj = null;
+
 const msgInput = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn');
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
@@ -19,8 +23,13 @@ window.handleDynamicAction = function() {
     if (dynamicActionIcon.innerText === 'mic') {
         startRecording();
     } else {
-        sendMessage();
-        resetDynamicButton();
+        // É o botão Enviar! Pode ser áudio direto, áudio em preview ou texto
+        if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
+            stopAndSendRecording();
+        } else {
+            sendMessage();
+            resetAudioUI(); // Limpa a UI caso tenha enviado um áudio do Preview
+        }
     }
 }
 
@@ -34,21 +43,13 @@ function resetDynamicButton() {
 if (msgInput) { 
     msgInput.addEventListener('input', () => { 
         const textLength = msgInput.innerText.trim().length;
-        
-        // Muda para "Enviar" se houver texto
         if (textLength > 0) {
             if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') {
                 dynamicActionIcon.innerText = 'send';
                 dynamicActionIcon.style.animation = 'popIn 0.2s ease';
             }
-        } else {
-            resetDynamicButton();
-        }
-
-        if (pendingAudioFile) { 
-            pendingAudioFile = null; 
-            msgInput.setAttribute('data-placeholder', 'Sua mensagem'); 
-        } 
+        } else { resetDynamicButton(); }
+        if (pendingAudioFile) { pendingAudioFile = null; msgInput.setAttribute('data-placeholder', 'Sua mensagem'); resetAudioUI(); } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
@@ -57,11 +58,174 @@ if (msgInput) {
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
             if (msgInput.innerText.trim().length > 0 || pendingAudioFile) {
-                sendMessage(); 
-                resetDynamicButton();
+                sendMessage(); resetDynamicButton(); resetAudioUI();
             }
         } 
     }); 
+}
+
+// 🎧 FUNÇÕES CORE DO NOVO ÁUDIO
+async function startRecording() { 
+    hideElement('attach-menu'); 
+    try { 
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(audioStream); 
+        audioChunks = []; 
+        isRecordingCancelled = false;
+        showPreviewAfterStop = false;
+
+        // UI Transições
+        hideElement('message-input');
+        hideElement('btn-emoji');
+        hideElement('btn-attach');
+        showElement('recording-ui');
+        showElement('recording-active-state');
+        hideElement('recording-preview-state');
+
+        dynamicActionIcon.innerText = 'send';
+        dynamicActionIcon.style.animation = 'popIn 0.2s ease';
+
+        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
+        globalMediaRecorder.onstop = () => { 
+            clearInterval(recordingInterval); 
+            audioStream.getTracks().forEach(track => track.stop()); 
+
+            if (isRecordingCancelled) {
+                pendingAudioFile = null;
+                resetAudioUI();
+                return;
+            }
+
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
+            pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
+
+            if (showPreviewAfterStop) {
+                setupPreviewUI(audioBlob);
+            } else {
+                sendMessage(); 
+                resetAudioUI();
+            }
+        }; 
+
+        recordingSeconds = 0; 
+        document.getElementById('recording-timer').innerText = "00:00"; 
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0'); 
+            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        }, 1000); 
+
+        globalMediaRecorder.start(); 
+        emitTypingStatus('recording'); 
+        drawAudioVisualizer(); 
+    } catch (e) { 
+        alert("🎤 Permissão negada para o microfone."); 
+        resetAudioUI();
+    } 
+}
+
+window.stopRecordingForPreview = function() {
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
+        showPreviewAfterStop = true;
+        globalMediaRecorder.stop();
+    }
+}
+
+window.stopAndSendRecording = function() {
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
+        showPreviewAfterStop = false;
+        globalMediaRecorder.stop();
+    }
+}
+
+window.cancelRecording = function() {
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
+        isRecordingCancelled = true;
+        globalMediaRecorder.stop();
+    } else if (pendingAudioFile && showPreviewAfterStop) {
+        pendingAudioFile = null;
+        if(previewAudioObj) previewAudioObj.pause();
+        resetAudioUI();
+    }
+}
+
+function setupPreviewUI(blob) {
+    hideElement('recording-active-state');
+    showElement('recording-preview-state');
+    
+    const audioUrl = URL.createObjectURL(blob);
+    previewAudioObj = new Audio(audioUrl);
+    
+    const playBtn = document.getElementById('preview-play-btn');
+    const progressBar = document.getElementById('preview-progress');
+    
+    previewAudioObj.ontimeupdate = () => {
+        const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100;
+        progressBar.style.width = `${progress}%`;
+        const curr = Math.floor(previewAudioObj.currentTime);
+        const m = Math.floor(curr / 60).toString().padStart(2, '0');
+        const s = (curr % 60).toString().padStart(2, '0');
+        document.getElementById('preview-timer').innerText = `${m}:${s}`;
+    };
+    
+    previewAudioObj.onended = () => {
+        playBtn.innerText = 'play_circle_filled';
+        progressBar.style.width = '0%';
+        document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText; 
+    };
+
+    document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText;
+}
+
+window.togglePreviewAudio = function() {
+    if(!previewAudioObj) return;
+    const playBtn = document.getElementById('preview-play-btn');
+    if(previewAudioObj.paused) {
+        previewAudioObj.play();
+        playBtn.innerText = 'pause_circle_filled';
+    } else {
+        previewAudioObj.pause();
+        playBtn.innerText = 'play_circle_filled';
+    }
+}
+
+function resetAudioUI() {
+    hideElement('recording-ui');
+    showElement('message-input');
+    showElement('btn-emoji');
+    showElement('btn-attach');
+    
+    if(previewAudioObj) {
+        previewAudioObj.pause();
+        previewAudioObj = null;
+    }
+    pendingAudioFile = null;
+    showPreviewAfterStop = false;
+    isRecordingCancelled = false;
+    
+    const input = document.getElementById('message-input');
+    if (input && input.innerText.trim().length === 0) { resetDynamicButton(); }
+    emitStopTypingStatus();
+}
+
+// Visualizador de Ondas Elegante
+function drawAudioVisualizer() { 
+    const canvas = document.getElementById('audio-visualizer'); 
+    if(!canvas) return; 
+    const ctx = canvas.getContext('2d'); 
+    const draw = () => { 
+        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
+        requestAnimationFrame(draw); 
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        ctx.fillStyle = '#EF4444'; 
+        const barWidth = 3; const gap = 3; const totalBars = Math.floor(canvas.width / (barWidth + gap));
+        for(let i = 0; i < totalBars; i++) { 
+            const h = Math.random() * (canvas.height - 5) + 5; 
+            ctx.fillRect(i * (barWidth + gap), (canvas.height / 2) - (h / 2), barWidth, h); 
+        } 
+    }; 
+    draw(); 
 }
 
 // ==============================================================
@@ -142,12 +306,6 @@ async function handleFileUpload(input) { const file = input.files[0]; if(!file) 
 async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); if (!res.ok) throw new Error(); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Falha no envio."); } finally { document.getElementById('file-input').value = ''; } }
 
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        globalMediaRecorder.stop(); 
-        clearTimeout(recordingTimeout); 
-        emitStopTypingStatus(); 
-        return; 
-    } 
     const input = document.getElementById('message-input'); 
     if (pendingAudioFile) { 
         const dataTransfer = new DataTransfer(); 
@@ -186,38 +344,21 @@ function displayMessage(msg) {
 function initReply() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
 function cancelReply() { messageToReply = null; hideElement('reply-preview'); }
 
-// ==============================================================
-// 🎯 NOVO: MENU DE CONTEXTO ESTILO WHATSAPP/MESSENGER
-// ==============================================================
 function showMessageMenu(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
     if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); 
-    currentSelectedMsgElement = msgElement; 
-    selectedMsgData = msgObj; 
-    currentSelectedMsgElement.classList.add('selected-msg'); 
-    
+    currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); 
     const oldBar = document.querySelector('.reaction-bar'); if(oldBar) oldBar.remove(); 
     const reactionBar = document.createElement('div'); reactionBar.className = 'reaction-bar'; 
     const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍']; 
     emojis.forEach(emoji => { const span = document.createElement('span'); span.className = 'reaction-emoji'; span.innerText = emoji; span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); reactionBar.remove(); hideElement('msg-context-menu'); }; reactionBar.appendChild(span); }); 
     msgElement.appendChild(reactionBar); 
-    
     const menu = document.getElementById('msg-context-menu'); 
-    
-    menu.innerHTML = `
-        <div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div>
-        <div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div>
-        <div class="menu-item" onclick="openForwardModal()"><span class="material-icons-round">shortcut</span> Encaminhar</div>
-        <div class="menu-item" style="color: #EF4444;" onclick="deleteCurrentChat()"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>
-    `;
-
-    const copyBtn = document.getElementById('btn-copy-msg');
-    if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } 
-    
+    menu.innerHTML = `<div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div><div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()"><span class="material-icons-round">shortcut</span> Encaminhar</div><div class="menu-item" style="color: #EF4444;" onclick="deleteCurrentChat()"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>`;
+    const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } 
     let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; 
     menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`; 
     showElement('msg-context-menu'); 
-    
     setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); 
 }
 
@@ -225,9 +366,9 @@ function sendReaction(emoji) { socket.emit('react_message', { msgId: selectedMsg
 function copySelectedMessage() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); hideElement('msg-context-menu'); }
 async function openForwardModal() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
-async function deleteChatFromList(targetId, targetName) { hideElement(`contact-menu-${targetId}`); if(!confirm(`⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODA a conversa com ${targetName}?`)) return; try { const res = await fetch(`/messages/${myId}/${targetId}`, { method: 'DELETE' }); if (res.ok) { messageCache[targetId] = []; if(!hiddenChats.includes(targetId)) { hiddenChats.push(targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Chat apagado com sucesso!"); loadContacts(); } } catch(e) { alert("Erro."); } }
+async function deleteChatFromList(targetId, targetName) { hideElement(`contact-menu-${targetId}`); if(!confirm(`⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODA a conversa com ${targetName}?`)) return; try { const res = await fetch(`/messages/${myId}/${targetId}`, { method: 'DELETE' }); if (res.ok) { messageCache[targetId] = []; if(!hiddenChats.includes(targetId)) { hiddenChats.push(targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Chat apagado com sucesso!"); loadContacts(); } } catch(e) {} }
 async function deleteCurrentChat() { if (!currentChatId || isGroupChat) return alert("Não pode apagar grupos por aqui."); if (!confirm("⚠️ ATENÇÃO!\nApagar TODA a conversa?")) return; try { const res = await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); if (res.ok) { document.getElementById('chat-box').innerHTML = ''; messageCache[currentChatId] = []; hideElement('msg-context-menu'); if(!hiddenChats.includes(currentChatId)) { hiddenChats.push(currentChatId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } alert("Conversa apagada!"); backToMain(); loadContacts(); } } catch (e) { } }
-async function deleteGroup(groupId) { if (!confirm("⚠️ Tem certeza que deseja apagar este Grupo para sempre?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { alert("💥 Grupo desintegrado!"); if (currentChatId === groupId) { currentChatId = null; document.getElementById('chat-box').innerHTML = ''; backToMain(); } let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups = cachedGroups.filter(g => g._id !== groupId); localStorage.setItem('cacheGroups', JSON.stringify(cachedGroups)); loadContacts(); socket.emit('group_updated'); } else { const data = await res.json(); alert(data.error); } } catch (e) { alert("Erro."); } }
+async function deleteGroup(groupId) { if (!confirm("⚠️ Tem certeza que deseja apagar este Grupo para sempre?")) return; try { const res = await fetch(`/groups/${groupId}/${myId}`, { method: 'DELETE' }); if (res.ok) { alert("💥 Grupo desintegrado!"); if (currentChatId === groupId) { currentChatId = null; document.getElementById('chat-box').innerHTML = ''; backToMain(); } let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups = cachedGroups.filter(g => g._id !== groupId); localStorage.setItem('cacheGroups', JSON.stringify(cachedGroups)); loadContacts(); socket.emit('group_updated'); } else { const data = await res.json(); alert(data.error); } } catch (e) {} }
 async function blockContact(targetId, targetName) { if(targetName && !confirm(`🚫 BLOQUEAR ${targetName}?`)) return; if(!targetName && !confirm('Bloquear contato?')) return; const idToBlock = targetId || currentChatId; try { await fetch('/block-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ myId: myId, targetId: idToBlock }) }); alert("Bloqueado."); backToMain(); loadContacts(); } catch(e) {} }
 async function reportContact(targetId, msgId = null) { const reason = prompt("🚨 Qual o motivo da denúncia?"); if(!reason) return; try { await fetch('/report-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reporterId: myId, reportedId: targetId, messageId: msgId, reason: reason }) }); alert("Denúncia enviada."); } catch(e) {} }
 
@@ -241,9 +382,6 @@ function performLocalSearchFallback(query) { const list = document.getElementByI
 function openAddContactScreen() { hideAllTabs(); showElement('add-contact-screen'); document.getElementById('exact-search-input').value = ''; document.getElementById('exact-search-result').innerHTML = ''; }
 async function executeExactSearch() { const query = document.getElementById('exact-search-input').value.trim(); const resultContainer = document.getElementById('exact-search-result'); if(!query) return alert('Digite um e-mail ou celular!'); resultContainer.innerHTML = '<div style="text-align:center; color: var(--brand-secondary);">Buscando...</div>'; try { const res = await fetch('/find-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, myId }) }); const data = await res.json(); if(data.found && data.user) { const u = data.user; const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = u.displayName || u.email.split('@')[0]; const matchedInfo = (u.phone && u.phone === query) ? u.phone : u.email; const userJson = encodeURIComponent(JSON.stringify(u)); resultContainer.innerHTML = `<div class="explore-card" style="display: flex; align-items: center; gap: 15px; padding: 15px; cursor: pointer; border: 2px solid var(--brand-primary);" onclick="showStartChatConfirmation('${userJson}')"><img src="${photo}" style="width: 55px; height: 55px; border-radius: 50%;"><div style="flex: 1;"><div style="font-size: 18px; font-weight: 800;">${name}</div><div style="font-size: 13px;">${matchedInfo}</div></div></div>`; } else { resultContainer.innerHTML = '<div style="color: #ff5252;">Alvo não localizado.</div>'; } } catch(e) { resultContainer.innerHTML = 'Erro.'; } }
 function showStartChatConfirmation(userJsonStr) { const u = JSON.parse(decodeURIComponent(userJsonStr)); document.getElementById('start-chat-avatar').src = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('start-chat-name').innerText = u.displayName || u.email.split('@')[0]; document.getElementById('start-chat-info').innerText = u.email; document.getElementById('btn-confirm-start-chat').onclick = () => { hideElement('start-chat-modal'); if (hiddenChats.includes(u._id)) { hiddenChats = hiddenChats.filter(id => id !== u._id); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; if(!cachedUsers.find(cu => cu._id === u._id)) { cachedUsers.push(u); localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); } openChat(u._id, u.displayName || u.email.split('@')[0], u.photoUrl, u.email, 'user'); }; showElement('start-chat-modal'); }
-
-async function startRecording() { hideElement('attach-menu'); try { audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(audioStream); audioChunks = []; globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; globalMediaRecorder.onstop = () => { clearInterval(recordingInterval); const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); const file = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); hideElement('recording-ui'); document.getElementById('message-input').style.display = 'block'; audioStream.getTracks().forEach(track => track.stop()); pendingAudioFile = file; sendMessage(); resetDynamicButton(); }; showElement('recording-ui'); document.getElementById('message-input').style.display = 'none'; recordingSeconds = 0; document.getElementById('recording-timer').innerText = "00:00"; recordingInterval = setInterval(() => { recordingSeconds++; const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0'); const s = (recordingSeconds % 60).toString().padStart(2, '0'); document.getElementById('recording-timer').innerText = `${m}:${s}`; }, 1000); globalMediaRecorder.start(); emitTypingStatus('recording'); drawAudioVisualizer(); } catch (e) { alert("🎤 Permissão negada para o microfone."); } }
-function drawAudioVisualizer() { const canvas = document.getElementById('audio-visualizer'); if(!canvas) return; const ctx = canvas.getContext('2d'); const draw = () => { if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; requestAnimationFrame(draw); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#EF4444'; for(let i = 0; i < (canvas.width / 8); i++) { const h = Math.random() * (canvas.height - 5) + 5; ctx.fillRect(i * 8, (canvas.height / 2) - (h / 2), 4, h); } }; draw(); }
 
 function toggleEmojiPicker() { const picker = document.getElementById('emoji-picker'); if (picker) picker.classList.toggle('hidden'); }
 setTimeout(() => { const picker = document.getElementById('emoji-picker'); const msgInput = document.getElementById('message-input'); if (picker && msgInput) { picker.addEventListener('emoji-click', event => { msgInput.innerText += event.detail.unicode; emitTypingStatus('typing'); if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { dynamicActionIcon.innerText = 'send'; } }); } document.addEventListener('click', (e) => { if (!e.target.closest('emoji-picker') && !e.target.closest('span[onclick="toggleEmojiPicker()"]')) { if (picker && !picker.classList.contains('hidden')) picker.classList.add('hidden'); } }); }, 1000);
@@ -259,4 +397,4 @@ function openCreateGroupModal() { showElement('create-group-modal'); selectedUse
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; }
-async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) { alert("Erro ao criar o grupo."); } }
+async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }

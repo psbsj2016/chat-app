@@ -886,3 +886,93 @@ body.bubble-cyber {
 .candidate-item.selected { border-color: var(--brand-primary); background: rgba(79, 70, 229, 0.1); }
 .candidate-item .check-icon { display: none; color: var(--brand-primary); margin-left: auto; font-size: 24px; }
 .candidate-item.selected .check-icon { display: block; animation: scaleIn 0.2s ease; }
+
+/* ========================================================= */
+/* REDESIGN DO CHAT (Inspirado na Referência)                */
+/* ========================================================= */
+
+/* Placeholder para o contenteditable */
+#message-input:empty:before {
+    content: attr(data-placeholder);
+    color: #94A3B8;
+    pointer-events: none;
+    display: block;
+}
+
+/* O Botão Redondo Dinâmico */
+.circular-primary-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.2s, background 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.circular-primary-btn:active {
+    transform: scale(0.9);
+}
+
+/* Redesign do Menu de Contexto (O clique longo na mensagem) */
+#msg-context-menu {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 8px 0;
+    min-width: 180px;
+    border: 1px solid var(--input-bg);
+}
+#msg-context-menu .menu-item {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+#msg-context-menu .menu-item:hover {
+    background: var(--input-bg);
+}
+#msg-context-menu .menu-item .material-icons-round {
+    font-size: 20px;
+    color: #64748B;
+}
+
+/* Balões de Mensagem (Mais redondos e modernos) */
+.message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.4;
+    position: relative;
+    word-wrap: break-word;
+}
+.my-msg {
+    background: #E0F2FE; /* Azul super clarinho igual à imagem */
+    color: #0F172A;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.other-msg {
+    background: var(--card-bg);
+    color: var(--text-color);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--input-bg);
+}
+.dark-mode .my-msg {
+    background: var(--brand-primary);
+    color: white;
+}
+.dark-mode .other-msg {
+    background: var(--input-bg);
+    border: none;
+}
