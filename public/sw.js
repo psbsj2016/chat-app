@@ -1,14 +1,14 @@
 // ==============================================================
-// 🛡️ CHATPTT SERVICE WORKER V3 (Master Reset)
+// 🛡️ CHATPTT SERVICE WORKER V4 (Modo Evergreen - Sempre Atualizado)
 // ==============================================================
 
-const CACHE_NAME = 'chatptt-cache-v3'; 
+const CACHE_NAME = 'chatptt-cache-v4'; 
 
 const urlsToCache = [
     '/',
     '/index.html',
     '/style.css',
-    '/socket.io/socket.io.js', // 🛡️ CRÍTICO: Agora o telemóvel guarda o motor de rede!
+    '/socket.io/socket.io.js',
     '/js/core.js',
     '/js/ui.js',
     '/js/chat.js',
@@ -18,7 +18,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
+    self.skipWaiting(); // Força a instalação sem esperar
     event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)));
 });
 
@@ -27,20 +27,34 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) return caches.delete(cacheName); // Destrói o v1 e v2
+                    if (cacheName !== CACHE_NAME) return caches.delete(cacheName); // Destrói caches antigos
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => self.clients.claim()) // Assume o controlo imediato do telemóvel
     );
 });
 
+// 🚀 A MÁGICA: Rede Primeiro, Atualiza Cache Invisivelmente
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true })));
+
+    event.respondWith(
+        fetch(event.request).then((networkResponse) => {
+            // Se a internet funcionou, pega o ficheiro novo e guarda no cache silenciosamente!
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone);
+            });
+            return networkResponse; // Entrega o ficheiro novo e fresco ao utilizador
+        }).catch(() => {
+            // Só usa o cache antigo se o utilizador estiver totalmente Offline (sem internet)
+            return caches.match(event.request, { ignoreSearch: true });
+        })
+    );
 });
 
 // ==============================================================
-// 🔔 MOTOR DE NOTIFICAÇÕES PUSH
+// 🔔 MOTOR DE NOTIFICAÇÕES PUSH (Intacto)
 // ==============================================================
 self.addEventListener('push', function(event) {
     if (event.data) {
