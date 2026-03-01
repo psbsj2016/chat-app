@@ -936,9 +936,14 @@
     </div>    
 
   <script src="/socket.io/socket.io.js"></script>
+
     <script>
-        // BOMBA DE CACHE: Força o PWA a ler sempre a versão mais recente do JS
-        document.write('<script src="app.js?v=' + Date.now() + '"><\/script>');
+        const version = Date.now();
+        document.write('<script src="/js/core.js?v=' + version + '"><\/script>');
+        document.write('<script src="/js/ui.js?v=' + version + '"><\/script>');
+        document.write('<script src="/js/chat.js?v=' + version + '"><\/script>');
+        document.write('<script src="/js/webrtc.js?v=' + version + '"><\/script>');
+        document.write('<script src="/js/features.js?v=' + version + '"><\/script>');
     </script>
 </body>
 </html>
