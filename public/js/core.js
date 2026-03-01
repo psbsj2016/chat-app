@@ -1,17 +1,10 @@
 // ==============================================================
-// 🧠 CÉREBRO CENTRAL (BLINDADO CONTRA FALHAS DE REDE)
+// 🧠 CÉREBRO CENTRAL (BLINDADO CONTRA FALHAS E COM AUTO-LOGIN)
 // ==============================================================
-var isRegistering = false; // Declarado no topo absoluto para imunidade total
+var isRegistering = false; 
 var socket = null;
 
-// Proteção contra quebra se a internet do telemóvel falhar
-try {
-    if (typeof io !== 'undefined') {
-        socket = io();
-    } else {
-        console.warn("Modo Offline ativado no arranque.");
-    }
-} catch(e) {}
+try { if (typeof io !== 'undefined') socket = io(); } catch(e) {}
 
 var myId = localStorage.getItem('myId');
 var token = localStorage.getItem('token');
@@ -40,20 +33,20 @@ var deferredPrompt;
 // ==============================================================
 // 📱 MOTOR PWA E PERMISSÕES
 // ==============================================================
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; showElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden'); });
-async function installPWA() { hideElement('pwa-install-banner'); if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); } }
-window.addEventListener('appinstalled', () => { hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); if(typeof gainXP === 'function') gainXP(200, false); if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 1500); });
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) { hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); }
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if(typeof showElement === 'function') showElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden'); });
+async function installPWA() { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); } }
+window.addEventListener('appinstalled', () => { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); if(typeof gainXP === 'function') gainXP(200, false); if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 1500); });
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) { const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); }
 function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
 async function registerServiceWorkerAndSubscribe() { if ('serviceWorker' in navigator && 'PushManager' in window && myId) { try { const registration = await navigator.serviceWorker.register('/sw.js'); const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY'; const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicVapidKey) }); await fetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, subscription }) }); } catch (error) {} } }
-function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { if(typeof hideAllTabs === 'function') hideAllTabs(); if(typeof hideElement === 'function') hideElement('auth-screen'); if(typeof hideElement === 'function') hideElement('welcome-screen'); if(typeof showElement === 'function') showElement('permissions-screen'); } else { if(typeof showMainScreen === 'function') showMainScreen(); } }
+function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { if(typeof hideAllTabs === 'function') hideAllTabs(); if(typeof hideElement === 'function') { hideElement('auth-screen'); hideElement('welcome-screen'); } if(typeof showElement === 'function') showElement('permissions-screen'); } else { if(typeof showMainScreen === 'function') showMainScreen(); } }
 function grantAppPermissions() { localStorage.setItem('permissionsAsked', 'true'); if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); if ("Notification" in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') registerServiceWorkerAndSubscribe(); if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); }); } else { if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); } }
 function showWelcomeScreen() { if(typeof hideElement === 'function') hideElement('auth-screen'); if(typeof showElement === 'function') showElement('welcome-screen'); setTimeout(() => { checkAndShowPermissions(); }, 1200); }
 
 // ==============================================================
-// 🚀 INICIALIZAÇÃO MASTER E AUTH 
+// 🚀 MOTOR DE AUTENTICAÇÃO
 // ==============================================================
-function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); hideElement('forgot-pass-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); showElement('forgot-pass-text'); } }
+function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { if(typeof hideElement === 'function') hideElement('auth-toggle-text'); if(typeof showElement === 'function') showElement('auth-promo-text'); if(typeof hideElement === 'function') hideElement('forgot-pass-text'); } else { if(typeof showElement === 'function') showElement('auth-toggle-text'); if(typeof hideElement === 'function') hideElement('auth-promo-text'); if(typeof showElement === 'function') showElement('forgot-pass-text'); } }
 
 async function handleAuth() { 
     const email = document.getElementById('auth-email').value; 
@@ -99,14 +92,24 @@ async function handleAuth() {
     } 
 }
 
+// ==============================================================
+// ⚡ INICIALIZAÇÃO MASTER (O GATILHO DO AUTO-LOGIN)
+// ==============================================================
 async function initApp() { 
-    const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
+    myId = localStorage.getItem('myId');
+    token = localStorage.getItem('token');
     
-    // Se o socket falhou no topo, tenta reconectar agora que a página carregou
+    const localFont = localStorage.getItem('fontSize') || 'medium'; 
+    document.body.classList.add(`font-${localFont}`); 
+    
     if (!socket && typeof io !== 'undefined') { try { socket = io(); } catch(e){} }
     
+    const authScreen = document.getElementById('auth-screen');
+
     if(token && myId) { 
-        if(typeof hideElement === 'function') hideElement('auth-screen');
+        // 🚀 MÁGICA DO AUTO-LOGIN: Esconde a tela de imediato
+        if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
+        
         checkAndShowPermissions(); 
 
         const headerAvatar = document.getElementById('header-my-avatar'); 
@@ -126,11 +129,23 @@ async function initApp() {
             } 
         } catch(e){} 
     } else { 
-        if(typeof showElement === 'function') showElement('auth-screen'); 
+        // SE NÃO ESTIVER LOGADO, MOSTRA A TELA DE LOGIN
+        if (authScreen) { authScreen.classList.remove('hidden'); authScreen.style.display = 'flex'; }
     } 
 }
 
 function logout() { if (confirm("Sair?")) { localStorage.clear(); window.location.reload(); } }
 async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try { await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); logout(); } catch (e) {} } }
 
-document.addEventListener('DOMContentLoaded', initApp);
+// 💣 O VIGIA DE ARRANQUE: Fica monitorando a cada 50ms até as funções visuais estarem prontas!
+let bootAttempts = 0;
+const bootInterval = setInterval(() => {
+    // Só inicia quando o ui.js e o chat.js foram 100% lidos pelo navegador
+    if (typeof showMainScreen === 'function' && typeof loadContacts === 'function') {
+        clearInterval(bootInterval);
+        initApp();
+    }
+    // Evita loop infinito se houver falha grave
+    bootAttempts++;
+    if (bootAttempts > 100) clearInterval(bootInterval);
+}, 50);
