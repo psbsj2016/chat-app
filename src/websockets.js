@@ -3,12 +3,21 @@ const webpush = require('web-push');
 const { User, Message, CommunityMessage, Group, getBotUserId } = require('./models');
 
 function initSockets(io) {
-    // Configura o Web Push com as variáveis de ambiente
-    webpush.setVapidDetails(
-        process.env.VAPID_SUBJECT || 'mailto:admin@chatptt.com',
-        process.env.VAPID_PUBLIC_KEY,
-        process.env.VAPID_PRIVATE_KEY
-    );
+    // 🛡️ ESCUDO ANTI-CRASH: Verifica se as chaves existem antes de ligar o WebPush
+    try {
+        if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+            webpush.setVapidDetails(
+                process.env.VAPID_SUBJECT || 'mailto:admin@chatptt.com',
+                process.env.VAPID_PUBLIC_KEY,
+                process.env.VAPID_PRIVATE_KEY
+            );
+            console.log("✅ Sistema de Notificações Push Ativado.");
+        } else {
+            console.warn("⚠️ AVISO: Chaves VAPID ausentes no servidor! O chat continuará rodando, mas notificações Push estarão desativadas.");
+        }
+    } catch (e) {
+        console.warn("⚠️ Falha ao inicializar o Web Push. O servidor vai ignorar e continuar.");
+    }
 
     // Estado em Memória (Fase 1) - Na Fase 2 isso irá para o Redis
     let users = {};
@@ -23,7 +32,7 @@ function initSockets(io) {
         
         socket.on('join_room', (userId) => { 
             users[userId] = socket.id; 
-            socket.join(userId); // Cria uma sala com o ID do usuário (Tática Stateless)
+            socket.join(userId); 
             io.emit('online_users', Object.keys(users)); 
         });
         
@@ -95,7 +104,6 @@ function initSockets(io) {
                 const populatedMsg = await Message.findById(msg._id).populate('sender', 'displayName photoUrl unlockedItems');
                 const senderUser = await User.findById(data.senderId);
 
-                // Sistema de XP
                 if (senderUser) {
                     const todayStr = new Date().toISOString().split('T')[0];
                     if (senderUser.lastActiveDate !== todayStr) { senderUser.dailyMessagesSent = 0; senderUser.dailyMissionCompleted = false; senderUser.lastActiveDate = todayStr; }
@@ -118,7 +126,8 @@ function initSockets(io) {
                         const members = await User.find({ _id: { $in: group.members, $ne: data.senderId } });
                         const senderName = senderUser ? senderUser.displayName : 'Alguém';
                         members.forEach(async member => {
-                            if (member.pushSubscriptions && member.pushSubscriptions.length > 0) {
+                            // 🛡️ Verifica as chaves antes de tentar enviar push notification
+                            if (process.env.VAPID_PUBLIC_KEY && member.pushSubscriptions && member.pushSubscriptions.length > 0) {
                                 const unreadCount = await Message.countDocuments({ receiver: member._id, status: 'sent' });
                                 const payload = JSON.stringify({ title: `Grupo ${group.name}`, body: `${senderName}: Nova Mensagem`, unreadCount: unreadCount + 1 });
                                 member.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
@@ -126,11 +135,9 @@ function initSockets(io) {
                         });
                     }
                 } else { 
-                    // 🚀 ARCHITECTURE FIX: Envio Stateless para o contato e para o remetente
                     io.to(data.receiverId).emit('receive_message', populatedMsg); 
                     io.to(data.senderId).emit('receive_message', populatedMsg); 
 
-                    // 🧠 CÉREBRO DA IA
                     if (String(data.receiverId) === String(getBotUserId()) && data.content) {
                         io.to(data.senderId).emit('typing', { senderId: getBotUserId(), senderName: '🤖 CPTT IA', action: 'typing' });
                         try {
@@ -154,7 +161,8 @@ function initSockets(io) {
                         }
                     } else {
                         const receiver = await User.findById(data.receiverId);
-                        if (receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
+                        // 🛡️ Verifica as chaves antes de tentar enviar push notification
+                        if (process.env.VAPID_PUBLIC_KEY && receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                             const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
                             const payload = JSON.stringify({ title: `CPTT: ${senderUser ? senderUser.displayName : 'Nova Mensagem'}`, body: 'Nova Mensagem', unreadCount });
                             receiver.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
@@ -169,7 +177,6 @@ function initSockets(io) {
         socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
         socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
-        // 🎮 FILAS DE JOGOS (Mantidas na memória, preparadas para Redis)
         socket.on('join_snake_duel', (data) => {
             snakeQueue = snakeQueue.filter(p => p.socket.connected && p.id !== socket.id);
             snakeQueue.push({ id: socket.id, socket: socket, profile: data.profile });
