@@ -1,69 +1,58 @@
-const socket = io();
-let myId = localStorage.getItem('myId');
-let token = localStorage.getItem('token');
-let currentChatId = null;
-let currentChatEmail = ''; 
+// ==============================================================
+// 🧠 CÉREBRO CENTRAL (BLINDADO CONTRA FALHAS DE REDE)
+// ==============================================================
+var isRegistering = false; // Declarado no topo absoluto para imunidade total
+var socket = null;
 
-let currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
-let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
-let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
-let onlineUsersList = [];
-let targetContactId = null;
-let isGroupChat = false;
-let selectedUserIds = [];
-let typingTimeout = null;
+// Proteção contra quebra se a internet do telemóvel falhar
+try {
+    if (typeof io !== 'undefined') {
+        socket = io();
+    } else {
+        console.warn("Modo Offline ativado no arranque.");
+    }
+} catch(e) {}
 
-let messageCache = {}; 
-let globalMediaRecorder = null; 
-let recordingTimeout = null;
-let recordingInterval = null; 
-let recordingSeconds = 0;      
-let pendingAudioFile = null;  
-
-let messageToReply = null; 
-let cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
-let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; 
-let audioCtx = null;
-let deferredPrompt;
+var myId = localStorage.getItem('myId');
+var token = localStorage.getItem('token');
+var currentChatId = null;
+var currentChatEmail = ''; 
+var currentSectors = JSON.parse(localStorage.getItem('cacheSectors')) || [];
+var unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {}; 
+var unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || []; 
+var onlineUsersList = [];
+var targetContactId = null;
+var isGroupChat = false;
+var selectedUserIds = [];
+var typingTimeout = null;
+var messageCache = {}; 
+var globalMediaRecorder = null; 
+var recordingTimeout = null;
+var recordingInterval = null; 
+var recordingSeconds = 0;      
+var pendingAudioFile = null;  
+var messageToReply = null; 
+var cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
+var hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; 
+var audioCtx = null;
+var deferredPrompt;
 
 // ==============================================================
 // 📱 MOTOR PWA E PERMISSÕES
 // ==============================================================
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); deferredPrompt = e;
-    showElement('pwa-install-banner');
-    const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden');
-});
-async function installPWA() {
-    hideElement('pwa-install-banner');
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden');
-    } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); }
-}
-window.addEventListener('appinstalled', () => {
-    hideElement('pwa-install-banner');
-    const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden');
-    setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); gainXP(200, false); playNotificationSound('bell'); }, 1500);
-});
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-    hideElement('pwa-install-banner');
-    const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden');
-}
-
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; showElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden'); });
+async function installPWA() { hideElement('pwa-install-banner'); if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); } }
+window.addEventListener('appinstalled', () => { hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); if(typeof gainXP === 'function') gainXP(200, false); if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 1500); });
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) { hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); }
 function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
 async function registerServiceWorkerAndSubscribe() { if ('serviceWorker' in navigator && 'PushManager' in window && myId) { try { const registration = await navigator.serviceWorker.register('/sw.js'); const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY'; const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicVapidKey) }); await fetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, subscription }) }); } catch (error) {} } }
-
-function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { hideAllTabs(); hideElement('auth-screen'); hideElement('welcome-screen'); showElement('permissions-screen'); } else { showMainScreen(); } }
-function grantAppPermissions() { localStorage.setItem('permissionsAsked', 'true'); if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); if ("Notification" in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') registerServiceWorkerAndSubscribe(); hideElement('permissions-screen'); showMainScreen(); }); } else { hideElement('permissions-screen'); showMainScreen(); } }
-function showWelcomeScreen() { hideElement('auth-screen'); showElement('welcome-screen'); setTimeout(() => { checkAndShowPermissions(); }, 1200); }
+function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { if(typeof hideAllTabs === 'function') hideAllTabs(); if(typeof hideElement === 'function') hideElement('auth-screen'); if(typeof hideElement === 'function') hideElement('welcome-screen'); if(typeof showElement === 'function') showElement('permissions-screen'); } else { if(typeof showMainScreen === 'function') showMainScreen(); } }
+function grantAppPermissions() { localStorage.setItem('permissionsAsked', 'true'); if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); if ("Notification" in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') registerServiceWorkerAndSubscribe(); if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); }); } else { if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); } }
+function showWelcomeScreen() { if(typeof hideElement === 'function') hideElement('auth-screen'); if(typeof showElement === 'function') showElement('welcome-screen'); setTimeout(() => { checkAndShowPermissions(); }, 1200); }
 
 // ==============================================================
 // 🚀 INICIALIZAÇÃO MASTER E AUTH 
 // ==============================================================
-let isRegistering = false;
 function toggleAuthMode() { isRegistering = !isRegistering; document.getElementById('auth-title').innerText = isRegistering ? 'Criar Cadastro' : 'Área de Login do CPTT'; document.getElementById('auth-btn').innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; document.getElementById('auth-name').classList.toggle('hidden'); if (isRegistering) { hideElement('auth-toggle-text'); showElement('auth-promo-text'); hideElement('forgot-pass-text'); } else { showElement('auth-toggle-text'); hideElement('auth-promo-text'); showElement('forgot-pass-text'); } }
 
 async function handleAuth() { 
@@ -99,30 +88,25 @@ async function handleAuth() {
             
             if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
             
-            if (isRegistering) { 
-                localStorage.setItem('isFirstLogin', 'true'); 
-                showWelcomeScreen(); 
-            } else { 
-                checkAndShowPermissions(); 
-            } 
-            
+            if (isRegistering) { localStorage.setItem('isFirstLogin', 'true'); showWelcomeScreen(); } else { checkAndShowPermissions(); } 
         } else { 
             alert(data.error || 'Erro na autenticação.'); 
         } 
     } catch (e) { 
-        alert("🚨 Ocorreu um erro: " + e.message); 
+        alert("🚨 Ocorreu um erro de conexão. Tente novamente."); 
     } finally { 
-        btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; 
-        btn.disabled = false; 
+        btn.innerText = isRegistering ? 'Criar Cadastro no CPTT' : 'Acessar Chat'; btn.disabled = false; 
     } 
 }
 
 async function initApp() { 
-    const localFont = localStorage.getItem('fontSize') || 'medium'; 
-    document.body.classList.add(`font-${localFont}`); 
+    const localFont = localStorage.getItem('fontSize') || 'medium'; document.body.classList.add(`font-${localFont}`); 
+    
+    // Se o socket falhou no topo, tenta reconectar agora que a página carregou
+    if (!socket && typeof io !== 'undefined') { try { socket = io(); } catch(e){} }
     
     if(token && myId) { 
-        hideElement('auth-screen');
+        if(typeof hideElement === 'function') hideElement('auth-screen');
         checkAndShowPermissions(); 
 
         const headerAvatar = document.getElementById('header-my-avatar'); 
@@ -133,27 +117,20 @@ async function initApp() {
             if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
             const res = await fetch(`/user/${myId}`); 
             if(res.ok) { 
-                const me = await res.json(); 
-                cachedMe = me; 
-                localStorage.setItem('cacheMe', JSON.stringify(me)); 
-                currentSectors = me.sectors || []; 
-                localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
-                
+                const me = await res.json(); cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); currentSectors = me.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
                 const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
                 const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
                 const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
                 if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
-                
                 if(typeof applyUnlockedItems === 'function') applyUnlockedItems();
             } 
         } catch(e){} 
     } else { 
-        showElement('auth-screen'); 
+        if(typeof showElement === 'function') showElement('auth-screen'); 
     } 
 }
 
 function logout() { if (confirm("Sair?")) { localStorage.clear(); window.location.reload(); } }
 async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try { await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); logout(); } catch (e) {} } }
 
-// Inicializa o Motor
 document.addEventListener('DOMContentLoaded', initApp);
