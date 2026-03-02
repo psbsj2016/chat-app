@@ -27,6 +27,8 @@ const io = new Server(server, { cors: { origin: '*' } });
 // ==============================================================
 app.use(aegisMiddleware);
 app.use(cors());
+// Ativa o Gateway Isolado do Inglês PTT
+app.use('/api/english', require('./src/english/english.routes'));
 app.use(express.json());
 app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store, no-cache'); } }));
 
