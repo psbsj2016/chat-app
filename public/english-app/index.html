@@ -34,7 +34,7 @@
         .daily-workout-btn { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 20px; border-radius: 16px; font-size: 18px; font-weight: 900; width: 100%; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); transition: 0.2s; margin-bottom: 30px; }
         .daily-workout-btn:active { transform: scale(0.97); }
 
-        /* --- TRILHAS DE APRENDIZAGEM (SOM, LÓGICA, CONTEXTO) --- */
+        /* --- TRILHAS DE APRENDIZAGEM --- */
         .section-title { font-size: 14px; font-weight: 900; text-transform: uppercase; color: var(--text-muted); margin-bottom: 15px; letter-spacing: 1px; }
         .track-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px; margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; gap: 15px; transition: 0.2s; position: relative; overflow: hidden; }
         .track-card:active { transform: scale(0.98); }
@@ -52,10 +52,11 @@
         .track-contexto .track-icon { background: rgba(139, 92, 246, 0.1); color: var(--contexto-color); }
         .track-contexto .progress-bar-fill { background: var(--contexto-color); }
 
-        /* --- MAPA LINEAR (NODES) --- */
-        .map-header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
-        .map-path { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; position: relative; }
-        .map-path::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: rgba(255,255,255,0.05); z-index: 0; }
+        /* --- MAPA LINEAR E NUVEM DE TEMAS --- */
+        .map-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+        
+        .core-path { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; position: relative; }
+        .core-path::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: rgba(255,255,255,0.05); z-index: 0; }
         
         .node-wrapper { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; margin-bottom: 30px; width: 100%; }
         .node-btn { width: 70px; height: 70px; border-radius: 50%; border: 4px solid var(--card-bg); background: var(--bg-color); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
@@ -64,6 +65,15 @@
         .node-btn.completed { background: var(--som-color); border-color: rgba(255,255,255,0.2); color: white; }
         .node-label { font-weight: 800; font-size: 14px; margin-top: 10px; text-align: center; }
         .node-desc { font-size: 11px; color: var(--text-muted); font-weight: 600; text-align: center; }
+
+        .gate-divider { margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; text-align: center; font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .gate-divider.unlocked { border-color: var(--som-color); color: var(--som-color); background: rgba(16, 185, 129, 0.1); }
+
+        .free-themes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 40px; }
+        .free-theme-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px 15px; text-align: center; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .free-theme-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+        .free-theme-card:active:not(.locked) { transform: scale(0.95); }
+        .free-theme-icon { margin-bottom: 10px; font-size: 32px; }
 
         /* --- TELA DE LIÇÃO E TOGGLE AVANÇADO --- */
         .lesson-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -125,7 +135,7 @@
                 <span class="material-icons-round" style="font-size: 32px;">bolt</span>
                 <div style="text-align: left;">
                     <div style="font-size: 18px; font-weight: 900;">Treino Diário</div>
-                    <div style="font-size: 12px; font-weight: 600; opacity: 0.9;">10 exercícios inteligentes</div>
+                    <div style="font-size: 12px; font-weight: 600; opacity: 0.9;">Híbrido: UTI + Revisão + Fronteira</div>
                 </div>
             </div>
             <span class="material-icons-round">play_circle_filled</span>
@@ -137,7 +147,7 @@
             <div class="track-icon"><span class="material-icons-round" style="font-size: 32px;">record_voice_over</span></div>
             <div class="track-info">
                 <div class="track-title">Som (Fonética)</div>
-                <div class="track-desc">Fase 1 • Consoantes Simples</div>
+                <div class="track-desc">Domínio Linear • /p/ vs /b/</div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 45%;"></div></div>
             </div>
         </div>
@@ -146,7 +156,7 @@
             <div class="track-icon"><span class="material-icons-round" style="font-size: 32px;">account_tree</span></div>
             <div class="track-info">
                 <div class="track-title">Lógica (Sintaxe)</div>
-                <div class="track-desc">Fase 2 • Ordem SVO</div>
+                <div class="track-desc">Núcleo Base • Ordem SVO</div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 20%;"></div></div>
             </div>
         </div>
@@ -155,7 +165,7 @@
             <div class="track-icon"><span class="material-icons-round" style="font-size: 32px;">travel_explore</span></div>
             <div class="track-info">
                 <div class="track-title">Contexto (Semântica)</div>
-                <div class="track-desc">Fase 1 • Sobrevivência</div>
+                <div class="track-desc">Temas Livres Desbloqueados</div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 80%;"></div></div>
             </div>
         </div>
@@ -165,11 +175,19 @@
         <div class="map-header">
             <button class="icon-btn" onclick="backToDashboard()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; border:none; color:white; cursor:pointer;"><span class="material-icons-round">arrow_back</span></button>
             <div>
-                <h2 id="map-title" style="font-size: 20px; font-weight: 900;">Som (Fonética)</h2>
-                <p style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Estrutura Linear Obrigatória</p>
+                <h2 id="map-title" style="font-size: 20px; font-weight: 900;">Contexto</h2>
+                <p id="map-subtitle" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Núcleo Obrigatório & Temas Livres</p>
             </div>
         </div>
-        <div class="map-path" id="map-nodes-container">
+        
+        <div class="section-title">Núcleo Funcional (Base)</div>
+        <div class="core-path" id="map-core-container">
+            </div>
+
+        <div id="gate-container"></div>
+
+        <div class="section-title" id="free-themes-title">Zona de Expansão (Livre)</div>
+        <div class="free-themes-grid" id="map-free-container">
             </div>
     </div>
 
@@ -194,16 +212,33 @@
     </div>
 
     <script>
-        // --- 1. MOCK DATABASE (ESTRUTURA LINEAR) ---
-        const somNodes = [
-            { id: 'som_1', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', status: 'unlocked', icon: 'record_voice_over' },
-            { id: 'som_2', title: '/t/ vs /d/', desc: 'Consoantes Alveolares', status: 'locked', icon: 'lock' },
-            { id: 'som_3', title: '/æ/ vs /ɛ/', desc: 'Vogais Curtas 1', status: 'locked', icon: 'lock' }
-        ];
+        // --- 1. MOCK DATABASE (HÍBRIDO: CORE + FREE) ---
+        const nodesDB = {
+            som: [
+                { id: 's1', type: 'core', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', status: 'completed', icon: 'record_voice_over' },
+                { id: 's2', type: 'core', title: '/t/ vs /d/', desc: 'Consoantes Alveolares', status: 'unlocked', icon: 'record_voice_over' },
+                { id: 's3', type: 'core', title: '/æ/ vs /ɛ/', desc: 'Vogais Curtas 1', status: 'locked', icon: 'lock' }
+            ],
+            logica: [
+                { id: 'l1', type: 'core', title: 'Ordem SVO', desc: 'Estrutura Base', status: 'completed', icon: 'account_tree' },
+                { id: 'l2', type: 'core', title: 'Do/Does/Did', desc: 'Interrogações', status: 'unlocked', icon: 'help_outline' },
+                { id: 'l3', type: 'core', title: 'Passado Simples', desc: 'Tempo Base', status: 'locked', icon: 'lock' },
+                { id: 'lf1', type: 'free', title: 'Condicionais', desc: 'If I were...', status: 'locked', icon: 'lock' },
+                { id: 'lf2', type: 'free', title: 'Voz Passiva', desc: 'The car was...', status: 'locked', icon: 'lock' }
+            ],
+            contexto: [
+                { id: 'c1', type: 'core', title: 'Sobrevivência', desc: 'Números e Direções', status: 'completed', icon: 'directions' },
+                { id: 'c2', type: 'core', title: 'Hiper-Verbos', desc: 'Get, Make, Do', status: 'completed', icon: 'bolt' },
+                { id: 'c3', type: 'core', title: 'Rotina Diária', desc: 'Casa e Trabalho', status: 'completed', icon: 'home' },
+                { id: 'cf1', type: 'free', title: 'Business', desc: 'Inglês de Trabalho', status: 'unlocked', icon: 'work' },
+                { id: 'cf2', type: 'free', title: 'Viagem', desc: 'Aeroporto e Hotel', status: 'unlocked', icon: 'flight' },
+                { id: 'cf3', type: 'free', title: 'Pop Culture', desc: 'Filmes e Gírias', status: 'unlocked', icon: 'movie' },
+                { id: 'cf4', type: 'free', title: 'Sentimentos', desc: 'Opiniões Abstratas', status: 'unlocked', icon: 'favorite' }
+            ]
+        };
 
-        // Rampa de 5 exercícios fixos para o Node "som_1"
         const currentExerciseQueue = [
-            { type: 'listen_isolate', ipa: '/p/', text: "Ouça o som isolado de /p/", advTip: "Articulação: Bilabial plosiva. Garganta SEM vibração.", audio: "p_sound" },
+            { type: 'listen_isolate', ipa: '/p/', text: "Ouça o som isolado", advTip: "Articulação: Bilabial plosiva. Garganta SEM vibração.", audio: "p_sound" },
             { type: 'minimal_pair', ipa: '/p/ vs /b/', text: "Qual som você ouviu?", advTip: "Diferença: Vibração nas cordas vocais.", options: ["Pat", "Bat"], answer: 0 },
             { type: 'repeat_isolate', ipa: '/p/', text: "Grave apenas o som /p/", advTip: "Solte o ar com força pelos lábios.", target: "p" },
             { type: 'repeat_word', ipa: '/pæt/', text: "Fale a palavra", advTip: "Atenção ao som seco no início.", target: "pat", displayWord: "Pat" },
@@ -217,22 +252,41 @@
         let isRecording = false;
         let currentExercise = null;
         let selectedOption = null;
-        let stepState = 'ready'; // ready, verified, finished
+        let stepState = 'ready'; 
 
-        // Configuração de Reconhecimento de Voz Nativo (Simulação)
+        // ===============================================
+        // MOTOR DE RECONHECIMENTO DE VOZ (BLINDADO)
+        // ===============================================
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognizer = null;
+        
         if (SpeechRecognition) {
             recognizer = new SpeechRecognition();
             recognizer.lang = 'en-US';
             recognizer.interimResults = false;
             recognizer.maxAlternatives = 1;
-            recognizer.onresult = (e) => evaluateSpeech(e.results[0][0].transcript);
-            recognizer.onspeechend = () => stopMic();
-            recognizer.onerror = () => { stopMic(); setFeedback("Não consegui ouvir. Tente novamente.", "var(--danger)"); };
+            
+            recognizer.onresult = (e) => {
+                stopMic(); 
+                const transcript = e.results[0][0].transcript;
+                evaluateSpeech(transcript);
+            };
+
+            recognizer.onspeechend = () => {
+                stopMic();
+            };
+
+            recognizer.onerror = (e) => {
+                stopMic();
+                if (e.error === 'no-speech') {
+                    setFeedback("Nenhum som detetado. Fale mais alto.", "var(--danger)");
+                } else {
+                    setFeedback("Erro no microfone: " + e.error, "var(--danger)");
+                }
+            };
         }
 
-        // --- 3. NAVEGAÇÃO DE TELAS ---
+        // --- 3. NAVEGAÇÃO DE TELAS E RENDERIZAÇÃO HÍBRIDA ---
         function openMap(track) {
             currentTrack = track;
             document.getElementById('dashboard-screen').classList.add('hidden');
@@ -241,27 +295,68 @@
             const titles = { 'som': 'Som (Fonética)', 'logica': 'Lógica (Sintaxe)', 'contexto': 'Contexto (Semântica)' };
             document.getElementById('map-title').innerText = titles[track];
             
-            // Renderiza os nós linearmente (Apenas SOM mockado para demo)
-            const container = document.getElementById('map-nodes-container');
-            container.innerHTML = '';
+            const coreContainer = document.getElementById('map-core-container');
+            const freeContainer = document.getElementById('map-free-container');
+            const gateContainer = document.getElementById('gate-container');
             
-            const nodesToRender = track === 'som' ? somNodes : [{id:'tbd', title:'Em Breve', desc:'Módulos em construção', status:'locked', icon:'lock'}];
+            coreContainer.innerHTML = '';
+            freeContainer.innerHTML = '';
+            gateContainer.innerHTML = '';
             
-            nodesToRender.forEach((node, i) => {
-                const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
+            const nodes = nodesDB[track] || [];
+            const coreNodes = nodes.filter(n => n.type === 'core');
+            const freeNodes = nodes.filter(n => n.type === 'free');
+            const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
+
+            // 1. Renderiza o Tronco (Núcleo)
+            let coreComplete = true;
+            coreNodes.forEach((node) => {
+                if(node.status !== 'completed') coreComplete = false;
                 const btnClass = node.status === 'unlocked' ? 'unlocked' : node.status === 'completed' ? 'completed' : 'locked';
                 const clickAction = node.status === 'unlocked' ? `onclick="startNodeLesson('${node.id}')"` : '';
+                const bgStyle = node.status === 'unlocked' ? `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;` : (node.status === 'completed' ? `background-color: var(--som-color); border-color: rgba(255,255,255,0.2);` : '');
                 
-                container.innerHTML += `
+                coreContainer.innerHTML += `
                     <div class="node-wrapper">
-                        <div class="node-btn ${btnClass}" ${clickAction} style="${node.status !== 'locked' ? `background-color: ${color};` : ''}">
-                            <span class="material-icons-round" style="font-size: 32px;">${node.icon}</span>
+                        <div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}">
+                            <span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span>
                         </div>
                         <div class="node-label">${node.title}</div>
                         <div class="node-desc">${node.desc}</div>
                     </div>
                 `;
             });
+
+            // 2. Renderiza o Portão (Gate) e a Nuvem de Temas Livres
+            if (freeNodes.length > 0) {
+                document.getElementById('free-themes-title').style.display = 'block';
+                
+                // O Portão
+                if(coreComplete) {
+                    gateContainer.innerHTML = `<div class="gate-divider unlocked"><span class="material-icons-round">lock_open</span> Zona de Expansão Desbloqueada</div>`;
+                } else {
+                    gateContainer.innerHTML = `<div class="gate-divider"><span class="material-icons-round">lock</span> Conclua o núcleo para desbloquear a Zona Livre</div>`;
+                }
+
+                // A Nuvem
+                freeNodes.forEach((node) => {
+                    // Força lock se o core não estiver completo
+                    const isLocked = !coreComplete || node.status === 'locked';
+                    const cardClass = isLocked ? 'locked' : '';
+                    const clickAction = !isLocked ? `onclick="startNodeLesson('${node.id}')"` : '';
+                    const iconColor = isLocked ? '#64748B' : color;
+                    
+                    freeContainer.innerHTML += `
+                        <div class="free-theme-card ${cardClass}" ${clickAction}>
+                            <span class="material-icons-round free-theme-icon" style="color: ${iconColor};">${node.icon}</span>
+                            <div style="font-size: 14px; font-weight: 800; margin-bottom: 2px;">${node.title}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">${node.desc}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                document.getElementById('free-themes-title').style.display = 'none';
+            }
         }
 
         function backToDashboard() {
@@ -270,7 +365,7 @@
         }
 
         function startDailyWorkout() {
-            alert("Gerando Treino Híbrido: 50% Fraquezas, 30% Atual, 20% Revisão.\nIniciando...");
+            alert("Gerando Treino Híbrido: UTI (Foco em erros do Núcleo) + Revisão + Fronteira.\nIniciando...");
             startNodeLesson('daily');
         }
 
@@ -303,7 +398,7 @@
 
         function toggleAdvancedMode() {
             isAdvancedMode = document.getElementById('advanced-mode-toggle').checked;
-            loadExercise(); // Recarrega a tela atual com/sem IPA
+            loadExercise(); 
         }
 
         function loadExercise() {
@@ -320,13 +415,11 @@
             const btn = document.getElementById('btn-action');
             let html = '';
 
-            // Bloco Avançado Condicional
             const advBlock = isAdvancedMode ? `
                 <div class="ipa-text">${currentExercise.ipa}</div>
                 <div class="advanced-tip"><span class="material-icons-round">info</span> ${currentExercise.advTip}</div>
             ` : '';
 
-            // RENDERIZAÇÃO POR TIPO DE EXERCÍCIO
             if (currentExercise.type === 'listen_isolate') {
                 html = `${advBlock}
                         <div class="instruction-text">${currentExercise.text}</div>
@@ -374,20 +467,35 @@
         }
 
         function toggleMic() {
-            if(!recognizer) return alert("Microfone não suportado.");
+            if(!recognizer) return alert("Microfone não suportado no seu navegador.");
             const micBtn = document.getElementById('mic-btn');
-            if(isRecording) { stopMic(); } else {
-                isRecording = true;
-                micBtn.classList.add('recording');
-                document.getElementById('mic-status').innerText = "Escutando...";
-                recognizer.start();
+            
+            if(isRecording) { 
+                stopMic(); 
+            } else {
+                try {
+                    recognizer.start();
+                    isRecording = true;
+                    if(micBtn) micBtn.classList.add('recording');
+                    document.getElementById('mic-status').innerText = "Escutando... (Fale agora)";
+                } catch(e) {
+                    stopMic();
+                }
             }
         }
+
         function stopMic() {
+            if (!isRecording) return;
             isRecording = false;
             const micBtn = document.getElementById('mic-btn');
             if(micBtn) micBtn.classList.remove('recording');
-            if(recognizer) recognizer.stop();
+            
+            try { recognizer.stop(); } catch(e) {} 
+            
+            const statusEl = document.getElementById('mic-status');
+            if (statusEl && statusEl.innerText.includes("Escutando")) {
+                statusEl.innerText = "Processando...";
+            }
         }
 
         function evaluateSpeech(transcript) {
@@ -395,7 +503,6 @@
             const target = currentExercise.target.toLowerCase();
             document.getElementById('mic-status').innerText = `Você disse: "${transcript}"`;
             
-            // Simulação de Score Backend
             if (cleanT.includes(target) || target.includes(cleanT) || target === 'p') {
                 setFeedback("Precisão: 95% - Excelente!", "var(--som-color)");
                 document.getElementById('btn-action').innerText = "Continuar";
@@ -448,14 +555,13 @@
             document.getElementById('exercise-area').innerHTML = `
                 <span class="material-icons-round" style="font-size:80px; color:var(--daily-color); margin-bottom:20px;">emoji_events</span>
                 <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Sessão Concluída!</h2>
-                <p style="color:var(--text-muted); font-weight:600;">+25 XP de Domínio Fonético</p>
+                <p style="color:var(--text-muted); font-weight:600;">+25 XP de Micro Domínio</p>
             `;
             document.getElementById('btn-action').innerText = "Voltar ao QG";
             document.getElementById('btn-action').className = "action-btn ready";
             document.getElementById('btn-action').onclick = () => {
                 document.getElementById('lesson-screen').classList.add('hidden');
                 document.getElementById('dashboard-screen').classList.remove('hidden');
-                // Simula aumento de fluência global
                 document.getElementById('global-fluency').innerText = "71%";
             };
         }
