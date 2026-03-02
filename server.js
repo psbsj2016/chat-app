@@ -16,7 +16,7 @@ const { aegisMiddleware, rateLimiter } = require('./src/security');
 const { initSockets } = require('./src/websockets');
 const { startCronJobs } = require('./src/scheduler');
 const models = require('./src/models');
-const { User, StatusMsg, Group, Message, Note, Community, CommunityChannel, CommunityRole, CommunityMember, CommunityMessage, ScheduledMsg, Report } = models;
+const { User, StatusMsg, Group, Message, Note, Community, CommunityChannel, CommunityRole, CommunityMember, CommunityMessage, ScheduledMsg, Report, MicroMastery, EnglishAttempt } = models;
 
 const app = express();
 const server = http.createServer(app);
@@ -176,6 +176,87 @@ app.get('/communities/:id/members', async (req, res) => { try { const members = 
 app.get('/communities/user/:userId', async (req, res) => { try { const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId'); const comms = members.map(m => m.communityId).filter(c => c !== null); res.json(comms); } catch (e) { res.status(500).json([]); } });
 app.get('/communities/:id/channels', async (req, res) => { try { res.json(await CommunityChannel.find({ communityId: req.params.id }).sort('order')); } catch (e) { res.status(500).json([]); } });
 app.get('/communities/channels/:id/messages', async (req, res) => { try { res.json(await CommunityMessage.find({ channelId: req.params.id }).populate('senderId', 'displayName photoUrl').sort('timestamp').limit(150)); } catch (e) { res.status(500).json([]); } });
+
+// ==============================================================
+// 🧠 API GATEWAY - INGLÊS PTT (SISTEMA DE DOMÍNIO DUPLO)
+// ==============================================================
+
+// 1. Busca todo o progresso do aluno ao abrir a página
+app.get('/api/english/progress/:userId', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId).select('englishMacroSom englishMacroLogica englishMacroContexto englishGlobalFluency');
+        const micros = await MicroMastery.find({ userId: req.params.userId });
+        res.json({ global: user, micros });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro ao carregar progresso.' });
+    }
+});
+
+// 2. Processa uma nova tentativa, calcula o Micro Domínio e Atualiza o Macro Domínio
+app.post('/api/english/attempt', async (req, res) => {
+    const { userId, nodeId, type, score, responseTimeMs } = req.body;
+    try {
+        // A. Guarda o log bruto
+        await new EnglishAttempt({ userId, nodeId, score, responseTimeMs }).save();
+
+        // B. Procura ou cria a Matriz de Micro Domínio
+        let micro = await MicroMastery.findOne({ userId, nodeId });
+        if (!micro) {
+            micro = new MicroMastery({ userId, nodeId, type, isUnlocked: true });
+        }
+
+        // C. A FÓRMULA MATEMÁTICA ADAPTATIVA
+        // Atualiza a precisão (peso maior na nota mais recente)
+        micro.precisionScore = micro.precisionScore === 0 ? score : (micro.precisionScore * 0.6) + (score * 0.4);
+        
+        // Avalia velocidade (Ex: menos de 3000ms ganha 100%, senão cai proporcionalmente)
+        let currentSpeed = responseTimeMs < 3000 ? 100 : Math.max(0, 100 - ((responseTimeMs - 3000) / 100));
+        micro.speedScore = micro.speedScore === 0 ? currentSpeed : (micro.speedScore * 0.7) + (currentSpeed * 0.3);
+
+        // Calcula o Micro Domínio Específico por Trilha
+        if (type === 'som') {
+            micro.masteryLevel = (micro.precisionScore * 0.8) + (micro.consistencyScore * 0.2); // Som exige mais precisão física
+        } else if (type === 'logica') {
+            micro.masteryLevel = (micro.precisionScore * 0.5) + (micro.speedScore * 0.5); // Lógica exige velocidade de raciocínio
+        } else { // contexto
+            micro.masteryLevel = (micro.precisionScore * 0.6) + (micro.speedScore * 0.4); // Contexto exige memória de recall
+        }
+
+        micro.masteryLevel = Math.min(100, Math.round(micro.masteryLevel));
+        micro.lastPracticed = new Date();
+        await micro.save();
+
+        // D. RECALCULA O MACRO DOMÍNIO E A FLUÊNCIA GLOBAL
+        const allUserMicros = await MicroMastery.find({ userId });
+        let sums = { som: 0, logica: 0, contexto: 0 };
+        let counts = { som: 0, logica: 0, contexto: 0 };
+
+        allUserMicros.forEach(m => {
+            sums[m.type] += m.masteryLevel;
+            counts[m.type]++;
+        });
+
+        const macroSom = counts.som > 0 ? Math.round(sums.som / counts.som) : 0;
+        const macroLogica = counts.logica > 0 ? Math.round(sums.logica / counts.logica) : 0;
+        const macroContexto = counts.contexto > 0 ? Math.round(sums.contexto / counts.contexto) : 0;
+        
+        // Fluência Global: Som (35%), Lógica (35%), Contexto (30%)
+        const globalFluency = Math.round((macroSom * 0.35) + (macroLogica * 0.35) + (macroContexto * 0.30));
+
+        // Salva as novas notas globais no Utilizador
+        await User.findByIdAndUpdate(userId, {
+            englishMacroSom: macroSom,
+            englishMacroLogica: macroLogica,
+            englishMacroContexto: macroContexto,
+            englishGlobalFluency: globalFluency
+        });
+
+        res.json({ success: true, newMicroMastery: micro.masteryLevel, newGlobalFluency: globalFluency });
+    } catch(e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao processar cálculo.' });
+    }
+});
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Gateway Node.js rodando na porta ${PORT}`));
