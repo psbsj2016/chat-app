@@ -7,6 +7,7 @@ function openSurprise() { gainXP(50, true); }
 
 async function gainXP(amount, isSurprise = false) { if (!myId) return; try { const res = await fetch('/add-xp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, xpAmount: amount, isSurprise: isSurprise }) }); const data = await res.json(); if (!res.ok) { if (isSurprise) alert(data.error); return; } document.getElementById('drawer-xp').innerText = data.xp; document.getElementById('drawer-level').innerText = data.level; cachedMe.xp = data.xp; cachedMe.level = data.level; localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); if (data.levelUp) { alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`); playNotificationSound('pop'); } if (isSurprise) { alert(`🎁 Sucesso! Você encontrou ${amount} XP! Volte amanhã para ganhar mais.`); } } catch (e) {} }
 function renderDailyMission(sent, completed) { const countSpan = document.getElementById('mission-count'); const progressFill = document.getElementById('mission-progress-fill'); const badge = document.getElementById('mission-badge'); const title = document.getElementById('mission-title'); const iconBg = document.getElementById('mission-icon-bg'); const icon = document.getElementById('mission-icon'); if (!countSpan) return; if (completed) { countSpan.innerText = "3"; progressFill.style.width = "100%"; progressFill.style.background = "#10B981"; badge.innerText = "Concluída"; badge.style.background = "#D1FAE5"; badge.style.color = "#059669"; title.innerText = "Missão Concluída! 🎉"; iconBg.style.background = "#D1FAE5"; icon.style.color = "#059669"; icon.innerText = "check_circle"; } else { countSpan.innerText = sent; progressFill.style.width = `${(sent / 3) * 100}%`; progressFill.style.background = "var(--brand-secondary)"; badge.innerText = "+10 XP"; badge.style.background = "#FEF3C7"; badge.style.color = "#D97706"; title.innerHTML = `Enviar 3 Mensagens (<span id="mission-count">${sent}</span>/3)`; iconBg.style.background = "#FEF3C7"; icon.style.color = "#F59E0B"; icon.innerText = "chat"; } }
+
 socket.on('mission_update', (data) => { cachedMe.dailyMessagesSent = data.sent; cachedMe.dailyMissionCompleted = data.completed; if (data.completed) { cachedMe.xp = data.xp; cachedMe.level = data.level; document.getElementById('drawer-xp').innerText = data.xp; document.getElementById('drawer-level').innerText = data.level; setTimeout(() => alert("🎯 MISSÃO DIÁRIA CONCLUÍDA!\nVocê acaba de ganhar +10 XP!"), 500); if (data.levelUp) setTimeout(() => alert(`🎉 PARABÉNS! Você subiu para o NÍVEL ${data.level}! 🎉`), 1500); playNotificationSound('pop'); } localStorage.setItem('cacheMe', JSON.stringify(cachedMe)); renderDailyMission(data.sent, data.completed); });
 
 let focusInterval = null; let focusTimeLeft = 25 * 60; 
@@ -72,7 +73,6 @@ window.closeMobileCommunityChat = function() { const screenComm = document.getEl
 window.sendCommunityMessage = function() { const input = document.getElementById('community-message-input'); if(!input) return; const content = input.value.trim(); if(!content || !currentChannelId) return; socket.emit('send_channel_message', { channelId: currentChannelId, senderId: myId, content: content }); input.value = ''; }
 socket.on('receive_channel_message', (msg) => { if(msg.channelId === currentChannelId) { renderCommunityMessage(msg); } });
 
-// 🛠️ MENSAGEM CORRIGIDA COM CORES CLARAS (BRANCO/CINZA)
 function renderCommunityMessage(msg) { 
     const box = document.getElementById('community-chat-box'); if(!box) return; 
     const div = document.createElement('div'); 
@@ -106,10 +106,7 @@ async function loadCommunityMembers() {
         for(let role in rolesMap) { 
             let group = rolesMap[role]; 
             group.users.sort((a, b) => b.online - a.online); 
-            
-            // CORREÇÃO: Adicionado 'color: #94A3B8;' para brilhar no fundo escuro
             list.innerHTML += `<div style="color: #94A3B8; margin-top: 15px; margin-bottom: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase;">${role} — ${group.users.length}</div>`; 
-            
             group.users.forEach(u => { 
                 let statusColor = u.online ? '#22C55E' : '#64748B'; 
                 let opacity = u.online ? '1' : '0.5'; 
@@ -145,21 +142,114 @@ function viewNote(id) { const note = currentNotes.find(n => n._id === id); if(!n
 async function saveNote() { const title = document.getElementById('note-title').value.trim(); const contentHTML = document.getElementById('note-content').innerHTML.trim(); const tempDiv = document.createElement('div'); tempDiv.innerHTML = contentHTML; if(!tempDiv.textContent.trim() && !contentHTML.includes('<img')) return alert('Vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); const originalText = btn.innerText; btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content: contentHTML }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content: contentHTML }) }); } hideElement('note-modal'); loadNotes(); } catch(e) {} finally { btn.innerText = originalText; } }
 async function deleteNote(id) { if(!confirm("Apagar?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) {} }
 
+// ==============================================================
+// 👁️ STORIES E VIEWS (ATUALIZADO E LIMPO)
+// ==============================================================
 let allStatuses = []; let groupedStatuses = {}; let currentStoryQueue = []; let currentStoryIndex = 0; let storyTimer; let storyProgressInterval; const STORY_DURATION = 5000; const statusColors = ['#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#EC4899', '#0F172A']; let currentStatusColorIndex = 0; let statusBase64Image = null; let tempQuickPhotoFile = null; let tempQuickPhotoBase64 = null;
+
 setTimeout(() => { const myImg = document.getElementById('my-status-tray-avatar'); if (myImg) myImg.src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; fetchStatuses(); }, 2000);
 async function fetchStatuses() { try { const res = await fetch('/api/statuses'); allStatuses = await res.json(); renderStatusTray(); } catch(e) {} }
 socket.on('new_status_published', (newStatus) => { allStatuses.push(newStatus); renderStatusTray(); playNotificationSound('pop'); });
-function renderStatusTray() { const container = document.getElementById('dynamic-statuses'); if(!container) return; container.innerHTML = ''; groupedStatuses = {}; allStatuses.forEach(s => { if(!groupedStatuses[s.senderId]) groupedStatuses[s.senderId] = []; groupedStatuses[s.senderId].push(s); }); const allUsersWithStatus = Object.keys(groupedStatuses); allUsersWithStatus.sort((a, b) => { if (a === myId) return -1; if (b === myId) return 1; return 0; }); allUsersWithStatus.forEach(userId => { const userStatuses = groupedStatuses[userId]; const lastStatus = userStatuses[userStatuses.length - 1]; const isMe = userId === myId; const displayName = isMe ? 'Você' : lastStatus.senderName.split(' ')[0]; const nameStyle = isMe ? 'color: var(--brand-primary); font-weight: 800;' : ''; container.innerHTML += `<div class="status-item" onclick="openStoryViewer('${userId}')"><div class="status-avatar-wrapper"><img src="${lastStatus.senderPhoto}" class="status-avatar"></div><span class="status-name" style="${nameStyle}">${displayName}</span></div>`; }); }
+socket.on('status_view_updated', (data) => { if(data.senderId === myId) fetchStatuses(); });
+
+function renderStatusTray() { 
+    const container = document.getElementById('dynamic-statuses'); if(!container) return; 
+    container.innerHTML = ''; groupedStatuses = {}; 
+    allStatuses.forEach(s => { if(!groupedStatuses[s.senderId]) groupedStatuses[s.senderId] = []; groupedStatuses[s.senderId].push(s); }); 
+    const allUsersWithStatus = Object.keys(groupedStatuses); 
+    allUsersWithStatus.sort((a, b) => { if (a === myId) return -1; if (b === myId) return 1; return 0; }); 
+    allUsersWithStatus.forEach(userId => { 
+        const userStatuses = groupedStatuses[userId]; 
+        const lastStatus = userStatuses[userStatuses.length - 1]; 
+        const isMe = userId === myId; 
+        const displayName = isMe ? 'Você' : lastStatus.senderName.split(' ')[0]; 
+        const nameStyle = isMe ? 'color: var(--brand-primary); font-weight: 800;' : ''; 
+        container.innerHTML += `<div class="status-item" onclick="openStoryViewer('${userId}')"><div class="status-avatar-wrapper"><img src="${lastStatus.senderPhoto}" class="status-avatar"></div><span class="status-name" style="${nameStyle}">${displayName}</span></div>`; 
+    }); 
+}
+
 function openCreateStatusModal() { showElement('create-status-modal'); statusBase64Image = null; document.getElementById('status-image-preview').classList.add('hidden'); document.getElementById('status-text-input').classList.remove('hidden'); document.getElementById('status-text-input').value = ''; changeStatusColor(0); }
 function changeStatusColor(forceIndex = null) { currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; }
 function previewStatusImage(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { statusBase64Image = e.target.result; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').classList.add('hidden'); }; reader.readAsDataURL(file); }
-async function publishStatus() { const textInput = document.getElementById('status-text-input').value.trim(); if (!textInput && !statusBase64Image) return alert("Escreva algo ou envie uma foto!"); const payload = { senderId: myId, senderName: localStorage.getItem('displayName'), senderPhoto: localStorage.getItem('photoUrl'), type: statusBase64Image ? 'image' : 'text', content: statusBase64Image || textInput, bgColor: statusColors[currentStatusColorIndex] }; hideElement('create-status-modal'); try { await fetch('/api/status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); if(typeof gameEarnXP === 'function') gameEarnXP(10); } catch(e) {} }
+
+// NOVO: Exibição visual de "Quem Viu" 100% FUNCIONAL
+function renderStoryViews(storyObj) {
+    let viewContainer = document.getElementById('story-view-count-container');
+    if (!viewContainer) {
+        viewContainer = document.createElement('div');
+        viewContainer.id = 'story-view-count-container';
+        viewContainer.style = 'position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; color: white; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 5px; z-index: 100; cursor: pointer; backdrop-filter: blur(5px);';
+        document.getElementById('story-viewer-modal').appendChild(viewContainer);
+    }
+    
+    // O array de views que vem do Servidor
+    const viewList = storyObj.views || [];
+    
+    // Apenas mostra a contagem se a pessoa for a dona do Status
+    if (storyObj.senderId === myId) {
+        viewContainer.innerHTML = `<span class="material-icons-round" style="font-size: 18px;">visibility</span> ${viewList.length} Visualizações`;
+        viewContainer.style.display = 'flex';
+        
+        viewContainer.onclick = (e) => {
+            e.stopPropagation(); // Impede de pular o story ao clicar
+            if (viewList.length === 0) {
+                alert("Ninguém viu o seu status ainda.");
+            } else {
+                // Monta a lista com os nomes e horários reais
+                let viewDetails = "👁️ Visto por:\n\n";
+                viewList.forEach(v => {
+                    const time = new Date(v.viewedAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                    // Se não tiver populado o nome, mostra Genérico, senão mostra o nome real
+                    const vName = v.viewerId && v.viewerId.displayName ? v.viewerId.displayName : 'Contato';
+                    viewDetails += `- ${vName} às ${time}\n`;
+                });
+                alert(viewDetails);
+            }
+        };
+    } else {
+        viewContainer.style.display = 'none';
+        // Envia para o servidor REAL que eu vi o status desta pessoa (Apenas se eu ainda não vi nesta sessão)
+        fetch('/api/status/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ statusId: storyObj._id, viewerId: myId })
+        }).catch(err => console.log("Erro ao registrar view"));
+    }
+}
+
 function openStoryViewer(userId) { currentStoryQueue = groupedStatuses[userId]; if(!currentStoryQueue || currentStoryQueue.length === 0) return; currentStoryIndex = 0; showElement('story-viewer-modal'); renderStoryBars(); playStory(currentStoryIndex); }
 function renderStoryBars() { const container = document.getElementById('story-progress-container'); container.innerHTML = ''; currentStoryQueue.forEach((_, i) => { container.innerHTML += `<div class="story-progress-bar"><div class="story-progress-fill" id="story-fill-${i}"></div></div>`; }); }
-function playStory(index) { clearTimeout(storyTimer); clearInterval(storyProgressInterval); currentStoryQueue.forEach((_, i) => { const fill = document.getElementById(`story-fill-${i}`); fill.style.width = i < index ? '100%' : '0%'; }); const story = currentStoryQueue[index]; document.getElementById('story-author-name').innerText = story.senderName; document.getElementById('story-author-photo').src = story.senderPhoto; const diffMins = Math.floor((Date.now() - new Date(story.createdAt).getTime()) / 60000); document.getElementById('story-time').innerText = diffMins < 60 ? `Há ${diffMins} min` : `Há ${Math.floor(diffMins/60)} h`; const contentArea = document.getElementById('story-content-area'); const txtDisplay = document.getElementById('story-text-display'); const imgDisplay = document.getElementById('story-image-display'); if(story.type === 'text') { contentArea.style.background = story.bgColor; txtDisplay.innerText = story.content; txtDisplay.classList.remove('hidden'); imgDisplay.classList.add('hidden'); } else { contentArea.style.background = '#000'; imgDisplay.src = story.content; imgDisplay.classList.remove('hidden'); txtDisplay.classList.add('hidden'); } let startTime = Date.now(); const currentFill = document.getElementById(`story-fill-${index}`); storyProgressInterval = setInterval(() => { let percentage = ((Date.now() - startTime) / STORY_DURATION) * 100; if(percentage <= 100) currentFill.style.width = percentage + '%'; }, 50); storyTimer = setTimeout(nextStory, STORY_DURATION); }
+
+function playStory(index) { 
+    clearTimeout(storyTimer); clearInterval(storyProgressInterval); 
+    currentStoryQueue.forEach((_, i) => { const fill = document.getElementById(`story-fill-${i}`); fill.style.width = i < index ? '100%' : '0%'; }); 
+    const story = currentStoryQueue[index]; 
+    document.getElementById('story-author-name').innerText = story.senderName; 
+    document.getElementById('story-author-photo').src = story.senderPhoto; 
+    const diffMins = Math.floor((Date.now() - new Date(story.createdAt || story.timestamp).getTime()) / 60000); 
+    document.getElementById('story-time').innerText = diffMins < 60 ? `Há ${diffMins} min` : `Há ${Math.floor(diffMins/60)} h`; 
+    
+    const contentArea = document.getElementById('story-content-area'); 
+    const txtDisplay = document.getElementById('story-text-display'); 
+    const imgDisplay = document.getElementById('story-image-display'); 
+    if(story.type === 'text') { contentArea.style.background = story.bgColor; txtDisplay.innerText = story.content; txtDisplay.classList.remove('hidden'); imgDisplay.classList.add('hidden'); } 
+    else { contentArea.style.background = '#000'; imgDisplay.src = story.content || story.imageUrl; imgDisplay.classList.remove('hidden'); txtDisplay.classList.add('hidden'); } 
+    
+    // Mostra quem viu e regista a sua visualização
+    renderStoryViews(story);
+
+    let startTime = Date.now(); const currentFill = document.getElementById(`story-fill-${index}`); 
+    storyProgressInterval = setInterval(() => { let percentage = ((Date.now() - startTime) / STORY_DURATION) * 100; if(percentage <= 100) currentFill.style.width = percentage + '%'; }, 50); 
+    storyTimer = setTimeout(nextStory, STORY_DURATION); 
+}
+
 function nextStory() { currentStoryIndex < currentStoryQueue.length - 1 ? playStory(++currentStoryIndex) : closeStoryViewer(); }
 function prevStory() { currentStoryIndex > 0 ? playStory(--currentStoryIndex) : playStory(0); }
-function closeStoryViewer() { clearTimeout(storyTimer); clearInterval(storyProgressInterval); hideElement('story-viewer-modal'); }
+function closeStoryViewer() { 
+    clearTimeout(storyTimer); clearInterval(storyProgressInterval); hideElement('story-viewer-modal'); 
+    const viewContainer = document.getElementById('story-view-count-container');
+    if(viewContainer) viewContainer.style.display = 'none';
+}
 
 function handleQuickCamera(input) { const file = input.files[0]; if (!file) return; tempQuickPhotoFile = file; const reader = new FileReader(); reader.onload = function(e) { tempQuickPhotoBase64 = e.target.result; document.getElementById('quick-photo-preview').src = tempQuickPhotoBase64; showElement('quick-photo-dest-modal'); input.value = ''; }; reader.readAsDataURL(file); }
 function postQuickPhotoToStatus() { hideElement('quick-photo-dest-modal'); openCreateStatusModal(); statusBase64Image = tempQuickPhotoBase64; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').classList.add('hidden'); }
@@ -172,38 +262,32 @@ async function sendQuickPhotoToTarget(targetId, isGroup) { hideElement('quick-ph
 function openProfile() { hideAllTabs(); showElement('profile-screen'); document.getElementById('config-name').innerText = cachedMe.displayName || localStorage.getItem('displayName') || 'Carregando...'; document.getElementById('config-avatar').src = cachedMe.photoUrl || localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; document.getElementById('config-bio').innerText = cachedMe.bio || 'Adicionar recado'; document.getElementById('config-phone').innerText = cachedMe.phone || 'Adicionar telefone'; const elXp = document.getElementById('config-xp'); if(elXp) elXp.innerText = cachedMe.xp || 0; const elLevel = document.getElementById('config-level'); if(elLevel) elLevel.innerText = cachedMe.level || 1; if(window.fetchAndSyncProfile) window.fetchAndSyncProfile(); }
 function openSettings() { hideAllTabs(); showElement('settings-screen'); }
 function backToSettings() { hideElement('appearance-screen'); hideElement('account-screen'); hideElement('notifications-screen'); hideElement('classifications-screen'); showElement('settings-screen'); }
-function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = cachedMe.theme === 'dark'; document.getElementById('font-size-select').value = cachedMe.fontSize || 'medium'; if(typeof renderInventory === 'function') renderInventory(); }
-function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = cachedMe.notificationSound || 'modern'; }
+
+function openAppearanceSettings() { hideElement('settings-screen'); showElement('appearance-screen'); document.getElementById('theme-switch').checked = document.body.classList.contains('dark-mode'); document.getElementById('font-size-select').value = localStorage.getItem('fontSize') || 'medium'; if(typeof renderInventory === 'function') renderInventory(); }
+window.saveAppearanceSettings = function() { const isDark = document.getElementById('theme-switch').checked; const fSize = document.getElementById('font-size-select').value; if(isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); saveProfile({ theme: 'light' }); } if (typeof window.changeFontSize === 'function') { window.changeFontSize(fSize); } else { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${fSize}`); localStorage.setItem('fontSize', fSize); saveProfile({ fontSize: fSize }); } alert("Aparência atualizada! ✅"); backToSettings(); };
+window.cancelAppearanceSettings = function() { backToSettings(); };
+
+function openNotificationsSettings() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = localStorage.getItem('notificationSound') || 'modern'; }
+window.saveNotificationSettings = function() { const sound = document.getElementById('notification-sound-select').value; if (typeof window.changeNotificationSound === 'function') { window.changeNotificationSound(sound); } else { localStorage.setItem('notificationSound', sound); } alert("Notificações atualizadas! ✅"); backToSettings(); };
+window.cancelNotificationSettings = function() { backToSettings(); };
+
 function openAccountSettings() { hideElement('settings-screen'); showElement('account-screen'); const emailEl = document.getElementById('config-email'); if(emailEl) emailEl.innerText = cachedMe.email || 'Carregando...'; }
 function viewMyProfilePhoto() { document.getElementById('viewer-photo').src = document.getElementById('config-avatar').src; showElement('photo-viewer-modal'); }
 function triggerProfileUpload() { document.getElementById('profile-file-input').click(); }
 
-// 📸 Correção Final: Sincroniza todas as fotos do aplicativo imediatamente
 async function uploadProfilePhoto(input) { 
     const file = input.files[0]; if(!file) return; 
     if(!confirm("Substituir foto?")) return; 
-    const avatarImg = document.getElementById('config-avatar'); 
-    const spinner = document.getElementById('profile-photo-spinner'); 
-    const localUrl = URL.createObjectURL(file);
-    avatarImg.src = localUrl; 
-    
-    // Injeta nos 3 lugares-chave antes mesmo de ir para a nuvem
-    const headerAvatar = document.getElementById('header-my-avatar');
-    if(headerAvatar) headerAvatar.src = localUrl;
-    
-    const drawerAvatar = document.getElementById('drawer-avatar');
-    if(drawerAvatar) drawerAvatar.src = localUrl;
-    
-    const commAvatar = document.getElementById('comm-mini-avatar');
-    if(commAvatar) commAvatar.src = localUrl;
-
-    if(spinner) spinner.classList.remove('hidden'); 
-    const formData = new FormData(); formData.append('file', file); 
+    const avatarImg = document.getElementById('config-avatar'); const spinner = document.getElementById('profile-photo-spinner'); 
+    const localUrl = URL.createObjectURL(file); avatarImg.src = localUrl; 
+    const headerAvatar = document.getElementById('header-my-avatar'); if(headerAvatar) headerAvatar.src = localUrl; 
+    const drawerAvatar = document.getElementById('drawer-avatar'); if(drawerAvatar) drawerAvatar.src = localUrl; 
+    const commAvatar = document.getElementById('comm-mini-avatar'); if(commAvatar) commAvatar.src = localUrl;
+    if(spinner) spinner.classList.remove('hidden'); const formData = new FormData(); formData.append('file', file); 
     try { 
-        const res = await fetch('/upload', { method: 'POST', body: formData }); 
-        const data = await res.json(); 
-        avatarImg.src = data.url; 
-        saveProfile({ photoUrl: data.url }); 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); 
+        avatarImg.src = data.url; saveProfile({ photoUrl: data.url }); 
+        setTimeout(() => { if (typeof fetchStatuses === 'function') fetchStatuses(); }, 1500);
     } catch (e) {} finally { if(spinner) spinner.classList.add('hidden'); input.value = ''; } 
 }
 
@@ -215,25 +299,11 @@ function openClassificationsSettings() { hideElement('settings-screen'); showEle
 function createNewClassification() { const name = prompt("Nome da nova Classificação:"); if(name) { currentSectors.push({ name, members: [] }); renderClassificationsList(); saveProfile({ sectors: currentSectors }); } }
 function renderClassificationsList() { const list = document.getElementById('classifications-list'); list.innerHTML = ''; if(currentSectors.length === 0) return; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; currentSectors.forEach((sec, sIdx) => { let membersHtml = ''; if(sec.members.length === 0) { membersHtml = '<div style="padding: 10px 15px; font-size: 13px;">Vazio</div>'; } else { sec.members.forEach(memberId => { const u = cachedUsers.find(user => user._id === memberId); if(u) { membersHtml += `<div style="padding: 10px 15px; display:flex; align-items:center; gap:10px;"><img src="${u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;"> <span style="font-size: 14px; font-weight:600;">${u.displayName || u.email}</span></div>`; } }); } list.innerHTML += `<div class="settings-group" style="margin-bottom: 15px;"><div style="padding: 15px; display:flex; justify-content:space-between; align-items:center; font-weight: 800;">${sec.name} <span class="material-icons-round" style="color:#EF4444; font-size:20px; cursor:pointer;" onclick="deleteClassification(${sIdx})">delete</span></div>${membersHtml}</div>`; }); }
 function deleteClassification(index) { if(confirm('Excluir esta classificação?')) { currentSectors.splice(index, 1); renderClassificationsList(); saveProfile({ sectors: currentSectors }); loadContacts(); } }
-function toggleTheme(isDark) { if(isDark) { document.body.classList.add('dark-mode'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); saveProfile({ theme: 'light' }); } }
 
-// 💾 Sincroniza variáveis com o servidor e com todas as áreas visuais do app
 async function saveProfile(dataToUpdate) { 
-    if (dataToUpdate.photoUrl) {
-        cachedMe.photoUrl = dataToUpdate.photoUrl; 
-        localStorage.setItem('photoUrl', dataToUpdate.photoUrl);
-        const headerAvatar = document.getElementById('header-my-avatar'); if (headerAvatar) headerAvatar.src = dataToUpdate.photoUrl;
-        const drawerAvatar = document.getElementById('drawer-avatar'); if (drawerAvatar) drawerAvatar.src = dataToUpdate.photoUrl;
-        const commAvatar = document.getElementById('comm-mini-avatar'); if (commAvatar) commAvatar.src = dataToUpdate.photoUrl;
-    }
-    if (dataToUpdate.displayName) {
-        cachedMe.displayName = dataToUpdate.displayName; 
-        localStorage.setItem('displayName', dataToUpdate.displayName);
-        const drawerName = document.getElementById('drawer-name'); if (drawerName) drawerName.innerText = dataToUpdate.displayName;
-        const commName = document.getElementById('comm-mini-name'); if (commName) commName.innerText = dataToUpdate.displayName;
-    }
+    if (dataToUpdate.photoUrl) { cachedMe.photoUrl = dataToUpdate.photoUrl; localStorage.setItem('photoUrl', dataToUpdate.photoUrl); const headerAvatar = document.getElementById('header-my-avatar'); if (headerAvatar) headerAvatar.src = dataToUpdate.photoUrl; const drawerAvatar = document.getElementById('drawer-avatar'); if (drawerAvatar) drawerAvatar.src = dataToUpdate.photoUrl; const commAvatar = document.getElementById('comm-mini-avatar'); if (commAvatar) commAvatar.src = dataToUpdate.photoUrl; }
+    if (dataToUpdate.displayName) { cachedMe.displayName = dataToUpdate.displayName; localStorage.setItem('displayName', dataToUpdate.displayName); const drawerName = document.getElementById('drawer-name'); if (drawerName) drawerName.innerText = dataToUpdate.displayName; const commName = document.getElementById('comm-mini-name'); if (commName) commName.innerText = dataToUpdate.displayName; }
     localStorage.setItem('cacheMe', JSON.stringify(cachedMe));
-
     try { 
         await fetch('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, ...dataToUpdate }) }); 
         socket.emit('profile_updated', { userId: myId, displayName: document.getElementById('config-name').innerText, photoUrl: document.getElementById('config-avatar').src }); 
@@ -250,10 +320,8 @@ async function openScheduledList() { showElement('scheduled-list-modal'); const 
 async function cancelScheduledMessage(id) { if(!confirm('Abortar este disparo?')) return; try { await fetch(`/schedule-message/${id}`, { method: 'DELETE' }); openScheduledList(); } catch(e) {} }
 
 // ==============================================================
-// 🛡️ PATCH DE SEGURANÇA E TEMPO REAL DOS STORIES (STATUS)
+// 🚀 MOTOR BLINDADO DE PUBLICAÇÃO DE STATUS
 // ==============================================================
-
-// Reescrevemos a função de publicar para notificar todos na rede instantaneamente
 window.publishStatus = async function() {
     const textEl = document.getElementById('status-text-input');
     const imgEl = document.getElementById('status-image-preview');
@@ -264,105 +332,25 @@ window.publishStatus = async function() {
     const imgUrl = hasImage ? imgEl.src : null;
     const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
 
-    if (!text && !hasImage) return alert('Escreva algo ou adicione uma imagem para publicar!');
+    if (!text && !hasImage) { alert('Escreva algo ou adicione uma imagem para publicar!'); return; }
 
-    const newStatus = { text: text, imageUrl: imgUrl, bgColor: bgColor, timestamp: new Date().toISOString() };
+    const newStatus = { senderId: myId, senderName: localStorage.getItem('displayName'), senderPhoto: localStorage.getItem('photoUrl'), type: hasImage ? 'image' : 'text', content: imgUrl || text, bgColor: bgColor, timestamp: new Date().toISOString() };
+
+    const btnElements = document.querySelectorAll('button[onclick="publishStatus()"]');
+    btnElements.forEach(btn => { btn.innerText = 'Publicando...'; btn.disabled = true; btn.style.opacity = '0.7'; });
 
     try {
-        const res = await fetch('/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: myId, status: newStatus })
-        });
-
+        const res = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStatus) });
         if (res.ok) {
             hideElement('create-status-modal');
             if (textEl) textEl.value = '';
             if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
-            
-            // O SEGREDO: Usamos o evento de perfil para forçar TODOS os telemóveis do mundo a recarregar a tela de status em 1 segundo!
             if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
-            
-            // Recarrega no próprio telemóvel imediatamente
-            if (typeof loadStatuses === 'function') loadStatuses();
-        }
-    } catch(e) { alert('Erro ao publicar status.'); }
-};
-
-// Oculta o Bug da foto de perfil apagando os stories do cache local
-if (typeof window.uploadProfilePhoto !== 'undefined') {
-    const originalUploadPhoto = window.uploadProfilePhoto;
-    window.uploadProfilePhoto = async function(input) {
-        await originalUploadPhoto(input);
-        // Ao trocar a foto, o sistema apagava os stories temporariamente. Agora nós recarregamos à força!
-        setTimeout(() => { if (typeof loadStatuses === 'function') loadStatuses(); }, 1500);
-    };
-}
-
-// ==============================================================
-// ⚙️ MOTOR DE CONFIGURAÇÕES ESTÁTICAS (SALVAR / CANCELAR)
-// ==============================================================
-
-// --- APARÊNCIA ---
-window.openAppearanceSettings = function() {
-    showElement('appearance-screen');
-    hideElement('settings-screen');
-    // Carrega o estado atual na tela para o utilizador ver
-    document.getElementById('theme-switch').checked = document.body.classList.contains('dark-mode');
-    document.getElementById('font-size-select').value = localStorage.getItem('fontSize') || 'medium';
-};
-
-window.saveAppearanceSettings = function() {
-    const isDark = document.getElementById('theme-switch').checked;
-    const fSize = document.getElementById('font-size-select').value;
-    
-    // 1. Aplica o Modo Escuro/Claro
-    if(isDark) { 
-        document.body.classList.add('dark-mode'); 
-        localStorage.setItem('theme', 'dark'); 
-    } else { 
-        document.body.classList.remove('dark-mode'); 
-        localStorage.setItem('theme', 'light'); 
+            if (typeof fetchStatuses === 'function') fetchStatuses();
+        } else { alert('Falha no servidor ao processar o Status.'); }
+    } catch(e) { 
+        alert('Erro de conexão. Verifique a internet e tente novamente.'); 
+    } finally {
+        btnElements.forEach(btn => { btn.innerText = 'Publicar'; btn.disabled = false; btn.style.opacity = '1'; });
     }
-    
-    // 2. Aplica a Fonte
-    if (typeof window.changeFontSize === 'function') {
-        window.changeFontSize(fSize);
-    } else {
-        document.body.classList.remove('font-small', 'font-medium', 'font-large');
-        document.body.classList.add(`font-${fSize}`);
-        localStorage.setItem('fontSize', fSize);
-    }
-
-    alert("Aparência atualizada com sucesso! ✅");
-    backToSettings();
-};
-
-window.cancelAppearanceSettings = function() {
-    // Apenas volta e descarta as mudanças visuais que não foram salvas
-    backToSettings();
-};
-
-// --- NOTIFICAÇÕES ---
-window.openNotificationsSettings = function() {
-    showElement('notifications-screen');
-    hideElement('settings-screen');
-    document.getElementById('notification-sound-select').value = localStorage.getItem('notificationSound') || 'modern';
-};
-
-window.saveNotificationSettings = function() {
-    const sound = document.getElementById('notification-sound-select').value;
-    
-    if (typeof window.changeNotificationSound === 'function') {
-        window.changeNotificationSound(sound);
-    } else {
-        localStorage.setItem('notificationSound', sound);
-    }
-    
-    alert("Notificações atualizadas com sucesso! ✅");
-    backToSettings();
-};
-
-window.cancelNotificationSettings = function() {
-    backToSettings();
 };

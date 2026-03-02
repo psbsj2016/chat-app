@@ -95,8 +95,57 @@ app.post('/reset-password', async (req, res) => { const { email, code, newPasswo
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 
-app.get('/api/statuses', async (req, res) => { try { const statuses = await StatusMsg.find().sort({ createdAt: 1 }); res.json(statuses); } catch(e) { res.status(500).json([]); } });
-app.post('/api/status', async (req, res) => { try { const newStatus = new StatusMsg(req.body); await newStatus.save(); io.emit('new_status_published', newStatus); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
+// Rota de busca: Traz todos os Status e adiciona a lista de visualizações real!
+app.get('/api/statuses', async (req, res) => { 
+    try { 
+        // Retorna todos os status postados nas últimas 24h
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } })
+                                        .populate('views.viewerId', 'displayName photoUrl') // Puxa nome e foto de quem viu
+                                        .sort({ createdAt: 1 }); 
+        res.json(statuses); 
+    } catch(e) { 
+        res.status(500).json([]); 
+    } 
+});
+
+// Rota de criação
+app.post('/api/status', async (req, res) => { 
+    try { 
+        const newStatus = new StatusMsg(req.body); 
+        await newStatus.save(); 
+        io.emit('new_status_published', newStatus); 
+        res.json({ success: true }); 
+    } catch(e) { 
+        res.status(500).json({ error: 'Erro' }); 
+    } 
+});
+
+// NOVA ROTA: Regista que alguém viu o Status
+app.post('/api/status/view', async (req, res) => {
+    try {
+        const { statusId, viewerId } = req.body;
+        const status = await StatusMsg.findById(statusId);
+        
+        if (status && status.senderId.toString() !== viewerId) {
+            // Verifica se o usuário já não viu este status antes
+            const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId);
+            
+            if (!alreadyViewed) {
+                if(!status.views) status.views = [];
+                status.views.push({ viewerId: viewerId, viewedAt: new Date() });
+                await status.save();
+                
+                // Avisa o dono do Status que alguém novo o viu
+                io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId });
+            }
+        }
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro ao registar visualização' });
+    }
+});
+
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) { res.status(500).json([]); } });
 app.get('/group-messages/:groupId', async (req, res) => { try { res.json(await Message.find({ groupId: req.params.groupId }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });

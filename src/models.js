@@ -27,9 +27,20 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
+// ==========================================
+// 👁️ ESQUEMA DE STATUS ATUALIZADO COM VIEWS
+// ==========================================
 const statusSchema = new mongoose.Schema({
-    senderId: String, senderName: String, senderPhoto: String,
-    type: { type: String, default: 'text' }, content: String, bgColor: { type: String, default: '#3B82F6' },
+    senderId: String, 
+    senderName: String, 
+    senderPhoto: String,
+    type: { type: String, default: 'text' }, 
+    content: String, 
+    bgColor: { type: String, default: '#3B82F6' },
+    views: [{
+        viewerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        viewedAt: { type: Date, default: Date.now }
+    }],
     createdAt: { type: Date, default: Date.now, expires: 86400 } 
 });
 const StatusMsg = mongoose.model('StatusMsg', statusSchema);
