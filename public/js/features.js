@@ -298,3 +298,71 @@ if (typeof window.uploadProfilePhoto !== 'undefined') {
         setTimeout(() => { if (typeof loadStatuses === 'function') loadStatuses(); }, 1500);
     };
 }
+
+// ==============================================================
+// ⚙️ MOTOR DE CONFIGURAÇÕES ESTÁTICAS (SALVAR / CANCELAR)
+// ==============================================================
+
+// --- APARÊNCIA ---
+window.openAppearanceSettings = function() {
+    showElement('appearance-screen');
+    hideElement('settings-screen');
+    // Carrega o estado atual na tela para o utilizador ver
+    document.getElementById('theme-switch').checked = document.body.classList.contains('dark-mode');
+    document.getElementById('font-size-select').value = localStorage.getItem('fontSize') || 'medium';
+};
+
+window.saveAppearanceSettings = function() {
+    const isDark = document.getElementById('theme-switch').checked;
+    const fSize = document.getElementById('font-size-select').value;
+    
+    // 1. Aplica o Modo Escuro/Claro
+    if(isDark) { 
+        document.body.classList.add('dark-mode'); 
+        localStorage.setItem('theme', 'dark'); 
+    } else { 
+        document.body.classList.remove('dark-mode'); 
+        localStorage.setItem('theme', 'light'); 
+    }
+    
+    // 2. Aplica a Fonte
+    if (typeof window.changeFontSize === 'function') {
+        window.changeFontSize(fSize);
+    } else {
+        document.body.classList.remove('font-small', 'font-medium', 'font-large');
+        document.body.classList.add(`font-${fSize}`);
+        localStorage.setItem('fontSize', fSize);
+    }
+
+    alert("Aparência atualizada com sucesso! ✅");
+    backToSettings();
+};
+
+window.cancelAppearanceSettings = function() {
+    // Apenas volta e descarta as mudanças visuais que não foram salvas
+    backToSettings();
+};
+
+// --- NOTIFICAÇÕES ---
+window.openNotificationsSettings = function() {
+    showElement('notifications-screen');
+    hideElement('settings-screen');
+    document.getElementById('notification-sound-select').value = localStorage.getItem('notificationSound') || 'modern';
+};
+
+window.saveNotificationSettings = function() {
+    const sound = document.getElementById('notification-sound-select').value;
+    
+    if (typeof window.changeNotificationSound === 'function') {
+        window.changeNotificationSound(sound);
+    } else {
+        localStorage.setItem('notificationSound', sound);
+    }
+    
+    alert("Notificações atualizadas com sucesso! ✅");
+    backToSettings();
+};
+
+window.cancelNotificationSettings = function() {
+    backToSettings();
+};

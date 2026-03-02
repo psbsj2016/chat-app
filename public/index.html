@@ -498,33 +498,71 @@
             </div>
         </div>
     </div>
-    <div id="appearance-screen" class="app-screen hidden">
-        <div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Aparência</span><div style="width: 40px;"></div></div>
-        <div class="settings-content" style="padding: 15px;">
+    <div id="appearance-screen" class="app-screen hidden" style="position: relative;">
+        <div class="main-header">
+            <button class="icon-btn" onclick="cancelAppearanceSettings()"><span class="material-icons-round">arrow_back</span></button>
+            <span class="header-title" style="font-size:20px; font-weight:800;">Aparência</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;">
             <div class="settings-group">
                 <div class="setting-item">
                     <span style="font-weight:600;">Modo Escuro</span>
-                    <label class="switch"><input type="checkbox" id="theme-switch" onchange="toggleTheme(this.checked)"><span class="slider round"></span></label>
+                    <label class="switch"><input type="checkbox" id="theme-switch"><span class="slider round"></span></label>
                 </div>
                 <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
                     <span style="font-size: 13.5px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Tamanho da Fonte</span>
-                    <select id="font-size-select" onchange="changeFontSize(this.value)" class="chic-input" style="margin:0; padding:10px; font-weight:600;">
-                        <option value="small">Pequeno</option><option value="medium">Médio (Ideal)</option><option value="large">Grande</option>
+                    <select id="font-size-select" class="chic-input" style="margin:0; padding:10px; font-weight:600;">
+                        <option value="small">Pequeno</option>
+                        <option value="medium">Médio (Ideal)</option>
+                        <option value="large">Grande</option>
                     </select>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin: 25px 0 10px 5px;"><span class="material-icons-round" style="color: var(--brand-primary);">checkroom</span><h3 style="font-size: 14px; color: var(--secondary-text); text-transform: uppercase; margin: 0; font-weight: 800;">Meu Inventário Neon</h3></div>
-            <div class="settings-group" id="inventory-list" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);"></div>
-        </div>
-    </div>
-    <div id="notifications-screen" class="app-screen hidden">
-        <div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Notificações</span><div style="width: 40px;"></div></div>
-        <div class="settings-content">
-            <div class="settings-group">
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Som de Mensagem</span><select id="notification-sound-select" onchange="changeNotificationSound(this.value)" class="chic-input" style="margin:0; padding:10px;"><option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino</option><option value="none">Silencioso</option></select></div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin: 25px 0 10px 5px;">
+                <span class="material-icons-round" style="color: var(--brand-primary);">checkroom</span>
+                <h3 style="font-size: 14px; color: var(--secondary-text); text-transform: uppercase; margin: 0; font-weight: 800;">Meu Inventário Neon</h3>
+            </div>
+            
+            <div class="settings-group" id="inventory-list" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);">
             </div>
         </div>
+
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);">
+            <button class="chic-btn" onclick="cancelAppearanceSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button>
+            <button class="chic-btn" onclick="saveAppearanceSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button>
+        </div>
     </div>
+    
+    <div id="notifications-screen" class="app-screen hidden" style="position: relative;">
+        <div class="main-header">
+            <button class="icon-btn" onclick="cancelNotificationSettings()"><span class="material-icons-round">arrow_back</span></button>
+            <span class="header-title" style="font-size:20px; font-weight:800;">Notificações</span>
+            <div style="width: 40px;"></div>
+        </div>
+        
+        <div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;">
+            <div class="settings-group">
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 13px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Som de Mensagem</span>
+                    <select id="notification-sound-select" class="chic-input" style="margin:0; padding:10px;">
+                        <option value="modern">Moderno (Neo)</option>
+                        <option value="pop">Pop (Suave)</option>
+                        <option value="bell">Sino</option>
+                        <option value="none">Silencioso</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);">
+            <button class="chic-btn" onclick="cancelNotificationSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button>
+            <button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button>
+        </div>
+    </div>
+
     <div id="classifications-screen" class="app-screen hidden">
         <div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Classificações</span><div style="width: 40px;"></div></div>
         <div class="settings-content" style="padding: 15px;"><button class="chic-btn" style="background: var(--brand-secondary); margin-bottom: 20px;" onclick="createNewClassification()">+ Criar Nova Classificação</button><div id="classifications-list"></div></div>
