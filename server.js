@@ -27,16 +27,18 @@ const io = new Server(server, { cors: { origin: '*' } });
 // ==============================================================
 app.use(aegisMiddleware);
 app.use(cors());
-// Ativa o Gateway Isolado do Inglês PTT
+
+// 1º O Servidor aprende a ler JSON (Dados)
+app.use(express.json()); 
+
+// 2º Ativa o Gateway Isolado do Inglês PTT (Agora ele já sabe ler os dados)
 app.use('/api/english', require('./src/english/english.routes'));
-app.use(express.json());
+
+// 3º Arquivos estáticos
 app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store, no-cache'); } }));
 
 // Configurações de Terceiros
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
-const storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chat-app-uploads', resource_type: 'auto' } });
-const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } });
-const transporter = nodemailer.createTransport({ host: 'smtp-relay.brevo.com', port: 2525, secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: false } });
 
 // ==============================================================
 // 🔌 INICIALIZAÇÃO DO MOTOR
