@@ -72,6 +72,17 @@
     </div>
 
     <div id="main-screen" class="app-screen hidden">
+         
+        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+            <button class="icon-btn" onclick="clearContactSelection()" style="margin-right: 15px; padding: 5px;"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
+            <span id="selected-contact-count" style="flex: 1; font-weight: 700; font-size: 18px;">1 Selecionado</span>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptCustomDeleteChat()" title="Apagar Conversa">delete</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="alert('Função de Selecionar Múltiplos em breve!')" title="Selecionar">check_circle</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="alert('Menu de configurações em breve!')" title="Mais opções">more_vert</span>
+            </div>
+        </div>    
+
         <div class="material-header">
             <img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onclick="toggleDrawer()">
             <div style="flex:1; text-align: center;">
@@ -420,6 +431,24 @@
             <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
         </div>
     </div>
+
+    <div id="custom-delete-chat-modal" class="modal-overlay hidden" style="z-index: 10000;">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;">
+                <span class="material-icons-round" style="font-size: 32px; color: #EF4444;">delete_forever</span>
+            </div>
+            <h3 style="color: var(--text-color); margin-bottom: 10px; font-weight: 800;">Apagar Conversa?</h3>
+            <p style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+                Tudo será apagado e <b id="delete-target-name" style="color: var(--brand-primary);">o contato</b> não será mais exibido na sua área de conversas.<br><br>
+                Para voltar a conversar com essa pessoa, você terá que fazer uma busca e enviar uma nova mensagem.
+            </p>
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button onclick="hideElement('custom-delete-chat-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text); margin: 0;">Cancelar</button>
+                <button onclick="executeCustomDeleteChat()" class="chic-btn" style="flex: 1; margin: 0; background: #EF4444;">Apagar Tudo</button>
+            </div>
+        </div>
+    </div>
+
     <div id="start-chat-modal" class="modal-overlay hidden" style="z-index: 9999;">
         <div class="modal-content profile-view-card" style="text-align: center;">
             <img id="start-chat-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; border: 3px solid var(--brand-primary); object-fit: cover;">

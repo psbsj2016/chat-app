@@ -1056,3 +1056,16 @@ body.bubble-cyber {
     box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
     animation: pulse-glow 1s infinite;
 }
+
+/* ========================================================= */
+/* EFEITO DE SELEÇÃO AO PRESSIONAR O CONTATO (LONG PRESS)    */
+/* ========================================================= */
+.user-item {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.user-item.selected-for-action {
+    background-color: rgba(79, 70, 229, 0.12) !important; /* Cor de fundo levemente índigo */
+    border-radius: 12px;
+    transform: scale(0.98); /* Dá a sensação física de pressionar */
+    box-shadow: inset 0 0 0 2px var(--brand-primary);
+}
