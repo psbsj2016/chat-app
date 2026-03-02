@@ -95,32 +95,4 @@ async function initializeAIBot() {
 
 const getBotUserId = () => botUserId;
 
-// ==============================================================
-// 🧠 MODELOS DE NEUROEDUCAÇÃO (INGLÊS PTT)
-// ==============================================================
-
-// 1. Matriz de Micro Domínio (Estado Vivo do Aluno por Nó/Tema)
-const MicroMasterySchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    nodeId: { type: String, required: true }, // Ex: 'som_1', 'logica_past'
-    type: { type: String, enum: ['som', 'logica', 'contexto'], required: true },
-    masteryLevel: { type: Number, default: 0 }, // 0 a 100%
-    precisionScore: { type: Number, default: 0 }, // Média de acertos
-    speedScore: { type: Number, default: 0 },     // Pontuação baseada no tempo de resposta
-    consistencyScore: { type: Number, default: 0 }, // Estabilidade de acertos
-    isUnlocked: { type: Boolean, default: false },
-    lastPracticed: { type: Date, default: Date.now }
-});
-const MicroMastery = mongoose.model('MicroMastery', MicroMasterySchema);
-
-// 2. Histórico Bruto de Tentativas (Para recalcular algoritmos no futuro, se necessário)
-const EnglishAttemptSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    nodeId: String,
-    score: Number, // 0 a 100 da tentativa isolada
-    responseTimeMs: Number,
-    timestamp: { type: Date, default: Date.now }
-});
-const EnglishAttempt = mongoose.model('EnglishAttempt', EnglishAttemptSchema);
-
-module.exports = { User, StatusMsg, Group, Message, Note, Community, CommunityChannel, CommunityRole, CommunityMember, CommunityMessage, ScheduledMsg, Report, initializeAIBot, getBotUserId, MicroMastery, EnglishAttempt };
+module.exports = { User, StatusMsg, Group, Message, Note, Community, CommunityChannel, CommunityRole, CommunityMember, CommunityMessage, ScheduledMsg, Report, initializeAIBot, getBotUserId };
