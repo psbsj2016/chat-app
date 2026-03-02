@@ -1016,3 +1016,43 @@ body.bubble-cyber {
     color: #94A3B8 !important; /* Texto Cinza Claro (Placeholder) */
     opacity: 1;
 }
+
+/* ========================================================= */
+/* DIVISORES DE DATA, BUSCA NO CHAT E TYPING INDICATOR       */
+/* ========================================================= */
+
+/* Separador de Dias no Chat */
+.chat-date-divider {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+    width: 100%;
+}
+.chat-date-divider span {
+    background: var(--input-bg);
+    color: var(--secondary-text);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.dark-mode .chat-date-divider span {
+    background: rgba(255,255,255,0.05);
+    color: #94A3B8;
+}
+
+/* Destaque do Motor de Busca */
+.search-highlight {
+    background-color: rgba(245, 158, 11, 0.4); /* Laranja Suave */
+    border-radius: 3px;
+    padding: 0 2px;
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+.search-highlight.active {
+    background-color: #F59E0B; /* Laranja Forte */
+    color: white;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+    animation: pulse-glow 1s infinite;
+}

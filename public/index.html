@@ -428,7 +428,7 @@
         <iframe id="immersive-game-frame" src="" style="width: 100%; flex: 1; border: none; background: #000;"></iframe>
     </div>
 
-   <div id="chat-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden;">
+    <div id="chat-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden;">
         
         <div class="header" style="display: flex; align-items: center; padding: max(10px, env(safe-area-inset-top)) 15px 10px 15px; background: var(--card-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; width: 100%; box-sizing: border-box;">
             <button class="icon-btn" onclick="backToMain()" style="margin-right: 10px; flex-shrink: 0;">
@@ -454,14 +454,28 @@
                 <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="toggleMenu('chat-options-menu')">more_vert</span>
             </div>
             
-            <div id="chat-options-menu" class="dropdown-menu right-menu hidden">
-                <div class="menu-item logout" onclick="deleteCurrentChat()"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>
-                <div class="menu-item" onclick="blockContact(currentChatId)"><span class="material-icons-round" style="color: #EF4444;">block</span> Bloquear</div>
+            <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="width: 220px; z-index: 100;">
+                <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-secondary);">search</span> Buscar</div>
+                <div class="menu-item" onclick="viewContactProfile(currentChatId, document.getElementById('chat-title').innerText, document.getElementById('chat-avatar').src, isGroupChat); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-primary);">person</span> Exibir Perfil</div>
+                <div class="menu-separator"></div>
+                <div class="menu-item" onclick="reportContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #F59E0B;">flag</span> Denunciar</div>
+                <div class="menu-item" onclick="blockContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">block</span> Bloquear</div>
+                <div class="menu-item logout" onclick="deleteCurrentChat(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Conversa</div>
             </div>
+        </div>
+
+        <div id="in-chat-search-bar" class="hidden" style="display: flex; align-items: center; padding: 10px 15px; background: var(--input-bg); border-bottom: 1px solid var(--border-color); gap: 10px; z-index: 9;">
+            <input type="text" id="in-chat-search-input" placeholder="Buscar na conversa..." class="chic-input" style="margin: 0; flex: 1; padding: 8px 15px; background: var(--card-bg);" oninput="handleInChatSearch(this.value)">
+            <span id="in-chat-search-counter" style="font-size: 13px; color: var(--secondary-text); font-weight: 800; min-width: 35px; text-align: center;">0/0</span>
+            <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_up</span></button>
+            <button class="icon-btn" onclick="navigateChatSearch(1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_down</span></button>
+            <button class="icon-btn" onclick="closeChatSearch()" style="color: #EF4444; padding: 5px; margin-left: 5px;"><span class="material-icons-round">close</span></button>
         </div>
 
         <div id="chat-box" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px 15px; display: flex; flex-direction: column; gap: 10px; background-image: var(--chat-bg-image); background-size: cover; background-position: center; width: 100%; box-sizing: border-box;">
         </div>
+
+        <div id="typing-indicator" class="hidden" style="padding: 2px 15px 5px 15px; font-size: 12px; color: var(--brand-primary); font-style: italic; font-weight: bold; background: transparent; z-index: 5;"></div>        
 
         <div id="reply-preview" class="hidden" style="background: var(--card-bg); border-left: 4px solid var(--brand-primary); padding: 8px 12px; margin: 0 10px 5px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); z-index: 5;">
             <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;">
