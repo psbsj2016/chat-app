@@ -248,3 +248,53 @@ async function openScheduleModal() { const targetSelect = document.getElementByI
 async function saveScheduledMessage() { const target = document.getElementById('schedule-target').value; const time = document.getElementById('schedule-datetime').value; const content = document.getElementById('schedule-text').value; if(!target || !time || !content) return alert("Preencha todos os campos!"); const localDate = new Date(time); const utcIsoString = localDate.toISOString(); const isGroup = target.startsWith('group_'); const targetId = target.replace('user_', '').replace('group_', ''); const btn = document.querySelector('#schedule-modal .chic-btn'); btn.innerText = "Agendando..."; btn.disabled = true; try { const res = await fetch('/schedule-message', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senderId: myId, targetId: targetId, isGroup: isGroup, content: content, scheduledTime: utcIsoString }) }); if(res.ok) { alert("Agendado!"); hideElement('schedule-modal'); document.getElementById('schedule-datetime').value = ''; document.getElementById('schedule-text').value = ''; } } catch(e) {} finally { btn.innerText = "Agendar"; btn.disabled = false; } }
 async function openScheduledList() { showElement('scheduled-list-modal'); const container = document.getElementById('scheduled-messages-container'); container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Rastreando...</div>'; try { const res = await fetch(`/scheduled-messages/${myId}`); const msgs = await res.json(); container.innerHTML = ''; if (msgs.length === 0) { container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Nenhuma mensagem.</div>'; return; } msgs.forEach(m => { const dateStr = new Date(m.scheduledTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); container.innerHTML += `<div style="background: var(--input-bg); padding: 12px; border-radius: 12px; margin-bottom: 10px;"><div style="font-size: 11px; font-weight: 800; margin-bottom: 5px;">⏰ ${dateStr}</div><div style="font-size: 14px; margin-bottom: 10px;">"${m.content}"</div><button onclick="cancelScheduledMessage('${m._id}')" class="chic-btn" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444; margin: 0; padding: 6px 12px; width: auto; font-size: 12px;">Abortar</button></div>`; }); } catch(e) {} }
 async function cancelScheduledMessage(id) { if(!confirm('Abortar este disparo?')) return; try { await fetch(`/schedule-message/${id}`, { method: 'DELETE' }); openScheduledList(); } catch(e) {} }
+
+// ==============================================================
+// 🛡️ PATCH DE SEGURANÇA E TEMPO REAL DOS STORIES (STATUS)
+// ==============================================================
+
+// Reescrevemos a função de publicar para notificar todos na rede instantaneamente
+window.publishStatus = async function() {
+    const textEl = document.getElementById('status-text-input');
+    const imgEl = document.getElementById('status-image-preview');
+    const bgEl = document.getElementById('status-preview-area');
+    
+    const text = textEl ? textEl.value.trim() : '';
+    const hasImage = imgEl && !imgEl.classList.contains('hidden');
+    const imgUrl = hasImage ? imgEl.src : null;
+    const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
+
+    if (!text && !hasImage) return alert('Escreva algo ou adicione uma imagem para publicar!');
+
+    const newStatus = { text: text, imageUrl: imgUrl, bgColor: bgColor, timestamp: new Date().toISOString() };
+
+    try {
+        const res = await fetch('/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, status: newStatus })
+        });
+
+        if (res.ok) {
+            hideElement('create-status-modal');
+            if (textEl) textEl.value = '';
+            if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
+            
+            // O SEGREDO: Usamos o evento de perfil para forçar TODOS os telemóveis do mundo a recarregar a tela de status em 1 segundo!
+            if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
+            
+            // Recarrega no próprio telemóvel imediatamente
+            if (typeof loadStatuses === 'function') loadStatuses();
+        }
+    } catch(e) { alert('Erro ao publicar status.'); }
+};
+
+// Oculta o Bug da foto de perfil apagando os stories do cache local
+if (typeof window.uploadProfilePhoto !== 'undefined') {
+    const originalUploadPhoto = window.uploadProfilePhoto;
+    window.uploadProfilePhoto = async function(input) {
+        await originalUploadPhoto(input);
+        // Ao trocar a foto, o sistema apagava os stories temporariamente. Agora nós recarregamos à força!
+        setTimeout(() => { if (typeof loadStatuses === 'function') loadStatuses(); }, 1500);
+    };
+}

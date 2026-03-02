@@ -99,15 +99,17 @@
             </div>
         </div>
    
-         <div class="status-tray" id="status-tray-container">
+        <div class="status-tray" id="status-tray-container">
+            
             <div class="status-item" onclick="openCreateStatusModal()">
-                <div class="status-avatar-wrapper add-status">
-                    <img id="my-status-tray-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="status-avatar">
-                    <div class="add-status-badge">+</div>
+                <div class="status-create-btn">
+                    <span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span>
                 </div>
-                <span class="status-name" style="color: var(--secondary-text);">Meu Status</span>
+                <span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span>
             </div>
+            
             <div id="dynamic-statuses" style="display: contents;"></div>
+            
         </div>       
   
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1; padding: 10px;"></div>
