@@ -7,6 +7,24 @@ let currentSelectedMsgElement = null;
 let selectedMsgData = null;
 let lastRenderedDate = null; 
 
+// AQUI: Recuperação vital de dados do Storage
+const myId = localStorage.getItem('myId');
+let currentChatId = null;
+let currentChatEmail = null;
+let isGroupChat = false;
+let messageCache = {};
+let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
+let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || {};
+let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || [];
+let onlineUsersList = [];
+let pendingAudioFile = null;
+let messageToReply = null;
+let globalMediaRecorder = null;
+let recordingInterval = null;
+let recordingSeconds = 0;
+let typingTimeout = null;
+let currentSectors = JSON.parse(localStorage.getItem('userSectors')) || [];
+
 // ==============================================================
 // 👆 NOVO: MOTOR DE PRESSÃO LONGA (SELEÇÃO DE CONTATOS)
 // ==============================================================
@@ -339,8 +357,54 @@ function renderContactsList(groups, users) {
     });
 }
 
-function triggerUpload(type) { const input = document.getElementById('file-input'); input.accept = type; input.click(); hideElement('attach-menu'); }
-async function handleFileUpload(input) { const file = input.files[0]; if(!file) return; if (file.size > 50 * 1024 * 1024) { alert("⚠️ Limite de 50MB."); input.value = ''; return; } let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); }
+// ==============================================================
+// 📎 CORREÇÃO: MOTOR DE UPLOAD (ANTI-BUG FANTASMA)
+// ==============================================================
+
+window.toggleAttachMenu = function() {
+    const menu = document.getElementById('attach-menu');
+    // Força a abertura/fecho do menu sem conflitos de classes
+    if (menu) menu.classList.toggle('hidden');
+};
+
+window.triggerUpload = function(type) { 
+    const input = document.getElementById('file-input'); 
+    
+    // A MÁGICA ESTÁ AQUI: Força a limpeza do arquivo anterior antes de abrir!
+    input.value = ''; 
+    
+    input.accept = type; 
+    input.click(); 
+    
+    // Esconde o menu de opções após o clique
+    const menu = document.getElementById('attach-menu');
+    if(menu) menu.classList.add('hidden'); 
+};
+
+window.handleFileUpload = async function(input) { 
+    const file = input.files[0]; 
+    
+    // Se o usuário abrir a galeria e clicar em "Cancelar", limpamos a memória
+    if(!file) {
+        input.value = ''; 
+        return; 
+    }
+    
+    if (file.size > 50 * 1024 * 1024) { 
+        alert("⚠️ Limite de 50MB excedido."); 
+        input.value = ''; 
+        return; 
+    } 
+    
+    let type = 'file'; 
+    if(file.type.startsWith('image/')) type = 'image'; 
+    else if(file.type.startsWith('video/')) type = 'video'; 
+    else if(file.type.startsWith('audio/')) type = 'audio'; 
+    else if(file.type === 'application/pdf') type = 'pdf'; 
+    
+    executeUpload(file, type); 
+};
+
 async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); if (!res.ok) throw new Error(); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Falha no envio."); } finally { document.getElementById('file-input').value = ''; } }
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; }
 
@@ -417,3 +481,85 @@ function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }
+// ==============================================================
+// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT
+// ==============================================================
+window.showCurrentChatProfile = async function() {
+    if (!currentChatId) return;
+
+    // Se for um grupo, o tratamento de perfil é diferente
+    if (isGroupChat) {
+        return alert("👥 Este é um Grupo. Toque no nome do grupo no topo para gerir os membros.");
+    }
+
+    try {
+        // 1. Puxa os dados atualizados do cache (que já foi carregado no início)
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        const user = cachedUsers.find(u => u._id === currentChatId);
+
+        if (!user) return alert("❌ Dados do perfil não encontrados no radar.");
+
+        // 2. Extrai e trata os dados (Fallback para caso a pessoa não tenha foto ou telefone)
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const name = user.displayName || user.email.split('@')[0];
+        const email = user.email || 'Não informado';
+        const phone = user.phone || 'Não informado';
+        const xp = user.xp || 0;
+        const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip');
+
+        // 3. Verifica se o Modal já existe. Se não, fabrica-o dinamicamente!
+        let modal = document.getElementById('dynamic-profile-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'dynamic-profile-modal';
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
+            
+            modal.innerHTML = `
+                <div style="background:var(--bg-color, #05050A); border: 1px solid rgba(255,255,255,0.1); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+                    
+                    <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color:var(--text-muted, #94A3B8); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
+                    
+                    <img id="dp-photo" src="" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
+                    
+                    <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color:white; font-size:22px;"></h2>
+                    <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;"></div>
+
+                    <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+                            <span class="material-icons-round" style="color:var(--text-muted, #94A3B8); font-size:20px;">email</span> 
+                            <span id="dp-email" style="color:white; font-weight:600; word-break: break-all;"></span>
+                        </div>
+                        <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+                            <span class="material-icons-round" style="color:var(--text-muted, #94A3B8); font-size:20px;">phone</span> 
+                            <span id="dp-phone" style="color:white; font-weight:600;"></span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="material-icons-round" style="color:var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> 
+                            <b style="color:white; font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color:var(--brand-primary, #3B82F6);"></span></b>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // 4. Preenche o Modal com os dados do alvo
+        document.getElementById('dp-photo').src = photo;
+        document.getElementById('dp-name').innerText = name;
+        document.getElementById('dp-vip').innerHTML = isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : '';
+        document.getElementById('dp-email').innerText = email;
+        document.getElementById('dp-phone').innerText = phone;
+        document.getElementById('dp-xp').innerText = xp;
+
+        // 5. Oculta o menu de 3 pontos do chat (se estiver aberto) e Exibe o Modal
+        const dropMenu = document.getElementById('chat-dropdown-menu'); // Ajuste este ID se o seu menu tiver outro nome
+        if (dropMenu) dropMenu.classList.add('hidden');
+
+        modal.style.display = 'flex';
+        setTimeout(() => modal.style.opacity = '1', 10);
+
+    } catch (e) {
+        console.error("Falha ao abrir perfil: ", e);
+        alert("Erro ao carregar os dados do perfil.");
+    }
+};

@@ -155,7 +155,7 @@
                 
                 <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="width: 220px; z-index: 9999; top: 35px; right: 0;">
                     <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-secondary);">search</span> Buscar</div>
-                    <div class="menu-item" onclick="viewContactProfile(currentChatId, document.getElementById('chat-title').innerText, document.getElementById('chat-avatar').src, isGroupChat); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-primary);">person</span> Exibir Perfil</div>
+                    <div class="menu-item" onclick="showCurrentChatProfile(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-primary);">person</span> Exibir Perfil</div>
                     <div class="menu-separator" style="margin: 5px 0; border-top: 1px solid var(--input-bg);"></div>
                     <div class="menu-item" onclick="reportContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #F59E0B;">flag</span> Denunciar</div>
                     <div class="menu-item" onclick="blockContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">block</span> Bloquear</div>
@@ -190,13 +190,33 @@
         <div style="padding: 10px 15px calc(10px + env(safe-area-inset-bottom)) 15px; background: var(--card-bg); display: flex; align-items: flex-end; gap: 8px; box-shadow: 0 -1px 3px rgba(0,0,0,0.05); z-index: 10; width: 100%; box-sizing: border-box; position: relative;">
             
             <div id="attach-menu" class="dropdown-menu right-menu hidden" style="bottom: calc(100% + 10px); top: auto; right: 15px; min-width: 240px; padding: 10px 0; z-index: 1000;">
-                <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-                <div class="menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color: var(--brand-secondary);">image</span> <span style="font-weight: 600;">Enviar Foto</span></div>
-                <div class="menu-item" onclick="triggerUpload('video/*')"><span class="material-icons-round" style="color: #8B5CF6;">videocam</span> <span style="font-weight: 600;">Enviar Vídeo</span></div>
-                <div class="menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons-round" style="color: #EF4444;">picture_as_pdf</span> <span style="font-weight: 600;">Enviar PDF</span></div>
-                <div class="menu-separator" style="margin: 8px 0; border-top: 1px solid var(--input-bg);"></div>
-                <div class="menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981;">audio_file</span> <div style="display: flex; flex-direction: column;"><span style="font-weight: 600;">Arquivo de Áudio</span><span style="font-size: 11px; color: var(--secondary-text); font-weight: 500;">Lim. recomendado: Até 10 min</span></div></div>
-            </div>        
+    <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
+    
+    <div class="menu-item" onclick="triggerUpload('image/*')">
+        <span class="material-icons-round" style="color: var(--brand-secondary);">image</span> 
+        <span style="font-weight: 600;">Enviar Foto</span>
+    </div>
+    
+    <div class="menu-item" onclick="triggerUpload('video/*')">
+        <span class="material-icons-round" style="color: #8B5CF6;">videocam</span> 
+        <span style="font-weight: 600;">Enviar Vídeo</span>
+    </div>
+    
+    <div class="menu-item" onclick="triggerUpload('application/pdf')">
+        <span class="material-icons-round" style="color: #EF4444;">picture_as_pdf</span> 
+        <span style="font-weight: 600;">Enviar PDF</span>
+    </div>
+    
+    <div class="menu-separator" style="margin: 8px 0; border-top: 1px solid var(--input-bg);"></div>
+    
+    <div class="menu-item" onclick="triggerUpload('audio/*')">
+        <span class="material-icons-round" style="color: #10B981;">audio_file</span> 
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-weight: 600;">Arquivo de Áudio</span>
+            <span style="font-size: 11px; color: var(--secondary-text); font-weight: 500;">Lim. recomendado: Até 10 min</span>
+        </div>
+    </div>
+</div>
 
             <div style="display: flex; flex: 1; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 5px 12px; min-height: 48px; overflow: hidden; transition: all 0.3s ease; min-width: 0;">
                 <span id="btn-emoji" class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; margin-right: 8px; flex-shrink: 0;" onclick="toggleEmojiPicker()">sentiment_satisfied_alt</span>
@@ -217,7 +237,7 @@
                 </div>
 
                 <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; color: var(--text-color); padding: 8px 0; word-break: break-word; min-width: 0;"></div>
-                <span id="btn-attach" class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; margin-left: 8px; transform: rotate(-45deg); flex-shrink: 0;" onclick="event.stopPropagation(); toggleMenu('attach-menu');">attach_file</span>
+                <span id="btn-attach" class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; margin-left: 8px; transform: rotate(-45deg); flex-shrink: 0;" onclick="event.stopPropagation(); toggleAttachMenu();">attach_file</span>
             </div>
 
             <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()" style="flex-shrink: 0;">
