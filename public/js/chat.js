@@ -255,6 +255,13 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && cu
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId; const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender }; const senderId = senderObj._id;
     let targetId; if (isGroup) { targetId = msg.groupId; } else { const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver; targetId = (senderId === myId) ? receiverId : senderId; }
+    
+    // 🔥 CORREÇÃO: Se o contato estava oculto (apagado) e enviou mensagem, ele volta!
+    if (hiddenChats.includes(targetId) && senderId !== myId) {
+        hiddenChats = hiddenChats.filter(id => id !== targetId);
+        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+    }
+
     if (currentChatId === targetId) {
         if (!document.getElementById(`msg-${msg._id}`)) { displayMessage(msg); if (!messageCache[currentChatId]) messageCache[currentChatId] = []; messageCache[currentChatId].push(msg); }
         if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId });
