@@ -46,10 +46,11 @@ cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: proc
 mongoose.connect(process.env.MONGO_URI).then(() => {
     console.log("✅ MongoDB Conectado (Arquitetura Modular)");
     models.initializeAIBot(); 
+    
+    // Dispara o Injetor do Inglês PTT
+    const EnglishService = require('./src/english/english.service');
+    EnglishService.seedEnglishCatalog();
 }).catch(err => console.error("Erro MongoDB:", err));
-
-initSockets(io);
-startCronJobs(io);
 
 // ==============================================================
 // 🌐 API GATEWAY (ROTAS HTTP REST)

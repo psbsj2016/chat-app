@@ -163,6 +163,40 @@ class EnglishService {
         return workoutQueue;
     }
 
+// ==========================================
+    // 🌱 INJETOR DE CURRÍCULO (DATABASE SEEDER)
+    // ==========================================
+    static async seedEnglishCatalog() {
+        const count = await CatalogoNode.countDocuments();
+        if (count > 0) {
+            console.log("✅ Catálogo de Inglês PTT já está operacional.");
+            return;
+        }
+
+        console.log("🌱 A injetar missões base no Catálogo do Inglês PTT...");
+
+        // A rampa clássica de 5 exercícios que usávamos no frontend
+        const baseExercises = [
+            { id: 'ex_1', type: 'listen_isolate', ipa: '/p/', text: "Ouça o som isolado", advTip: "Articulação: Bilabial plosiva.", audio: "p_sound" },
+            { id: 'ex_2', type: 'minimal_pair', ipa: '/p/ vs /b/', text: "Qual som você ouviu?", advTip: "Diferença: Vibração.", options: ["Pat", "Bat"], answer: 0 },
+            { id: 'ex_3', type: 'repeat_isolate', ipa: '/p/', text: "Grave o som /p/", advTip: "Solte o ar com força.", target: "p" },
+            { id: 'ex_4', type: 'repeat_word', ipa: '/pæt/', text: "Fale a palavra", advTip: "Atenção ao som seco.", target: "pat", displayWord: "Pat" },
+            { id: 'ex_5', type: 'repeat_sentence', ipa: "...", text: "Fale a frase completa", advTip: "Mantenha a fluidez.", target: "pat has a pet", displayWord: "Pat has a pet." }
+        ];
+
+        // Injeta os Nós no Banco de Dados com a lista de exercícios
+        const initialNodes = [
+            { nodeId: 'som_1', track: 'som', category: 'core', order: 1, title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', icon: 'record_voice_over', exercises: baseExercises },
+            { nodeId: 'som_2', track: 'som', category: 'core', order: 2, title: '/t/ vs /d/', desc: 'Consoantes Alveolares', icon: 'record_voice_over', exercises: [] }, // Vazio para testar bloqueio
+            { nodeId: 'logica_1', track: 'logica', category: 'core', order: 1, title: 'Ordem SVO', desc: 'Estrutura Base', icon: 'account_tree', exercises: baseExercises },
+            { nodeId: 'contexto_1', track: 'contexto', category: 'core', order: 1, title: 'Sobrevivência', desc: 'Básico', icon: 'directions', exercises: baseExercises },
+            { nodeId: 'contexto_free_1', track: 'contexto', category: 'free', order: 0, title: 'Viagem', desc: 'Aeroporto e Hotel', icon: 'flight', exercises: baseExercises }
+        ];
+
+        await CatalogoNode.insertMany(initialNodes);
+        console.log("🌲 Catálogo PTT Injetado com Sucesso!");
+    }
+
 }
 
 module.exports = EnglishService;

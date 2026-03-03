@@ -462,12 +462,46 @@
         // ===============================================
         // 📚 4. ROTEADOR DE LIÇÕES E ENVIO PARA O BACKEND
         // ===============================================
-        function startNodeLesson(id) {
+        async function startNodeLesson(id) {
             currentNodeId = id;
             document.getElementById('map-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.add('hidden');
+            
+            // NOVO: Faz o Fetch Dinâmico da Lição ao Servidor!
+            try {
+                // Se for o Treino Diário, não bate nesta rota (a lógica já está no botão de Treino Diário)
+                if (id !== 'daily') {
+                    const res = await fetch(`/api/english/node/${id}`);
+                    const data = await res.json();
+                    
+                    if (data.success && data.exercises && data.exercises.length > 0) {
+                        currentExerciseQueue.length = 0; // Limpa a fila atual
+                        currentExerciseQueue.push(...data.exercises); // Enche com os exercícios da Nuvem
+                    } else {
+                        // Se for uma fase vazia (ex: som_2)
+                        alert(data.message || "Fase em construção. Volte em breve!");
+                        document.getElementById('map-screen').classList.remove('hidden');
+                        return;
+                    }
+                }
+            } catch (e) {
+                alert("Falha de comunicação. Verifique a sua ligação.");
+                document.getElementById('map-screen').classList.remove('hidden');
+                return;
+            }
+
+            exerciseIndex = 0;
+            
+            // Constrói os tracinhos de progresso no topo conforme o tamanho real da lição
+            const progressContainer = document.getElementById('lesson-progress');
+            progressContainer.innerHTML = '';
+            currentExerciseQueue.forEach((_, i) => {
+                progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`;
+            });
+
             document.getElementById('lesson-screen').classList.remove('hidden');
-            exerciseIndex = 0; updateProgressBars(); loadExercise();
+            updateProgressBars();
+            loadExercise();
         }
 
         function abortLesson() {

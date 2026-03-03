@@ -42,3 +42,20 @@ exports.getDailyWorkout = async (req, res) => {
         res.status(500).json({ error: 'Falha ao gerar o Treino Diário' });
     }
 };
+
+exports.getNodeExercises = async (req, res) => {
+    try {
+        const { nodeId } = req.params;
+        const node = await CatalogoNode.findOne({ nodeId });
+        
+        // Se o nó existir mas não tiver exercícios (array vazio), avisamos a UI
+        if (!node || !node.exercises || node.exercises.length === 0) {
+            return res.json({ success: false, message: 'Fase em construção pelo Quartel General!' });
+        }
+        
+        res.json({ success: true, exercises: node.exercises });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao buscar lição' });
+    }
+};
