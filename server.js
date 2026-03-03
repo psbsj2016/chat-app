@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
+const fs = require('fs'); // INJETADO: Sistema de arquivos para gerir a pasta de uploads
 
 // Importando os Módulos da Nova Arquitetura
 const { aegisMiddleware, rateLimiter } = require('./src/security');
@@ -39,6 +40,28 @@ app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHe
 
 // Configurações de Terceiros
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+
+// ==============================================================
+// 📎 MOTOR DE UPLOAD DE ARQUIVOS (MULTER)
+// ==============================================================
+// Garante que a pasta de uploads existe para o servidor não falhar
+const dir = './public/uploads';
+if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir, { recursive: true });
+}
+
+// Configuração de onde os ficheiros vão ser guardados
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/uploads/') 
+  },
+  filename: function (req, file, cb) {
+    // Mantém o nome original do ficheiro e adiciona a data para não haver duplicados
+    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'))
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // ==============================================================
 // 🔌 INICIALIZAÇÃO DO MOTOR
