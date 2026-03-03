@@ -72,6 +72,7 @@
             </div>
 
         <button class="btn-submit" id="submitBtn" onclick="injectExercise()">Injetar no Servidor 🚀</button>
+        <button class="btn-submit" id="clearBtn" style="background: var(--danger); margin-top: 10px;" onclick="clearPhase()">💥 Limpar Dados de Teste desta Fase</button>
     </div>
 
     <script>
@@ -169,6 +170,32 @@
                 btn.innerText = "Erro Crítico";
             }
         }
+
+        // Apaga os exercícios falsos da Fase selecionada
+        async function clearPhase() {
+            if(!confirm("ATENÇÃO: Isto vai apagar TODOS os exercícios da fase selecionada! Tem a certeza?")) return;
+            
+            const btn = document.getElementById('clearBtn');
+            btn.innerText = "A limpar a área...";
+            
+            try {
+                const res = await fetch('/api/english/admin/clear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeId: document.getElementById('nodeId').value })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    btn.innerText = "💥 Área Limpa!";
+                    setTimeout(() => { btn.innerText = "💥 Limpar Dados de Teste desta Fase"; }, 3000);
+                }
+            } catch(e) { 
+                alert("Erro de comunicação com a Base de Dados."); 
+                btn.innerText = "Erro Crítico"; 
+            }
+        }
+
     </script>
 </body>
 </html>

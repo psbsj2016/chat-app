@@ -87,3 +87,25 @@ exports.addExerciseToNode = async (req, res) => {
         res.status(500).json({ error: 'Erro crítico ao adicionar exercício.' });
     }
 };
+
+// ==========================================
+// 💥 ADMIN: LIMPAR TODOS OS EXERCÍCIOS DA FASE
+// ==========================================
+exports.clearNodeExercises = async (req, res) => {
+    try {
+        const { nodeId } = req.body;
+        // Substitui o array de exercícios por um array vazio []
+        const node = await CatalogoNode.findOneAndUpdate(
+            { nodeId: nodeId }, 
+            { $set: { exercises: [] } }, 
+            { new: true }
+        );
+
+        if (!node) return res.status(404).json({ success: false, message: 'Nó não encontrado.' });
+        
+        res.json({ success: true, message: '💥 Fase limpa com sucesso!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao limpar a fase.' });
+    }
+};
