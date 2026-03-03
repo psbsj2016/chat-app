@@ -59,3 +59,31 @@ exports.getNodeExercises = async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar lição' });
     }
 };
+
+// ==========================================
+// 🛡️ ROTA ADMIN: INJETOR DE EXERCÍCIOS
+// ==========================================
+exports.addExerciseToNode = async (req, res) => {
+    try {
+        const { nodeId, exercise } = req.body;
+        
+        // Gera um ID único para o novo exercício
+        exercise.id = 'ex_' + Date.now();
+        
+        // Encontra o Nó no Catálogo e "empurra" o exercício para a lista
+        const node = await CatalogoNode.findOneAndUpdate(
+            { nodeId: nodeId },
+            { $push: { exercises: exercise } },
+            { new: true } // Retorna o nó atualizado
+        );
+
+        if (!node) {
+            return res.status(404).json({ success: false, message: 'Nó (Fase) não encontrado no Banco de Dados.' });
+        }
+
+        res.json({ success: true, message: '✅ Exercício injetado com sucesso no QG!', node });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro crítico ao adicionar exercício.' });
+    }
+};

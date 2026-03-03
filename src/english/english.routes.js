@@ -9,4 +9,7 @@ router.post('/attempt', EnglishController.submitAttempt);
 
 router.get('/node/:nodeId', EnglishController.getNodeExercises);
 
+
+router.post('/admin/exercise', EnglishController.addExerciseToNode);
+
 module.exports = router;

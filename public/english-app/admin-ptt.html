@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QG Admin - Inglês PTT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #05050A; --card-bg: rgba(15, 23, 42, 0.9); --primary: #3B82F6; --success: #10B981; --text-main: #F8FAFC; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 40px 20px; display: flex; justify-content: center; }
+        .admin-container { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; width: 100%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        h1 { font-weight: 900; margin-bottom: 5px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
+        p.subtitle { color: #94A3B8; font-size: 14px; margin-bottom: 25px; font-weight: 600; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 13px; font-weight: 800; margin-bottom: 8px; color: #CBD5E1; text-transform: uppercase; }
+        input, select, textarea { width: 100%; background: #0F172A; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px; border-radius: 8px; font-size: 16px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+        
+        .dynamic-fields { padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); margin-top: 20px; }
+        .hidden { display: none !important; }
+        
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: 800; cursor: pointer; text-transform: uppercase; margin-top: 20px; transition: 0.2s; }
+        .btn-submit:hover { background: #2563EB; }
+        .btn-submit.success { background: var(--success); }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <h1>Centro de Comando PTT</h1>
+        <p class="subtitle">Injetor de Missões Neuroeducacionais</p>
+
+        <div class="form-group">
+            <label>1. Selecione a Fase (Nó de Destino)</label>
+            <select id="nodeId">
+                <option value="som_1">Fase 1: Som (/p/ vs /b/)</option>
+                <option value="som_2">Fase 2: Som (/t/ vs /d/)</option>
+                <option value="logica_1">Fase 1: Lógica (Ordem SVO)</option>
+                <option value="contexto_1">Fase 1: Contexto (Sobrevivência)</option>
+                <option value="contexto_free_1">Tema Livre: Viagem (Aeroporto)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>2. Motor Visual (Tipo de Exercício)</label>
+            <select id="type" onchange="toggleFields()">
+                <option value="minimal_pair">Som: Teste de Ouvido (Minimal Pair)</option>
+                <option value="repeat_sentence">Voz: Falar no Microfone (Repeat)</option>
+                <option value="sentence_assembly">Lógica: Arrastar Blocos (Assembly)</option>
+                <option value="context_cloze">Contexto: Preencher Lacuna (Cloze)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Instrução Principal (O que o aluno deve fazer?)</label>
+            <input type="text" id="text" placeholder="Ex: Fale a frase completa..." required>
+        </div>
+
+        <div class="form-group">
+            <label>Dica Avançada / Neuro-Dica (Opcional)</label>
+            <input type="text" id="advTip" placeholder="Ex: Preste atenção na vibração da garganta.">
+        </div>
+
+        <div class="form-group">
+            <label>IPA (Símbolo Fonético) (Opcional)</label>
+            <input type="text" id="ipa" placeholder="Ex: /pæt/">
+        </div>
+
+        <div id="dynamic-zone" class="dynamic-fields">
+            </div>
+
+        <button class="btn-submit" id="submitBtn" onclick="injectExercise()">Injetar no Servidor 🚀</button>
+    </div>
+
+    <script>
+        // Lógica de Interface Dinâmica
+        function toggleFields() {
+            const type = document.getElementById('type').value;
+            const zone = document.getElementById('dynamic-zone');
+            zone.innerHTML = '';
+
+            if (type === 'minimal_pair') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Opções (Separadas por vírgula)</label><input type="text" id="options" placeholder="Pat, Bat"></div>
+                    <div class="form-group"><label>Índice da Resposta Correta (0 ou 1)</label><input type="number" id="answer" value="0"></div>
+                `;
+            } else if (type === 'repeat_sentence') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Alvo para o Motor de Voz Analisar</label><input type="text" id="target" placeholder="pat has a pet"></div>
+                    <div class="form-group"><label>Frase para Mostrar na Tela</label><input type="text" id="displayWord" placeholder="Pat has a pet."></div>
+                `;
+            } else if (type === 'sentence_assembly') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Blocos de Palavras (Separados por vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
+                    <div class="form-group"><label>Frase Correta (A resposta exata)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>
+                `;
+            } else if (type === 'context_cloze') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Situação de Fundo (Contexto)</label><input type="text" id="context" placeholder="Você está num restaurante..."></div>
+                    <div class="form-group"><label>Opções para a Lacuna (Separadas por vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
+                    <div class="form-group"><label>Índice da Resposta Correta (Ex: 0)</label><input type="number" id="answer" value="0"></div>
+                `;
+            }
+        }
+        
+        // Inicializa com o primeiro selecionado
+        toggleFields();
+
+        // Envio para o Backend
+        async function injectExercise() {
+            const btn = document.getElementById('submitBtn');
+            const type = document.getElementById('type').value;
+            
+            // Monta o Objeto Base
+            const exercise = {
+                type: type,
+                text: document.getElementById('text').value,
+                advTip: document.getElementById('advTip').value,
+                ipa: document.getElementById('ipa').value
+            };
+
+            // Adiciona campos dinâmicos
+            if (type === 'minimal_pair') {
+                exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
+                exercise.answer = parseInt(document.getElementById('answer').value);
+            } else if (type === 'repeat_sentence') {
+                exercise.target = document.getElementById('target').value;
+                exercise.displayWord = document.getElementById('displayWord').value;
+            } else if (type === 'sentence_assembly') {
+                exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
+                exercise.answer = document.getElementById('answerStr').value.trim();
+            } else if (type === 'context_cloze') {
+                exercise.context = document.getElementById('context').value;
+                exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
+                exercise.answer = parseInt(document.getElementById('answer').value);
+                // Validação de segurança para o Contexto
+                if (!exercise.text.includes('___')) {
+                    return alert("A Instrução Principal precisa de ter '___' para formar a lacuna!");
+                }
+            }
+
+            const payload = {
+                nodeId: document.getElementById('nodeId').value,
+                exercise: exercise
+            };
+
+            btn.innerText = "A Enviar...";
+            
+            try {
+                const res = await fetch('/api/english/admin/exercise', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    btn.classList.add('success');
+                    btn.innerText = "Injetado com Sucesso! ✔️";
+                    setTimeout(() => { btn.classList.remove('success'); btn.innerText = "Injetar no Servidor 🚀"; document.getElementById('text').value = ''; }, 3000);
+                } else {
+                    alert(data.message || "Erro desconhecido.");
+                    btn.innerText = "Tentar Novamente";
+                }
+            } catch (e) {
+                alert("Falha na comunicação com a API.");
+                btn.innerText = "Erro Crítico";
+            }
+        }
+    </script>
+</body>
+</html>
