@@ -109,3 +109,76 @@ exports.clearNodeExercises = async (req, res) => {
         res.status(500).json({ error: 'Erro ao limpar a fase.' });
     }
 };
+
+// ==========================================
+// 🎯 MOTOR DE TREINO POR HABILIDADE (4 SKILLS)
+// ==========================================
+exports.getWorkoutBySkill = async (req, res) => {
+    try {
+        const { skill } = req.params; // 'listening', 'speaking', 'reading', 'writing'
+        
+        // Mapeia o botão clicado para os motores visuais que existem no QG
+        let validTypes = [];
+        if (skill === 'listening') validTypes = ['listen_isolate', 'minimal_pair'];
+        if (skill === 'speaking') validTypes = ['repeat_word', 'repeat_sentence'];
+        if (skill === 'reading') validTypes = ['context_cloze'];
+        if (skill === 'writing') validTypes = ['sentence_assembly'];
+
+        // Vasculha todos os Nós (Fases) do Banco de Dados
+        const nodes = await CatalogoNode.find({});
+        let matchedExercises = [];
+
+        nodes.forEach(node => {
+            if (node.exercises && node.exercises.length > 0) {
+                // Filtra apenas os exercícios da habilidade escolhida
+                const filtered = node.exercises.filter(ex => validTypes.includes(ex.type));
+                // Cola o ID da fase de origem em cada exercício para os cálculos de XP não falharem
+                const withNodeId = filtered.map(ex => {
+                    let exObj = typeof ex.toObject === 'function' ? ex.toObject() : ex;
+                    return { ...exObj, nodeId: node.nodeId };
+                });
+                matchedExercises.push(...withNodeId);
+            }
+        });
+
+        // Baralha os resultados e envia 5 exercícios táticos
+        matchedExercises = matchedExercises.sort(() => 0.5 - Math.random()).slice(0, 5);
+
+        if (matchedExercises.length === 0) {
+            return res.json({ success: false, message: `Nenhum exercício de ${skill.toUpperCase()} encontrado no QG. Crie no Painel de Admin!` });
+        }
+
+        res.json({ success: true, exercises: matchedExercises });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao gerar treino de habilidade.' });
+    }
+};
+
+// ==========================================
+// 🏋️ ACADEMIA INTENSIVA (TREINO MISTO GERAL)
+// ==========================================
+exports.getTrainingWorkout = async (req, res) => {
+    try {
+        const nodes = await CatalogoNode.find({});
+        let allExercises = [];
+        
+        nodes.forEach(node => {
+            if (node.exercises && node.exercises.length > 0) {
+                const withNodeId = node.exercises.map(ex => {
+                    let exObj = typeof ex.toObject === 'function' ? ex.toObject() : ex;
+                    return { ...exObj, nodeId: node.nodeId };
+                });
+                allExercises.push(...withNodeId);
+            }
+        });
+
+        // Puxa 10 exercícios de qualquer habilidade ou fase (Treino Longo)
+        let randomExercises = allExercises.sort(() => 0.5 - Math.random()).slice(0, 10);
+        
+        if (randomExercises.length === 0) return res.json({ success: false, message: "O QG está vazio." });
+        res.json({ success: true, exercises: randomExercises });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao gerar treino intensivo.' });
+    }
+};

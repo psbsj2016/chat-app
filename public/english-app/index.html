@@ -182,25 +182,26 @@
 
         <div id="english-skills-menu" class="hidden" style="margin-bottom: 20px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
-                <button style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="alert('Listening: Calibrando motor de áudio...')">
+                <button style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('listening')">
                     <span class="material-icons-round" style="font-size: 28px;">headphones</span> Listening
                 </button>
-                <button style="background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="alert('Speaking: Calibrando reconhecimento de voz...')">
+                <button style="background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('speaking')">
                     <span class="material-icons-round" style="font-size: 28px;">mic</span> Speaking
                 </button>
-                <button style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="alert('Reading: Mapeando textos...')">
+                <button style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('reading')">
                     <span class="material-icons-round" style="font-size: 28px;">menu_book</span> Reading
                 </button>
-                <button style="background: rgba(59, 130, 246, 0.1); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="alert('Writing: Preparando motor de sintaxe...')">
+                <button style="background: rgba(59, 130, 246, 0.1); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('writing')">
                     <span class="material-icons-round" style="font-size: 28px;">edit</span> Writing
                 </button>
             </div>
             
-            <button style="background: linear-gradient(135deg, var(--danger), #B91C1C); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4); text-transform: uppercase; letter-spacing: 1px;" onclick="alert('Training: Academia de Fluência em construção!')">
+            <button style="background: linear-gradient(135deg, var(--danger), #B91C1C); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4); text-transform: uppercase; letter-spacing: 1px;" onclick="startTrainingWorkout()">
                 <span class="material-icons-round" style="font-size: 24px;">fitness_center</span> Training
             </button>
         </div>
-        </div>
+
+    </div>
 
     <div id="map-screen" class="app-screen hidden">
         <div class="map-header">
@@ -404,6 +405,73 @@
         }
 
         function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
+
+        // ===============================================
+        // 🚀 INÍCIO DE TREINAMENTO ESPECÍFICO (4 SKILLS & ACADEMIA)
+        // ===============================================
+        async function startSkillWorkout(skill) {
+            document.getElementById('map-screen').classList.add('hidden'); 
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            
+            document.getElementById('lesson-screen').classList.remove('hidden');
+            const area = document.getElementById('exercise-area');
+            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">Montando treino de ${skill.toUpperCase()}...</h3></div>`;
+            document.getElementById('btn-action').classList.add('hidden'); 
+            document.getElementById('lesson-progress').innerHTML = '';
+
+            try {
+                const res = await fetch(`/api/english/skill/${skill}`);
+                const data = await res.json();
+                
+                if (data.success && data.exercises.length > 0) { 
+                    currentExerciseQueue.length = 0; 
+                    currentExerciseQueue.push(...data.exercises); 
+                    currentNodeId = 'skill_' + skill; 
+                    exerciseIndex = 0;
+                    
+                    const progressContainer = document.getElementById('lesson-progress'); 
+                    currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
+                    
+                    document.getElementById('btn-action').classList.remove('hidden');
+                    loadExercise();
+                } else { 
+                    alert(data.message || "Nenhum exercício disponível."); 
+                    abortLesson(); 
+                }
+            } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
+        }
+
+        async function startTrainingWorkout() {
+            document.getElementById('map-screen').classList.add('hidden'); 
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            
+            document.getElementById('lesson-screen').classList.remove('hidden');
+            const area = document.getElementById('exercise-area');
+            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--danger); animation: spin 1s linear infinite;">fitness_center</div><h3 style="margin-top:20px; color:white;">Preparando Academia...</h3></div>`;
+            document.getElementById('btn-action').classList.add('hidden'); 
+            document.getElementById('lesson-progress').innerHTML = '';
+
+            try {
+                const res = await fetch(`/api/english/training/mix`);
+                const data = await res.json();
+                
+                if (data.success && data.exercises.length > 0) { 
+                    currentExerciseQueue.length = 0; 
+                    currentExerciseQueue.push(...data.exercises); 
+                    currentNodeId = 'training_mix'; 
+                    exerciseIndex = 0;
+                    
+                    const progressContainer = document.getElementById('lesson-progress'); 
+                    currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
+                    
+                    document.getElementById('btn-action').classList.remove('hidden');
+                    loadExercise();
+                } else { 
+                    alert("A base de dados do QG está vazia."); 
+                    abortLesson(); 
+                }
+            } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
+        }
 
         // ===============================================
         // 🚀 4. INÍCIO DE LIÇÃO E RENDERIZAÇÃO
