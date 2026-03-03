@@ -18,6 +18,7 @@
             --daily-color: #F59E0B;
             --danger: #EF4444;
             --primary: #3B82F6;
+            --perf-color: #F43F5E;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; }
@@ -117,6 +118,12 @@
         .feedback-text { min-height: 24px; font-weight: 800; margin-top: 15px; font-size: 14px; }
         
         .chic-btn { border: none; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+
+        /* 🔥 HUD DE PERFORMANCE 🔥 */
+        .perf-hud { background: rgba(244, 63, 94, 0.1); border: 1px solid var(--perf-color); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2); }
+        .perf-timer { color: var(--perf-color); font-family: monospace; font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 5px; }
+        .perf-timer.urgent { animation: blinkRed 1s infinite; }
+        @keyframes blinkRed { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -174,7 +181,7 @@
         </div>
 
         <div class="section-title" style="margin-top: 30px; display: flex; align-items: center; gap: 8px;">
-            <span class="material-icons-round" style="color: #F43F5E;">speed</span> 
+            <span class="material-icons-round" style="color: var(--perf-color);">speed</span> 
             <span style="color: white; font-size: 16px;">Área de Performance</span>
         </div>
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Treino de execução real. Meça sua fluidez, tempo de resposta e precisão.</p>
@@ -255,6 +262,12 @@
             </div>
         </div>
 
+        <div id="performance-hud" class="perf-hud hidden">
+            <div class="perf-timer" id="perf-timer-display">
+                <span class="material-icons-round">timer</span> <span id="perf-time-value">00:15</span>
+            </div>
+            <div style="color: white; font-weight: 900; font-size: 14px; letter-spacing: 1px;" id="perf-skill-label">SKILL</div>
+        </div>
         <div class="exercise-area" id="exercise-area"></div>
 
         <div class="action-footer">
@@ -265,7 +278,7 @@
 
     <script>
         // ===============================================
-        // 🧠 LÓGICA DE ABAS (PERFORMANCE) E INTEGRAÇÃO BACKEND
+        // 🧠 LÓGICA DE ABAS E VARIÁVEIS DE ESTADO
         // ===============================================
         
         function switchPerformanceTab(tab) {
@@ -290,18 +303,9 @@
         let userMicros = []; 
 
         const nodesCatalog = {
-            som: [
-                { id: 'som_1', type: 'core', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', icon: 'record_voice_over' },
-                { id: 'som_2', type: 'core', title: '/t/ vs /d/', desc: 'Consoantes Alveolares', icon: 'record_voice_over' }
-            ],
-            logica: [
-                { id: 'logica_1', type: 'core', title: 'Ordem SVO', desc: 'Estrutura Base', icon: 'account_tree' },
-                { id: 'logica_free_1', type: 'free', title: 'Condicionais', desc: 'If I were...', icon: 'lock' }
-            ],
-            contexto: [
-                { id: 'contexto_1', type: 'core', title: 'Sobrevivência', desc: 'Básico', icon: 'directions' },
-                { id: 'contexto_free_1', type: 'free', title: 'Viagem', desc: 'Aeroporto e Hotel', icon: 'flight' }
-            ]
+            som: [{ id: 'som_1', type: 'core', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', icon: 'record_voice_over' }],
+            logica: [{ id: 'logica_1', type: 'core', title: 'Ordem SVO', desc: 'Estrutura Base', icon: 'account_tree' }],
+            contexto: [{ id: 'contexto_1', type: 'core', title: 'Sobrevivência', desc: 'Básico', icon: 'directions' }]
         };
 
         const currentExerciseQueue = [];
@@ -318,6 +322,12 @@
         
         let assembledSentence = [];
         let poolWords = [];
+
+        // Variáveis Exclusivas da Performance
+        let isPerformanceMode = false;
+        let currentPerfSkill = '';
+        let perfTimerInterval = null;
+        let perfSecondsRemaining = 0;
 
         window.addEventListener('DOMContentLoaded', async () => {
             if(!myId) return document.getElementById('global-level-text').innerText = "Erro: ID não encontrado.";
@@ -385,13 +395,55 @@
             });
         }
 
-        function toggleAdvancedMode() {
-            isAdvancedMode = document.getElementById('advanced-mode-toggle').checked;
-            loadExercise();
+        function toggleAdvancedMode() { isAdvancedMode = document.getElementById('advanced-mode-toggle').checked; loadExercise(); }
+
+        // ===============================================
+        // ⏱️ MOTOR DO CRONÓMETRO DE PERFORMANCE
+        // ===============================================
+        function startPerfTimer(seconds) {
+            clearInterval(perfTimerInterval);
+            perfSecondsRemaining = seconds;
+            updateTimerUI();
+            document.getElementById('perf-timer-display').classList.remove('urgent');
+            
+            perfTimerInterval = setInterval(() => {
+                perfSecondsRemaining--;
+                updateTimerUI();
+                
+                if (perfSecondsRemaining <= 5) {
+                    document.getElementById('perf-timer-display').classList.add('urgent');
+                }
+
+                if(perfSecondsRemaining <= 0) {
+                    clearInterval(perfTimerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            document.getElementById('perf-time-value').innerText = `00:${perfSecondsRemaining.toString().padStart(2, '0')}`;
+        }
+
+        function stopPerfTimer() {
+            clearInterval(perfTimerInterval);
+            document.getElementById('perf-timer-display').classList.remove('urgent');
+        }
+
+        function handleTimeOut() {
+            if(stepState !== 'ready') return;
+            if(isRecording) stopMic();
+            
+            setFeedback("Tempo Esgotado! Agilidade é chave.", "var(--danger)");
+            const btn = document.getElementById('btn-action');
+            btn.className = "action-btn";
+            btn.innerText = "Continuar";
+            stepState = 'verified';
+            sendAttemptToBackend(0); // 0 pontos pela demora
         }
 
         // ===============================================
-        // 🗺️ 3. MAPA LINEAR (NÚCLEO ESTRUTURAL)
+        // 🗺️ 3. MAPA LINEAR (ESTRUTURAL)
         // ===============================================
         function openMap(track) {
             currentTrack = track;
@@ -423,27 +475,8 @@
                 const btnClass = node.status === 'unlocked' ? 'unlocked' : node.status === 'completed' ? 'completed' : 'locked';
                 const clickAction = node.status !== 'locked' ? `onclick="startNodeLesson('${node.id}')"` : '';
                 const bgStyle = node.status === 'unlocked' ? `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;` : (node.status === 'completed' ? `background-color: var(--som-color);` : '');
-                
-                coreContainer.innerHTML += `
-                    <div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
+                coreContainer.innerHTML += `<div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
             });
-
-            const freeNodes = catalog.filter(n => n.type === 'free');
-            if (freeNodes.length > 0) {
-                document.getElementById('free-themes-title').style.display = 'block';
-                if(coreComplete) gateContainer.innerHTML = `<div class="gate-divider unlocked"><span class="material-icons-round">lock_open</span> Zona de Expansão Desbloqueada</div>`;
-                else gateContainer.innerHTML = `<div class="gate-divider"><span class="material-icons-round">lock</span> Conclua o núcleo para desbloquear a Zona Livre</div>`;
-
-                freeNodes.forEach((node) => {
-                    const micro = userMicros.find(m => m.nodeId === node.id);
-                    const isLocked = !coreComplete && (!micro || !micro.isUnlocked);
-                    const cardClass = isLocked ? 'locked' : '';
-                    const clickAction = !isLocked ? `onclick="startNodeLesson('${node.id}')"` : '';
-                    const iconColor = isLocked ? '#64748B' : color;
-                    freeContainer.innerHTML += `
-                        <div class="free-theme-card ${cardClass}" ${clickAction}><span class="material-icons-round free-theme-icon" style="color: ${iconColor};">${node.icon}</span><div style="font-size: 14px; font-weight: 800;">${node.title}</div><div style="font-size: 10px; color: var(--text-muted);">${node.desc}</div></div>`;
-                });
-            } else { document.getElementById('free-themes-title').style.display = 'none'; }
         }
 
         function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
@@ -452,66 +485,50 @@
         // 🚀 INÍCIO DE TREINAMENTO ESPECÍFICO (PERFORMANCE)
         // ===============================================
         async function startSkillWorkout(skill) {
-            document.getElementById('map-screen').classList.add('hidden'); 
-            document.getElementById('dashboard-screen').classList.add('hidden');
+            isPerformanceMode = true; currentPerfSkill = skill;
+            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
             
             document.getElementById('lesson-screen').classList.remove('hidden');
             const area = document.getElementById('exercise-area');
             area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">Montando treino de ${skill.toUpperCase()}...</h3></div>`;
-            document.getElementById('btn-action').classList.add('hidden'); 
-            document.getElementById('lesson-progress').innerHTML = '';
+            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = '';
 
             try {
                 const res = await fetch(`/api/english/skill/${skill}`);
                 const data = await res.json();
                 
                 if (data.success && data.exercises.length > 0) { 
-                    currentExerciseQueue.length = 0; 
-                    currentExerciseQueue.push(...data.exercises); 
-                    currentNodeId = 'skill_' + skill; 
-                    exerciseIndex = 0;
-                    
+                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
+                    currentNodeId = 'skill_' + skill; exerciseIndex = 0;
                     const progressContainer = document.getElementById('lesson-progress'); 
                     currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                    
                     document.getElementById('btn-action').classList.remove('hidden');
                     loadExercise();
-                } else { 
-                    alert(data.message || "Nenhum exercício disponível."); 
-                    abortLesson(); 
-                }
+                } else { alert(data.message || "Nenhum exercício disponível."); abortLesson(); }
             } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
         }
 
         async function startTrainingWorkout() {
-            document.getElementById('map-screen').classList.add('hidden'); 
-            document.getElementById('dashboard-screen').classList.add('hidden');
+            isPerformanceMode = true; currentPerfSkill = 'mix';
+            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
             
             document.getElementById('lesson-screen').classList.remove('hidden');
             const area = document.getElementById('exercise-area');
             area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--danger); animation: spin 1s linear infinite;">fitness_center</div><h3 style="margin-top:20px; color:white;">Preparando Academia...</h3></div>`;
-            document.getElementById('btn-action').classList.add('hidden'); 
-            document.getElementById('lesson-progress').innerHTML = '';
+            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = '';
 
             try {
                 const res = await fetch(`/api/english/training/mix`);
                 const data = await res.json();
                 
                 if (data.success && data.exercises.length > 0) { 
-                    currentExerciseQueue.length = 0; 
-                    currentExerciseQueue.push(...data.exercises); 
-                    currentNodeId = 'training_mix'; 
-                    exerciseIndex = 0;
-                    
+                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
+                    currentNodeId = 'training_mix'; exerciseIndex = 0;
                     const progressContainer = document.getElementById('lesson-progress'); 
                     currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                    
                     document.getElementById('btn-action').classList.remove('hidden');
                     loadExercise();
-                } else { 
-                    alert("A base de dados do QG está vazia."); 
-                    abortLesson(); 
-                }
+                } else { alert("A base de dados do QG está vazia."); abortLesson(); }
             } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
         }
 
@@ -520,6 +537,7 @@
         // ===============================================
         async function startDailyWorkout() {
             if(!myId) return alert("Erro: ID não encontrado.");
+            isPerformanceMode = false;
             const btn = document.querySelector('.daily-workout-btn'); const originalHtml = btn.innerHTML;
             btn.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><span class="material-icons-round" style="animation: pulse 1s infinite;">sync</span> Montando Treino...</div>`; btn.style.pointerEvents = 'none';
 
@@ -528,7 +546,6 @@
                 if (data.success && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
                 else { currentExerciseQueue.forEach(ex => ex.nodeId = 'som_1'); }
                 currentNodeId = 'daily'; exerciseIndex = 0;
-                
                 const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
                 currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
                 
@@ -539,26 +556,23 @@
         }
 
         async function startNodeLesson(id) {
-            currentNodeId = id;
+            isPerformanceMode = false; currentNodeId = id;
             document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            
             try {
                 if (id !== 'daily') {
                     const res = await fetch(`/api/english/node/${id}`); const data = await res.json();
                     if (data.success && data.exercises && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
                     else { alert(data.message || "Fase em construção."); document.getElementById('map-screen').classList.remove('hidden'); return; }
                 }
-            } catch (e) { alert("Falha de comunicação."); document.getElementById('map-screen').classList.remove('hidden'); return; }
+            } catch (e) { alert("Falha."); document.getElementById('map-screen').classList.remove('hidden'); return; }
 
-            exerciseIndex = 0;
-            const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
+            exerciseIndex = 0; const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
             currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-
             document.getElementById('lesson-screen').classList.remove('hidden'); updateProgressBars(); loadExercise();
         }
 
         function abortLesson() {
-            if(confirm("Abandonar treino?")) { if(isRecording) stopMic(); window.speechSynthesis.cancel(); document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
+            if(confirm("Abandonar treino?")) { stopPerfTimer(); if(isRecording) stopMic(); window.speechSynthesis.cancel(); document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
         }
 
         // 🔥 O MOTOR DE EXERCÍCIOS RESTAURADO E BLINDADO
@@ -569,45 +583,48 @@
             
             document.getElementById('lesson-feedback').innerText = '';
             const btn = document.getElementById('btn-action');
-            btn.className = "action-btn";
-            btn.innerText = "Verificar";
+            btn.className = "action-btn"; btn.innerText = "Verificar";
             
+            // LÓGICA DO HUD DE PERFORMANCE E CRONÓMETRO
+            if (isPerformanceMode) {
+                document.getElementById('performance-hud').classList.remove('hidden');
+                document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'TRAINING MIX' : currentPerfSkill.toUpperCase();
+                
+                // Dificuldade Automática: Ajusta o tempo pelo tipo de exercício
+                let timeAllowed = 15; // padrão
+                if(currentExercise.type === 'sentence_assembly' || currentExercise.type === 'context_cloze') timeAllowed = 20; // Requer leitura
+                if(currentExercise.type.startsWith('repeat')) timeAllowed = 10; // Falar tem de ser instintivo
+                
+                startPerfTimer(timeAllowed);
+            } else {
+                document.getElementById('performance-hud').classList.add('hidden');
+            }
+
             const area = document.getElementById('exercise-area');
             let html = '';
             const ipaBlock = (isAdvancedMode && currentExercise.ipa) ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
             const advBlock = (isAdvancedMode && currentExercise.advTip) ? `<div class="advanced-tip"><span class="material-icons-round">psychology</span> ${currentExercise.advTip}</div>` : '';
 
-            // 0. NOVO: MOTOR DE INTRODUÇÃO (Apenas Ouvir)
+            // Motores Visuais
             if (currentExercise.type === 'listen_isolate') {
                 const audioTxt = currentExercise.audioText || currentExercise.text;
                 html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><p style="color:var(--text-muted); font-size:12px; margin-top: 10px;">Toque para ouvir</p>`;
                 btn.innerText = "Continuar"; btn.className = "action-btn ready";
-
-            // 1. MOTOR DE SOM (Minimal Pairs)
             } else if (currentExercise.type === 'minimal_pair') {
                 const audioTxt = currentExercise.audioText || currentExercise.options[currentExercise.answer];
                 html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
-            
-            // 2. MOTOR DE VOZ (Speaking)
             } else if (currentExercise.type.startsWith('repeat')) {
                 html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="target-word">${currentExercise.displayWord}</div><button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px; margin-top: 10px;">Toque para falar</p>`;
                 btn.innerText = "Pular"; btn.className = "action-btn";
-            
-            // 3. NOVO: MOTOR DE LÓGICA (Sentence Assembly)
             } else if (currentExercise.type === 'sentence_assembly') {
-                assembledSentence = []; // Reinicia o quadro
-                poolWords = [...currentExercise.options]; // As palavras misturadas
+                assembledSentence = []; poolWords = [...currentExercise.options];
                 html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="assembly-workspace" id="assembly-workspace"></div>`;
                 btn.innerText = "Verificar Lógica";
-
-            // 4. NOVO: MOTOR DE CONTEXTO (Cloze Test)
             } else if (currentExercise.type === 'context_cloze') {
                 html = `${advBlock}
                         <div style="font-size:14px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div>
                         <div class="instruction-text" id="cloze-text" style="font-size: 24px;">${currentExercise.text.replace('___', '<span class="cloze-blank"></span>')}</div>
-                        <div class="options-grid" id="quiz-options">
-                            ${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}
-                        </div>`;
+                        <div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}</div>`;
                 btn.innerText = "Verificar Escolha";
             }
 
@@ -627,26 +644,16 @@
             document.getElementById('btn-action').className = "action-btn ready";
         }
 
-        // Interação: LÓGICA (Arrastar/Clicar Blocos)
         function renderAssemblyWorkspace() {
-            const workspace = document.getElementById('assembly-workspace');
-            if(!workspace) return;
-            
+            const workspace = document.getElementById('assembly-workspace'); if(!workspace) return;
             let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join('');
             let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join('');
-            
-            workspace.innerHTML = `
-                <div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras para formar a frase...</span>'}</div>
-                <div class="word-pool">${poolHtml}</div>
-            `;
-            
-            if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready";
-            else document.getElementById('btn-action').className = "action-btn";
+            workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras...</span>'}</div><div class="word-pool">${poolHtml}</div>`;
+            if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn";
         }
         function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
         function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
 
-        // Interação: CONTEXTO (Preencher Lacuna)
         function selectClozeOption(idx) {
             if(stepState !== 'ready') return; selectedOption = idx;
             document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
@@ -658,6 +665,7 @@
         // ✅ 7. VALIDAÇÃO E ENVIO AO SERVIDOR
         // ===============================================
         function evaluateSpeech(transcript) {
+            if(isPerformanceMode) stopPerfTimer(); // Congela o relógio
             const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase();
             document.getElementById('mic-status').innerText = `Você disse: "${transcript}"`;
             
@@ -672,22 +680,23 @@
             const btn = document.getElementById('btn-action');
 
             if (currentExercise.type === 'listen_isolate') {
+                if(isPerformanceMode) stopPerfTimer();
                 sendAttemptToBackend(100); nextExercise(); return;
             } 
             
             if (stepState === 'verified') { nextExercise(); return; }
             if (stepState !== 'ready') return;
 
-            // Validação: LÓGICA
+            if(isPerformanceMode) stopPerfTimer(); // Congela o relógio assim que envia a resposta
+
             if (currentExercise.type === 'sentence_assembly') {
-                if (assembledSentence.length === 0) return alert("Monte a frase primeiro!");
+                if (assembledSentence.length === 0) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Monte a frase primeiro!"); }
                 const isCorrect = assembledSentence.join(' ') === currentExercise.answer;
                 if (isCorrect) { setFeedback("Perfeito! Sintaxe impecável.", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
                 else { setFeedback(`Incorreto. A ordem certa era:\n"${currentExercise.answer}"`, "var(--danger)"); btn.className = "action-btn"; score = 20; }
                 
-            // Validação: CONTEXTO OU MINIMAL PAIR
             } else if (currentExercise.type === 'minimal_pair' || currentExercise.type === 'context_cloze') {
-                if (selectedOption === null) return alert("Selecione uma opção!");
+                if (selectedOption === null) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Selecione uma opção!"); }
                 const isCorrect = selectedOption === currentExercise.answer;
                 const winColor = currentExercise.type === 'context_cloze' ? 'var(--contexto-color)' : 'var(--som-color)';
                 
@@ -700,6 +709,7 @@
                     document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct');
                 }
             } else if (currentExercise.type.startsWith('repeat')) {
+                if(isPerformanceMode) startPerfTimer(perfSecondsRemaining);
                 return alert("Grave sua voz primeiro clicando no microfone.");
             }
 
@@ -709,30 +719,44 @@
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
         
         async function sendAttemptToBackend(score) {
-            if(!myId) return; const timeTaken = Date.now() - exerciseStartTime;
-            const targetNode = currentExercise.nodeId || currentNodeId;
-            try {
-                const res = await fetch('/api/english/attempt', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: myId, nodeId: targetNode, exerciseId: currentExercise.id || 'ex_0', score: score, timeMs: timeTaken })
-                });
-                const responseData = await res.json();
-                if(responseData.success) {
-                    userStats.globalFluency = responseData.data.macros.globalFluency; userStats.macroSom = responseData.data.macros.som;
-                    userStats.macroLogica = responseData.data.macros.logica; userStats.macroContexto = responseData.data.macros.contexto;
-                }
-            } catch(e) { console.error("Erro de sincronização."); }
+            if(!myId) return; 
+            const timeTaken = Date.now() - exerciseStartTime;
+            
+            // ⚡ SEPARAÇÃO DE ROTAS: PERFORMANCE VS ESTRUTURAL
+            if (isPerformanceMode) {
+                try {
+                    await fetch('/api/english/performance/attempt', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken })
+                    });
+                } catch(e) { console.error("Erro ao enviar Performance."); }
+            } else {
+                const targetNode = currentExercise.nodeId || currentNodeId;
+                try {
+                    const res = await fetch('/api/english/attempt', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: myId, nodeId: targetNode, exerciseId: currentExercise.id || 'ex_0', score: score, timeMs: timeTaken })
+                    });
+                    const responseData = await res.json();
+                    if(responseData.success) {
+                        userStats.globalFluency = responseData.data.macros.globalFluency; userStats.macroSom = responseData.data.macros.som;
+                        userStats.macroLogica = responseData.data.macros.logica; userStats.macroContexto = responseData.data.macros.contexto;
+                    }
+                } catch(e) { console.error("Erro de sincronização."); }
+            }
         }
 
         function nextExercise() { exerciseIndex++; updateProgressBars(); loadExercise(); }
 
         function finishLesson() {
             document.getElementById('exercise-area').innerHTML = `
-                <span class="material-icons-round" style="font-size:80px; color:var(--daily-color); margin-bottom:20px;">emoji_events</span>
-                <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Sessão Concluída!</h2>
-                <p style="color:var(--text-muted); font-weight:600;">Progresso salvo na Base de Dados</p>
+                <span class="material-icons-round" style="font-size:80px; color:${isPerformanceMode ? 'var(--perf-color)' : 'var(--daily-color)'}; margin-bottom:20px;">emoji_events</span>
+                <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">${isPerformanceMode ? 'Treino Concluído!' : 'Sessão Concluída!'}</h2>
+                <p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados</p>
             `;
             document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
+            document.getElementById('performance-hud').classList.add('hidden');
+            
             document.getElementById('btn-action').onclick = async () => {
                 document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden');
                 await fetchDashboardData(); 
