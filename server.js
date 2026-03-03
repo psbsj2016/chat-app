@@ -23,6 +23,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// 🔥 A IGNIÇÃO QUE FALTAVA: Ligar o Motor de Tempo Real e os Agendamentos
+initSockets(io);
+startCronJobs();
+
 // ==============================================================
 // 🛡️ MIDDLEWARES
 // ==============================================================
