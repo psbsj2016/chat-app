@@ -470,25 +470,23 @@ function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
 async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!file) return; const fd = new FormData(); fd.append('file', file); const res = await fetch('/upload', {method:'POST', body:fd}); const data = await res.json(); document.getElementById('new-group-photo').src = data.url; }
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }
+
 // ==============================================================
-// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT
+// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT (CORES CORRIGIDAS)
 // ==============================================================
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
 
-    // Se for um grupo, o tratamento de perfil é diferente
     if (isGroupChat) {
         return alert("👥 Este é um Grupo. Toque no nome do grupo no topo para gerir os membros.");
     }
 
     try {
-        // 1. Puxa os dados atualizados do cache (que já foi carregado no início)
         const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
         const user = cachedUsers.find(u => u._id === currentChatId);
 
         if (!user) return alert("❌ Dados do perfil não encontrados no radar.");
 
-        // 2. Extrai e trata os dados (Fallback para caso a pessoa não tenha foto ou telefone)
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         const name = user.displayName || user.email.split('@')[0];
         const email = user.email || 'Não informado';
@@ -496,35 +494,35 @@ window.showCurrentChatProfile = async function() {
         const xp = user.xp || 0;
         const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip');
 
-        // 3. Verifica se o Modal já existe. Se não, fabrica-o dinamicamente!
         let modal = document.getElementById('dynamic-profile-modal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'dynamic-profile-modal';
             modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
             
+            // 🔥 CORES CORRIGIDAS: Usando var(--card-bg), var(--text-color) e var(--input-bg)
             modal.innerHTML = `
-                <div style="background:var(--bg-color, #05050A); border: 1px solid rgba(255,255,255,0.1); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+                <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
                     
-                    <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color:var(--text-muted, #94A3B8); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
+                    <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
                     
                     <img id="dp-photo" src="" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
                     
-                    <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color:white; font-size:22px;"></h2>
+                    <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;"></h2>
                     <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;"></div>
 
-                    <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));">
                         <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                            <span class="material-icons-round" style="color:var(--text-muted, #94A3B8); font-size:20px;">email</span> 
-                            <span id="dp-email" style="color:white; font-weight:600; word-break: break-all;"></span>
+                            <span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> 
+                            <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;"></span>
                         </div>
                         <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                            <span class="material-icons-round" style="color:var(--text-muted, #94A3B8); font-size:20px;">phone</span> 
-                            <span id="dp-phone" style="color:white; font-weight:600;"></span>
+                            <span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> 
+                            <span id="dp-phone" style="color: var(--text-color); font-weight:600;"></span>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <span class="material-icons-round" style="color:var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> 
-                            <b style="color:white; font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color:var(--brand-primary, #3B82F6);"></span></b>
+                            <span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> 
+                            <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);"></span></b>
                         </div>
                     </div>
                 </div>
@@ -532,7 +530,6 @@ window.showCurrentChatProfile = async function() {
             document.body.appendChild(modal);
         }
 
-        // 4. Preenche o Modal com os dados do alvo
         document.getElementById('dp-photo').src = photo;
         document.getElementById('dp-name').innerText = name;
         document.getElementById('dp-vip').innerHTML = isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : '';
@@ -540,8 +537,7 @@ window.showCurrentChatProfile = async function() {
         document.getElementById('dp-phone').innerText = phone;
         document.getElementById('dp-xp').innerText = xp;
 
-        // 5. Oculta o menu de 3 pontos do chat (se estiver aberto) e Exibe o Modal
-        const dropMenu = document.getElementById('chat-dropdown-menu'); // Ajuste este ID se o seu menu tiver outro nome
+        const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
         if (dropMenu) dropMenu.classList.add('hidden');
 
         modal.style.display = 'flex';

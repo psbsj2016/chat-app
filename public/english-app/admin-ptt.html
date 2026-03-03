@@ -31,13 +31,11 @@
         .btn-danger { background: var(--danger); margin-top: 10px; }
         .btn-danger:hover { box-shadow: 0 5px 15px rgba(239,68,68,0.4); }
 
-        /* Estilos do Arsenal (Lado Direito) */
         .exercise-card { background: #0F172A; border-left: 4px solid var(--primary); padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .exercise-card.listening { border-color: #10B981; }
         .exercise-card.speaking { border-color: #F59E0B; }
         .exercise-card.reading { border-color: #8B5CF6; }
         .exercise-card.writing { border-color: #3B82F6; }
-        
         .ex-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; background: rgba(255,255,255,0.1); }
         .ex-text { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
         .ex-details { font-size: 12px; color: #94A3B8; display: flex; flex-direction: column; gap: 3px; }
@@ -51,14 +49,11 @@
     </div>
 
     <div class="dashboard-grid">
-        
         <div class="panel">
-            <div class="panel-title">
-                <span>1. Forjar Nova Missão</span>
-            </div>
+            <div class="panel-title"><span>1. Forjar Nova Missão</span></div>
 
             <div class="form-group">
-                <label><span class="material-icons-round" style="font-size:16px; vertical-align:middle;">map</span> Selecione a Fase (Destino)</label>
+                <label>Selecione a Fase (Destino)</label>
                 <select id="nodeId" onchange="loadSavedExercises()">
                     <option value="som_1">Fase 1: Som (/p/ vs /b/)</option>
                     <option value="som_2">Fase 2: Som (/t/ vs /d/)</option>
@@ -69,23 +64,29 @@
             </div>
 
             <div class="form-group">
-                <label><span class="material-icons-round" style="font-size:16px; vertical-align:middle;">psychology</span> Habilidade (Motor Visual)</label>
+                <label>Habilidade (Motor Visual)</label>
                 <select id="type" onchange="toggleFields()">
+                    <option value="listen_isolate">🔊 LISTENING: Ouvir e Aprender (Apresentação de Áudio)</option>
                     <option value="minimal_pair">🎧 LISTENING: Teste de Ouvido (Múltipla Escolha)</option>
                     <option value="repeat_sentence">🎙️ SPEAKING: Falar no Microfone (Avaliação de Voz)</option>
-                    <option value="context_cloze">📖 READING: Interpretação (Preencher Lacuna no Contexto)</option>
+                    <option value="context_cloze">📖 READING: Interpretação (Preencher Lacuna)</option>
                     <option value="sentence_assembly">✍️ WRITING: Sintaxe (Arrastar Blocos de Frase)</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label>Instrução para o Aluno</label>
-                <input type="text" id="text" placeholder="Ex: Fale a frase completa..." required>
+                <label>Instrução para o Aluno na Tela</label>
+                <input type="text" id="text" placeholder="Ex: Ouça com atenção..." required>
             </div>
 
             <div class="form-group">
                 <label>Dica Neuro-Cognitiva (Opcional)</label>
-                <input type="text" id="advTip" placeholder="Ex: Preste atenção na vibração da garganta.">
+                <input type="text" id="advTip" placeholder="Ex: Preste atenção na vibração.">
+            </div>
+            
+            <div class="form-group">
+                <label>Símbolo Fonético / IPA (Opcional)</label>
+                <input type="text" id="ipa" placeholder="Ex: /pæt/">
             </div>
 
             <div id="dynamic-zone" class="dynamic-fields"></div>
@@ -99,27 +100,25 @@
                 <span>2. Arsenal da Fase Selecionada</span>
                 <button onclick="loadSavedExercises()" style="background:transparent; border:none; color:var(--primary); cursor:pointer;"><span class="material-icons-round">sync</span></button>
             </div>
-            
             <div id="arsenal-status" style="font-size: 13px; color: #94A3B8; margin-bottom: 15px;">Sincronizando com o Quartel General...</div>
-            
-            <div id="arsenal-list" style="display: flex; flex-direction: column; flex: 1;">
-                </div>
+            <div id="arsenal-list" style="display: flex; flex-direction: column; flex: 1;"></div>
         </div>
-
     </div>
 
     <script>
-        // ==========================================
-        // 1. LÓGICA DE INTERFACE E FORMULÁRIO
-        // ==========================================
         function toggleFields() {
             const type = document.getElementById('type').value;
             const zone = document.getElementById('dynamic-zone');
             
-            if (type === 'minimal_pair') {
+            if (type === 'listen_isolate') {
+                zone.innerHTML = `
+                    <div class="form-group"><label style="color:var(--success);">Texto do Áudio (O que a voz deve falar)</label><input type="text" id="audioText" placeholder="Ex: Pat" style="border-color:var(--success);"></div>
+                `;
+            } else if (type === 'minimal_pair') {
                 zone.innerHTML = `
                     <div class="form-group"><label>Opções (Separadas por vírgula)</label><input type="text" id="options" placeholder="Pat, Bat"></div>
-                    <div class="form-group"><label>Índice da Resposta Certa (Ex: 0 para a primeira)</label><input type="number" id="answer" value="0"></div>
+                    <div class="form-group"><label>Índice da Resposta Certa (Ex: 0)</label><input type="number" id="answer" value="0"></div>
+                    <div class="form-group"><label style="color:var(--success);">Texto do Áudio (O que a voz deve falar)</label><input type="text" id="audioText" placeholder="Ex: Pat" style="border-color:var(--success);"></div>
                 `;
             } else if (type === 'repeat_sentence') {
                 zone.innerHTML = `
@@ -141,28 +140,26 @@
             }
         }
         
-        // Inicializa a UI
         toggleFields();
-        loadSavedExercises(); // Puxa os dados logo ao abrir a página
+        loadSavedExercises();
 
-        // ==========================================
-        // 2. COMUNICAÇÃO COM O BACKEND (INJETAR)
-        // ==========================================
         async function injectExercise() {
             const btn = document.getElementById('submitBtn');
             const type = document.getElementById('type').value;
             
-            // Base
             const exercise = {
                 type: type,
                 text: document.getElementById('text').value,
-                advTip: document.getElementById('advTip').value
+                advTip: document.getElementById('advTip').value,
+                ipa: document.getElementById('ipa').value
             };
 
-            // Específicos
-            if (type === 'minimal_pair') {
+            if (type === 'listen_isolate') {
+                exercise.audioText = document.getElementById('audioText').value;
+            } else if (type === 'minimal_pair') {
                 exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
                 exercise.answer = parseInt(document.getElementById('answer').value);
+                exercise.audioText = document.getElementById('audioText').value;
             } else if (type === 'repeat_sentence') {
                 exercise.target = document.getElementById('target').value;
                 exercise.displayWord = document.getElementById('displayWord').value;
@@ -171,10 +168,9 @@
                 exercise.answer = document.getElementById('answerStr').value.trim();
             } else if (type === 'context_cloze') {
                 exercise.context = document.getElementById('context').value;
-                exercise.text = document.getElementById('clozeText').value; // Sobrescreve o text normal
+                exercise.text = document.getElementById('clozeText').value; 
                 exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
                 exercise.answer = parseInt(document.getElementById('answer').value);
-                if (!exercise.text.includes('___')) return alert("Erro: O texto do Context Cloze precisa ter '___' para criar a lacuna.");
             }
 
             btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A Injetar...`;
@@ -187,24 +183,18 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    btn.style.background = "var(--success)";
-                    btn.innerHTML = `<span class="material-icons-round">check_circle</span> Sucesso!`;
+                    btn.style.background = "var(--success)"; btn.innerHTML = `<span class="material-icons-round">check_circle</span> Sucesso!`;
                     setTimeout(() => { btn.style.background = ""; btn.innerHTML = `<span class="material-icons-round">rocket_launch</span> Injetar no Servidor`; }, 2000);
-                    loadSavedExercises(); // ATUALIZA O ARSENAL AUTOMATICAMENTE!
+                    loadSavedExercises(); 
                 } else alert(data.message);
             } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; }
         }
 
-        // ==========================================
-        // 3. O NOVO MOTOR DE LEITURA DO ARSENAL
-        // ==========================================
         async function loadSavedExercises() {
             const nodeId = document.getElementById('nodeId').value;
             const statusEl = document.getElementById('arsenal-status');
             const listEl = document.getElementById('arsenal-list');
-            
-            statusEl.innerText = "A Rastrear Banco de Dados...";
-            listEl.innerHTML = '';
+            statusEl.innerText = "A Rastrear Banco de Dados..."; listEl.innerHTML = '';
 
             try {
                 const res = await fetch(`/api/english/node/${nodeId}`);
@@ -212,59 +202,31 @@
 
                 if (data.success && data.exercises && data.exercises.length > 0) {
                     statusEl.innerText = `${data.exercises.length} Missões ativas nesta Fase.`;
-                    
                     data.exercises.forEach((ex, index) => {
                         let skillName = ""; let cssClass = ""; let detailsHtml = "";
-
-                        // Mapeia o tipo para a Habilidade CEFR
-                        if (ex.type === 'minimal_pair') { skillName = "🎧 Listening"; cssClass = "listening"; detailsHtml = `<b>Opções:</b> ${ex.options.join(' / ')} <br><b>Correta:</b> Índice ${ex.answer}`; }
+                        
+                        if (ex.type === 'listen_isolate') { skillName = "🔊 Ouvir"; cssClass = "listening"; detailsHtml = `<b>Pronúncia Exata:</b> ${ex.audioText}`; }
+                        else if (ex.type === 'minimal_pair') { skillName = "🎧 Listening"; cssClass = "listening"; detailsHtml = `<b>Pronúncia Exata:</b> ${ex.audioText || ex.options[ex.answer]}<br><b>Opções:</b> ${ex.options.join(' / ')}`; }
                         else if (ex.type.startsWith('repeat')) { skillName = "🎙️ Speaking"; cssClass = "speaking"; detailsHtml = `<b>Alvo (Voz):</b> ${ex.target}`; }
-                        else if (ex.type === 'context_cloze') { skillName = "📖 Reading"; cssClass = "reading"; detailsHtml = `<b>Contexto:</b> ${ex.context}<br><b>Correta:</b> Índice ${ex.answer}`; }
-                        else if (ex.type === 'sentence_assembly') { skillName = "✍️ Writing"; cssClass = "writing"; detailsHtml = `<b>Frase Completa:</b> ${ex.answer}`; }
+                        else if (ex.type === 'context_cloze') { skillName = "📖 Reading"; cssClass = "reading"; detailsHtml = `<b>Contexto:</b> ${ex.context}`; }
+                        else if (ex.type === 'sentence_assembly') { skillName = "✍️ Writing"; cssClass = "writing"; detailsHtml = `<b>Frase Correta:</b> ${ex.answer}`; }
 
-                        // Cria o Cartão Visual
-                        listEl.innerHTML += `
-                            <div class="exercise-card ${cssClass}">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span class="ex-badge">${skillName}</span>
-                                    <span style="font-size:10px; color:#64748B;">Nº ${index + 1}</span>
-                                </div>
-                                <div class="ex-text">${ex.text}</div>
-                                <div class="ex-details">${detailsHtml}</div>
-                            </div>
-                        `;
+                        listEl.innerHTML += `<div class="exercise-card ${cssClass}"><div style="display:flex; justify-content:space-between; align-items:center;"><span class="ex-badge">${skillName}</span><span style="font-size:10px; color:#64748B;">Nº ${index + 1}</span></div><div class="ex-text">${ex.text}</div><div class="ex-details">${detailsHtml}</div></div>`;
                     });
                 } else {
-                    statusEl.innerText = "Aviso: Nenhuma missão cadastrada.";
-                    listEl.innerHTML = `<div style="text-align:center; color:#64748B; padding:30px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">folder_open</span><br>Fase vazia ou apenas com testes do sistema.</div>`;
+                    statusEl.innerText = "Aviso: Nenhuma missão cadastrada."; listEl.innerHTML = `<div style="text-align:center; color:#64748B; padding:30px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">folder_open</span><br>Fase vazia.</div>`;
                 }
-            } catch (e) {
-                statusEl.innerText = "Falha ao conectar com o Quartel General.";
-            }
+            } catch (e) { statusEl.innerText = "Falha ao conectar com o Quartel General."; }
         }
 
-        // ==========================================
-        // 4. LIMPEZA TOTAL DA FASE
-        // ==========================================
         async function clearPhase() {
-            if(!confirm("ALERTA MÁXIMO: Isto vai destruir todas as missões da fase selecionada. Tem certeza?")) return;
-            
-            const btn = document.getElementById('clearBtn');
-            const originalText = btn.innerHTML;
+            if(!confirm("ALERTA MÁXIMO: Isto vai destruir todas as missões desta fase. Tem certeza?")) return;
+            const btn = document.getElementById('clearBtn'); const originalText = btn.innerHTML;
             btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A Limpar...`;
-            
             try {
-                const res = await fetch('/api/english/admin/clear', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nodeId: document.getElementById('nodeId').value })
-                });
+                const res = await fetch('/api/english/admin/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: document.getElementById('nodeId').value }) });
                 const data = await res.json();
-                
-                if(data.success) {
-                    btn.innerHTML = `<span class="material-icons-round">done_all</span> Fase Limpa!`;
-                    setTimeout(() => { btn.innerHTML = originalText; }, 2000);
-                    loadSavedExercises(); // ATUALIZA O ARSENAL AUTOMATICAMENTE!
-                }
+                if(data.success) { btn.innerHTML = `<span class="material-icons-round">done_all</span> Fase Limpa!`; setTimeout(() => { btn.innerHTML = originalText; }, 2000); loadSavedExercises(); }
             } catch(e) { alert("Erro ao limpar."); btn.innerHTML = originalText; }
         }
     </script>

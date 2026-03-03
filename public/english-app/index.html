@@ -411,32 +411,20 @@
             if(confirm("Abandonar treino?")) { if(isRecording) stopMic(); window.speechSynthesis.cancel(); document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
         }
 
-        // ===============================================
-        // 🧩 5. MOTORES VISUAIS DE RENDERIZAÇÃO
-        // ===============================================
-        function updateProgressBars() { document.querySelectorAll('.lesson-step').forEach((s, i) => s.classList.toggle('active', i <= exerciseIndex)); }
-        function toggleAdvancedMode() { isAdvancedMode = document.getElementById('advanced-mode-toggle').checked; loadExercise(); }
-
-        function loadExercise() {
-            if (exerciseIndex >= currentExerciseQueue.length) { finishLesson(); return; }
-            currentExercise = currentExerciseQueue[exerciseIndex];
-            selectedOption = null; stepState = 'ready'; setFeedback("", ""); exerciseStartTime = Date.now();
-            
-            const area = document.getElementById('exercise-area');
-            const btn = document.getElementById('btn-action');
-            let html = '';
-            const advBlock = isAdvancedMode && currentExercise.advTip ? `<div class="advanced-tip"><span class="material-icons-round">info</span> ${currentExercise.advTip}</div>` : '';
-            const ipaBlock = isAdvancedMode && currentExercise.ipa ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
+            // 0. NOVO: MOTOR DE INTRODUÇÃO (Apenas Ouvir)
+            if (currentExercise.type === 'listen_isolate') {
+                const audioTxt = currentExercise.audioText || currentExercise.text; // Usa o texto exato configurado no QG!
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><p style="color:var(--text-muted); font-size:12px; margin-top: 10px;">Toque para ouvir</p>`;
+                btn.innerText = "Continuar"; btn.className = "action-btn ready";
 
             // 1. MOTOR DE SOM (Minimal Pairs)
-            if (currentExercise.type === 'minimal_pair') {
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${currentExercise.options[currentExercise.answer]}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
+            } else if (currentExercise.type === 'minimal_pair') {
+                const audioTxt = currentExercise.audioText || currentExercise.options[currentExercise.answer]; // Usa o texto exato configurado no QG!
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
                 btn.innerText = "Verificar"; btn.className = "action-btn";
             
-            // 2. MOTOR DE VOZ (Speaking)
+            // 2. MOTOR DE VOZ (Speaking)... (O resto do código fica igual)
             } else if (currentExercise.type.startsWith('repeat')) {
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div>${currentExercise.displayWord ? `<div class="target-word">${currentExercise.displayWord}</div>` : ''}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Toque para gravar</p>`;
-                btn.innerText = "Verificar Gravação"; btn.className = "action-btn";
             
             // 3. NOVO: MOTOR DE LÓGICA (Sentence Assembly)
             } else if (currentExercise.type === 'sentence_assembly') {

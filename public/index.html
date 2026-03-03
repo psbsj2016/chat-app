@@ -306,8 +306,46 @@
                         <span class="material-icons-round" style="color: #3B82F6;">chevron_right</span>
                     </div>
                 </div>
+                
+                <div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid #3B82F6; margin-bottom: 15px; cursor: pointer;" onclick="openImmersiveGame('english-app/index.html', 'INGLÊS PTT')">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #3B82F6; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);"><span class="material-icons-round" style="font-size: 28px; color: white;">record_voice_over</span></div>
+                        <div style="text-align: left; flex: 1;"><h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Inglês PTT</h4><p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Trilha Principal de Aprendizado</p></div>
+                        <span class="material-icons-round" style="color: #3B82F6;">chevron_right</span>
+                    </div>
+                </div>
 
+                <div class="explore-card action-card" style="background: var(--input-bg); border: 1px dashed var(--brand-primary); margin-bottom: 15px; cursor: pointer; padding: 12px 15px;" onclick="document.getElementById('english-skills-menu').classList.toggle('hidden'); const icon = document.getElementById('skills-expand-icon'); icon.innerText = icon.innerText === 'expand_more' ? 'expand_less' : 'expand_more';">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="material-icons-round" style="color: var(--brand-primary); font-size: 20px;">category</span>
+                            <span style="font-weight: 700; font-size: 14.5px; color: var(--text-color);">As 4 Habilidades Específicas</span>
+                        </div>
+                        <span id="skills-expand-icon" class="material-icons-round" style="color: var(--secondary-text);">expand_more</span>
+                    </div>
+                </div>
+
+                <div id="english-skills-menu" class="hidden" style="margin-bottom: 20px; padding: 0 5px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <button class="chic-btn" style="margin: 0; background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;" onclick="alert('Listening: Calibrando motor de áudio. Disponível em breve!')">
+                            <span class="material-icons-round" style="font-size: 18px;">headphones</span> Listening
+                        </button>
+                        <button class="chic-btn" style="margin: 0; background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;" onclick="alert('Speaking: Calibrando reconhecimento de voz. Disponível em breve!')">
+                            <span class="material-icons-round" style="font-size: 18px;">mic</span> Speaking
+                        </button>
+                        <button class="chic-btn" style="margin: 0; background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;" onclick="alert('Reading: Mapeando textos de interpretação. Disponível em breve!')">
+                            <span class="material-icons-round" style="font-size: 18px;">menu_book</span> Reading
+                        </button>
+                        <button class="chic-btn" style="margin: 0; background: rgba(59, 130, 246, 0.1); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;" onclick="alert('Writing: Preparando motor de sintaxe. Disponível em breve!')">
+                            <span class="material-icons-round" style="font-size: 18px;">edit</span> Writing
+                        </button>
+                    </div>
+                    <button class="chic-btn" style="margin: 0; width: 100%; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);" onclick="alert('Training: Academia de Fluência em construção!')">
+                        <span class="material-icons-round" style="font-size: 20px;">fitness_center</span> Training
+                    </button>
+                </div>
                 <div class="explore-card focus-card" id="focus-card-idle">
+           
                     <div style="flex:1;"><h4 style="font-size:16px; font-weight:700;">Modo Foco (25 min)</h4><p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;">Concentre-se sem distrações e ganhe +50 XP!</p><button class="chic-btn mini-btn" onclick="startFocusMode()" style="background: #EF4444; color: white; width: auto; padding: 6px 15px; font-size:13px;">Iniciar Foco</button></div>
                     <span class="material-icons-round" style="font-size:40px; color:#EF4444; opacity:0.8;">timer</span>
                 </div>
