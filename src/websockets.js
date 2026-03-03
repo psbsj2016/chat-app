@@ -26,6 +26,9 @@ function initSockets(io) {
     let snakeQueue = []; 
     let bounceQueue = [];
     let colorBounceQueue = [];
+    
+    // 🔥 NOVA FILA DE MATCHMAKING: INGLÊS PTT (ARENA ONLINE)
+    let englishArenaQueue = [];
 
     io.on('connection', (socket) => {
         socket.emit('check_app_version', SERVER_VERSION); 
@@ -126,7 +129,6 @@ function initSockets(io) {
                         const members = await User.find({ _id: { $in: group.members, $ne: data.senderId } });
                         const senderName = senderUser ? senderUser.displayName : 'Alguém';
                         members.forEach(async member => {
-                            // 🛡️ Verifica as chaves antes de tentar enviar push notification
                             if (process.env.VAPID_PUBLIC_KEY && member.pushSubscriptions && member.pushSubscriptions.length > 0) {
                                 const unreadCount = await Message.countDocuments({ receiver: member._id, status: 'sent' });
                                 const payload = JSON.stringify({ title: `Grupo ${group.name}`, body: `${senderName}: Nova Mensagem`, unreadCount: unreadCount + 1 });
@@ -161,7 +163,6 @@ function initSockets(io) {
                         }
                     } else {
                         const receiver = await User.findById(data.receiverId);
-                        // 🛡️ Verifica as chaves antes de tentar enviar push notification
                         if (process.env.VAPID_PUBLIC_KEY && receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                             const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
                             const payload = JSON.stringify({ title: `CPTT: ${senderUser ? senderUser.displayName : 'Nova Mensagem'}`, body: 'Nova Mensagem', unreadCount });
@@ -176,6 +177,68 @@ function initSockets(io) {
         socket.on('react_message', async (data) => { await Message.findByIdAndUpdate(data.msgId, { reaction: data.emoji }); if(data.groupId) io.to(data.groupId).emit('message_reacted', data); else { io.to(data.receiverId).emit('message_reacted', data); io.to(socket.id).emit('message_reacted', data); } });
         socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
         socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
+
+        // ==========================================
+        // 🔥 INÍCIO: SOCKETS INGLÊS PTT ARENA (ONLINE) 🔥
+        // ==========================================
+        socket.on('join_english_arena', (data) => {
+            const { userId, skill, userName } = data; // skill: 'listening', 'speaking', etc.
+            
+            // Remove o utilizador se ele já estiver na fila para não haver duplicados
+            englishArenaQueue = englishArenaQueue.filter(p => p.socket.connected && p.userId !== userId);
+            
+            // Adiciona-o à fila de espera
+            englishArenaQueue.push({ socket: socket, userId, userName, skill });
+            
+            // Procura um oponente que queira treinar a mesma skill
+            const opponents = englishArenaQueue.filter(p => p.skill === skill && p.userId !== userId);
+            
+            if (opponents.length > 0) {
+                // Matchmaking Feito! Retira ambos da fila
+                const p1 = opponents[0];
+                const p2 = englishArenaQueue.find(p => p.userId === userId);
+                
+                englishArenaQueue = englishArenaQueue.filter(p => p.userId !== p1.userId && p.userId !== p2.userId);
+                
+                if (p1.socket.connected && p2.socket.connected) {
+                    const roomId = `ptt_arena_${p1.userId}_${p2.userId}`;
+                    p1.socket.join(roomId);
+                    p2.socket.join(roomId);
+                    
+                    // Notifica ambos de que a batalha começou
+                    io.to(roomId).emit('english_arena_match_found', { 
+                        roomId, 
+                        skill,
+                        p1: { id: p1.userId, name: p1.userName },
+                        p2: { id: p2.userId, name: p2.userName }
+                    });
+                }
+            } else {
+                // Fica à espera na fila, com um timeout de segurança (Bot Oponente opcional no futuro)
+                setTimeout(() => {
+                    const stillInQueue = englishArenaQueue.find(p => p.userId === userId);
+                    if (stillInQueue) {
+                        socket.emit('english_arena_waiting', { message: 'Aguardando oponente online...' });
+                    }
+                }, 3000);
+            }
+        });
+
+        // Sincronização de Progresso durante a Batalha (quem acaba o exercício primeiro avisa)
+        socket.on('english_arena_progress', (data) => {
+            const { roomId, userId, score, exerciseIndex } = data;
+            // Avisa o oponente que este jogador acabou de pontuar
+            socket.to(roomId).emit('opponent_progress', { userId, score, exerciseIndex });
+        });
+
+        // Fim da Batalha (Jogador desiste ou foge)
+        socket.on('leave_english_arena', (roomId) => {
+            socket.leave(roomId);
+            socket.to(roomId).emit('opponent_left_arena');
+        });
+        // ==========================================
+        // 🔼 FIM: SOCKETS INGLÊS PTT ARENA 🔼
+        // ==========================================
 
         socket.on('join_snake_duel', (data) => {
             snakeQueue = snakeQueue.filter(p => p.socket.connected && p.id !== socket.id);
@@ -238,6 +301,12 @@ function initSockets(io) {
         socket.on('color_bounce_finish', (data) => { socket.to(data.roomId).emit('color_bounce_win', { winnerId: socket.id }); });
 
         socket.on('disconnect', () => { 
+            // Limpa o utilizador de todas as filas se ele fechar a app
+            englishArenaQueue = englishArenaQueue.filter(p => p.socket.id !== socket.id);
+            snakeQueue = snakeQueue.filter(p => p.socket.id !== socket.id);
+            bounceQueue = bounceQueue.filter(p => p.socket.id !== socket.id);
+            colorBounceQueue = colorBounceQueue.filter(p => p.socket.id !== socket.id);
+            
             const uid = Object.keys(users).find(key => users[key] === socket.id); 
             if (uid) { delete users[uid]; io.emit('online_users', Object.keys(users)); }
             if (socket.voiceChannel) { socket.to(socket.voiceChannel).emit('user_left_voice', socket.id); }

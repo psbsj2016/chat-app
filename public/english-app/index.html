@@ -6,6 +6,7 @@
     <title>Inglês PTT - Neuroeducação</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
             --bg-color: #05050A;
@@ -19,6 +20,7 @@
             --danger: #EF4444;
             --primary: #3B82F6;
             --perf-color: #F43F5E;
+            --arena-color: #EC4899;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; }
@@ -119,10 +121,13 @@
         
         .chic-btn { border: none; border-radius: 12px; cursor: pointer; transition: 0.2s; }
 
-        /* 🔥 HUD DE PERFORMANCE 🔥 */
-        .perf-hud { background: rgba(244, 63, 94, 0.1); border: 1px solid var(--perf-color); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2); }
+        /* 🔥 HUD DE PERFORMANCE E ARENA 🔥 */
+        .perf-hud { background: rgba(244, 63, 94, 0.1); border: 1px solid var(--perf-color); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2); }
         .perf-timer { color: var(--perf-color); font-family: monospace; font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 5px; }
         .perf-timer.urgent { animation: blinkRed 1s infinite; }
+        
+        .arena-hud { background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(59, 130, 246, 0.15)); border: 1px solid var(--arena-color); border-radius: 12px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3); }
+        
         @keyframes blinkRed { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -215,25 +220,26 @@
             <div style="background: rgba(236, 72, 153, 0.1); border: 1px dashed #EC4899; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
                 <span class="material-icons-round" style="color: #EC4899; font-size: 32px; margin-bottom: 5px;">wifi_tethering</span>
                 <div style="font-size: 13px; font-weight: 800; color: white;">Batalha de Fluência Ao Vivo</div>
-                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Convide um oponente online para testarem suas métricas em tempo real.</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Aguarde e encontre oponentes na rede PTT para um duelo em tempo real.</p>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #10B981; color: #10B981; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
-                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">headphones</span> Treinar Listening Online
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #10B981; color: #10B981; padding: 12px; font-size: 14px;" onclick="openArenaMatchmaking('listening')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">headphones</span> Duelo de Listening
                 </button>
-                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #F59E0B; color: #F59E0B; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
-                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">mic</span> Treinar Speaking Online
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #F59E0B; color: #F59E0B; padding: 12px; font-size: 14px;" onclick="openArenaMatchmaking('speaking')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">mic</span> Duelo de Speaking
                 </button>
-                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #8B5CF6; color: #8B5CF6; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
-                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">menu_book</span> Treinar Reading Online
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #8B5CF6; color: #8B5CF6; padding: 12px; font-size: 14px;" onclick="openArenaMatchmaking('reading')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">menu_book</span> Duelo de Reading
                 </button>
-                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #3B82F6; color: #3B82F6; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
-                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">edit</span> Treinar Writing Online
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #3B82F6; color: #3B82F6; padding: 12px; font-size: 14px;" onclick="openArenaMatchmaking('writing')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">edit</span> Duelo de Writing
                 </button>
             </div>
         </div>
-        </div>
+
+    </div>
 
     <div id="map-screen" class="app-screen hidden">
         <div class="map-header">
@@ -254,11 +260,21 @@
     <div id="lesson-screen" class="app-screen hidden" style="position: absolute; top:0; left:0; width:100%; z-index: 100; background: var(--bg-color);">
         <div class="lesson-header">
             <button class="icon-btn" onclick="abortLesson()" style="background: transparent; border:none; color:var(--text-muted); cursor:pointer;"><span class="material-icons-round">close</span></button>
-            <div class="lesson-progress-container" id="lesson-progress">
-                <div class="lesson-step active"></div><div class="lesson-step"></div><div class="lesson-step"></div><div class="lesson-step"></div>
-            </div>
+            <div class="lesson-progress-container" id="lesson-progress"></div>
             <div class="toggle-container">
                 IPA <label class="switch"><input type="checkbox" id="advanced-mode-toggle" onchange="toggleAdvancedMode()"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <div id="arena-hud" class="arena-hud hidden">
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                <span style="font-size: 10px; color: var(--text-muted); font-weight: 800;">VOCÊ</span>
+                <span id="arena-my-score" style="color: white; font-weight: 900; font-size: 20px;">0</span>
+            </div>
+            <div style="font-size: 24px; font-weight: 900; color: var(--arena-color); animation: pulse 2s infinite;">VS</div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                <span id="arena-opp-name" style="font-size: 10px; color: var(--text-muted); font-weight: 800;">OPONENTE</span>
+                <span id="arena-opp-score" style="color: white; font-weight: 900; font-size: 20px;">0</span>
             </div>
         </div>
 
@@ -268,6 +284,7 @@
             </div>
             <div style="color: white; font-weight: 900; font-size: 14px; letter-spacing: 1px;" id="perf-skill-label">SKILL</div>
         </div>
+
         <div class="exercise-area" id="exercise-area"></div>
 
         <div class="action-footer">
@@ -278,27 +295,10 @@
 
     <script>
         // ===============================================
-        // 🧠 LÓGICA DE ABAS E VARIÁVEIS DE ESTADO
+        // 🧠 INICIALIZAÇÃO DE DADOS E SOCKETS
         // ===============================================
-        
-        function switchPerformanceTab(tab) {
-            const soloBtn = document.getElementById('tab-solo');
-            const onlineBtn = document.getElementById('tab-online');
-            const soloView = document.getElementById('performance-solo-view');
-            const onlineView = document.getElementById('performance-online-view');
-
-            if (tab === 'solo') {
-                soloBtn.style.background = 'var(--card-bg)'; soloBtn.style.color = 'white';
-                onlineBtn.style.background = 'transparent'; onlineBtn.style.color = 'var(--text-muted)';
-                soloView.classList.remove('hidden'); onlineView.classList.add('hidden');
-            } else {
-                onlineBtn.style.background = 'var(--card-bg)'; onlineBtn.style.color = 'white';
-                soloBtn.style.background = 'transparent'; soloBtn.style.color = 'var(--text-muted)';
-                onlineView.classList.remove('hidden'); soloView.classList.add('hidden');
-            }
-        }
-
         const myId = localStorage.getItem('myId'); 
+        const myName = localStorage.getItem('displayName') || 'Aluno VIP';
         let userStats = { macroSom: 0, macroLogica: 0, macroContexto: 0, globalFluency: 0 };
         let userMicros = []; 
 
@@ -309,30 +309,92 @@
         };
 
         const currentExerciseQueue = [];
+        let currentNodeId = ''; let exerciseIndex = 0;
+        let isAdvancedMode = false; let isRecording = false;
+        let currentExercise = null; let selectedOption = null; let stepState = 'ready'; 
+        let exerciseStartTime = 0; let assembledSentence = []; let poolWords = [];
 
-        let currentTrack = '';
-        let currentNodeId = '';
-        let exerciseIndex = 0;
-        let isAdvancedMode = false;
-        let isRecording = false;
-        let currentExercise = null;
-        let selectedOption = null;
-        let stepState = 'ready'; 
-        let exerciseStartTime = 0; 
-        
-        let assembledSentence = [];
-        let poolWords = [];
-
-        // Variáveis Exclusivas da Performance
+        // Variáveis de Performance e Arena
         let isPerformanceMode = false;
         let currentPerfSkill = '';
         let perfTimerInterval = null;
         let perfSecondsRemaining = 0;
 
+        let socket = null;
+        let isArenaMode = false;
+        let arenaRoomId = null;
+        let opponentData = null;
+        let myArenaScore = 0;
+        let opponentArenaScore = 0;
+
         window.addEventListener('DOMContentLoaded', async () => {
             if(!myId) return document.getElementById('global-level-text').innerText = "Erro: ID não encontrado.";
             await fetchDashboardData();
+            
+            // 🌐 INICIA O RADAR ONLINE
+            if(typeof io !== 'undefined') {
+                socket = io();
+                
+                socket.on('english_arena_waiting', (data) => {
+                    const p = document.getElementById('arena-wait-text');
+                    if(p) p.innerText = data.message;
+                });
+
+                socket.on('english_arena_match_found', async (data) => {
+                    arenaRoomId = data.roomId;
+                    const { p1, p2, skill } = data;
+                    opponentData = p1.id === myId ? p2 : p1; // Descobre quem é o inimigo
+                    
+                    myArenaScore = 0; opponentArenaScore = 0;
+                    
+                    try {
+                        const res = await fetch(`/api/english/skill/${skill}`);
+                        const fetch_data = await res.json();
+                        
+                        if (fetch_data.success && fetch_data.exercises.length > 0) { 
+                            currentExerciseQueue.length = 0; currentExerciseQueue.push(...fetch_data.exercises); 
+                            currentNodeId = 'arena_' + skill; exerciseIndex = 0;
+                            
+                            const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
+                            currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
+                            
+                            document.getElementById('btn-action').classList.remove('hidden');
+                            document.getElementById('arena-hud').classList.remove('hidden');
+                            document.getElementById('arena-opp-name').innerText = opponentData.name.toUpperCase();
+                            updateArenaHud();
+                            
+                            loadExercise();
+                        } else { alert("Erro ao carregar missão da Arena."); cancelMatchmaking(); }
+                    } catch (e) { alert("Falha na comunicação."); cancelMatchmaking(); }
+                });
+
+                socket.on('opponent_progress', (data) => {
+                    opponentArenaScore += data.score;
+                    updateArenaHud();
+                });
+
+                socket.on('opponent_left_arena', () => {
+                    if(isArenaMode) {
+                        alert("Oponente fugiu! Vitória por W.O. atribuída a você.");
+                        isArenaMode = false; finishLesson(true);
+                    }
+                });
+            }
         });
+
+        function switchPerformanceTab(tab) {
+            const soloBtn = document.getElementById('tab-solo'); const onlineBtn = document.getElementById('tab-online');
+            const soloView = document.getElementById('performance-solo-view'); const onlineView = document.getElementById('performance-online-view');
+            if (tab === 'solo') {
+                soloBtn.style.background = 'var(--card-bg)'; soloBtn.style.color = 'white';
+                onlineBtn.style.background = 'transparent'; onlineBtn.style.color = 'var(--text-muted)';
+                soloView.classList.remove('hidden'); onlineView.classList.add('hidden');
+            } else {
+                onlineBtn.style.background = 'var(--card-bg)'; onlineBtn.style.color = 'white';
+                soloBtn.style.background = 'transparent'; soloBtn.style.color = 'var(--text-muted)';
+                onlineView.classList.remove('hidden'); soloView.classList.add('hidden');
+            }
+        }
 
         async function fetchDashboardData() {
             try {
@@ -345,422 +407,236 @@
         function updateDashboardUI() {
             document.getElementById('global-fluency').innerText = `${userStats.globalFluency}%`;
             document.getElementById('ring-container').style.background = `conic-gradient(var(--daily-color) 0%, var(--daily-color) ${userStats.globalFluency}%, rgba(255,255,255,0.1) ${userStats.globalFluency}%, rgba(255,255,255,0.1) 100%)`;
-            
-            let level = "Iniciante";
-            if(userStats.globalFluency > 39) level = "Em desenvolvimento";
-            if(userStats.globalFluency > 69) level = "Forte";
-            if(userStats.globalFluency > 89) level = "Dominado";
+            let level = "Iniciante"; if(userStats.globalFluency > 39) level = "Em desenvolvimento"; if(userStats.globalFluency > 69) level = "Forte"; if(userStats.globalFluency > 89) level = "Dominado";
             document.getElementById('global-level-text').innerText = `Nível: ${level}`;
-
-            document.getElementById('desc-som').innerText = `Domínio Macro: ${userStats.macroSom}%`;
-            document.getElementById('bar-som').style.width = `${userStats.macroSom}%`;
-            document.getElementById('desc-logica').innerText = `Domínio Macro: ${userStats.macroLogica}%`;
-            document.getElementById('bar-logica').style.width = `${userStats.macroLogica}%`;
-            document.getElementById('desc-contexto').innerText = `Domínio Macro: ${userStats.macroContexto}%`;
-            document.getElementById('bar-contexto').style.width = `${userStats.macroContexto}%`;
+            document.getElementById('desc-som').innerText = `Domínio Macro: ${userStats.macroSom}%`; document.getElementById('bar-som').style.width = `${userStats.macroSom}%`;
+            document.getElementById('desc-logica').innerText = `Domínio Macro: ${userStats.macroLogica}%`; document.getElementById('bar-logica').style.width = `${userStats.macroLogica}%`;
+            document.getElementById('desc-contexto').innerText = `Domínio Macro: ${userStats.macroContexto}%`; document.getElementById('bar-contexto').style.width = `${userStats.macroContexto}%`;
         }
 
         // ===============================================
-        // 🎤 2. MOTOR DE VOZ E UTILIDADES
+        // 🎤 VOZ E CRONÓMETRO (HUDs)
         // ===============================================
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognizer = null;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; let recognizer = null;
         if (SpeechRecognition) {
             recognizer = new SpeechRecognition(); recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
             recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
             recognizer.onspeechend = () => stopMic();
-            recognizer.onerror = (e) => { stopMic(); setFeedback(e.error === 'no-speech' ? "Nenhum som detetado." : "Erro: " + e.error, "var(--danger)"); };
+            recognizer.onerror = (e) => { stopMic(); setFeedback("Erro na escuta.", "var(--danger)"); };
         }
+        function toggleMic() { if(!recognizer) return alert("Microfone não suportado."); const micBtn = document.getElementById('mic-btn'); if(isRecording) stopMic(); else { try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } catch(e) { stopMic(); } } }
+        function stopMic() { if (!isRecording) return; isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); try { recognizer.stop(); } catch(e) {} document.getElementById('mic-status').innerText = "Processando..."; }
 
-        function toggleMic() {
-            if(!recognizer) return alert("Microfone não suportado.");
-            const micBtn = document.getElementById('mic-btn');
-            if(isRecording) stopMic(); 
-            else { try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } catch(e) { stopMic(); } }
-        }
-
-        function stopMic() {
-            if (!isRecording) return;
-            isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording');
-            try { recognizer.stop(); } catch(e) {} 
-            const statusEl = document.getElementById('mic-status'); if (statusEl && statusEl.innerText.includes("Escutando")) statusEl.innerText = "Processando...";
-        }
-
-        function updateProgressBars() {
-            const steps = document.querySelectorAll('.lesson-step');
-            steps.forEach((step, i) => {
-                if(i < exerciseIndex) step.className = 'lesson-step active';
-                else if (i === exerciseIndex) step.className = 'lesson-step active';
-                else step.className = 'lesson-step';
-            });
-        }
-
-        function toggleAdvancedMode() { isAdvancedMode = document.getElementById('advanced-mode-toggle').checked; loadExercise(); }
-
-        // ===============================================
-        // ⏱️ MOTOR DO CRONÓMETRO DE PERFORMANCE
-        // ===============================================
         function startPerfTimer(seconds) {
-            clearInterval(perfTimerInterval);
-            perfSecondsRemaining = seconds;
-            updateTimerUI();
+            clearInterval(perfTimerInterval); perfSecondsRemaining = seconds; updateTimerUI();
             document.getElementById('perf-timer-display').classList.remove('urgent');
-            
             perfTimerInterval = setInterval(() => {
-                perfSecondsRemaining--;
-                updateTimerUI();
-                
-                if (perfSecondsRemaining <= 5) {
-                    document.getElementById('perf-timer-display').classList.add('urgent');
-                }
-
-                if(perfSecondsRemaining <= 0) {
-                    clearInterval(perfTimerInterval);
-                    handleTimeOut();
-                }
+                perfSecondsRemaining--; updateTimerUI();
+                if (perfSecondsRemaining <= 5) document.getElementById('perf-timer-display').classList.add('urgent');
+                if(perfSecondsRemaining <= 0) { clearInterval(perfTimerInterval); handleTimeOut(); }
             }, 1000);
         }
-
-        function updateTimerUI() {
-            document.getElementById('perf-time-value').innerText = `00:${perfSecondsRemaining.toString().padStart(2, '0')}`;
-        }
-
-        function stopPerfTimer() {
-            clearInterval(perfTimerInterval);
-            document.getElementById('perf-timer-display').classList.remove('urgent');
-        }
-
-        function handleTimeOut() {
-            if(stepState !== 'ready') return;
-            if(isRecording) stopMic();
-            
-            setFeedback("Tempo Esgotado! Agilidade é chave.", "var(--danger)");
-            const btn = document.getElementById('btn-action');
-            btn.className = "action-btn";
-            btn.innerText = "Continuar";
-            stepState = 'verified';
-            sendAttemptToBackend(0); // 0 pontos pela demora
+        function updateTimerUI() { document.getElementById('perf-time-value').innerText = `00:${perfSecondsRemaining.toString().padStart(2, '0')}`; }
+        function stopPerfTimer() { clearInterval(perfTimerInterval); document.getElementById('perf-timer-display').classList.remove('urgent'); }
+        
+        function updateArenaHud() {
+            document.getElementById('arena-my-score').innerText = `${myArenaScore}`;
+            document.getElementById('arena-opp-score').innerText = `${opponentArenaScore}`;
         }
 
         // ===============================================
-        // 🗺️ 3. MAPA LINEAR (ESTRUTURAL)
+        // 🚀 INÍCIO DE MÓDULOS (ESTRUTURAL, SOLO, ONLINE)
         // ===============================================
         function openMap(track) {
-            currentTrack = track;
-            document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('map-screen').classList.remove('hidden');
-            
-            const titles = { 'som': 'Som (Fonética)', 'logica': 'Lógica (Sintaxe)', 'contexto': 'Contexto (Semântica)' };
-            document.getElementById('map-title').innerText = titles[track];
-            
-            const coreContainer = document.getElementById('map-core-container');
-            const freeContainer = document.getElementById('map-free-container');
-            const gateContainer = document.getElementById('gate-container');
-            
-            coreContainer.innerHTML = ''; freeContainer.innerHTML = ''; gateContainer.innerHTML = '';
-            
-            const catalog = nodesCatalog[track] || [];
-            const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
-
-            let coreComplete = true;
-            const coreNodes = catalog.filter(n => n.type === 'core').map((node, i) => {
-                const micro = userMicros.find(m => m.nodeId === node.id);
-                if (micro) node.status = micro.isCompleted ? 'completed' : (micro.isUnlocked ? 'unlocked' : 'locked');
-                else node.status = (i === 0) ? 'unlocked' : 'locked';
-                if(node.status !== 'completed') coreComplete = false;
-                return node;
-            });
-
-            coreNodes.forEach((node) => {
-                const btnClass = node.status === 'unlocked' ? 'unlocked' : node.status === 'completed' ? 'completed' : 'locked';
-                const clickAction = node.status !== 'locked' ? `onclick="startNodeLesson('${node.id}')"` : '';
-                const bgStyle = node.status === 'unlocked' ? `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;` : (node.status === 'completed' ? `background-color: var(--som-color);` : '');
-                coreContainer.innerHTML += `<div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
+            currentTrack = track; document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('map-screen').classList.remove('hidden');
+            const titles = { 'som': 'Som (Fonética)', 'logica': 'Lógica (Sintaxe)', 'contexto': 'Contexto (Semântica)' }; document.getElementById('map-title').innerText = titles[track];
+            const coreContainer = document.getElementById('map-core-container'); const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
+            coreContainer.innerHTML = '';
+            (nodesCatalog[track] || []).forEach((node) => {
+                const btnClass = 'unlocked'; const clickAction = `onclick="startNodeLesson('${node.id}')"`; const bgStyle = `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;`;
+                coreContainer.innerHTML += `<div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; color: white;">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
             });
         }
-
         function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
 
-        // ===============================================
-        // 🚀 INÍCIO DE TREINAMENTO ESPECÍFICO (PERFORMANCE)
-        // ===============================================
         async function startSkillWorkout(skill) {
-            isPerformanceMode = true; currentPerfSkill = skill;
+            isArenaMode = false; isPerformanceMode = true; currentPerfSkill = skill;
             document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            
-            document.getElementById('lesson-screen').classList.remove('hidden');
-            const area = document.getElementById('exercise-area');
-            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">Montando treino de ${skill.toUpperCase()}...</h3></div>`;
-            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = '';
+            document.getElementById('lesson-screen').classList.remove('hidden'); const area = document.getElementById('exercise-area');
+            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">Montando treino Solo...</h3></div>`;
+            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = ''; document.getElementById('arena-hud').classList.add('hidden');
 
             try {
-                const res = await fetch(`/api/english/skill/${skill}`);
-                const data = await res.json();
-                
+                const res = await fetch(`/api/english/skill/${skill}`); const data = await res.json();
                 if (data.success && data.exercises.length > 0) { 
                     currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
                     currentNodeId = 'skill_' + skill; exerciseIndex = 0;
-                    const progressContainer = document.getElementById('lesson-progress'); 
-                    currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                    document.getElementById('btn-action').classList.remove('hidden');
-                    loadExercise();
-                } else { alert(data.message || "Nenhum exercício disponível."); abortLesson(); }
-            } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
+                    currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
+                    document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
+                } else { alert(data.message || "Sem exercícios."); abortLesson(); }
+            } catch (e) { abortLesson(); } 
         }
 
-        async function startTrainingWorkout() {
-            isPerformanceMode = true; currentPerfSkill = 'mix';
+        async function startTrainingWorkout() { startSkillWorkout('mix'); } // Simplificado para usar a mesma lógica
+
+        // ⚔️ SISTEMA DE MATCHMAKING (ARENA)
+        function openArenaMatchmaking(skill) {
+            if(!socket) return alert("Radar Offline. Tente recarregar o aplicativo.");
+            isArenaMode = true; isPerformanceMode = true; currentPerfSkill = skill;
             document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            
             document.getElementById('lesson-screen').classList.remove('hidden');
+            
             const area = document.getElementById('exercise-area');
-            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--danger); animation: spin 1s linear infinite;">fitness_center</div><h3 style="margin-top:20px; color:white;">Preparando Academia...</h3></div>`;
+            area.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+                    <div class="material-icons-round" style="font-size: 60px; color: var(--arena-color); animation: pulse 1s infinite;">wifi_tethering</div>
+                    <h3 style="margin-top:20px; color:white;">Procurando Oponente...</h3>
+                    <p id="arena-wait-text" style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">Escaneando a rede PTT (${skill.toUpperCase()})</p>
+                    <button class="chic-btn" style="margin-top:30px; background: rgba(255,255,255,0.1); color: white; padding: 10px 20px;" onclick="cancelMatchmaking()">Cancelar Batalha</button>
+                </div>`;
             document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = '';
+            document.getElementById('performance-hud').classList.add('hidden'); document.getElementById('arena-hud').classList.add('hidden');
+            
+            socket.emit('join_english_arena', { userId: myId, userName: myName, skill: skill });
+        }
 
-            try {
-                const res = await fetch(`/api/english/training/mix`);
-                const data = await res.json();
-                
-                if (data.success && data.exercises.length > 0) { 
-                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
-                    currentNodeId = 'training_mix'; exerciseIndex = 0;
-                    const progressContainer = document.getElementById('lesson-progress'); 
-                    currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                    document.getElementById('btn-action').classList.remove('hidden');
-                    loadExercise();
-                } else { alert("A base de dados do QG está vazia."); abortLesson(); }
-            } catch (e) { alert("Falha na comunicação com o QG."); abortLesson(); } 
+        function cancelMatchmaking() {
+            if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
+            else if (socket) socket.emit('leave_english_arena', 'queue');
+            isArenaMode = false; abortLesson();
         }
 
         // ===============================================
-        // 🚀 4. INÍCIO DE LIÇÃO (ESTRUTURAL / DIÁRIO)
+        // 🎮 MOTOR DO EXERCÍCIO
         // ===============================================
-        async function startDailyWorkout() {
-            if(!myId) return alert("Erro: ID não encontrado.");
-            isPerformanceMode = false;
-            const btn = document.querySelector('.daily-workout-btn'); const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><span class="material-icons-round" style="animation: pulse 1s infinite;">sync</span> Montando Treino...</div>`; btn.style.pointerEvents = 'none';
-
-            try {
-                const res = await fetch(`/api/english/daily/${myId}`); const data = await res.json();
-                if (data.success && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
-                else { currentExerciseQueue.forEach(ex => ex.nodeId = 'som_1'); }
-                currentNodeId = 'daily'; exerciseIndex = 0;
-                const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
-                currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                
-                document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden');
-                loadExercise();
-            } catch (e) { alert("Erro ao contatar o QG."); } 
-            finally { btn.innerHTML = originalHtml; btn.style.pointerEvents = 'auto'; }
-        }
-
-        async function startNodeLesson(id) {
-            isPerformanceMode = false; currentNodeId = id;
-            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            try {
-                if (id !== 'daily') {
-                    const res = await fetch(`/api/english/node/${id}`); const data = await res.json();
-                    if (data.success && data.exercises && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
-                    else { alert(data.message || "Fase em construção."); document.getElementById('map-screen').classList.remove('hidden'); return; }
-                }
-            } catch (e) { alert("Falha."); document.getElementById('map-screen').classList.remove('hidden'); return; }
-
-            exerciseIndex = 0; const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
-            currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-            document.getElementById('lesson-screen').classList.remove('hidden'); updateProgressBars(); loadExercise();
-        }
-
-        function abortLesson() {
-            if(confirm("Abandonar treino?")) { stopPerfTimer(); if(isRecording) stopMic(); window.speechSynthesis.cancel(); document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
-        }
-
-        // 🔥 O MOTOR DE EXERCÍCIOS RESTAURADO E BLINDADO
         function loadExercise() {
             if (exerciseIndex >= currentExerciseQueue.length) { finishLesson(); return; }
             currentExercise = currentExerciseQueue[exerciseIndex];
             selectedOption = null; stepState = 'ready'; exerciseStartTime = Date.now();
-            
             document.getElementById('lesson-feedback').innerText = '';
-            const btn = document.getElementById('btn-action');
-            btn.className = "action-btn"; btn.innerText = "Verificar";
+            document.getElementById('btn-action').className = "action-btn"; document.getElementById('btn-action').innerText = "Verificar";
             
-            // LÓGICA DO HUD DE PERFORMANCE E CRONÓMETRO
+            const steps = document.querySelectorAll('.lesson-step');
+            steps.forEach((s, i) => s.className = i <= exerciseIndex ? 'lesson-step active' : 'lesson-step');
+
             if (isPerformanceMode) {
                 document.getElementById('performance-hud').classList.remove('hidden');
-                document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'TRAINING MIX' : currentPerfSkill.toUpperCase();
-                
-                // Dificuldade Automática: Ajusta o tempo pelo tipo de exercício
-                let timeAllowed = 15; // padrão
-                if(currentExercise.type === 'sentence_assembly' || currentExercise.type === 'context_cloze') timeAllowed = 20; // Requer leitura
-                if(currentExercise.type.startsWith('repeat')) timeAllowed = 10; // Falar tem de ser instintivo
-                
+                document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'MIX' : currentPerfSkill.toUpperCase();
+                let timeAllowed = currentExercise.type === 'sentence_assembly' || currentExercise.type === 'context_cloze' ? 20 : 10;
                 startPerfTimer(timeAllowed);
-            } else {
-                document.getElementById('performance-hud').classList.add('hidden');
             }
 
-            const area = document.getElementById('exercise-area');
-            let html = '';
+            const area = document.getElementById('exercise-area'); let html = '';
             const ipaBlock = (isAdvancedMode && currentExercise.ipa) ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
             const advBlock = (isAdvancedMode && currentExercise.advTip) ? `<div class="advanced-tip"><span class="material-icons-round">psychology</span> ${currentExercise.advTip}</div>` : '';
 
-            // Motores Visuais
             if (currentExercise.type === 'listen_isolate') {
                 const audioTxt = currentExercise.audioText || currentExercise.text;
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><p style="color:var(--text-muted); font-size:12px; margin-top: 10px;">Toque para ouvir</p>`;
-                btn.innerText = "Continuar"; btn.className = "action-btn ready";
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>`;
+                document.getElementById('btn-action').innerText = "Continuar"; document.getElementById('btn-action').className = "action-btn ready";
             } else if (currentExercise.type === 'minimal_pair') {
                 const audioTxt = currentExercise.audioText || currentExercise.options[currentExercise.answer];
                 html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
             } else if (currentExercise.type.startsWith('repeat')) {
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="target-word">${currentExercise.displayWord}</div><button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px; margin-top: 10px;">Toque para falar</p>`;
-                btn.innerText = "Pular"; btn.className = "action-btn";
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="target-word">${currentExercise.displayWord}</div><button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>`;
             } else if (currentExercise.type === 'sentence_assembly') {
                 assembledSentence = []; poolWords = [...currentExercise.options];
                 html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="assembly-workspace" id="assembly-workspace"></div>`;
-                btn.innerText = "Verificar Lógica";
             } else if (currentExercise.type === 'context_cloze') {
-                html = `${advBlock}
-                        <div style="font-size:14px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div>
-                        <div class="instruction-text" id="cloze-text" style="font-size: 24px;">${currentExercise.text.replace('___', '<span class="cloze-blank"></span>')}</div>
-                        <div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}</div>`;
-                btn.innerText = "Verificar Escolha";
+                html = `${advBlock}<div style="font-size:14px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div><div class="instruction-text" id="cloze-text" style="font-size: 24px;">${currentExercise.text.replace('___', '<span class="cloze-blank"></span>')}</div><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}</div>`;
             }
 
             area.innerHTML = html;
             if (currentExercise.type === 'sentence_assembly') renderAssemblyWorkspace();
         }
 
-        // ===============================================
-        // 🎮 6. LÓGICA DE INTERAÇÃO DOS NOVOS MOTORES
-        // ===============================================
-
-        function playTTS(text) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.8; window.speechSynthesis.speak(u); }
-        
-        function selectOption(idx) {
-            if(stepState !== 'ready') return; selectedOption = idx;
-            document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
-            document.getElementById('btn-action').className = "action-btn ready";
-        }
-
-        function renderAssemblyWorkspace() {
-            const workspace = document.getElementById('assembly-workspace'); if(!workspace) return;
-            let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join('');
-            let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join('');
-            workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras...</span>'}</div><div class="word-pool">${poolHtml}</div>`;
-            if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn";
-        }
+        // LÓGICA DE RESPOSTAS
+        function playTTS(text) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; window.speechSynthesis.speak(u); }
+        function selectOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('btn-action').className = "action-btn ready"; }
+        function selectClozeOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('cloze-text').innerHTML = currentExercise.text.replace('___', `<span class="cloze-blank" style="color:var(--contexto-color); border-color:var(--contexto-color);">${currentExercise.options[idx]}</span>`); document.getElementById('btn-action').className = "action-btn ready"; }
+        function renderAssemblyWorkspace() { const workspace = document.getElementById('assembly-workspace'); if(!workspace) return; let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join(''); let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join(''); workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque...</span>'}</div><div class="word-pool">${poolHtml}</div>`; if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn"; }
         function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
         function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
 
-        function selectClozeOption(idx) {
-            if(stepState !== 'ready') return; selectedOption = idx;
-            document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
-            document.getElementById('cloze-text').innerHTML = currentExercise.text.replace('___', `<span class="cloze-blank" style="color:var(--contexto-color); border-color:var(--contexto-color);">${currentExercise.options[idx]}</span>`);
-            document.getElementById('btn-action').className = "action-btn ready";
-        }
-
-        // ===============================================
-        // ✅ 7. VALIDAÇÃO E ENVIO AO SERVIDOR
-        // ===============================================
-        function evaluateSpeech(transcript) {
-            if(isPerformanceMode) stopPerfTimer(); // Congela o relógio
-            const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase();
-            document.getElementById('mic-status').innerText = `Você disse: "${transcript}"`;
-            
-            let score = 0;
-            if (cleanT.includes(target) || target.includes(cleanT) || target === 'p') { setFeedback("Precisão: 95% - Excelente!", "var(--som-color)"); score = 95; document.getElementById('btn-action').className = "action-btn success"; } 
-            else { setFeedback("Precisão: 40% - Requer ajuste.", "var(--danger)"); score = 40; }
-            document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; sendAttemptToBackend(score);
-        }
+        function handleTimeOut() { if(stepState !== 'ready') return; if(isRecording) stopMic(); setFeedback("Tempo Esgotado!", "var(--danger)"); document.getElementById('btn-action').className = "action-btn"; document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(0); }
+        function evaluateSpeech(transcript) { if(isPerformanceMode) stopPerfTimer(); const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase(); let score = (cleanT.includes(target) || target.includes(cleanT)) ? 95 : 40; if(score>90){ setFeedback("Excelente!", "var(--som-color)"); document.getElementById('btn-action').className = "action-btn success"; } else setFeedback("Requer ajuste.", "var(--danger)"); document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); }
 
         function handleLessonAction() {
-            let score = 0;
-            const btn = document.getElementById('btn-action');
-
-            if (currentExercise.type === 'listen_isolate') {
-                if(isPerformanceMode) stopPerfTimer();
-                sendAttemptToBackend(100); nextExercise(); return;
-            } 
-            
-            if (stepState === 'verified') { nextExercise(); return; }
+            if (currentExercise.type === 'listen_isolate') { if(isPerformanceMode) stopPerfTimer(); verifyAndSendScore(100); return; } 
+            if (stepState === 'verified') { exerciseIndex++; loadExercise(); return; }
             if (stepState !== 'ready') return;
 
-            if(isPerformanceMode) stopPerfTimer(); // Congela o relógio assim que envia a resposta
+            if(isPerformanceMode) stopPerfTimer();
+            let score = 0; const btn = document.getElementById('btn-action');
 
             if (currentExercise.type === 'sentence_assembly') {
-                if (assembledSentence.length === 0) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Monte a frase primeiro!"); }
-                const isCorrect = assembledSentence.join(' ') === currentExercise.answer;
-                if (isCorrect) { setFeedback("Perfeito! Sintaxe impecável.", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
-                else { setFeedback(`Incorreto. A ordem certa era:\n"${currentExercise.answer}"`, "var(--danger)"); btn.className = "action-btn"; score = 20; }
-                
+                if (assembledSentence.length === 0) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Monte a frase!"); }
+                if (assembledSentence.join(' ') === currentExercise.answer) { setFeedback("Perfeito!", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
+                else { setFeedback(`Incorreto. Era:\n"${currentExercise.answer}"`, "var(--danger)"); score = 20; }
             } else if (currentExercise.type === 'minimal_pair' || currentExercise.type === 'context_cloze') {
                 if (selectedOption === null) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Selecione uma opção!"); }
-                const isCorrect = selectedOption === currentExercise.answer;
-                const winColor = currentExercise.type === 'context_cloze' ? 'var(--contexto-color)' : 'var(--som-color)';
-                
-                if (isCorrect) { 
-                    setFeedback("Perfeito! Escolha correta.", winColor); btn.className = "action-btn success"; score = 100; 
-                    document.querySelectorAll('.option-btn')[selectedOption].classList.add('correct');
-                } else { 
-                    setFeedback("Incorreto. Leia a dica avançada!", "var(--danger)"); btn.className = "action-btn"; score = 20; 
-                    document.querySelectorAll('.option-btn')[selectedOption].classList.add('wrong');
-                    document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct');
-                }
-            } else if (currentExercise.type.startsWith('repeat')) {
-                if(isPerformanceMode) startPerfTimer(perfSecondsRemaining);
-                return alert("Grave sua voz primeiro clicando no microfone.");
-            }
+                if (selectedOption === currentExercise.answer) { setFeedback("Correto!", "var(--som-color)"); btn.className = "action-btn success"; score = 100; document.querySelectorAll('.option-btn')[selectedOption].classList.add('correct'); } 
+                else { setFeedback("Incorreto.", "var(--danger)"); score = 20; document.querySelectorAll('.option-btn')[selectedOption].classList.add('wrong'); document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct'); }
+            } else if (currentExercise.type.startsWith('repeat')) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Grave sua voz!"); }
 
-            btn.innerText = "Continuar"; stepState = 'verified'; sendAttemptToBackend(score);
+            btn.innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score);
+        }
+
+        function verifyAndSendScore(score) {
+            // Se for Arena Online, atira o dano no inimigo!
+            if(isArenaMode && socket && arenaRoomId) {
+                myArenaScore += score; updateArenaHud();
+                socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex });
+            }
+            sendAttemptToBackend(score);
         }
 
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
         
         async function sendAttemptToBackend(score) {
-            if(!myId) return; 
-            const timeTaken = Date.now() - exerciseStartTime;
-            
-            // ⚡ SEPARAÇÃO DE ROTAS: PERFORMANCE VS ESTRUTURAL
+            if(!myId) return; const timeTaken = Date.now() - exerciseStartTime;
             if (isPerformanceMode) {
-                try {
-                    await fetch('/api/english/performance/attempt', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken })
-                    });
-                } catch(e) { console.error("Erro ao enviar Performance."); }
-            } else {
-                const targetNode = currentExercise.nodeId || currentNodeId;
-                try {
-                    const res = await fetch('/api/english/attempt', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: myId, nodeId: targetNode, exerciseId: currentExercise.id || 'ex_0', score: score, timeMs: timeTaken })
-                    });
-                    const responseData = await res.json();
-                    if(responseData.success) {
-                        userStats.globalFluency = responseData.data.macros.globalFluency; userStats.macroSom = responseData.data.macros.som;
-                        userStats.macroLogica = responseData.data.macros.logica; userStats.macroContexto = responseData.data.macros.contexto;
-                    }
-                } catch(e) { console.error("Erro de sincronização."); }
+                fetch('/api/english/performance/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken }) }).catch(e=>{});
             }
         }
 
-        function nextExercise() { exerciseIndex++; updateProgressBars(); loadExercise(); }
-
-        function finishLesson() {
-            document.getElementById('exercise-area').innerHTML = `
-                <span class="material-icons-round" style="font-size:80px; color:${isPerformanceMode ? 'var(--perf-color)' : 'var(--daily-color)'}; margin-bottom:20px;">emoji_events</span>
-                <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">${isPerformanceMode ? 'Treino Concluído!' : 'Sessão Concluída!'}</h2>
-                <p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados</p>
-            `;
-            document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
+        function finishLesson(wonByWO = false) {
             document.getElementById('performance-hud').classList.add('hidden');
+            let resultHtml = '';
             
+            if (isArenaMode) {
+                const won = wonByWO || (myArenaScore >= opponentArenaScore);
+                resultHtml = `
+                    <span class="material-icons-round" style="font-size:80px; color:${won ? '#10B981' : '#EF4444'}; margin-bottom:20px;">${won ? 'emoji_events' : 'sentiment_dissatisfied'}</span>
+                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color:${won ? '#10B981' : '#EF4444'};">${won ? 'VITÓRIA NA ARENA!' : 'DERROTA'}</h2>
+                    <p style="color:var(--text-muted); font-weight:600;">Placar Final: Você ${myArenaScore} x ${opponentArenaScore} ${opponentData ? opponentData.name : 'Oponente'}</p>
+                `;
+                if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
+            } else {
+                resultHtml = `
+                    <span class="material-icons-round" style="font-size:80px; color:var(--perf-color); margin-bottom:20px;">emoji_events</span>
+                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Treino Concluído!</h2>
+                    <p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados</p>
+                `;
+            }
+
+            document.getElementById('exercise-area').innerHTML = resultHtml;
+            document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
             document.getElementById('btn-action').onclick = async () => {
+                isArenaMode = false; arenaRoomId = null;
+                document.getElementById('arena-hud').classList.add('hidden');
                 document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden');
                 await fetchDashboardData(); 
             };
+        }
+
+        function abortLesson() {
+            if(confirm("Abandonar treino?")) { 
+                stopPerfTimer(); if(isRecording) stopMic(); window.speechSynthesis.cancel(); 
+                if(isArenaMode && socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
+                isArenaMode = false; arenaRoomId = null;
+                document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); 
+            }
         }
     </script>
 </body>
