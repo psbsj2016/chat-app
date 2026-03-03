@@ -5,25 +5,7 @@ let searchTimeout = null;
 let pressTimer = null;
 let currentSelectedMsgElement = null;
 let selectedMsgData = null;
-let lastRenderedDate = null; 
-
-// AQUI: Recuperação vital de dados do Storage
-const myId = localStorage.getItem('myId');
-let currentChatId = null;
-let currentChatEmail = null;
-let isGroupChat = false;
-let messageCache = {};
-let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
-let unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || {};
-let hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || [];
-let onlineUsersList = [];
-let pendingAudioFile = null;
-let messageToReply = null;
-let globalMediaRecorder = null;
-let recordingInterval = null;
-let recordingSeconds = 0;
-let typingTimeout = null;
-let currentSectors = JSON.parse(localStorage.getItem('userSectors')) || [];
+let lastRenderedDate = null;
 
 // ==============================================================
 // 👆 NOVO: MOTOR DE PRESSÃO LONGA (SELEÇÃO DE CONTATOS)
