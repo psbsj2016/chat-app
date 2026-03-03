@@ -25,7 +25,7 @@
         .hidden { display: none !important; }
         .app-screen { min-height: 100vh; padding: 20px; display: flex; flex-direction: column; }
 
-        /* --- DASHBOARD: MACRO DOMÍNIO E TREINO DIÁRIO --- */
+        /* --- DASHBOARD E TRILHAS (MANTIDOS INTACTOS) --- */
         .mastery-header { background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.4)); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 25px 20px; display: flex; align-items: center; gap: 20px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .mastery-ring { width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(var(--daily-color) 0%, var(--daily-color) 0%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.1) 100%); display: flex; align-items: center; justify-content: center; position: relative; transition: background 1s ease-out; }
         .mastery-ring::before { content: ""; position: absolute; width: 64px; height: 64px; background: var(--bg-color); border-radius: 50%; }
@@ -34,7 +34,6 @@
         .daily-workout-btn { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 20px; border-radius: 16px; font-size: 18px; font-weight: 900; width: 100%; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); transition: 0.2s; margin-bottom: 30px; }
         .daily-workout-btn:active { transform: scale(0.97); }
 
-        /* --- TRILHAS DE APRENDIZAGEM --- */
         .section-title { font-size: 14px; font-weight: 900; text-transform: uppercase; color: var(--text-muted); margin-bottom: 15px; letter-spacing: 1px; }
         .track-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px; margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; gap: 15px; transition: 0.2s; position: relative; overflow: hidden; }
         .track-card:active { transform: scale(0.98); }
@@ -52,7 +51,7 @@
         .track-contexto .track-icon { background: rgba(139, 92, 246, 0.1); color: var(--contexto-color); }
         .track-contexto .progress-bar-fill { background: var(--contexto-color); }
 
-        /* --- MAPA LINEAR E NUVEM DE TEMAS --- */
+        /* --- MAPA LINEAR --- */
         .map-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
         .core-path { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; position: relative; }
         .core-path::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: rgba(255,255,255,0.05); z-index: 0; }
@@ -63,14 +62,11 @@
         .node-btn.completed { background: var(--som-color); border-color: rgba(255,255,255,0.2); color: white; }
         .node-label { font-weight: 800; font-size: 14px; margin-top: 10px; text-align: center; }
         .node-desc { font-size: 11px; color: var(--text-muted); font-weight: 600; text-align: center; }
-
         .gate-divider { margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); border-radius: 12px; text-align: center; font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .gate-divider.unlocked { border-color: var(--som-color); color: var(--som-color); background: rgba(16, 185, 129, 0.1); }
-
         .free-themes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-bottom: 40px; }
         .free-theme-card { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px 15px; text-align: center; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .free-theme-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
-        .free-theme-card:active:not(.locked) { transform: scale(0.95); }
         .free-theme-icon { margin-bottom: 10px; font-size: 32px; }
 
         /* --- TELA DE LIÇÃO --- */
@@ -78,7 +74,6 @@
         .lesson-progress-container { flex: 1; margin: 0 20px; display: flex; gap: 5px; }
         .lesson-step { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; transition: 0.3s; }
         .lesson-step.active { background: var(--primary); }
-
         .toggle-container { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
         .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -87,14 +82,13 @@
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(16px); }
 
-        /* --- UI EXERCÍCIOS --- */
-        .exercise-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px 0; }
+        /* --- UI EXERCÍCIOS BASE --- */
+        .exercise-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px 0; width: 100%; }
         .ipa-text { font-family: monospace; font-size: 22px; color: var(--primary); font-weight: bold; margin-bottom: 10px; letter-spacing: 2px; }
-        .instruction-text { font-size: 18px; font-weight: 800; margin-bottom: 25px; line-height: 1.4; }
+        .instruction-text { font-size: 18px; font-weight: 800; margin-bottom: 25px; line-height: 1.4; width: 100%; }
         .advanced-tip { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); padding: 15px; border-radius: 12px; font-size: 13px; color: #93C5FD; font-weight: 600; margin-bottom: 20px; text-align: left; width: 100%; display: flex; align-items: center; gap: 10px; }
         
         .play-btn { background: var(--primary); color: white; border: none; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; cursor: pointer; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4); transition: 0.2s; }
-        .play-btn:active { transform: scale(0.9); }
         .mic-btn { background: var(--som-color); color: white; border: none; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: 20px auto; cursor: pointer; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); transition: 0.3s; }
         .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 20px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
@@ -104,6 +98,15 @@
         .option-btn.selected { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
         .option-btn.correct { border-color: var(--som-color); background: rgba(16, 185, 129, 0.1); color: var(--som-color); }
         .option-btn.wrong { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        /* --- NOVOS MOTORES VISUAIS: LÓGICA E CONTEXTO --- */
+        .assembly-workspace { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .answer-box { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; min-height: 70px; width: 100%; border-bottom: 2px dashed rgba(255,255,255,0.2); padding-bottom: 15px; }
+        .word-pool { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; min-height: 80px; }
+        .word-block { background: var(--card-bg); border: 2px solid rgba(255,255,255,0.1); padding: 12px 18px; border-radius: 12px; font-size: 18px; font-weight: 800; color: white; cursor: pointer; user-select: none; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .word-block:active { transform: scale(0.9); }
+        
+        .cloze-blank { display: inline-block; min-width: 60px; border-bottom: 3px solid var(--text-muted); padding: 0 5px; text-align: center; color: var(--primary); font-weight: 900; transition: 0.3s; }
 
         .action-footer { margin-top: auto; padding-top: 20px; }
         .action-btn { background: var(--card-bg); color: var(--text-muted); border: none; padding: 18px; border-radius: 16px; font-size: 16px; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
@@ -187,7 +190,7 @@
         <div class="lesson-header">
             <button class="icon-btn" onclick="abortLesson()" style="background: transparent; border:none; color:var(--text-muted); cursor:pointer;"><span class="material-icons-round">close</span></button>
             <div class="lesson-progress-container" id="lesson-progress">
-                <div class="lesson-step active"></div><div class="lesson-step"></div><div class="lesson-step"></div><div class="lesson-step"></div><div class="lesson-step"></div>
+                <div class="lesson-step active"></div><div class="lesson-step"></div><div class="lesson-step"></div><div class="lesson-step"></div>
             </div>
             <div class="toggle-container">
                 IPA <label class="switch"><input type="checkbox" id="advanced-mode-toggle" onchange="toggleAdvancedMode()"><span class="slider"></span></label>
@@ -208,33 +211,29 @@
         // ===============================================
         const myId = localStorage.getItem('myId'); 
         let userStats = { macroSom: 0, macroLogica: 0, macroContexto: 0, globalFluency: 0 };
-        let userMicros = []; // MicroMastery array vindo do Servidor
+        let userMicros = []; 
 
-        // O Catálogo Base (Fica no frontend para carregamento instantâneo da UI)
         const nodesCatalog = {
             som: [
                 { id: 'som_1', type: 'core', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', icon: 'record_voice_over' },
-                { id: 'som_2', type: 'core', title: '/t/ vs /d/', desc: 'Consoantes Alveolares', icon: 'record_voice_over' },
-                { id: 'som_3', type: 'core', title: '/æ/ vs /ɛ/', desc: 'Vogais Curtas', icon: 'lock' }
+                { id: 'som_2', type: 'core', title: '/t/ vs /d/', desc: 'Consoantes Alveolares', icon: 'record_voice_over' }
             ],
             logica: [
                 { id: 'logica_1', type: 'core', title: 'Ordem SVO', desc: 'Estrutura Base', icon: 'account_tree' },
-                { id: 'logica_2', type: 'core', title: 'Do/Does/Did', desc: 'Interrogações', icon: 'help_outline' },
                 { id: 'logica_free_1', type: 'free', title: 'Condicionais', desc: 'If I were...', icon: 'lock' }
             ],
             contexto: [
                 { id: 'contexto_1', type: 'core', title: 'Sobrevivência', desc: 'Básico', icon: 'directions' },
-                { id: 'contexto_free_1', type: 'free', title: 'Viagem', desc: 'Aeroporto e Hotel', icon: 'flight' },
-                { id: 'contexto_free_2', type: 'free', title: 'Business', desc: 'Escritório', icon: 'work' }
+                { id: 'contexto_free_1', type: 'free', title: 'Viagem', desc: 'Aeroporto e Hotel', icon: 'flight' }
             ]
         };
 
+        // ESTA É A NOVA FILA TEMPORÁRIA (MISTURA SOM, VOZ, LÓGICA E CONTEXTO)
         const currentExerciseQueue = [
-            { id: 'ex_1', type: 'listen_isolate', ipa: '/p/', text: "Ouça o som isolado", advTip: "Articulação: Bilabial plosiva.", audio: "p_sound" },
-            { id: 'ex_2', type: 'minimal_pair', ipa: '/p/ vs /b/', text: "Qual som você ouviu?", advTip: "Diferença: Vibração.", options: ["Pat", "Bat"], answer: 0 },
-            { id: 'ex_3', type: 'repeat_isolate', ipa: '/p/', text: "Grave o som /p/", advTip: "Solte o ar com força.", target: "p" },
-            { id: 'ex_4', type: 'repeat_word', ipa: '/pæt/', text: "Fale a palavra", advTip: "Atenção ao som seco.", target: "pat", displayWord: "Pat" },
-            { id: 'ex_5', type: 'repeat_sentence', ipa: "...", text: "Fale a frase", advTip: "Fluidez.", target: "pat has a pet", displayWord: "Pat has a pet." }
+            { id: 'ex_1', type: 'minimal_pair', ipa: '/p/ vs /b/', text: "Qual som você ouviu?", advTip: "Diferença: Vibração nas cordas vocais.", options: ["Pat", "Bat"], answer: 0 },
+            { id: 'ex_2', type: 'repeat_word', ipa: '/pæt/', text: "Fale a palavra", advTip: "Atenção ao som seco no início.", target: "pat", displayWord: "Pat" },
+            { id: 'ex_3', type: 'sentence_assembly', text: "Traduza: Eu gosto de café", advTip: "Ordem: Sujeito + Verbo + Objeto.", options: ["coffee", "like", "I"], answer: "I like coffee" },
+            { id: 'ex_4', type: 'context_cloze', context: "Você está num restaurante...", text: "I ___ some water, please.", advTip: "Use o verbo formal para desejos.", options: ["want", "wants", "wanting"], answer: 0 }
         ];
 
         let currentTrack = '';
@@ -245,14 +244,14 @@
         let currentExercise = null;
         let selectedOption = null;
         let stepState = 'ready'; 
-        let exerciseStartTime = 0; // Para calcular o "Speed Score" do backend
+        let exerciseStartTime = 0; 
+        
+        // Variáveis de Estado para a Lógica de Arrastar (Assembly)
+        let assembledSentence = [];
+        let poolWords = [];
 
-        // INICIALIZAÇÃO DO APLICATIVO
         window.addEventListener('DOMContentLoaded', async () => {
-            if(!myId) {
-                document.getElementById('global-level-text').innerText = "Erro: ID não encontrado. Faça login.";
-                return;
-            }
+            if(!myId) return document.getElementById('global-level-text').innerText = "Erro: ID não encontrado.";
             await fetchDashboardData();
         });
 
@@ -260,14 +259,8 @@
             try {
                 const res = await fetch(`/api/english/dashboard/${myId}`);
                 const data = await res.json();
-                if(data.success) {
-                    userStats = data.stats;
-                    userMicros = data.micros;
-                    updateDashboardUI();
-                }
-            } catch (e) {
-                document.getElementById('global-level-text').innerText = "Erro de conexão.";
-            }
+                if(data.success) { userStats = data.stats; userMicros = data.micros; updateDashboardUI(); }
+            } catch (e) { document.getElementById('global-level-text').innerText = "Erro de conexão."; }
         }
 
         function updateDashboardUI() {
@@ -282,22 +275,19 @@
 
             document.getElementById('desc-som').innerText = `Domínio Macro: ${userStats.macroSom}%`;
             document.getElementById('bar-som').style.width = `${userStats.macroSom}%`;
-            
             document.getElementById('desc-logica').innerText = `Domínio Macro: ${userStats.macroLogica}%`;
             document.getElementById('bar-logica').style.width = `${userStats.macroLogica}%`;
-            
             document.getElementById('desc-contexto').innerText = `Domínio Macro: ${userStats.macroContexto}%`;
             document.getElementById('bar-contexto').style.width = `${userStats.macroContexto}%`;
         }
 
         // ===============================================
-        // 🎤 2. MOTOR DE VOZ (BLINDADO)
+        // 🎤 2. MOTOR DE VOZ
         // ===============================================
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognizer = null;
         if (SpeechRecognition) {
-            recognizer = new SpeechRecognition();
-            recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
+            recognizer = new SpeechRecognition(); recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
             recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
             recognizer.onspeechend = () => stopMic();
             recognizer.onerror = (e) => { stopMic(); setFeedback(e.error === 'no-speech' ? "Nenhum som detetado." : "Erro: " + e.error, "var(--danger)"); };
@@ -307,27 +297,18 @@
             if(!recognizer) return alert("Microfone não suportado.");
             const micBtn = document.getElementById('mic-btn');
             if(isRecording) stopMic(); 
-            else {
-                try {
-                    recognizer.start(); isRecording = true;
-                    if(micBtn) micBtn.classList.add('recording');
-                    document.getElementById('mic-status').innerText = "Escutando...";
-                } catch(e) { stopMic(); }
-            }
+            else { try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } catch(e) { stopMic(); } }
         }
 
         function stopMic() {
             if (!isRecording) return;
-            isRecording = false;
-            const micBtn = document.getElementById('mic-btn');
-            if(micBtn) micBtn.classList.remove('recording');
+            isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording');
             try { recognizer.stop(); } catch(e) {} 
-            const statusEl = document.getElementById('mic-status');
-            if (statusEl && statusEl.innerText.includes("Escutando")) statusEl.innerText = "Processando...";
+            const statusEl = document.getElementById('mic-status'); if (statusEl && statusEl.innerText.includes("Escutando")) statusEl.innerText = "Processando...";
         }
 
         // ===============================================
-        // 🗺️ 3. MAPA LINEAR (MESCLA CATÁLOGO + BACKEND)
+        // 🗺️ 3. MAPA LINEAR
         // ===============================================
         function openMap(track) {
             currentTrack = track;
@@ -346,18 +327,11 @@
             const catalog = nodesCatalog[track] || [];
             const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
 
-            // Mescla dados do catálogo com o progresso vindo do servidor
             let coreComplete = true;
-            let firstCoreFound = false;
-
             const coreNodes = catalog.filter(n => n.type === 'core').map((node, i) => {
                 const micro = userMicros.find(m => m.nodeId === node.id);
-                if (micro) {
-                    node.status = micro.isCompleted ? 'completed' : (micro.isUnlocked ? 'unlocked' : 'locked');
-                } else {
-                    // Se não há registo, o primeiro nó do core fica destrancado por padrão
-                    node.status = (i === 0) ? 'unlocked' : 'locked';
-                }
+                if (micro) node.status = micro.isCompleted ? 'completed' : (micro.isUnlocked ? 'unlocked' : 'locked');
+                else node.status = (i === 0) ? 'unlocked' : 'locked';
                 if(node.status !== 'completed') coreComplete = false;
                 return node;
             });
@@ -368,13 +342,7 @@
                 const bgStyle = node.status === 'unlocked' ? `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;` : (node.status === 'completed' ? `background-color: var(--som-color);` : '');
                 
                 coreContainer.innerHTML += `
-                    <div class="node-wrapper">
-                        <div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}">
-                            <span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span>
-                        </div>
-                        <div class="node-label">${node.title}</div>
-                        <div class="node-desc">${node.desc}</div>
-                    </div>`;
+                    <div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; ${node.status === 'locked' ? 'color: #64748B;' : 'color: white;'}">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
             });
 
             const freeNodes = catalog.filter(n => n.type === 'free');
@@ -389,245 +357,216 @@
                     const cardClass = isLocked ? 'locked' : '';
                     const clickAction = !isLocked ? `onclick="startNodeLesson('${node.id}')"` : '';
                     const iconColor = isLocked ? '#64748B' : color;
-                    
                     freeContainer.innerHTML += `
-                        <div class="free-theme-card ${cardClass}" ${clickAction}>
-                            <span class="material-icons-round free-theme-icon" style="color: ${iconColor};">${node.icon}</span>
-                            <div style="font-size: 14px; font-weight: 800;">${node.title}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">${node.desc}</div>
-                        </div>`;
+                        <div class="free-theme-card ${cardClass}" ${clickAction}><span class="material-icons-round free-theme-icon" style="color: ${iconColor};">${node.icon}</span><div style="font-size: 14px; font-weight: 800;">${node.title}</div><div style="font-size: 10px; color: var(--text-muted);">${node.desc}</div></div>`;
                 });
-            } else {
-                document.getElementById('free-themes-title').style.display = 'none';
-            }
+            } else { document.getElementById('free-themes-title').style.display = 'none'; }
         }
 
-        function backToDashboard() {
-            document.getElementById('map-screen').classList.add('hidden');
-            document.getElementById('dashboard-screen').classList.remove('hidden');
-        }
+        function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
 
         // ===============================================
-        // ⚡ TREINO DIÁRIO (PEDIDO AO SERVIDOR)
+        // 🚀 4. INÍCIO DE LIÇÃO E TREINO DIÁRIO
         // ===============================================
         async function startDailyWorkout() {
             if(!myId) return alert("Erro: ID não encontrado.");
-            
-            const btn = document.querySelector('.daily-workout-btn');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><span class="material-icons-round" style="animation: pulse 1s infinite;">sync</span> Montando Treino...</div>`;
-            btn.style.pointerEvents = 'none';
+            const btn = document.querySelector('.daily-workout-btn'); const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><span class="material-icons-round" style="animation: pulse 1s infinite;">sync</span> Montando Treino...</div>`; btn.style.pointerEvents = 'none';
 
             try {
-                // 1. Pede a Dieta Cognitiva ao Servidor
-                const res = await fetch(`/api/english/daily/${myId}`);
-                const data = await res.json();
+                const res = await fetch(`/api/english/daily/${myId}`); const data = await res.json();
+                if (data.success && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
+                else { currentExerciseQueue.forEach(ex => ex.nodeId = 'som_1'); }
+                currentNodeId = 'daily'; exerciseIndex = 0;
                 
-                // 2. Substitui a fila atual pela fila real vinda do banco de dados
-                // (Se o DB estiver vazio, usamos os Mocks temporariamente para o app não quebrar)
-                if (data.success && data.exercises.length > 0) {
-                    currentExerciseQueue.length = 0; // Limpa o array
-                    currentExerciseQueue.push(...data.exercises);
-                } else {
-                    console.log("Banco de dados sem exercícios, a usar Mock Data.");
-                    // Injeta um nodeId falso nos mocks para o envio não falhar
-                    currentExerciseQueue.forEach(ex => ex.nodeId = 'som_1'); 
-                }
-
-                // 3. Inicia a Tela de Treino
-                currentNodeId = 'daily'; // Indica que estamos num treino misto
-                exerciseIndex = 0;
+                const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
+                currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
                 
-                // Ajusta as barras de progresso do topo para refletirem a quantidade de exercícios recebidos
-                const progressContainer = document.getElementById('lesson-progress');
-                progressContainer.innerHTML = '';
-                currentExerciseQueue.forEach((_, i) => {
-                    progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`;
-                });
-
-                document.getElementById('map-screen').classList.add('hidden');
-                document.getElementById('dashboard-screen').classList.add('hidden');
-                document.getElementById('lesson-screen').classList.remove('hidden');
-                
+                document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden');
                 loadExercise();
-
-            } catch (e) {
-                alert("Erro ao contatar o Quartel General. Tente novamente.");
-            } finally {
-                btn.innerHTML = originalHtml;
-                btn.style.pointerEvents = 'auto';
-            }
+            } catch (e) { alert("Erro ao contatar o QG."); } 
+            finally { btn.innerHTML = originalHtml; btn.style.pointerEvents = 'auto'; }
         }
 
-        // ===============================================
-        // 📚 4. ROTEADOR DE LIÇÕES E ENVIO PARA O BACKEND
-        // ===============================================
         async function startNodeLesson(id) {
             currentNodeId = id;
-            document.getElementById('map-screen').classList.add('hidden');
-            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
             
-            // NOVO: Faz o Fetch Dinâmico da Lição ao Servidor!
             try {
-                // Se for o Treino Diário, não bate nesta rota (a lógica já está no botão de Treino Diário)
                 if (id !== 'daily') {
-                    const res = await fetch(`/api/english/node/${id}`);
-                    const data = await res.json();
-                    
-                    if (data.success && data.exercises && data.exercises.length > 0) {
-                        currentExerciseQueue.length = 0; // Limpa a fila atual
-                        currentExerciseQueue.push(...data.exercises); // Enche com os exercícios da Nuvem
-                    } else {
-                        // Se for uma fase vazia (ex: som_2)
-                        alert(data.message || "Fase em construção. Volte em breve!");
-                        document.getElementById('map-screen').classList.remove('hidden');
-                        return;
-                    }
+                    const res = await fetch(`/api/english/node/${id}`); const data = await res.json();
+                    if (data.success && data.exercises && data.exercises.length > 0) { currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); } 
+                    else { alert(data.message || "Fase em construção."); document.getElementById('map-screen').classList.remove('hidden'); return; }
                 }
-            } catch (e) {
-                alert("Falha de comunicação. Verifique a sua ligação.");
-                document.getElementById('map-screen').classList.remove('hidden');
-                return;
-            }
+            } catch (e) { alert("Falha de comunicação."); document.getElementById('map-screen').classList.remove('hidden'); return; }
 
             exerciseIndex = 0;
-            
-            // Constrói os tracinhos de progresso no topo conforme o tamanho real da lição
-            const progressContainer = document.getElementById('lesson-progress');
-            progressContainer.innerHTML = '';
-            currentExerciseQueue.forEach((_, i) => {
-                progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`;
-            });
+            const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
+            currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
 
-            document.getElementById('lesson-screen').classList.remove('hidden');
-            updateProgressBars();
-            loadExercise();
+            document.getElementById('lesson-screen').classList.remove('hidden'); updateProgressBars(); loadExercise();
         }
 
         function abortLesson() {
-            if(confirm("Abandonar treino?")) {
-                if(isRecording) stopMic(); window.speechSynthesis.cancel();
-                document.getElementById('lesson-screen').classList.add('hidden');
-                document.getElementById('dashboard-screen').classList.remove('hidden');
-            }
+            if(confirm("Abandonar treino?")) { if(isRecording) stopMic(); window.speechSynthesis.cancel(); document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
         }
 
-        function updateProgressBars() {
-            document.querySelectorAll('.lesson-step').forEach((s, i) => s.classList.toggle('active', i <= exerciseIndex));
-        }
-
+        // ===============================================
+        // 🧩 5. MOTORES VISUAIS DE RENDERIZAÇÃO
+        // ===============================================
+        function updateProgressBars() { document.querySelectorAll('.lesson-step').forEach((s, i) => s.classList.toggle('active', i <= exerciseIndex)); }
         function toggleAdvancedMode() { isAdvancedMode = document.getElementById('advanced-mode-toggle').checked; loadExercise(); }
 
         function loadExercise() {
             if (exerciseIndex >= currentExerciseQueue.length) { finishLesson(); return; }
             currentExercise = currentExerciseQueue[exerciseIndex];
-            selectedOption = null; stepState = 'ready'; setFeedback("", "");
-            exerciseStartTime = Date.now(); // ⏱️ Inicia cronômetro para o Speed Score
+            selectedOption = null; stepState = 'ready'; setFeedback("", ""); exerciseStartTime = Date.now();
             
             const area = document.getElementById('exercise-area');
             const btn = document.getElementById('btn-action');
             let html = '';
-            const advBlock = isAdvancedMode ? `<div class="ipa-text">${currentExercise.ipa}</div><div class="advanced-tip"><span class="material-icons-round">info</span> ${currentExercise.advTip}</div>` : '';
+            const advBlock = isAdvancedMode && currentExercise.advTip ? `<div class="advanced-tip"><span class="material-icons-round">info</span> ${currentExercise.advTip}</div>` : '';
+            const ipaBlock = isAdvancedMode && currentExercise.ipa ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
 
-            if (currentExercise.type === 'listen_isolate') {
-                html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${currentExercise.ipa.replace(/\//g,'')}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><p style="color:var(--text-muted); font-size:12px;">Toque para ouvir</p>`;
-                btn.innerText = "Continuar"; btn.className = "action-btn ready";
-            } else if (currentExercise.type === 'minimal_pair') {
-                html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${currentExercise.options[currentExercise.answer]}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
+            // 1. MOTOR DE SOM (Minimal Pairs)
+            if (currentExercise.type === 'minimal_pair') {
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${currentExercise.options[currentExercise.answer]}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
                 btn.innerText = "Verificar"; btn.className = "action-btn";
+            
+            // 2. MOTOR DE VOZ (Speaking)
             } else if (currentExercise.type.startsWith('repeat')) {
-                html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div>${currentExercise.displayWord ? `<div class="target-word">${currentExercise.displayWord}</div>` : ''}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Toque para gravar</p>`;
+                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div>${currentExercise.displayWord ? `<div class="target-word">${currentExercise.displayWord}</div>` : ''}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Toque para gravar</p>`;
                 btn.innerText = "Verificar Gravação"; btn.className = "action-btn";
+            
+            // 3. NOVO: MOTOR DE LÓGICA (Sentence Assembly)
+            } else if (currentExercise.type === 'sentence_assembly') {
+                assembledSentence = []; // Reinicia o quadro
+                poolWords = [...currentExercise.options]; // As palavras misturadas
+                html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="assembly-workspace" id="assembly-workspace"></div>`;
+                btn.innerText = "Verificar Lógica"; btn.className = "action-btn";
+
+            // 4. NOVO: MOTOR DE CONTEXTO (Cloze Test)
+            } else if (currentExercise.type === 'context_cloze') {
+                html = `${advBlock}
+                        <div style="font-size:14px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div>
+                        <div class="instruction-text" id="cloze-text" style="font-size: 24px;">${currentExercise.text.replace('___', '<span class="cloze-blank"></span>')}</div>
+                        <div class="options-grid" id="quiz-options">
+                            ${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}
+                        </div>`;
+                btn.innerText = "Verificar Escolha"; btn.className = "action-btn";
             }
+
             area.innerHTML = html;
+            if (currentExercise.type === 'sentence_assembly') renderAssemblyWorkspace();
         }
 
-        function playTTS(text) {
-            const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.8; window.speechSynthesis.speak(u);
-        }
+        // ===============================================
+        // 🎮 6. LÓGICA DE INTERAÇÃO DOS NOVOS MOTORES
+        // ===============================================
 
+        // Interação Genérica (Audio)
+        function playTTS(text) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.8; window.speechSynthesis.speak(u); }
         function selectOption(idx) {
-            if(stepState !== 'ready') return;
-            selectedOption = idx;
+            if(stepState !== 'ready') return; selectedOption = idx;
             document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
             document.getElementById('btn-action').className = "action-btn ready";
         }
 
+        // Interação: LÓGICA (Arrastar/Clicar Blocos)
+        function renderAssemblyWorkspace() {
+            const workspace = document.getElementById('assembly-workspace');
+            if(!workspace) return;
+            
+            let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join('');
+            let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join('');
+            
+            workspace.innerHTML = `
+                <div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras para formar a frase...</span>'}</div>
+                <div class="word-pool">${poolHtml}</div>
+            `;
+            
+            if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready";
+            else document.getElementById('btn-action').className = "action-btn";
+        }
+        function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
+        function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
+
+        // Interação: CONTEXTO (Preencher Lacuna)
+        function selectClozeOption(idx) {
+            if(stepState !== 'ready') return; selectedOption = idx;
+            document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
+            document.getElementById('cloze-text').innerHTML = currentExercise.text.replace('___', `<span class="cloze-blank" style="color:var(--contexto-color); border-color:var(--contexto-color);">${currentExercise.options[idx]}</span>`);
+            document.getElementById('btn-action').className = "action-btn ready";
+        }
+
+        // ===============================================
+        // ✅ 7. VALIDAÇÃO E ENVIO AO SERVIDOR
+        // ===============================================
         function evaluateSpeech(transcript) {
-            const cleanT = transcript.toLowerCase().trim();
-            const target = currentExercise.target.toLowerCase();
+            const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase();
             document.getElementById('mic-status').innerText = `Você disse: "${transcript}"`;
             
-            // Avaliação Frontend e Envio para Backend
             let score = 0;
-            if (cleanT.includes(target) || target.includes(cleanT) || target === 'p') {
-                setFeedback("Precisão: 95% - Excelente!", "var(--som-color)");
-                score = 95;
-                document.getElementById('btn-action').className = "action-btn success";
-            } else {
-                setFeedback("Precisão: 40% - Requer ajuste.", "var(--danger)");
-                score = 40;
-            }
-            document.getElementById('btn-action').innerText = "Continuar";
-            stepState = 'verified';
-            sendAttemptToBackend(score); // 📡 Dispara para a Base de Dados
+            if (cleanT.includes(target) || target.includes(cleanT) || target === 'p') { setFeedback("Precisão: 95% - Excelente!", "var(--som-color)"); score = 95; document.getElementById('btn-action').className = "action-btn success"; } 
+            else { setFeedback("Precisão: 40% - Requer ajuste.", "var(--danger)"); score = 40; }
+            document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; sendAttemptToBackend(score);
         }
 
         function handleLessonAction() {
+            let score = 0;
+            const btn = document.getElementById('btn-action');
+
             if (currentExercise.type === 'listen_isolate') {
-                sendAttemptToBackend(100); // Ouvir dá 100% automático no exercício
-                nextExercise();
-            } else if (currentExercise.type === 'minimal_pair') {
-                if (stepState === 'ready' && selectedOption !== null) {
-                    const btns = document.querySelectorAll('.option-btn');
-                    let score = 0;
-                    if (selectedOption === currentExercise.answer) {
-                        btns[selectedOption].classList.add('correct');
-                        setFeedback("Perfeito! Ouvido calibrado.", "var(--som-color)");
-                        document.getElementById('btn-action').className = "action-btn success";
-                        score = 100;
-                    } else {
-                        btns[selectedOption].classList.add('wrong');
-                        btns[currentExercise.answer].classList.add('correct');
-                        setFeedback("Incorreto. Era o outro som.", "var(--danger)");
-                        document.getElementById('btn-action').className = "action-btn";
-                        score = 20;
-                    }
-                    document.getElementById('btn-action').innerText = "Continuar";
-                    stepState = 'verified';
-                    sendAttemptToBackend(score); // 📡 Dispara para a Base de Dados
-                } else if (stepState === 'verified') nextExercise();
+                sendAttemptToBackend(100); nextExercise(); return;
+            } 
+            
+            if (stepState === 'verified') { nextExercise(); return; }
+            if (stepState !== 'ready') return;
+
+            // Validação: LÓGICA
+            if (currentExercise.type === 'sentence_assembly') {
+                if (assembledSentence.length === 0) return alert("Monte a frase primeiro!");
+                const isCorrect = assembledSentence.join(' ') === currentExercise.answer;
+                if (isCorrect) { setFeedback("Perfeito! Sintaxe impecável.", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
+                else { setFeedback(`Incorreto. A ordem certa era:\n"${currentExercise.answer}"`, "var(--danger)"); btn.className = "action-btn"; score = 20; }
+                
+            // Validação: CONTEXTO OU MINIMAL PAIR
+            } else if (currentExercise.type === 'minimal_pair' || currentExercise.type === 'context_cloze') {
+                if (selectedOption === null) return alert("Selecione uma opção!");
+                const isCorrect = selectedOption === currentExercise.answer;
+                const winColor = currentExercise.type === 'context_cloze' ? 'var(--contexto-color)' : 'var(--som-color)';
+                
+                if (isCorrect) { 
+                    setFeedback("Perfeito! Escolha correta.", winColor); btn.className = "action-btn success"; score = 100; 
+                    document.querySelectorAll('.option-btn')[selectedOption].classList.add('correct');
+                } else { 
+                    setFeedback("Incorreto. Leia a dica avançada!", "var(--danger)"); btn.className = "action-btn"; score = 20; 
+                    document.querySelectorAll('.option-btn')[selectedOption].classList.add('wrong');
+                    document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct');
+                }
             } else if (currentExercise.type.startsWith('repeat')) {
-                if (stepState === 'verified') nextExercise();
-                else alert("Grave sua voz primeiro clicando no microfone.");
+                return alert("Grave sua voz primeiro clicando no microfone.");
             }
+
+            btn.innerText = "Continuar"; stepState = 'verified'; sendAttemptToBackend(score);
         }
 
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
         
-        // 📡 A CHAMADA API REVOLUCIONÁRIA (Atualizada para suportar Treino Diário Dinâmico)
         async function sendAttemptToBackend(score) {
-            if(!myId) return;
-            const timeTaken = Date.now() - exerciseStartTime;
-            
-            // CRÍTICO: Se for Treino Diário, o nó alvo muda a cada exercício (Ex: Som no ex 1, Lógica no ex 2).
-            // Por isso usamos o currentExercise.nodeId que o servidor nos enviou!
+            if(!myId) return; const timeTaken = Date.now() - exerciseStartTime;
             const targetNode = currentExercise.nodeId || currentNodeId;
-
             try {
                 const res = await fetch('/api/english/attempt', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: myId, nodeId: targetNode, exerciseId: currentExercise.id || 'ex_0', score: score, timeMs: timeTaken })
                 });
                 const responseData = await res.json();
                 if(responseData.success) {
-                    userStats.globalFluency = responseData.data.macros.globalFluency;
-                    userStats.macroSom = responseData.data.macros.som;
-                    userStats.macroLogica = responseData.data.macros.logica;
-                    userStats.macroContexto = responseData.data.macros.contexto;
+                    userStats.globalFluency = responseData.data.macros.globalFluency; userStats.macroSom = responseData.data.macros.som;
+                    userStats.macroLogica = responseData.data.macros.logica; userStats.macroContexto = responseData.data.macros.contexto;
                 }
-            } catch(e) { console.error("Erro ao sincronizar com servidor."); }
+            } catch(e) { console.error("Erro de sincronização."); }
         }
 
         function nextExercise() { exerciseIndex++; updateProgressBars(); loadExercise(); }
@@ -638,12 +577,9 @@
                 <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Sessão Concluída!</h2>
                 <p style="color:var(--text-muted); font-weight:600;">Progresso salvo na Base de Dados</p>
             `;
-            document.getElementById('btn-action').innerText = "Voltar ao QG";
-            document.getElementById('btn-action').className = "action-btn ready";
+            document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
             document.getElementById('btn-action').onclick = async () => {
-                document.getElementById('lesson-screen').classList.add('hidden');
-                document.getElementById('dashboard-screen').classList.remove('hidden');
-                // Puxa tudo limpo do banco de dados novamente para garantir UI sincronizada
+                document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden');
                 await fetchDashboardData(); 
             };
         }
