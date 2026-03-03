@@ -115,6 +115,8 @@
         .action-btn.success { background: var(--som-color); color: white; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
         .target-word { font-size: 32px; font-weight: 900; margin: 15px 0; color: white; }
         .feedback-text { min-height: 24px; font-weight: 800; margin-top: 15px; font-size: 14px; }
+        
+        .chic-btn { border: none; border-radius: 12px; cursor: pointer; transition: 0.2s; }
     </style>
 </head>
 <body>
@@ -141,7 +143,8 @@
             <span class="material-icons-round">play_circle_filled</span>
         </button>
 
-        <div class="section-title">As 3 Trilhas de Aprendizagem</div>
+        <div class="section-title">Núcleo Estrutural (Construção)</div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Trilhas base de aprendizagem. Aprenda a pensar na língua.</p>
         
         <div class="track-card track-som" onclick="openMap('som')">
             <div class="track-icon"><span class="material-icons-round" style="font-size: 32px;">record_voice_over</span></div>
@@ -170,38 +173,60 @@
             </div>
         </div>
 
-        <div class="section-title" style="margin-top: 15px;">Treinamento Específico</div>
-        
-        <div class="track-card" style="background: transparent; border: 1px dashed var(--primary); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;" onclick="document.getElementById('english-skills-menu').classList.toggle('hidden'); const icon = document.getElementById('skills-expand-icon'); icon.innerText = icon.innerText === 'expand_more' ? 'expand_less' : 'expand_more';">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="material-icons-round" style="color: var(--primary); font-size: 24px;">category</span>
-                <span style="font-weight: 800; font-size: 16px; color: white;">As 4 Habilidades (CEFR)</span>
-            </div>
-            <span id="skills-expand-icon" class="material-icons-round" style="color: var(--text-muted);">expand_more</span>
+        <div class="section-title" style="margin-top: 30px; display: flex; align-items: center; gap: 8px;">
+            <span class="material-icons-round" style="color: #F43F5E;">speed</span> 
+            <span style="color: white; font-size: 16px;">Área de Performance</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Treino de execução real. Meça sua fluidez, tempo de resposta e precisão.</p>
+
+        <div style="display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 15px;">
+            <button id="tab-solo" class="chic-btn" style="flex: 1; margin: 0; background: var(--card-bg); color: white; font-size: 13px; padding: 10px;" onclick="switchPerformanceTab('solo')">👤 Treino Solo</button>
+            <button id="tab-online" class="chic-btn" style="flex: 1; margin: 0; background: transparent; color: var(--text-muted); font-size: 13px; padding: 10px;" onclick="switchPerformanceTab('online')">🌐 Arena Online</button>
         </div>
 
-        <div id="english-skills-menu" class="hidden" style="margin-bottom: 20px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
-                <button style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('listening')">
+        <div id="performance-solo-view">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <button style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s; border:none;" onclick="startSkillWorkout('listening')">
                     <span class="material-icons-round" style="font-size: 28px;">headphones</span> Listening
                 </button>
-                <button style="background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('speaking')">
+                <button style="background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s; border:none;" onclick="startSkillWorkout('speaking')">
                     <span class="material-icons-round" style="font-size: 28px;">mic</span> Speaking
                 </button>
-                <button style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('reading')">
+                <button style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s; border:none;" onclick="startSkillWorkout('reading')">
                     <span class="material-icons-round" style="font-size: 28px;">menu_book</span> Reading
                 </button>
-                <button style="background: rgba(59, 130, 246, 0.1); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s;" onclick="startSkillWorkout('writing')">
+                <button style="background: rgba(59, 130, 246, 0.1); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 15px; border-radius: 12px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: 0.2s; border:none;" onclick="startSkillWorkout('writing')">
                     <span class="material-icons-round" style="font-size: 28px;">edit</span> Writing
                 </button>
             </div>
-            
-            <button style="background: linear-gradient(135deg, var(--danger), #B91C1C); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4); text-transform: uppercase; letter-spacing: 1px;" onclick="startTrainingWorkout()">
-                <span class="material-icons-round" style="font-size: 24px;">fitness_center</span> Training
+            <button style="background: linear-gradient(135deg, #F43F5E, #9F1239); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(244, 63, 94, 0.4); text-transform: uppercase; letter-spacing: 1px;" onclick="startTrainingWorkout()">
+                <span class="material-icons-round" style="font-size: 24px;">fitness_center</span> Training (Mix)
             </button>
         </div>
 
-    </div>
+        <div id="performance-online-view" class="hidden">
+            <div style="background: rgba(236, 72, 153, 0.1); border: 1px dashed #EC4899; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
+                <span class="material-icons-round" style="color: #EC4899; font-size: 32px; margin-bottom: 5px;">wifi_tethering</span>
+                <div style="font-size: 13px; font-weight: 800; color: white;">Batalha de Fluência Ao Vivo</div>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Convide um oponente online para testarem suas métricas em tempo real.</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #10B981; color: #10B981; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">headphones</span> Treinar Listening Online
+                </button>
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #F59E0B; color: #F59E0B; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">mic</span> Treinar Speaking Online
+                </button>
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #8B5CF6; color: #8B5CF6; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">menu_book</span> Treinar Reading Online
+                </button>
+                <button class="action-btn" style="background: var(--card-bg); border: 1px solid #3B82F6; color: #3B82F6; padding: 12px; font-size: 14px;" onclick="alert('Sistema de Matchmaking em construção!')">
+                    <span class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">edit</span> Treinar Writing Online
+                </button>
+            </div>
+        </div>
+        </div>
 
     <div id="map-screen" class="app-screen hidden">
         <div class="map-header">
@@ -240,8 +265,26 @@
 
     <script>
         // ===============================================
-        // 🧠 1. INTEGRAÇÃO BACKEND E VARIÁVEIS DE ESTADO
+        // 🧠 LÓGICA DE ABAS (PERFORMANCE) E INTEGRAÇÃO BACKEND
         // ===============================================
+        
+        function switchPerformanceTab(tab) {
+            const soloBtn = document.getElementById('tab-solo');
+            const onlineBtn = document.getElementById('tab-online');
+            const soloView = document.getElementById('performance-solo-view');
+            const onlineView = document.getElementById('performance-online-view');
+
+            if (tab === 'solo') {
+                soloBtn.style.background = 'var(--card-bg)'; soloBtn.style.color = 'white';
+                onlineBtn.style.background = 'transparent'; onlineBtn.style.color = 'var(--text-muted)';
+                soloView.classList.remove('hidden'); onlineView.classList.add('hidden');
+            } else {
+                onlineBtn.style.background = 'var(--card-bg)'; onlineBtn.style.color = 'white';
+                soloBtn.style.background = 'transparent'; soloBtn.style.color = 'var(--text-muted)';
+                onlineView.classList.remove('hidden'); soloView.classList.add('hidden');
+            }
+        }
+
         const myId = localStorage.getItem('myId'); 
         let userStats = { macroSom: 0, macroLogica: 0, macroContexto: 0, globalFluency: 0 };
         let userMicros = []; 
@@ -273,7 +316,6 @@
         let stepState = 'ready'; 
         let exerciseStartTime = 0; 
         
-        // Variáveis de Estado para a Lógica de Arrastar (Assembly)
         let assembledSentence = [];
         let poolWords = [];
 
@@ -349,7 +391,7 @@
         }
 
         // ===============================================
-        // 🗺️ 3. MAPA LINEAR
+        // 🗺️ 3. MAPA LINEAR (NÚCLEO ESTRUTURAL)
         // ===============================================
         function openMap(track) {
             currentTrack = track;
@@ -407,7 +449,7 @@
         function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
 
         // ===============================================
-        // 🚀 INÍCIO DE TREINAMENTO ESPECÍFICO (4 SKILLS & ACADEMIA)
+        // 🚀 INÍCIO DE TREINAMENTO ESPECÍFICO (PERFORMANCE)
         // ===============================================
         async function startSkillWorkout(skill) {
             document.getElementById('map-screen').classList.add('hidden'); 
@@ -474,7 +516,7 @@
         }
 
         // ===============================================
-        // 🚀 4. INÍCIO DE LIÇÃO E RENDERIZAÇÃO
+        // 🚀 4. INÍCIO DE LIÇÃO (ESTRUTURAL / DIÁRIO)
         // ===============================================
         async function startDailyWorkout() {
             if(!myId) return alert("Erro: ID não encontrado.");

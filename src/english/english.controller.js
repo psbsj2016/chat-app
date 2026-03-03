@@ -182,3 +182,69 @@ exports.getTrainingWorkout = async (req, res) => {
         res.status(500).json({ error: 'Erro ao gerar treino intensivo.' });
     }
 };
+
+// ==========================================
+// 📊 MOTOR DE PROCESSAMENTO DE PERFORMANCE
+// ==========================================
+exports.savePerformanceAttempt = async (req, res) => {
+    try {
+        const { userId, skill, score, timeMs } = req.body;
+        const mongoose = require('mongoose');
+        const PerformanceLog = mongoose.model('PerformanceLog');
+        const UserEnglish = mongoose.model('UserEnglish'); // 🔥 MUDANÇA TÁTICA AQUI
+
+        // 1. Salva o log bruto da execução (Histórico Intocável)
+        await new PerformanceLog({ userId, skill, score, responseTimeMs: timeMs }).save();
+
+        // 2. Calcula a evolução na habilidade específica
+        // O Training (mix) conta para histórico, mas não muda a média isolada
+        if (skill !== 'mix') {
+            const user = await UserEnglish.findOne({ userId: userId }); // 🔥 MUDANÇA TÁTICA AQUI
+            
+            if (user) {
+                const fieldMap = {
+                    'listening': 'perfListening',
+                    'speaking': 'perfSpeaking',
+                    'reading': 'perfReading',
+                    'writing': 'perfWriting'
+                };
+                const targetField = fieldMap[skill];
+
+                if (targetField) {
+                    let currentAvg = user[targetField] || 0;
+                    
+                    // MÁGICA DA PERFORMANCE: 
+                    // Dá peso de 70% ao histórico e 30% à tentativa atual. 
+                    let newAvg = currentAvg === 0 ? score : (currentAvg * 0.7) + (score * 0.3);
+                    newAvg = Math.min(100, Math.round(newAvg));
+
+                    user[targetField] = newAvg;
+                    await user.save();
+                }
+            }
+        }
+
+        res.json({ success: true, message: 'Métricas de performance atualizadas.' });
+    } catch (e) {
+        console.error("Erro na Performance:", e);
+        res.status(500).json({ error: 'Erro ao processar performance.' });
+    }
+};
+
+// Puxa as métricas de Performance do usuário para exibir na tela
+exports.getPerformanceStats = async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const UserEnglish = mongoose.model('UserEnglish'); // 🔥 MUDANÇA TÁTICA AQUI
+        const PerformanceLog = mongoose.model('PerformanceLog');
+        
+        const user = await UserEnglish.findOne({ userId: req.params.userId }).select('perfListening perfSpeaking perfReading perfWriting'); // 🔥 MUDANÇA TÁTICA AQUI
+        
+        // Conta quantos treinos completos o aluno já sobreviveu
+        const trainingCount = await PerformanceLog.countDocuments({ userId: req.params.userId, skill: 'mix' });
+
+        res.json({ success: true, stats: user, trainingCount });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao buscar métricas de performance.' });
+    }
+};

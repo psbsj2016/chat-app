@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// 1. O Cofre do Usuário (Macro Domínios e Cache)
+// 1. O Cofre do Usuário (Macro Domínios, Cache e PERFORMANCE)
 const UserEnglishSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', unique: true },
     macroSom: { type: Number, default: 0 },
@@ -8,7 +8,12 @@ const UserEnglishSchema = new mongoose.Schema({
     macroContexto: { type: Number, default: 0 },
     globalFluency: { type: Number, default: 0 },
     dailyWorkoutCache: { type: Array, default: [] },
-    lastWorkoutDate: { type: String, default: '' }
+    lastWorkoutDate: { type: String, default: '' },
+    // ⚡ NOVAS MÉTRICAS DE PERFORMANCE (Obrigatórias para a nova área):
+    perfListening: { type: Number, default: 0 },
+    perfSpeaking: { type: Number, default: 0 },
+    perfReading: { type: Number, default: 0 },
+    perfWriting: { type: Number, default: 0 }
 });
 const UserEnglish = mongoose.model('UserEnglish', UserEnglishSchema);
 
@@ -41,7 +46,7 @@ const MicroMasterySchema = new mongoose.Schema({
 });
 const MicroMastery = mongoose.model('MicroMastery', MicroMasterySchema);
 
-// 4. Histórico Bruto de Tentativas
+// 4. Histórico Bruto de Tentativas (Estrutural)
 const AttemptLogSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     nodeId: String,
@@ -52,4 +57,17 @@ const AttemptLogSchema = new mongoose.Schema({
 });
 const AttemptLog = mongoose.model('AttemptLog', AttemptLogSchema);
 
-module.exports = { UserEnglish, CatalogoNode, MicroMastery, AttemptLog };
+// ==============================================================
+// ⚡ 5. MÓDULO DE PERFORMANCE (INGLÊS PTT)
+// ==============================================================
+const performanceLogSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
+    skill: { type: String, enum: ['listening', 'speaking', 'reading', 'writing', 'mix'] },
+    score: Number, // Precisão da execução (0 a 100)
+    responseTimeMs: Number, // Agilidade (Tempo de resposta)
+    timestamp: { type: Date, default: Date.now }
+});
+const PerformanceLog = mongoose.model('PerformanceLog', performanceLogSchema);
+
+// Exportando tudo junto agora, incluindo o novo Radar de Performance!
+module.exports = { UserEnglish, CatalogoNode, MicroMastery, AttemptLog, PerformanceLog };
