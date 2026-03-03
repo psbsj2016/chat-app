@@ -30,3 +30,15 @@ exports.submitAttempt = async (req, res) => {
         res.status(500).json({ error: 'Falha ao processar tentativa' });
     }
 };
+
+exports.getDailyWorkout = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const workoutQueue = await EnglishService.generateDailyWorkout(userId);
+        
+        res.json({ success: true, exercises: workoutQueue });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Falha ao gerar o Treino Diário' });
+    }
+};

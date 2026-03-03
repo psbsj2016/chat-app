@@ -109,6 +109,60 @@ class EnglishService {
 
         return { ...macros, globalFluency };
     }
+
+// ==========================================
+    // ⚡ GERADOR DO TREINO DIÁRIO (TRIATHLON)
+    // ==========================================
+    static async generateDailyWorkout(userId) {
+        // 1. Puxa todos os nós que o aluno já destrancou
+        const micros = await MicroMastery.find({ userId, isUnlocked: true });
+        if (micros.length === 0) return []; // Se for novo, retorna vazio (o frontend usa o mock)
+
+        // 2. Separa os nós nas 3 categorias táticas
+        // UTI: Menores notas primeiro
+        const utiPool = [...micros].sort((a, b) => a.masteryScore - b.masteryScore);
+        
+        // Fronteira: Nós ainda não concluídos (100%), ordenados pelos praticados mais recentemente
+        const frontierPool = [...micros].filter(m => !m.isCompleted).sort((a, b) => b.lastPracticed - a.lastPracticed);
+        
+        // Revisão: Notas altas (>80%), mas que não são treinadas há muito tempo (lastPracticed mais antigo)
+        const reviewPool = [...micros].filter(m => m.masteryScore >= 80).sort((a, b) => a.lastPracticed - b.lastPracticed);
+
+        let selectedNodes = [];
+
+        // 3. A Matemática 50-30-20 (5 UTI, 3 Fronteira, 2 Revisão)
+        selectedNodes.push(...utiPool.slice(0, 5));
+        
+        // Se não tiver 3 de fronteira, preenche com mais da UTI
+        selectedNodes.push(...(frontierPool.length >= 3 ? frontierPool.slice(0, 3) : utiPool.slice(5, 8))); 
+        
+        // Se não tiver 2 de revisão, preenche com o que sobrar
+        selectedNodes.push(...(reviewPool.length >= 2 ? reviewPool.slice(0, 2) : utiPool.slice(8, 10)));
+
+        // Garante que não passa de 10 exercícios totais
+        selectedNodes = selectedNodes.slice(0, 10);
+        
+        // Baralha os nós (Shuffle) para o treino ser imprevisível
+        selectedNodes.sort(() => Math.random() - 0.5);
+
+        // 4. Monta o pacote de exercícios indo buscar ao Catálogo Estático
+        const workoutQueue = [];
+        for (let micro of selectedNodes) {
+            const node = await CatalogoNode.findOne({ nodeId: micro.nodeId });
+            // Se o nó existir no BD e tiver exercícios cadastrados
+            if (node && node.exercises && node.exercises.length > 0) {
+                // Pega 1 exercício aleatório desse nó específico
+                const randomEx = node.exercises[Math.floor(Math.random() * node.exercises.length)];
+                workoutQueue.push({
+                    ...randomEx,
+                    nodeId: node.nodeId // INJEÇÃO CRÍTICA: Diz ao frontend de onde veio este exercício!
+                });
+            }
+        }
+
+        return workoutQueue;
+    }
+
 }
 
 module.exports = EnglishService;

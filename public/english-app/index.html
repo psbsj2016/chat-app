@@ -407,9 +407,56 @@
             document.getElementById('dashboard-screen').classList.remove('hidden');
         }
 
-        function startDailyWorkout() {
-            alert("Montando treino a partir dos Micro Domínios mais baixos...");
-            startNodeLesson('daily');
+        // ===============================================
+        // ⚡ TREINO DIÁRIO (PEDIDO AO SERVIDOR)
+        // ===============================================
+        async function startDailyWorkout() {
+            if(!myId) return alert("Erro: ID não encontrado.");
+            
+            const btn = document.querySelector('.daily-workout-btn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<div style="display:flex; justify-content:center; width:100%;"><span class="material-icons-round" style="animation: pulse 1s infinite;">sync</span> Montando Treino...</div>`;
+            btn.style.pointerEvents = 'none';
+
+            try {
+                // 1. Pede a Dieta Cognitiva ao Servidor
+                const res = await fetch(`/api/english/daily/${myId}`);
+                const data = await res.json();
+                
+                // 2. Substitui a fila atual pela fila real vinda do banco de dados
+                // (Se o DB estiver vazio, usamos os Mocks temporariamente para o app não quebrar)
+                if (data.success && data.exercises.length > 0) {
+                    currentExerciseQueue.length = 0; // Limpa o array
+                    currentExerciseQueue.push(...data.exercises);
+                } else {
+                    console.log("Banco de dados sem exercícios, a usar Mock Data.");
+                    // Injeta um nodeId falso nos mocks para o envio não falhar
+                    currentExerciseQueue.forEach(ex => ex.nodeId = 'som_1'); 
+                }
+
+                // 3. Inicia a Tela de Treino
+                currentNodeId = 'daily'; // Indica que estamos num treino misto
+                exerciseIndex = 0;
+                
+                // Ajusta as barras de progresso do topo para refletirem a quantidade de exercícios recebidos
+                const progressContainer = document.getElementById('lesson-progress');
+                progressContainer.innerHTML = '';
+                currentExerciseQueue.forEach((_, i) => {
+                    progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`;
+                });
+
+                document.getElementById('map-screen').classList.add('hidden');
+                document.getElementById('dashboard-screen').classList.add('hidden');
+                document.getElementById('lesson-screen').classList.remove('hidden');
+                
+                loadExercise();
+
+            } catch (e) {
+                alert("Erro ao contatar o Quartel General. Tente novamente.");
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.style.pointerEvents = 'auto';
+            }
         }
 
         // ===============================================
@@ -524,19 +571,23 @@
 
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
         
-        // 📡 A CHAMADA API REVOLUCIONÁRIA (Conecta Frontend e Backend)
+        // 📡 A CHAMADA API REVOLUCIONÁRIA (Atualizada para suportar Treino Diário Dinâmico)
         async function sendAttemptToBackend(score) {
             if(!myId) return;
             const timeTaken = Date.now() - exerciseStartTime;
+            
+            // CRÍTICO: Se for Treino Diário, o nó alvo muda a cada exercício (Ex: Som no ex 1, Lógica no ex 2).
+            // Por isso usamos o currentExercise.nodeId que o servidor nos enviou!
+            const targetNode = currentExercise.nodeId || currentNodeId;
+
             try {
                 const res = await fetch('/api/english/attempt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: myId, nodeId: currentNodeId, exerciseId: currentExercise.id, score: score, timeMs: timeTaken })
+                    body: JSON.stringify({ userId: myId, nodeId: targetNode, exerciseId: currentExercise.id || 'ex_0', score: score, timeMs: timeTaken })
                 });
                 const responseData = await res.json();
                 if(responseData.success) {
-                    // Atualiza em tempo real as variáveis locais de fluência!
                     userStats.globalFluency = responseData.data.macros.globalFluency;
                     userStats.macroSom = responseData.data.macros.som;
                     userStats.macroLogica = responseData.data.macros.logica;
