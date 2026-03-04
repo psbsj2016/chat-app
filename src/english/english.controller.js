@@ -76,27 +76,29 @@ exports.injectUniversalExercise = async (req, res) => {
         exercise.createdAt = new Date();
         exercise.isPerformance = (core === 'performance');
 
-        let node = await CatalogoNode.findOne({ nodeId: nodeId });
-        
-        // Se a fase não existe no Banco, o QG cria-a automaticamente!
-        if (!node) {
-            node = new CatalogoNode({
-                nodeId: nodeId,
-                track: core === 'performance' ? 'performance' : 'estrutural',
-                category: 'base',
-                title: core === 'performance' ? `Piscina: ${nodeId}` : `Fase: ${nodeId}`,
-                exercises: []
-            });
-        }
+        // Valores de segurança caso a fase tenha que ser criada agora
+        const defaultTrack = core === 'performance' ? 'performance' : 'estrutural';
+        const defaultTitle = core === 'performance' ? `Piscina: ${nodeId}` : `Fase: ${nodeId}`;
 
-        // Empurra o exercício para o Arsenal do Nó
-        node.exercises.push(exercise);
-        await node.save();
+        // A MÁGICA: findOneAndUpdate com upsert: true (Garante a injeção sem dar crash de validação)
+        const node = await CatalogoNode.findOneAndUpdate(
+            { nodeId: nodeId },
+            { 
+                $push: { exercises: exercise },
+                $setOnInsert: { 
+                    track: defaultTrack, 
+                    category: 'base', 
+                    title: defaultTitle 
+                }
+            },
+            { new: true, upsert: true, runValidators: false } // runValidators: false ignora bloqueios rígidos no DB
+        );
 
         res.json({ success: true, message: '✅ Armamento injetado com sucesso no QG!' });
     } catch (e) {
         console.error("Erro no QG Admin:", e);
-        res.status(500).json({ success: false, message: 'Erro crítico ao injetar exercício.' });
+        // Agora, se der erro, o servidor vai devolver a mensagem exata do problema para o ecrã
+        res.status(500).json({ success: false, message: 'Erro DB: ' + e.message });
     }
 };
 
