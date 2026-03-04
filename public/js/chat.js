@@ -7,44 +7,200 @@ let currentSelectedMsgElement = null;
 let selectedMsgData = null;
 let lastRenderedDate = null;
 
-window.selectedActionContactId = null;
-window.selectedActionContactName = null;
-window.selectedActionContactIsGroup = false;
+// ==============================================================
+// 👆 MOTOR DE SELEÇÃO MÚLTIPLA E AÇÕES EM MASSA (NOVO)
+// ==============================================================
+window.selectedActionContacts = []; 
 
-window.selectContactForAction = function(id, name, isGroup) {
-    if(selectedActionContactId) clearContactSelection();
-    selectedActionContactId = id; selectedActionContactName = name; selectedActionContactIsGroup = isGroup;
-    const item = document.getElementById(`contact-${id}`); if(item) item.classList.add('selected-for-action');
-    const bar = document.getElementById('contact-action-bar'); if(bar) bar.classList.remove('hidden');
+function initMultiSelectUI() {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .selected-for-action { background: rgba(59, 130, 246, 0.15) !important; border-left: 4px solid var(--brand-primary) !important; }
+        #contact-action-bar { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; z-index: 1000; box-shadow: 0 15px 40px rgba(0,0,0,0.8); color: white; transition: 0.3s; }
+        .bulk-menu-item { padding: 15px 20px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600; }
+        .bulk-menu-item:hover { background: rgba(255,255,255,0.05); }
+    `;
+    document.head.appendChild(style);
+
+    const actionBar = document.createElement('div');
+    actionBar.id = 'contact-action-bar';
+    actionBar.className = 'hidden';
+    actionBar.innerHTML = `
+        <div style="display:flex; align-items:center; gap:15px;">
+            <span class="material-icons-round" style="cursor:pointer; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 50%;" onclick="clearContactSelection()">close</span>
+            <span id="action-bar-count" style="font-weight:900; font-size: 16px;">1 selecionado</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px; position:relative;">
+            <span class="material-icons-round" style="cursor:pointer; color: #EF4444; background: rgba(239,68,68,0.1); padding: 6px; border-radius: 50%;" onclick="promptBulkDeleteChat()">delete</span>
+            <span class="material-icons-round" style="cursor:pointer; background: rgba(255,255,255,0.1); padding: 6px; border-radius: 50%;" onclick="document.getElementById('bulk-action-menu').classList.toggle('hidden')">more_vert</span>
+            
+            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:50px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.1); border-radius:16px; width:260px; box-shadow:0 15px 40px rgba(0,0,0,0.9); overflow: hidden;">
+                <div class="bulk-menu-item" onclick="openBulkCreateGroupModal(); document.getElementById('bulk-action-menu').classList.add('hidden')">
+                    <span class="material-icons-round" style="font-size: 20px; color: #10B981;">group_add</span> Criar Grupo
+                </div>
+                <div class="bulk-menu-item" onclick="openBulkCommunityInviteModal(); document.getElementById('bulk-action-menu').classList.add('hidden')" style="border:none;">
+                    <span class="material-icons-round" style="font-size: 20px; color: var(--brand-primary);">explore</span> Convite de Comunidade
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(actionBar);
+
+    const inviteModal = document.createElement('div');
+    inviteModal.id = 'bulk-invite-modal';
+    inviteModal.className = 'hidden';
+    inviteModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
+    inviteModal.innerHTML = `
+        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+            <button onclick="hideElement('bulk-invite-modal')" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer;">&times;</button>
+            <span class="material-icons-round" style="font-size: 50px; color: var(--brand-primary); margin-bottom: 10px;">radar</span>
+            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px;">Qual Comunidade?</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
+            <div id="bulk-invite-comm-list" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
+        </div>
+    `;
+    document.body.appendChild(inviteModal);
+
+    const acceptModal = document.createElement('div');
+    acceptModal.id = 'invite-confirm-modal';
+    acceptModal.className = 'hidden';
+    acceptModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
+    acceptModal.innerHTML = `
+        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+            <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
+            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
+            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
+            <div style="display:flex; gap:12px;">
+                <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
+                <button onclick="acceptCommunityInvite()" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Entrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(acceptModal);
+}
+document.addEventListener("DOMContentLoaded", initMultiSelectUI);
+
+window.toggleContactSelection = function(id, name, isGroup) {
+    const idx = selectedActionContacts.findIndex(c => c.id === id);
+    const item = document.getElementById(`contact-${id}`);
+    
+    if (idx > -1) {
+        selectedActionContacts.splice(idx, 1);
+        if(item) item.classList.remove('selected-for-action');
+    } else {
+        selectedActionContacts.push({id, name, isGroup});
+        if(item) item.classList.add('selected-for-action');
+    }
+
+    const bar = document.getElementById('contact-action-bar');
+    if (selectedActionContacts.length > 0) {
+        bar.classList.remove('hidden');
+        document.getElementById('action-bar-count').innerText = `${selectedActionContacts.length} selecionado(s)`;
+    } else {
+        clearContactSelection();
+    }
 };
 
 window.clearContactSelection = function() {
-    selectedActionContactId = null; selectedActionContactName = null;
+    selectedActionContacts = [];
     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('selected-for-action'));
-    const bar = document.getElementById('contact-action-bar'); if(bar) bar.classList.add('hidden');
-};
-
-window.promptCustomDeleteChat = function() {
-    if(!selectedActionContactId) return;
-    if(selectedActionContactIsGroup) { alert("⚠️ Grupos: Por favor, abra o chat do grupo e use as opções no topo para sair ou apagar."); return; }
-    document.getElementById('delete-target-name').innerText = selectedActionContactName; showElement('custom-delete-chat-modal');
-};
-
-window.executeCustomDeleteChat = async function() {
-    if(!selectedActionContactId) return;
-    try {
-        const res = await fetch(`/messages/${myId}/${selectedActionContactId}`, { method: 'DELETE' });
-        if (res.ok) { messageCache[selectedActionContactId] = []; if(!hiddenChats.includes(selectedActionContactId)) { hiddenChats.push(selectedActionContactId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); } hideElement('custom-delete-chat-modal'); clearContactSelection(); loadContacts(); }
-    } catch(e) { alert("Falha ao apagar conversa."); }
+    const bar = document.getElementById('contact-action-bar');
+    if(bar) { bar.classList.add('hidden'); document.getElementById('bulk-action-menu').classList.add('hidden'); }
 };
 
 function setupLongPress(element, id, name, isGroup, photo, email) {
     let localPressTimer; let isLongPress = false;
-    const start = (e) => { isLongPress = false; localPressTimer = setTimeout(() => { isLongPress = true; if(navigator.vibrate) navigator.vibrate(50); selectContactForAction(id, name, isGroup); }, 500); };
+    const start = (e) => { isLongPress = false; localPressTimer = setTimeout(() => { isLongPress = true; if(navigator.vibrate) navigator.vibrate(50); toggleContactSelection(id, name, isGroup); }, 500); };
     const end = () => { clearTimeout(localPressTimer); };
+    
     element.addEventListener('touchstart', start, {passive: true}); element.addEventListener('touchend', end); element.addEventListener('touchmove', end); element.addEventListener('mousedown', start); element.addEventListener('mouseup', end); element.addEventListener('mouseleave', end);
-    element.onclick = (e) => { if (isLongPress) { e.preventDefault(); return; } if (selectedActionContactId) { clearContactSelection(); return; } const cType = isGroup ? 'group' : 'user'; openChat(id, name, photo, email, cType); };
+    
+    element.onclick = (e) => { 
+        if (isLongPress) { e.preventDefault(); return; } 
+        if (selectedActionContacts.length > 0) { toggleContactSelection(id, name, isGroup); return; } 
+        const cType = isGroup ? 'group' : 'user'; openChat(id, name, photo, email, cType); 
+    };
 }
+
+// LÓGICA DE AÇÕES EM MASSA
+window.promptBulkDeleteChat = function() {
+    if(selectedActionContacts.length === 0) return;
+    const hasGroup = selectedActionContacts.some(c => c.isGroup);
+    if(hasGroup) return alert("⚠️ Não é possível apagar grupos por aqui. Desmarque os grupos da seleção.");
+    if(confirm(`⚠️ ATENÇÃO!\nApagar TODAS as mensagens de ${selectedActionContacts.length} conversa(s)?`)) {
+        executeBulkDeleteChat();
+    }
+};
+
+window.executeBulkDeleteChat = async function() {
+    for (let contact of selectedActionContacts) {
+        try {
+            await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' });
+            messageCache[contact.id] = []; 
+            if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); 
+        } catch(e) {}
+    }
+    localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+    clearContactSelection(); loadContacts();
+};
+
+window.openBulkCreateGroupModal = function() {
+    const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
+    if(usersOnly.length === 0) return alert("Selecione pelo menos um contato (grupos não podem fazer parte de grupos).");
+    openCreateGroupModal(usersOnly.map(u => u.id));
+    clearContactSelection();
+};
+
+window.openBulkCommunityInviteModal = async function() {
+    const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
+    if(usersOnly.length === 0) return alert("Selecione contatos válidos.");
+    showElement('bulk-invite-modal');
+    const list = document.getElementById('bulk-invite-comm-list');
+    list.innerHTML = '<div style="padding:20px; text-align:center;">Buscando base...</div>';
+    try {
+        const ownedComms = myCommunities.filter(c => c.ownerId === myId);
+        if(ownedComms.length === 0) { list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Você não é General de nenhuma Comunidade.</div>'; return; }
+        list.innerHTML = '';
+        ownedComms.forEach(comm => {
+            list.innerHTML += `
+                <div style="display:flex; align-items:center; gap:15px; padding:15px; background:var(--input-bg); border-radius:12px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; transition:0.2s;" onmouseover="this.style.borderColor='var(--brand-primary)'" onmouseout="this.style.borderColor='transparent'" onclick="sendBulkInvite('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')">
+                    <img src="${comm.photoUrl}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
+                    <span style="font-weight:900; font-size:15px; color:white;">${comm.name}</span>
+                </div>
+            `;
+        });
+    } catch(e) {}
+};
+
+window.sendBulkInvite = function(commId, commName) {
+    const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
+    usersOnly.forEach(user => {
+        const msgData = { senderId: myId, receiverId: user.id, groupId: null, content: JSON.stringify({ commId, commName }), fileUrl: null, fileType: 'invite' };
+        socket.emit('private_message', msgData);
+    });
+    alert(`🎯 Ordem de recrutamento enviada para ${usersOnly.length} contato(s)!`);
+    hideElement('bulk-invite-modal'); clearContactSelection();
+};
+
+window.previewCommunityInvite = function(commId, commName) {
+    window.pendingInviteCommId = commId;
+    document.getElementById('invite-confirm-comm-name').innerText = commName;
+    showElement('invite-confirm-modal');
+};
+
+window.acceptCommunityInvite = async function() {
+    if(!window.pendingInviteCommId) return;
+    try {
+        const res = await fetch('/communities/join', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: myId, communityId: window.pendingInviteCommId }) });
+        const data = await res.json();
+        if(data.success) {
+            hideElement('invite-confirm-modal'); alert("Acesso Concedido! Bem-vindo à base.");
+            await loadCommunities();
+            openCommunity(window.pendingInviteCommId, document.getElementById('invite-confirm-comm-name').innerText);
+        }
+    } catch(e) {}
+};
 
 // 🔎 BUSCA INTERNA NO CHAT
 let chatSearchMatches = []; let currentSearchIndex = -1;
@@ -133,7 +289,6 @@ function openChat(id, name, photo, email, type = 'user') {
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
-    // ⚡ MÁGICA DE TEXTO DO MENU (Exibir Perfil -> Exibir Grupo)
     const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
     if (dropMenu) {
         const items = dropMenu.querySelectorAll('div, span, a, button');
@@ -176,6 +331,9 @@ function renderContactsList(groups, users) {
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
+        const isSelected = selectedActionContacts.some(c => c.id === group._id);
+        if (isSelected) extraGroupClass += ' selected-for-action';
+
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); 
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
@@ -193,6 +351,9 @@ function renderContactsList(groups, users) {
         let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
         
+        const isSelected = selectedActionContacts.some(c => c.id === user._id);
+        if (isSelected) extraClass += ' selected-for-action';
+
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); 
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
         
@@ -207,8 +368,10 @@ window.toggleAttachMenu = function() {
 };
 
 window.triggerUpload = function(type) { 
-    const input = document.getElementById('file-input'); input.value = ''; input.accept = type; input.click(); 
-    const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
+    const input = document.getElementById('file-input'); 
+    input.value = ''; input.accept = type; input.click(); 
+    const menu = document.getElementById('attach-menu');
+    if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
 };
 
 window.handleFileUpload = async function(input) { 
@@ -256,11 +419,25 @@ function displayMessage(msg) {
     else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
     else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
     else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
+    else if (msg.fileType === 'invite') {
+        try {
+            const invData = JSON.parse(displayContent);
+            contentHtml += `
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 12px; padding: 15px; text-align: center; margin-top: 5px; min-width: 200px;">
+                    <span class="material-icons-round" style="font-size: 32px; color: var(--brand-primary); margin-bottom: 5px;">radar</span>
+                    <div style="font-weight: 800; font-size: 15px; margin-bottom: 5px; color: white;">Convite de Comunidade</div>
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">${invData.commName}</div>
+                    <button class="chic-btn" style="margin: 0; padding: 8px 15px; font-size: 13px; background: var(--brand-primary); color: white;" onclick="previewCommunityInvite('${invData.commId}', '${invData.commName}')">Ver Convite</button>
+                </div>
+            `;
+        } catch(e) { contentHtml += `<div class="msg-text-content" style="display:inline;">Erro no convite</div>`; }
+    }
     else contentHtml += securityWarningHtml + quotedHtml + `<div class="msg-text-content" style="display:inline;">${escapeHTML(displayContent)}</div>`; 
     
     if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
-function initReply() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
+
+function initReply() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
 function cancelReply() { messageToReply = null; hideElement('reply-preview'); }
 
 function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const oldBar = document.querySelector('.reaction-bar'); if(oldBar) oldBar.remove(); const reactionBar = document.createElement('div'); reactionBar.className = 'reaction-bar'; const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍']; emojis.forEach(emoji => { const span = document.createElement('span'); span.className = 'reaction-emoji'; span.innerText = emoji; span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); reactionBar.remove(); hideElement('msg-context-menu'); }; reactionBar.appendChild(span); }); msgElement.appendChild(reactionBar); const menu = document.getElementById('msg-context-menu'); menu.innerHTML = `<div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div><div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()"><span class="material-icons-round">shortcut</span> Encaminhar</div><div class="menu-item" style="color: #EF4444;" onclick="deleteCurrentChat()"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>`; const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
@@ -292,7 +469,35 @@ function openClassificationModal(userId, name) { targetContactId = userId; docum
 async function submitSector() { const checkboxes = document.querySelectorAll('#sector-checkbox-list input'); let changed = false; checkboxes.forEach(cb => { const idx = cb.value; const isChecked = cb.checked; const inSector = currentSectors[idx].members.includes(targetContactId); if (isChecked && !inSector) { currentSectors[idx].members.push(targetContactId); changed = true; } else if (!isChecked && inSector) { currentSectors[idx].members = currentSectors[idx].members.filter(id => id !== targetContactId); changed = true; } }); if (changed) { await saveProfile({ sectors: currentSectors }); loadContacts(); } hideElement('sector-modal'); }
 async function openAddGroupModal(userId, name) { targetContactId = userId; const res = await fetch(`/groups/${myId}`); const groups = await res.json(); const list = document.getElementById('group-checkbox-list'); list.innerHTML = ''; groups.forEach((g) => { const isAlreadyIn = g.members.includes(userId); list.innerHTML += `<label class="checkbox-item"><input type="checkbox" value="${g._id}" ${isAlreadyIn ? 'checked disabled' : ''}> ${g.name}</label>`; }); showElement('add-group-modal'); }
 async function submitAddGroup() { const checkboxes = document.querySelectorAll('#group-checkbox-list input:checked:not(:disabled)'); const groupIds = Array.from(checkboxes).map(cb => cb.value); try { await fetch('/groups/add-member', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ groupIds, userId: targetContactId }) }); hideElement('add-group-modal'); socket.emit('group_updated'); } catch(e) {} }
-function openCreateGroupModal() { showElement('create-group-modal'); selectedUserIds = []; document.getElementById('group-name-input').value = ''; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const list = document.getElementById('group-candidates-list'); list.innerHTML = ''; if (cachedUsers.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px;">Nenhum contato disponível.</div>'; return; } cachedUsers.forEach(user => { const div = document.createElement('div'); div.className = 'candidate-item'; div.onclick = () => { if (selectedUserIds.includes(user._id)) { selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); div.classList.remove('selected'); } else { selectedUserIds.push(user._id); div.classList.add('selected'); } }; const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; div.innerHTML = `<img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover;"><div style="flex:1; display:flex; flex-direction:column;"><span style="font-weight:700; font-size:15px;">${user.displayName || user.email.split('@')[0]}</span></div><span class="material-icons-round check-icon">check_circle</span>`; list.appendChild(div); }); }
+
+function openCreateGroupModal(preSelectedIds = []) { 
+    showElement('create-group-modal'); 
+    selectedUserIds = [...preSelectedIds]; 
+    document.getElementById('group-name-input').value = ''; 
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+    const list = document.getElementById('group-candidates-list'); 
+    list.innerHTML = ''; 
+    if (cachedUsers.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px;">Nenhum contato disponível.</div>'; return; } 
+    
+    cachedUsers.forEach(user => { 
+        const isPreSelected = selectedUserIds.includes(user._id);
+        const div = document.createElement('div'); 
+        div.className = 'candidate-item' + (isPreSelected ? ' selected' : ''); 
+        div.onclick = () => { 
+            if (selectedUserIds.includes(user._id)) { 
+                selectedUserIds = selectedUserIds.filter(uid => uid !== user._id); 
+                div.classList.remove('selected'); 
+            } else { 
+                selectedUserIds.push(user._id); 
+                div.classList.add('selected'); 
+            } 
+        }; 
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+        div.innerHTML = `<img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover;"><div style="flex:1; display:flex; flex-direction:column;"><span style="font-weight:700; font-size:15px;">${user.displayName || user.email.split('@')[0]}</span></div><span class="material-icons-round check-icon">check_circle</span>`; 
+        list.appendChild(div); 
+    }); 
+}
+
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
 
@@ -309,12 +514,11 @@ async function uploadNewGroupPhoto(input) {
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }
 
 // ==============================================================
-// 👥 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO (NOVO)
+// 👥 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO (ATUALIZADO E REFINADO)
 // ==============================================================
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
 
-    // 🔥 NOVO: LÓGICA DE PAINEL DO GRUPO 🔥
     if (isGroupChat) {
         try {
             const res = await fetch(`/group/${currentChatId}`);
@@ -332,14 +536,12 @@ window.showCurrentChatProfile = async function() {
             const isAdmin = group.admin === myId;
             let members = group.members || [];
             
-            // Ordena para que o Admin fique sempre no topo
             members.sort((a, b) => {
                 if (a._id === group.admin) return -1;
                 if (b._id === group.admin) return 1;
                 return 0;
             });
 
-            // HTML da Lista de Membros
             let membersHtml = members.map(m => {
                 const isGroupAdmin = m._id === group.admin;
                 const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -357,13 +559,19 @@ window.showCurrentChatProfile = async function() {
 
             const descText = group.description || 'Nenhuma descrição adicionada ao grupo.';
             
-            // HTML da Descrição (Editável se for Admin)
             const descHtml = isAdmin 
                 ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);">
                      <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p>
                      <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span>
                    </div>`
                 : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`;
+
+            // 🔥 MUDANÇA TÁTICA: O BOTÃO AGORA É COMPACTO E SÓ APARECE PARA O ADMIN
+            const addMemberBtnHtml = isAdmin ? `
+                <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;">
+                    <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR
+                </button>
+            ` : '';
 
             modal.innerHTML = `
                 <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;">
@@ -379,10 +587,8 @@ window.showCurrentChatProfile = async function() {
                     ${descHtml}
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-weight:900; font-size:15px; color:var(--text-color);">Membros (${members.length})</span>
-                        <button onclick="openInviteToGroupModal('${group._id}')" class="chic-btn" style="margin:0; background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); padding:6px 12px; font-size:13px; display:flex; align-items:center; gap:5px;">
-                            <span class="material-icons-round" style="font-size:18px;">person_add</span> Adicionar
-                        </button>
+                        <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span>
+                        ${addMemberBtnHtml}
                     </div>
 
                     <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;">
@@ -404,7 +610,6 @@ window.showCurrentChatProfile = async function() {
         return;
     }
 
-    // LÓGICA DO PERFIL DE USUÁRIO (MANTIDA INTACTA)
     try {
         const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
         const user = cachedUsers.find(u => u._id === currentChatId);
@@ -452,10 +657,6 @@ window.showCurrentChatProfile = async function() {
     }
 };
 
-// ==============================================================
-// 👥 FUNÇÕES DO PAINEL DO GRUPO (CONVITE, EDIÇÃO DE FOTO/DESCRIÇÃO)
-// ==============================================================
-
 window.openInviteToGroupModal = async function(groupId) {
     try {
         const resGroups = await fetch(`/group/${groupId}`);
@@ -465,7 +666,6 @@ window.openInviteToGroupModal = async function(groupId) {
         const resUsers = await fetch(`/users/${myId}`);
         const allUsers = await resUsers.json();
         
-        // Filtra utilizadores que já estão no grupo
         const candidates = allUsers.filter(u => !currentMemberIds.includes(u._id));
         
         let modal = document.getElementById('invite-group-modal');
@@ -476,10 +676,7 @@ window.openInviteToGroupModal = async function(groupId) {
             document.body.appendChild(modal);
         }
 
-        if (candidates.length === 0) {
-            alert("Não há novos contatos disponíveis para adicionar ao esquadrão.");
-            return;
-        }
+        if (candidates.length === 0) { alert("Não há novos contatos disponíveis."); return; }
 
         let candidatesHtml = candidates.map(u => {
             const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -496,11 +693,9 @@ window.openInviteToGroupModal = async function(groupId) {
         modal.innerHTML = `
             <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:380px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height:85vh; display:flex; flex-direction:column;">
                 <h3 style="color:var(--text-color); font-weight:900; font-size:20px; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:8px;"><span class="material-icons-round" style="color:var(--brand-primary);">person_add</span> Reforços</h3>
-                
                 <div style="overflow-y:auto; flex:1; text-align:left; margin-bottom:20px; padding-right:5px;">
                     ${candidatesHtml}
                 </div>
-                
                 <div style="display:flex; gap:12px;">
                     <button onclick="document.getElementById('invite-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('invite-group-modal').style.display='none',300);" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color, rgba(255,255,255,0.1));">Cancelar</button>
                     <button onclick="submitInviteToGroup('${groupId}')" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Adicionar Tropa</button>
@@ -510,32 +705,17 @@ window.openInviteToGroupModal = async function(groupId) {
         
         modal.style.display = 'flex';
         setTimeout(() => modal.style.opacity = '1', 10);
-    } catch(e) {
-        console.error(e);
-        alert("Erro ao buscar reforços.");
-    }
+    } catch(e) { console.error(e); alert("Erro ao buscar reforços."); }
 }
 
 window.submitInviteToGroup = async function(groupId) {
     const checkboxes = document.querySelectorAll('.invite-checkbox:checked');
     const userIds = Array.from(checkboxes).map(cb => cb.value);
-    
     if(userIds.length === 0) return alert("Selecione pelo menos um recruta.");
-    
     try { 
-        await fetch(`/groups/${groupId}/add-members`, { 
-            method: 'PUT', 
-            headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({ userIds }) 
-        }); 
-        
-        document.getElementById('invite-group-modal').style.opacity = '0'; 
-        setTimeout(() => document.getElementById('invite-group-modal').style.display = 'none', 300);
-        
-        socket.emit('group_updated');
-        
-        // Magia: O painel do grupo atualiza-se sozinho para mostrar o novo recruta!
-        showCurrentChatProfile();
+        await fetch(`/groups/${groupId}/add-members`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userIds }) }); 
+        document.getElementById('invite-group-modal').style.opacity = '0'; setTimeout(() => document.getElementById('invite-group-modal').style.display = 'none', 300);
+        socket.emit('group_updated'); showCurrentChatProfile();
     } catch(e) { alert('Erro ao adicionar membros'); }
 }
 
@@ -543,34 +723,8 @@ window.editGroupDescription = async function(groupId, currentDesc) {
     const newDesc = prompt("Descreva o propósito deste esquadrão:", currentDesc);
     if (newDesc !== null) {
         try {
-            await fetch(`/groups/${groupId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: newDesc })
-            });
-            showCurrentChatProfile(); // Refresh visual imediato
+            await fetch(`/groups/${groupId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: newDesc }) });
+            showCurrentChatProfile(); 
         } catch(e) { alert("Erro ao comunicar com o servidor."); }
-    }
-}
-
-window.uploadAndUpdateGroupPhoto = async function(groupId, input) {
-    const file = input.files[0]; if(!file) return; 
-    const fd = new FormData(); fd.append('file', file); 
-    try {
-        // Envia para o nosso novo Cofre MongoDB
-        const res = await fetch('/upload', {method:'POST', body:fd}); 
-        const data = await res.json(); 
-        
-        // Diz ao Grupo para usar esta nova foto
-        await fetch(`/groups/${groupId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ photoUrl: data.url })
-        });
-        
-        socket.emit('group_updated');
-        showCurrentChatProfile(); // Refresh visual imediato
-    } catch(e) {
-        alert("Ocorreu um problema ao atualizar a foto do esquadrão.");
     }
 }

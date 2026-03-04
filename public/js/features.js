@@ -131,7 +131,7 @@ async function joinCommunity(commId) { try { const res = await fetch('/communiti
 document.addEventListener("DOMContentLoaded", () => { setTimeout(loadCommunities, 2000); });
 
 // ==============================================================
-// 📝 MOTOR DE ANOTAÇÕES E STATUS
+// 📝 MOTOR DE ANOTAÇÕES
 // ==============================================================
 let currentNotes = []; let editingNoteId = null;
 function formatNote(command) { document.execCommand(command, false, null); document.getElementById('note-content').focus(); }
@@ -143,7 +143,7 @@ async function saveNote() { const title = document.getElementById('note-title').
 async function deleteNote(id) { if(!confirm("Apagar?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) {} }
 
 // ==============================================================
-// 👁️ STORIES E VIEWS (ATUALIZADO E LIMPO)
+// 👁️ STORIES E VIEWS
 // ==============================================================
 let allStatuses = []; let groupedStatuses = {}; let currentStoryQueue = []; let currentStoryIndex = 0; let storyTimer; let storyProgressInterval; const STORY_DURATION = 5000; const statusColors = ['#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#EC4899', '#0F172A']; let currentStatusColorIndex = 0; let statusBase64Image = null; let tempQuickPhotoFile = null; let tempQuickPhotoBase64 = null;
 
@@ -172,7 +172,81 @@ function openCreateStatusModal() { showElement('create-status-modal'); statusBas
 function changeStatusColor(forceIndex = null) { currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; }
 function previewStatusImage(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { statusBase64Image = e.target.result; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').classList.add('hidden'); }; reader.readAsDataURL(file); }
 
-// NOVO: Exibição visual de "Quem Viu" 100% FUNCIONAL
+// ==============================================================
+// 🚀 MÁGICA: PUBLICAÇÃO BLINDADA DO STATUS VIA COFRE
+// ==============================================================
+window.publishStatus = async function() {
+    const textEl = document.getElementById('status-text-input');
+    const imgEl = document.getElementById('status-image-preview');
+    const bgEl = document.getElementById('status-preview-area');
+    const fileInput = document.getElementById('status-image-upload');
+
+    const text = textEl ? textEl.value.trim() : '';
+    const hasImage = imgEl && !imgEl.classList.contains('hidden');
+    const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
+
+    if (!text && !hasImage) { alert('Escreva algo ou adicione uma imagem para publicar!'); return; }
+
+    const btnElements = document.querySelectorAll('button[onclick="publishStatus()"]');
+    btnElements.forEach(btn => { btn.innerText = 'Processando...'; btn.disabled = true; btn.style.opacity = '0.7'; });
+
+    try {
+        let finalContent = text;
+
+        // Se tiver imagem, sobe para o cofre seguro primeiro!
+        if (hasImage) {
+            let fileToUpload = null;
+            if (fileInput && fileInput.files.length > 0) {
+                fileToUpload = fileInput.files[0];
+            } else if (tempQuickPhotoFile) {
+                fileToUpload = tempQuickPhotoFile;
+            }
+
+            if (fileToUpload) {
+                const formData = new FormData();
+                formData.append('file', fileToUpload);
+                const uploadRes = await fetch('/upload', { method: 'POST', body: formData });
+                const uploadData = await uploadRes.json();
+                
+                if (!uploadRes.ok) throw new Error(uploadData.error || 'Falha na base de dados.');
+                
+                finalContent = uploadData.url; // A URL blindada!
+            } else if (statusBase64Image) {
+                finalContent = statusBase64Image; // Fallback se tudo falhar (risco de 413, mas tenta)
+            }
+        }
+
+        const newStatus = { 
+            senderId: myId, 
+            senderName: localStorage.getItem('displayName'), 
+            senderPhoto: localStorage.getItem('photoUrl'), 
+            type: hasImage ? 'image' : 'text', 
+            content: finalContent, 
+            bgColor: bgColor, 
+            timestamp: new Date().toISOString() 
+        };
+
+        const res = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStatus) });
+        if (res.ok) {
+            hideElement('create-status-modal');
+            if (textEl) textEl.value = '';
+            if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
+            if (fileInput) fileInput.value = '';
+            statusBase64Image = null;
+            tempQuickPhotoFile = null;
+            tempQuickPhotoBase64 = null;
+            if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
+            if (typeof fetchStatuses === 'function') fetchStatuses();
+        } else { 
+            alert('Falha no servidor ao publicar.'); 
+        }
+    } catch(e) { 
+        alert('Erro: ' + e.message); 
+    } finally {
+        btnElements.forEach(btn => { btn.innerText = 'Publicar'; btn.disabled = false; btn.style.opacity = '1'; });
+    }
+};
+
 function renderStoryViews(storyObj) {
     let viewContainer = document.getElementById('story-view-count-container');
     if (!viewContainer) {
@@ -182,24 +256,20 @@ function renderStoryViews(storyObj) {
         document.getElementById('story-viewer-modal').appendChild(viewContainer);
     }
     
-    // O array de views que vem do Servidor
     const viewList = storyObj.views || [];
     
-    // Apenas mostra a contagem se a pessoa for a dona do Status
     if (storyObj.senderId === myId) {
         viewContainer.innerHTML = `<span class="material-icons-round" style="font-size: 18px;">visibility</span> ${viewList.length} Visualizações`;
         viewContainer.style.display = 'flex';
         
         viewContainer.onclick = (e) => {
-            e.stopPropagation(); // Impede de pular o story ao clicar
+            e.stopPropagation(); 
             if (viewList.length === 0) {
                 alert("Ninguém viu o seu status ainda.");
             } else {
-                // Monta a lista com os nomes e horários reais
                 let viewDetails = "👁️ Visto por:\n\n";
                 viewList.forEach(v => {
                     const time = new Date(v.viewedAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-                    // Se não tiver populado o nome, mostra Genérico, senão mostra o nome real
                     const vName = v.viewerId && v.viewerId.displayName ? v.viewerId.displayName : 'Contato';
                     viewDetails += `- ${vName} às ${time}\n`;
                 });
@@ -208,7 +278,6 @@ function renderStoryViews(storyObj) {
         };
     } else {
         viewContainer.style.display = 'none';
-        // Envia para o servidor REAL que eu vi o status desta pessoa (Apenas se eu ainda não vi nesta sessão)
         fetch('/api/status/view', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -235,7 +304,6 @@ function playStory(index) {
     if(story.type === 'text') { contentArea.style.background = story.bgColor; txtDisplay.innerText = story.content; txtDisplay.classList.remove('hidden'); imgDisplay.classList.add('hidden'); } 
     else { contentArea.style.background = '#000'; imgDisplay.src = story.content || story.imageUrl; imgDisplay.classList.remove('hidden'); txtDisplay.classList.add('hidden'); } 
     
-    // Mostra quem viu e regista a sua visualização
     renderStoryViews(story);
 
     let startTime = Date.now(); const currentFill = document.getElementById(`story-fill-${index}`); 
@@ -318,39 +386,4 @@ async function openScheduleModal() { const targetSelect = document.getElementByI
 async function saveScheduledMessage() { const target = document.getElementById('schedule-target').value; const time = document.getElementById('schedule-datetime').value; const content = document.getElementById('schedule-text').value; if(!target || !time || !content) return alert("Preencha todos os campos!"); const localDate = new Date(time); const utcIsoString = localDate.toISOString(); const isGroup = target.startsWith('group_'); const targetId = target.replace('user_', '').replace('group_', ''); const btn = document.querySelector('#schedule-modal .chic-btn'); btn.innerText = "Agendando..."; btn.disabled = true; try { const res = await fetch('/schedule-message', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senderId: myId, targetId: targetId, isGroup: isGroup, content: content, scheduledTime: utcIsoString }) }); if(res.ok) { alert("Agendado!"); hideElement('schedule-modal'); document.getElementById('schedule-datetime').value = ''; document.getElementById('schedule-text').value = ''; } } catch(e) {} finally { btn.innerText = "Agendar"; btn.disabled = false; } }
 async function openScheduledList() { showElement('scheduled-list-modal'); const container = document.getElementById('scheduled-messages-container'); container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Rastreando...</div>'; try { const res = await fetch(`/scheduled-messages/${myId}`); const msgs = await res.json(); container.innerHTML = ''; if (msgs.length === 0) { container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Nenhuma mensagem.</div>'; return; } msgs.forEach(m => { const dateStr = new Date(m.scheduledTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); container.innerHTML += `<div style="background: var(--input-bg); padding: 12px; border-radius: 12px; margin-bottom: 10px;"><div style="font-size: 11px; font-weight: 800; margin-bottom: 5px;">⏰ ${dateStr}</div><div style="font-size: 14px; margin-bottom: 10px;">"${m.content}"</div><button onclick="cancelScheduledMessage('${m._id}')" class="chic-btn" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444; margin: 0; padding: 6px 12px; width: auto; font-size: 12px;">Abortar</button></div>`; }); } catch(e) {} }
 async function cancelScheduledMessage(id) { if(!confirm('Abortar este disparo?')) return; try { await fetch(`/schedule-message/${id}`, { method: 'DELETE' }); openScheduledList(); } catch(e) {} }
-
-// ==============================================================
-// 🚀 MOTOR BLINDADO DE PUBLICAÇÃO DE STATUS
-// ==============================================================
-window.publishStatus = async function() {
-    const textEl = document.getElementById('status-text-input');
-    const imgEl = document.getElementById('status-image-preview');
-    const bgEl = document.getElementById('status-preview-area');
-    
-    const text = textEl ? textEl.value.trim() : '';
-    const hasImage = imgEl && !imgEl.classList.contains('hidden');
-    const imgUrl = hasImage ? imgEl.src : null;
-    const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
-
-    if (!text && !hasImage) { alert('Escreva algo ou adicione uma imagem para publicar!'); return; }
-
-    const newStatus = { senderId: myId, senderName: localStorage.getItem('displayName'), senderPhoto: localStorage.getItem('photoUrl'), type: hasImage ? 'image' : 'text', content: imgUrl || text, bgColor: bgColor, timestamp: new Date().toISOString() };
-
-    const btnElements = document.querySelectorAll('button[onclick="publishStatus()"]');
-    btnElements.forEach(btn => { btn.innerText = 'Publicando...'; btn.disabled = true; btn.style.opacity = '0.7'; });
-
-    try {
-        const res = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStatus) });
-        if (res.ok) {
-            hideElement('create-status-modal');
-            if (textEl) textEl.value = '';
-            if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
-            if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
-            if (typeof fetchStatuses === 'function') fetchStatuses();
-        } else { alert('Falha no servidor ao processar o Status.'); }
-    } catch(e) { 
-        alert('Erro de conexão. Verifique a internet e tente novamente.'); 
-    } finally {
-        btnElements.forEach(btn => { btn.innerText = 'Publicar'; btn.disabled = false; btn.style.opacity = '1'; });
-    }
-};
+}
