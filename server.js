@@ -10,7 +10,6 @@ const jwt = require('jsonwebtoken');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const fs = require('fs');
 
 // Importando os Módulos da Nova Arquitetura
 const { aegisMiddleware, rateLimiter } = require('./src/security');
@@ -23,59 +22,47 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// 🔥 A IGNIÇÃO QUE FALTAVA: Ligar o Motor de Tempo Real e os Agendamentos
+// Ligar Sockets e Cron
 initSockets(io);
 startCronJobs();
 
-// ==============================================================
-// 🛡️ MIDDLEWARES
-// ==============================================================
 app.use(aegisMiddleware);
 app.use(cors());
 app.use(express.json()); 
 app.use('/api/english', require('./src/english/english.routes'));
 app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store, no-cache'); } }));
 
-// Configurações de Terceiros
-cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+// ==============================================================
+// 🗄️ COFRE DE MÍDIAS NO MONGODB (ANTI-APAGÃO DO RAILWAY)
+// ==============================================================
+const dbFileSchema = new mongoose.Schema({
+    data: Buffer,
+    contentType: String,
+    uploadDate: { type: Date, default: Date.now }
+});
+const DbFile = mongoose.model('DbFile', dbFileSchema);
 
 // ==============================================================
-// 📎 MOTOR DE UPLOAD BLINDADO (CLOUD & LOCAL FALLBACK)
+// 📎 MOTOR DE UPLOAD (NA NUVEM OU NA BASE DE DADOS)
 // ==============================================================
 let storage;
-
-// Se as chaves do Cloudinary existirem, usamos a Nuvem (Garante que fotos NUNCA sumam no Railway)
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-    storage = new CloudinaryStorage({
-        cloudinary: cloudinary,
-        params: {
-            folder: 'chatptt_media',
-            resource_type: 'auto' // Aceita foto, vídeo, áudio, pdf automaticamente
-        }
-    });
-    console.log("☁️ Sistema de Arquivos: NUVEM (Cloudinary) Ativada.");
+    cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
+    storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chatptt_media', resource_type: 'auto' } });
+    console.log("☁️ Sistema de Arquivos: Cloudinary Ativado.");
 } else {
-    // Fallback: Armazenamento Local
-    console.warn("⚠️ Cloudinary não detectado. Usando pasta local. As imagens sumirão quando o Railway reiniciar!");
-    const dir = './public/uploads';
-    if (!fs.existsSync(dir)){ fs.mkdirSync(dir, { recursive: true }); }
-
-    storage = multer.diskStorage({
-        destination: function (req, file, cb) { cb(null, 'public/uploads/') },
-        filename: function (req, file, cb) { cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')) }
-    });
+    // Se não tiver Cloudinary, usa a Memória para injetar direto no MongoDB!
+    storage = multer.memoryStorage();
+    console.log("🛡️ Sistema de Arquivos: MongoDB File Vault Ativado.");
 }
 
-const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB Limite
+// Limite de 15MB para não explodir a base de dados
+const upload = multer({ storage: storage, limits: { fileSize: 15 * 1024 * 1024 } }); 
 
-// ==============================================================
-// 🔌 INICIALIZAÇÃO DO MOTOR MONGODB
-// ==============================================================
 mongoose.connect(process.env.MONGO_URI).then(() => {
-    console.log("✅ MongoDB Conectado (Arquitetura Modular)");
+    console.log("✅ MongoDB Conectado");
     models.initializeAIBot(); 
-    const EnglishService = require('./src/english/english.service');
-    EnglishService.seedEnglishCatalog();
+    require('./src/english/english.service').seedEnglishCatalog();
 }).catch(err => console.error("Erro MongoDB:", err));
 
 // ==============================================================
@@ -120,25 +107,51 @@ app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await M
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
-// 🔥 NOVA ROTA DE UPLOAD BLINDADA E INTELIGENTE
+// ==========================================
+// 🚀 NOVA ROTA DE UPLOAD BLINDADA (MONGODB/CLOUD)
+// ==========================================
 app.post('/upload', (req, res) => { 
-    upload.single('file')(req, res, function (err) { 
+    upload.single('file')(req, res, async function (err) { 
         if (err instanceof multer.MulterError) { 
-            return res.status(400).json({ error: 'Arquivo excede 50MB.' }); 
+            return res.status(400).json({ error: 'Arquivo excede 15MB.' }); 
         } else if (err) { 
-            console.error("Erro no Upload:", err);
-            return res.status(500).json({ error: 'Nuvem rejeitou o arquivo.' }); 
+            return res.status(500).json({ error: 'Erro ao processar arquivo.' }); 
         } 
         if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); 
         
-        let finalUrl = req.file.path;
-        // Se for upload local (public/uploads/...), remove a palavra "public" da URL
-        // Isso impede que a foto fique "quebrada" no chat
-        if (finalUrl.startsWith('public')) {
-            finalUrl = finalUrl.replace(/^public[\\\/]/, '/').replace(/\\/g, '/');
+        // Se tem Cloudinary, a URL já vem no path
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+            return res.json({ url: req.file.path, type: req.file.mimetype }); 
+        } 
+        
+        // Se NÃO tem Cloudinary, gravamos na Tabela DbFile do MongoDB
+        try {
+            const newFile = new DbFile({
+                data: req.file.buffer,
+                contentType: req.file.mimetype
+            });
+            await newFile.save();
+            // Retorna o link mágico que o próprio servidor vai ler
+            return res.json({ url: `/api/file/${newFile._id}`, type: req.file.mimetype });
+        } catch (dbErr) {
+            console.error(dbErr);
+            return res.status(500).json({ error: 'Falha ao salvar no Cofre DB.' });
         }
-        res.json({ url: finalUrl, type: req.file.mimetype }); 
     }); 
+});
+
+// Rota Mágica que devolve as imagens gravadas no MongoDB para a tela
+app.get('/api/file/:id', async (req, res) => {
+    try {
+        const file = await DbFile.findById(req.params.id);
+        if (!file) return res.status(404).send('Arquivo não encontrado');
+        
+        res.set('Content-Type', file.contentType);
+        res.set('Cache-Control', 'public, max-age=31536000'); // Cache no navegador
+        res.send(file.data);
+    } catch(e) {
+        res.status(500).send('Erro na leitura da imagem.');
+    }
 });
 
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -202,47 +215,6 @@ app.get('/communities/:id/members', async (req, res) => { try { const members = 
 app.get('/communities/user/:userId', async (req, res) => { try { const members = await CommunityMember.find({ userId: req.params.userId }).populate('communityId'); const comms = members.map(m => m.communityId).filter(c => c !== null); res.json(comms); } catch (e) { res.status(500).json([]); } });
 app.get('/communities/:id/channels', async (req, res) => { try { res.json(await CommunityChannel.find({ communityId: req.params.id }).sort('order')); } catch (e) { res.status(500).json([]); } });
 app.get('/communities/channels/:id/messages', async (req, res) => { try { res.json(await CommunityMessage.find({ channelId: req.params.id }).populate('senderId', 'displayName photoUrl').sort('timestamp').limit(150)); } catch (e) { res.status(500).json([]); } });
-
-app.get('/api/english/progress/:userId', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.userId).select('englishMacroSom englishMacroLogica englishMacroContexto englishGlobalFluency');
-        const micros = await MicroMastery.find({ userId: req.params.userId });
-        res.json({ global: user, micros });
-    } catch(e) { res.status(500).json({ error: 'Erro' }); }
-});
-
-app.post('/api/english/attempt', async (req, res) => {
-    const { userId, nodeId, type, score, responseTimeMs } = req.body;
-    try {
-        await new EnglishAttempt({ userId, nodeId, score, responseTimeMs }).save();
-        let micro = await MicroMastery.findOne({ userId, nodeId });
-        if (!micro) { micro = new MicroMastery({ userId, nodeId, type, isUnlocked: true }); }
-
-        micro.precisionScore = micro.precisionScore === 0 ? score : (micro.precisionScore * 0.6) + (score * 0.4);
-        let currentSpeed = responseTimeMs < 3000 ? 100 : Math.max(0, 100 - ((responseTimeMs - 3000) / 100));
-        micro.speedScore = micro.speedScore === 0 ? currentSpeed : (micro.speedScore * 0.7) + (currentSpeed * 0.3);
-
-        if (type === 'som') micro.masteryLevel = (micro.precisionScore * 0.8) + (micro.consistencyScore * 0.2); 
-        else if (type === 'logica') micro.masteryLevel = (micro.precisionScore * 0.5) + (micro.speedScore * 0.5); 
-        else micro.masteryLevel = (micro.precisionScore * 0.6) + (micro.speedScore * 0.4); 
-
-        micro.masteryLevel = Math.min(100, Math.round(micro.masteryLevel));
-        micro.lastPracticed = new Date();
-        await micro.save();
-
-        const allUserMicros = await MicroMastery.find({ userId });
-        let sums = { som: 0, logica: 0, contexto: 0 }; let counts = { som: 0, logica: 0, contexto: 0 };
-        allUserMicros.forEach(m => { sums[m.type] += m.masteryLevel; counts[m.type]++; });
-
-        const macroSom = counts.som > 0 ? Math.round(sums.som / counts.som) : 0;
-        const macroLogica = counts.logica > 0 ? Math.round(sums.logica / counts.logica) : 0;
-        const macroContexto = counts.contexto > 0 ? Math.round(sums.contexto / counts.contexto) : 0;
-        const globalFluency = Math.round((macroSom * 0.35) + (macroLogica * 0.35) + (macroContexto * 0.30));
-
-        await User.findByIdAndUpdate(userId, { englishMacroSom: macroSom, englishMacroLogica: macroLogica, englishMacroContexto: macroContexto, englishGlobalFluency: globalFluency });
-        res.json({ success: true, newMicroMastery: micro.masteryLevel, newGlobalFluency: globalFluency });
-    } catch(e) { res.status(500).json({ error: 'Erro ao processar cálculo.' }); }
-});
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Gateway Node.js rodando na porta ${PORT}`));
