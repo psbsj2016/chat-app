@@ -15,9 +15,17 @@ function initMultiSelectUI() {
     const style = document.createElement('style');
     style.innerHTML = `
         .selected-for-action { background: rgba(59, 130, 246, 0.15) !important; border-left: 4px solid var(--brand-primary) !important; }
-        #contact-action-bar { position: fixed; top: 0; left: 0; width: 100%; height: 65px; background: var(--bg-color); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: white; }
-        .bulk-menu-item { padding: 15px 20px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600; color: white; }
-        .bulk-menu-item:hover { background: rgba(255,255,255,0.05); }
+        
+        /* Barra de Seleção com Cores Adaptáveis ao Tema Claro/Escuro */
+        #contact-action-bar { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 65px; 
+            background: var(--card-bg); border-bottom: 2px solid var(--brand-primary); 
+            padding: 0 20px; display: flex; align-items: center; justify-content: space-between; 
+            z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.15); color: var(--text-color); 
+        }
+        
+        .bulk-menu-item { padding: 15px 20px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-color); }
+        .bulk-menu-item:hover { background: rgba(128, 128, 128, 0.1); }
     `;
     document.head.appendChild(style);
 
@@ -33,7 +41,7 @@ function initMultiSelectUI() {
             <span class="material-icons-round" style="cursor:pointer; color: #EF4444; font-size:26px;" onclick="promptBulkDeleteChat()">delete</span>
             <span class="material-icons-round" style="cursor:pointer; font-size:26px;" onclick="toggleBulkMenu(event)">more_vert</span>
             
-            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:45px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.1); border-radius:12px; width:280px; box-shadow:0 15px 50px rgba(0,0,0,0.9); overflow: hidden; z-index:10001; backdrop-filter: blur(10px);">
+            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:45px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; width:280px; box-shadow:0 15px 50px rgba(0,0,0,0.3); overflow: hidden; z-index:10001; backdrop-filter: blur(10px);">
                 <div class="bulk-menu-item" onclick="openBulkCreateGroupModal(); closeBulkMenu();">
                     <span class="material-icons-round" style="font-size: 22px; color: #10B981;">group_add</span> Criar Grupo
                 </div>
@@ -50,11 +58,11 @@ function initMultiSelectUI() {
     inviteModal.className = 'hidden';
     inviteModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
     inviteModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.3);">
             <button onclick="hideElement('bulk-invite-modal')" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer;">&times;</button>
             <span class="material-icons-round" style="font-size: 50px; color: var(--brand-primary); margin-bottom: 10px;">radar</span>
-            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px;">Qual Comunidade?</h2>
-            <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
+            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px; color: var(--text-color);">Qual Comunidade?</h2>
+            <p style="color:var(--secondary-text); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
             <div id="bulk-invite-comm-list" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
         </div>
     `;
@@ -65,11 +73,11 @@ function initMultiSelectUI() {
     acceptModal.className = 'hidden';
     acceptModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
     acceptModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.3);">
             <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
-            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
-            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
-            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
+            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px; color: var(--text-color);">Acesso Restrito</h2>
+            <p style="color:var(--secondary-text); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
+            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: var(--text-color); margin-bottom: 30px; background: var(--input-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
             <div style="display:flex; gap:12px;">
                 <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
                 <button onclick="acceptCommunityInvite()" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Entrar</button>
@@ -124,19 +132,36 @@ function setupLongPress(element, id, name, isGroup, photo, email) {
     };
 }
 
-// LÓGICA DE AÇÕES EM MASSA
+// LÓGICA DE AÇÕES EM MASSA (DELEÇÃO UNIVERSAL)
 window.promptBulkDeleteChat = function() {
     if(selectedActionContacts.length === 0) return;
-    const hasGroup = selectedActionContacts.some(c => c.isGroup);
-    if(hasGroup) return alert("⚠️ Não é possível apagar grupos por aqui. Desmarque os grupos da seleção.");
-    if(confirm(`⚠️ ATENÇÃO!\nApagar TODAS as mensagens de ${selectedActionContacts.length} conversa(s)?`)) { executeBulkDeleteChat(); }
+    if(confirm(`⚠️ ATENÇÃO!\nApagar / Sair de TODAS as ${selectedActionContacts.length} conversa(s) e grupo(s) selecionado(s)?`)) { 
+        executeBulkDeleteChat(); 
+    }
 };
 
 window.executeBulkDeleteChat = async function() {
     for (let contact of selectedActionContacts) {
-        try { await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); messageCache[contact.id] = []; if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); } catch(e) {}
+        try { 
+            if(contact.isGroup) {
+                // Remove Grupo
+                await fetch(`/groups/${contact.id}/${myId}`, { method: 'DELETE' });
+                let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; 
+                cachedGroups = cachedGroups.filter(g => g._id !== contact.id); 
+                localStorage.setItem('cacheGroups', JSON.stringify(cachedGroups));
+                if (currentChatId === contact.id) { currentChatId = null; document.getElementById('chat-box').innerHTML = ''; backToMain(); }
+                socket.emit('group_updated');
+            } else {
+                // Remove Chat Pessoal
+                await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); 
+                messageCache[contact.id] = []; 
+                if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); 
+            }
+        } catch(e) {}
     }
-    localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); clearContactSelection(); loadContacts();
+    localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); 
+    clearContactSelection(); 
+    loadContacts();
 };
 
 window.openBulkCreateGroupModal = function() {
@@ -158,7 +183,7 @@ window.openBulkCommunityInviteModal = async function() {
             list.innerHTML += `
                 <div style="display:flex; align-items:center; gap:15px; padding:15px; background:var(--input-bg); border-radius:12px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; transition:0.2s;" onmouseover="this.style.borderColor='var(--brand-primary)'" onmouseout="this.style.borderColor='transparent'" onclick="sendBulkInvite('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')">
                     <img src="${comm.photoUrl}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
-                    <span style="font-weight:900; font-size:15px; color:white;">${comm.name}</span>
+                    <span style="font-weight:900; font-size:15px; color:var(--text-color);">${comm.name}</span>
                 </div>
             `;
         });
@@ -204,7 +229,7 @@ function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM E INPUTS
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUTS
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -448,6 +473,40 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
+// 😊 GAVETA NATIVA DE EMOJIS (BLINDADA CONTRA FECHAMENTO FANTASMA)
+// ==============================================================
+window.toggleEmojiPicker = function(e) { 
+    if (e) e.stopPropagation(); // Trava o fechamento fantasma
+    const picker = document.getElementById('emoji-picker'); 
+    if (picker) picker.classList.toggle('hidden'); 
+};
+
+setTimeout(() => { 
+    const picker = document.getElementById('emoji-picker'); 
+    const msgInput = document.getElementById('message-input'); 
+    
+    if (picker && msgInput) { 
+        picker.addEventListener('emoji-click', event => { 
+            msgInput.innerText += event.detail.unicode; 
+            emitTypingStatus('typing'); 
+            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
+        }); 
+    } 
+    
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('emoji-picker') && !e.target.closest('#btn-emoji')) { 
+            if (picker && !picker.classList.contains('hidden')) {
+                picker.classList.add('hidden'); 
+            }
+        } 
+    }); 
+}, 1000);
+
+
+// ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
@@ -522,7 +581,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
-    // Esconde a gaveta de emojis ao abrir novo chat
     const emojiPicker = document.getElementById('emoji-picker');
     if (emojiPicker) emojiPicker.classList.add('hidden');
 
@@ -564,6 +622,7 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
+    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -579,6 +638,7 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
+    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -856,4 +916,22 @@ window.editGroupDescription = async function(groupId, currentDesc) {
             showCurrentChatProfile(); 
         } catch(e) { alert("Erro ao comunicar com o servidor."); }
     }
+}
+
+window.uploadAndUpdateGroupPhoto = async function(groupId, input) {
+    const file = input.files[0]; if(!file) return; 
+    const fd = new FormData(); fd.append('file', file); 
+    try {
+        const res = await fetch('/upload', {method:'POST', body:fd}); 
+        const data = await res.json(); 
+        
+        await fetch(`/groups/${groupId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photoUrl: data.url })
+        });
+        
+        socket.emit('group_updated');
+        showCurrentChatProfile(); 
+    } catch(e) { alert("Erro ao atualizar a foto da tropa."); }
 }
