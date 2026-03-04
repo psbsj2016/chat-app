@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const fs = require('fs'); // INJETADO: Sistema de arquivos para gerir a pasta de uploads
+const fs = require('fs');
 
 // Importando os Módulos da Nova Arquitetura
 const { aegisMiddleware, rateLimiter } = require('./src/security');
@@ -32,49 +32,48 @@ startCronJobs();
 // ==============================================================
 app.use(aegisMiddleware);
 app.use(cors());
-
-// 1º O Servidor aprende a ler JSON (Dados)
 app.use(express.json()); 
-
-// 2º Ativa o Gateway Isolado do Inglês PTT (Agora ele já sabe ler os dados)
 app.use('/api/english', require('./src/english/english.routes'));
-
-// 3º Arquivos estáticos
 app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store, no-cache'); } }));
 
 // Configurações de Terceiros
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
 
 // ==============================================================
-// 📎 MOTOR DE UPLOAD DE ARQUIVOS (MULTER)
+// 📎 MOTOR DE UPLOAD BLINDADO (CLOUD & LOCAL FALLBACK)
 // ==============================================================
-// Garante que a pasta de uploads existe para o servidor não falhar
-const dir = './public/uploads';
-if (!fs.existsSync(dir)){
-    fs.mkdirSync(dir, { recursive: true });
+let storage;
+
+// Se as chaves do Cloudinary existirem, usamos a Nuvem (Garante que fotos NUNCA sumam no Railway)
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    storage = new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: {
+            folder: 'chatptt_media',
+            resource_type: 'auto' // Aceita foto, vídeo, áudio, pdf automaticamente
+        }
+    });
+    console.log("☁️ Sistema de Arquivos: NUVEM (Cloudinary) Ativada.");
+} else {
+    // Fallback: Armazenamento Local
+    console.warn("⚠️ Cloudinary não detectado. Usando pasta local. As imagens sumirão quando o Railway reiniciar!");
+    const dir = './public/uploads';
+    if (!fs.existsSync(dir)){ fs.mkdirSync(dir, { recursive: true }); }
+
+    storage = multer.diskStorage({
+        destination: function (req, file, cb) { cb(null, 'public/uploads/') },
+        filename: function (req, file, cb) { cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')) }
+    });
 }
 
-// Configuração de onde os ficheiros vão ser guardados
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'public/uploads/') 
-  },
-  filename: function (req, file, cb) {
-    // Mantém o nome original do ficheiro e adiciona a data para não haver duplicados
-    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'))
-  }
-});
-
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB Limite
 
 // ==============================================================
-// 🔌 INICIALIZAÇÃO DO MOTOR
+// 🔌 INICIALIZAÇÃO DO MOTOR MONGODB
 // ==============================================================
 mongoose.connect(process.env.MONGO_URI).then(() => {
     console.log("✅ MongoDB Conectado (Arquitetura Modular)");
     models.initializeAIBot(); 
-    
-    // Dispara o Injetor do Inglês PTT
     const EnglishService = require('./src/english/english.service');
     EnglishService.seedEnglishCatalog();
 }).catch(err => console.error("Erro MongoDB:", err));
@@ -120,62 +119,57 @@ app.get('/leaderboard', async (req, res) => { try { const topUsers = await User.
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/upload', (req, res) => { upload.single('file')(req, res, function (err) { if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'Limite de 50MB.' }); } else if (err) { return res.status(500).json({ error: 'A Nuvem rejeitou.' }); } if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); res.json({ url: req.file.path, type: req.file.mimetype }); }); });
+
+// 🔥 NOVA ROTA DE UPLOAD BLINDADA E INTELIGENTE
+app.post('/upload', (req, res) => { 
+    upload.single('file')(req, res, function (err) { 
+        if (err instanceof multer.MulterError) { 
+            return res.status(400).json({ error: 'Arquivo excede 50MB.' }); 
+        } else if (err) { 
+            console.error("Erro no Upload:", err);
+            return res.status(500).json({ error: 'Nuvem rejeitou o arquivo.' }); 
+        } 
+        if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); 
+        
+        let finalUrl = req.file.path;
+        // Se for upload local (public/uploads/...), remove a palavra "public" da URL
+        // Isso impede que a foto fique "quebrada" no chat
+        if (finalUrl.startsWith('public')) {
+            finalUrl = finalUrl.replace(/^public[\\\/]/, '/').replace(/\\/g, '/');
+        }
+        res.json({ url: finalUrl, type: req.file.mimetype }); 
+    }); 
+});
+
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: '"Chat PTT" <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/reset-password', async (req, res) => { const { email, code, newPassword } = req.body; try { const user = await User.findOne({ email }); if (!user || user.code !== code) return res.status(400).json({ error: 'Inválido.' }); user.password = await bcrypt.hash(newPassword, 10); user.code = null; await user.save(); res.json({ message: 'Ok!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 
-// Rota de busca: Traz todos os Status e adiciona a lista de visualizações real!
 app.get('/api/statuses', async (req, res) => { 
     try { 
-        // Retorna todos os status postados nas últimas 24h
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } })
-                                        .populate('views.viewerId', 'displayName photoUrl') // Puxa nome e foto de quem viu
-                                        .sort({ createdAt: 1 }); 
+        const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } }).populate('views.viewerId', 'displayName photoUrl').sort({ createdAt: 1 }); 
         res.json(statuses); 
-    } catch(e) { 
-        res.status(500).json([]); 
-    } 
+    } catch(e) { res.status(500).json([]); } 
 });
-
-// Rota de criação
-app.post('/api/status', async (req, res) => { 
-    try { 
-        const newStatus = new StatusMsg(req.body); 
-        await newStatus.save(); 
-        io.emit('new_status_published', newStatus); 
-        res.json({ success: true }); 
-    } catch(e) { 
-        res.status(500).json({ error: 'Erro' }); 
-    } 
-});
-
-// NOVA ROTA: Regista que alguém viu o Status
+app.post('/api/status', async (req, res) => { try { const newStatus = new StatusMsg(req.body); await newStatus.save(); io.emit('new_status_published', newStatus); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/api/status/view', async (req, res) => {
     try {
         const { statusId, viewerId } = req.body;
         const status = await StatusMsg.findById(statusId);
-        
         if (status && status.senderId.toString() !== viewerId) {
-            // Verifica se o usuário já não viu este status antes
             const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId);
-            
             if (!alreadyViewed) {
                 if(!status.views) status.views = [];
                 status.views.push({ viewerId: viewerId, viewedAt: new Date() });
                 await status.save();
-                
-                // Avisa o dono do Status que alguém novo o viu
                 io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId });
             }
         }
         res.json({ success: true });
-    } catch(e) {
-        res.status(500).json({ error: 'Erro ao registar visualização' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro' }); }
 });
 
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
@@ -209,85 +203,45 @@ app.get('/communities/user/:userId', async (req, res) => { try { const members =
 app.get('/communities/:id/channels', async (req, res) => { try { res.json(await CommunityChannel.find({ communityId: req.params.id }).sort('order')); } catch (e) { res.status(500).json([]); } });
 app.get('/communities/channels/:id/messages', async (req, res) => { try { res.json(await CommunityMessage.find({ channelId: req.params.id }).populate('senderId', 'displayName photoUrl').sort('timestamp').limit(150)); } catch (e) { res.status(500).json([]); } });
 
-// ==============================================================
-// 🧠 API GATEWAY - INGLÊS PTT (SISTEMA DE DOMÍNIO DUPLO)
-// ==============================================================
-
-// 1. Busca todo o progresso do aluno ao abrir a página
 app.get('/api/english/progress/:userId', async (req, res) => {
     try {
         const user = await User.findById(req.params.userId).select('englishMacroSom englishMacroLogica englishMacroContexto englishGlobalFluency');
         const micros = await MicroMastery.find({ userId: req.params.userId });
         res.json({ global: user, micros });
-    } catch(e) {
-        res.status(500).json({ error: 'Erro ao carregar progresso.' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro' }); }
 });
 
-// 2. Processa uma nova tentativa, calcula o Micro Domínio e Atualiza o Macro Domínio
 app.post('/api/english/attempt', async (req, res) => {
     const { userId, nodeId, type, score, responseTimeMs } = req.body;
     try {
-        // A. Guarda o log bruto
         await new EnglishAttempt({ userId, nodeId, score, responseTimeMs }).save();
-
-        // B. Procura ou cria a Matriz de Micro Domínio
         let micro = await MicroMastery.findOne({ userId, nodeId });
-        if (!micro) {
-            micro = new MicroMastery({ userId, nodeId, type, isUnlocked: true });
-        }
+        if (!micro) { micro = new MicroMastery({ userId, nodeId, type, isUnlocked: true }); }
 
-        // C. A FÓRMULA MATEMÁTICA ADAPTATIVA
-        // Atualiza a precisão (peso maior na nota mais recente)
         micro.precisionScore = micro.precisionScore === 0 ? score : (micro.precisionScore * 0.6) + (score * 0.4);
-        
-        // Avalia velocidade (Ex: menos de 3000ms ganha 100%, senão cai proporcionalmente)
         let currentSpeed = responseTimeMs < 3000 ? 100 : Math.max(0, 100 - ((responseTimeMs - 3000) / 100));
         micro.speedScore = micro.speedScore === 0 ? currentSpeed : (micro.speedScore * 0.7) + (currentSpeed * 0.3);
 
-        // Calcula o Micro Domínio Específico por Trilha
-        if (type === 'som') {
-            micro.masteryLevel = (micro.precisionScore * 0.8) + (micro.consistencyScore * 0.2); // Som exige mais precisão física
-        } else if (type === 'logica') {
-            micro.masteryLevel = (micro.precisionScore * 0.5) + (micro.speedScore * 0.5); // Lógica exige velocidade de raciocínio
-        } else { // contexto
-            micro.masteryLevel = (micro.precisionScore * 0.6) + (micro.speedScore * 0.4); // Contexto exige memória de recall
-        }
+        if (type === 'som') micro.masteryLevel = (micro.precisionScore * 0.8) + (micro.consistencyScore * 0.2); 
+        else if (type === 'logica') micro.masteryLevel = (micro.precisionScore * 0.5) + (micro.speedScore * 0.5); 
+        else micro.masteryLevel = (micro.precisionScore * 0.6) + (micro.speedScore * 0.4); 
 
         micro.masteryLevel = Math.min(100, Math.round(micro.masteryLevel));
         micro.lastPracticed = new Date();
         await micro.save();
 
-        // D. RECALCULA O MACRO DOMÍNIO E A FLUÊNCIA GLOBAL
         const allUserMicros = await MicroMastery.find({ userId });
-        let sums = { som: 0, logica: 0, contexto: 0 };
-        let counts = { som: 0, logica: 0, contexto: 0 };
-
-        allUserMicros.forEach(m => {
-            sums[m.type] += m.masteryLevel;
-            counts[m.type]++;
-        });
+        let sums = { som: 0, logica: 0, contexto: 0 }; let counts = { som: 0, logica: 0, contexto: 0 };
+        allUserMicros.forEach(m => { sums[m.type] += m.masteryLevel; counts[m.type]++; });
 
         const macroSom = counts.som > 0 ? Math.round(sums.som / counts.som) : 0;
         const macroLogica = counts.logica > 0 ? Math.round(sums.logica / counts.logica) : 0;
         const macroContexto = counts.contexto > 0 ? Math.round(sums.contexto / counts.contexto) : 0;
-        
-        // Fluência Global: Som (35%), Lógica (35%), Contexto (30%)
         const globalFluency = Math.round((macroSom * 0.35) + (macroLogica * 0.35) + (macroContexto * 0.30));
 
-        // Salva as novas notas globais no Utilizador
-        await User.findByIdAndUpdate(userId, {
-            englishMacroSom: macroSom,
-            englishMacroLogica: macroLogica,
-            englishMacroContexto: macroContexto,
-            englishGlobalFluency: globalFluency
-        });
-
+        await User.findByIdAndUpdate(userId, { englishMacroSom: macroSom, englishMacroLogica: macroLogica, englishMacroContexto: macroContexto, englishGlobalFluency: globalFluency });
         res.json({ success: true, newMicroMastery: micro.masteryLevel, newGlobalFluency: globalFluency });
-    } catch(e) {
-        console.error(e);
-        res.status(500).json({ error: 'Erro ao processar cálculo.' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro ao processar cálculo.' }); }
 });
 
 const PORT = process.env.PORT || 10000;

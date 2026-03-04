@@ -169,7 +169,8 @@ if (msgInput) {
 }
 
 async function startRecording() { 
-    hideElement('attach-menu'); 
+    const menu = document.getElementById('attach-menu');
+    if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(audioStream); 
         audioChunks = []; isRecordingCancelled = false; showPreviewAfterStop = false;
@@ -352,8 +353,11 @@ function renderContactsList(groups, users) {
 
 window.toggleAttachMenu = function() {
     const menu = document.getElementById('attach-menu');
-    // Força a abertura/fecho do menu sem conflitos de classes
-    if (menu) menu.classList.toggle('hidden');
+    // 🔥 CORREÇÃO: Limpa estilos inline que possam ter trancado a visibilidade
+    if (menu) {
+        menu.style.display = ''; 
+        menu.classList.toggle('hidden');
+    }
 };
 
 window.triggerUpload = function(type) { 
@@ -361,13 +365,15 @@ window.triggerUpload = function(type) {
     
     // A MÁGICA ESTÁ AQUI: Força a limpeza do arquivo anterior antes de abrir!
     input.value = ''; 
-    
     input.accept = type; 
     input.click(); 
     
     // Esconde o menu de opções após o clique
     const menu = document.getElementById('attach-menu');
-    if(menu) menu.classList.add('hidden'); 
+    if (menu) {
+        menu.style.display = '';
+        menu.classList.add('hidden'); 
+    }
 };
 
 window.handleFileUpload = async function(input) { 
@@ -394,7 +400,37 @@ window.handleFileUpload = async function(input) {
     executeUpload(file, type); 
 };
 
-async function executeUpload(file, type) { const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); hideElement('attach-menu'); const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; displayMessage(tempMsg); const tempDiv = document.getElementById(`msg-${tempId}`); if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } const formData = new FormData(); formData.append('file', file); try { const res = await fetch('/upload', { method: 'POST', body: formData }); if (!res.ok) throw new Error(); const data = await res.json(); if(tempDiv) tempDiv.remove(); const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Falha no envio."); } finally { document.getElementById('file-input').value = ''; } }
+async function executeUpload(file, type) { 
+    const tempId = 'temp-' + Date.now(); 
+    const localUrl = URL.createObjectURL(file); 
+    
+    const menu = document.getElementById('attach-menu');
+    if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
+    
+    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
+    displayMessage(tempMsg); 
+    
+    const tempDiv = document.getElementById(`msg-${tempId}`); 
+    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } 
+    
+    const formData = new FormData(); 
+    formData.append('file', file); 
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); 
+        if (!res.ok) throw new Error(); 
+        const data = await res.json(); 
+        if(tempDiv) tempDiv.remove(); 
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        socket.emit('private_message', msgData); 
+        clearTimeout(typingTimeout); emitStopTypingStatus(); 
+    } catch (e) { 
+        if(tempDiv) tempDiv.remove(); 
+        alert("❌ Falha no envio da mídia."); 
+    } finally { 
+        document.getElementById('file-input').value = ''; 
+    } 
+}
+
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; }
 
 async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
@@ -472,7 +508,7 @@ async function uploadNewGroupPhoto(input) { const file = input.files[0]; if(!fil
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }
 
 // ==============================================================
-// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT (CORES CORRIGIDAS)
+// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT
 // ==============================================================
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
@@ -500,7 +536,6 @@ window.showCurrentChatProfile = async function() {
             modal.id = 'dynamic-profile-modal';
             modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
             
-            // 🔥 CORES CORRIGIDAS: Usando var(--card-bg), var(--text-color) e var(--input-bg)
             modal.innerHTML = `
                 <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
                     
