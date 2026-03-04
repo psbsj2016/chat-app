@@ -9,9 +9,16 @@ router.post('/attempt', EnglishController.submitAttempt);
 
 router.get('/node/:nodeId', EnglishController.getNodeExercises);
 
-
-router.post('/admin/exercise', EnglishController.addExerciseToNode);
+// ==========================================
+// 🛡️ ROTAS DO QUARTEL GENERAL (ADMIN)
+// ==========================================
+router.post('/admin/inject', EnglishController.injectUniversalExercise); // 🔥 NOVA ROTA DO SUPER QG!
+router.post('/admin/exercise', EnglishController.addExerciseToNode); // Mantida por segurança (Antiga)
 router.post('/admin/clear', EnglishController.clearNodeExercises);
+
+// ==========================================
+// 🎓 ROTAS DO APLICATIVO (ALUNOS E LEITURA)
+// ==========================================
 
 // Rotas de Treinamento Específico (As 4 Habilidades e Academia)
 router.get('/skill/:skill', EnglishController.getWorkoutBySkill);

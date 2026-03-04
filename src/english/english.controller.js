@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const EnglishService = require('./english.service');
 const { UserEnglish, MicroMastery, CatalogoNode } = require('./english.models');
 
@@ -43,38 +44,72 @@ exports.getDailyWorkout = async (req, res) => {
     }
 };
 
+// ==========================================
+// 🛡️ NÓS (FASES): LER E EVITAR ERRO 404
+// ==========================================
 exports.getNodeExercises = async (req, res) => {
     try {
         const { nodeId } = req.params;
         const node = await CatalogoNode.findOne({ nodeId });
         
-        // Se o nó existir mas não tiver exercícios (array vazio), avisamos a UI
+        // Se a fase for nova e ainda não existir ou estiver vazia, devolvemos um array vazio
         if (!node || !node.exercises || node.exercises.length === 0) {
-            return res.json({ success: false, message: 'Fase em construção pelo Quartel General!' });
+            return res.json({ success: true, exercises: [], message: 'Fase em construção pelo Quartel General!' });
         }
         
         res.json({ success: true, exercises: node.exercises });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ error: 'Erro ao buscar lição' });
+        res.status(500).json({ success: false, error: 'Erro ao buscar lição' });
     }
 };
 
 // ==========================================
-// 🛡️ ROTA ADMIN: INJETOR DE EXERCÍCIOS
+// 🛡️ ROTA ADMIN: INJETOR UNIVERSAL (SUPER QG)
 // ==========================================
+exports.injectUniversalExercise = async (req, res) => {
+    try {
+        const { core, nodeId, exercise } = req.body;
+        
+        // Gera um ID único e rastreabilidade para o novo exercício
+        exercise.id = 'ex_' + Date.now();
+        exercise.createdAt = new Date();
+        exercise.isPerformance = (core === 'performance');
+
+        let node = await CatalogoNode.findOne({ nodeId: nodeId });
+        
+        // Se a fase não existe no Banco, o QG cria-a automaticamente!
+        if (!node) {
+            node = new CatalogoNode({
+                nodeId: nodeId,
+                track: core === 'performance' ? 'performance' : 'estrutural',
+                category: 'base',
+                title: core === 'performance' ? `Piscina: ${nodeId}` : `Fase: ${nodeId}`,
+                exercises: []
+            });
+        }
+
+        // Empurra o exercício para o Arsenal do Nó
+        node.exercises.push(exercise);
+        await node.save();
+
+        res.json({ success: true, message: '✅ Armamento injetado com sucesso no QG!' });
+    } catch (e) {
+        console.error("Erro no QG Admin:", e);
+        res.status(500).json({ success: false, message: 'Erro crítico ao injetar exercício.' });
+    }
+};
+
+// Mantido por segurança para não quebrar scripts antigos
 exports.addExerciseToNode = async (req, res) => {
     try {
         const { nodeId, exercise } = req.body;
-        
-        // Gera um ID único para o novo exercício
         exercise.id = 'ex_' + Date.now();
         
-        // Encontra o Nó no Catálogo e "empurra" o exercício para a lista
         const node = await CatalogoNode.findOneAndUpdate(
             { nodeId: nodeId },
             { $push: { exercises: exercise } },
-            { new: true } // Retorna o nó atualizado
+            { new: true } 
         );
 
         if (!node) {
@@ -94,7 +129,6 @@ exports.addExerciseToNode = async (req, res) => {
 exports.clearNodeExercises = async (req, res) => {
     try {
         const { nodeId } = req.body;
-        // Substitui o array de exercícios por um array vazio []
         const node = await CatalogoNode.findOneAndUpdate(
             { nodeId: nodeId }, 
             { $set: { exercises: [] } }, 
@@ -115,24 +149,20 @@ exports.clearNodeExercises = async (req, res) => {
 // ==========================================
 exports.getWorkoutBySkill = async (req, res) => {
     try {
-        const { skill } = req.params; // 'listening', 'speaking', 'reading', 'writing'
+        const { skill } = req.params; 
         
-        // Mapeia o botão clicado para os motores visuais que existem no QG
         let validTypes = [];
         if (skill === 'listening') validTypes = ['listen_isolate', 'minimal_pair'];
         if (skill === 'speaking') validTypes = ['repeat_word', 'repeat_sentence'];
         if (skill === 'reading') validTypes = ['context_cloze'];
-        if (skill === 'writing') validTypes = ['sentence_assembly'];
+        if (skill === 'writing') validTypes = ['sentence_assembly', 'dictation'];
 
-        // Vasculha todos os Nós (Fases) do Banco de Dados
         const nodes = await CatalogoNode.find({});
         let matchedExercises = [];
 
         nodes.forEach(node => {
             if (node.exercises && node.exercises.length > 0) {
-                // Filtra apenas os exercícios da habilidade escolhida
                 const filtered = node.exercises.filter(ex => validTypes.includes(ex.type));
-                // Cola o ID da fase de origem em cada exercício para os cálculos de XP não falharem
                 const withNodeId = filtered.map(ex => {
                     let exObj = typeof ex.toObject === 'function' ? ex.toObject() : ex;
                     return { ...exObj, nodeId: node.nodeId };
@@ -141,11 +171,10 @@ exports.getWorkoutBySkill = async (req, res) => {
             }
         });
 
-        // Baralha os resultados e envia 5 exercícios táticos
         matchedExercises = matchedExercises.sort(() => 0.5 - Math.random()).slice(0, 5);
 
         if (matchedExercises.length === 0) {
-            return res.json({ success: false, message: `Nenhum exercício de ${skill.toUpperCase()} encontrado no QG. Crie no Painel de Admin!` });
+            return res.json({ success: false, message: `Nenhum exercício de ${skill.toUpperCase()} encontrado no QG.` });
         }
 
         res.json({ success: true, exercises: matchedExercises });
@@ -173,7 +202,6 @@ exports.getTrainingWorkout = async (req, res) => {
             }
         });
 
-        // Puxa 10 exercícios de qualquer habilidade ou fase (Treino Longo)
         let randomExercises = allExercises.sort(() => 0.5 - Math.random()).slice(0, 10);
         
         if (randomExercises.length === 0) return res.json({ success: false, message: "O QG está vazio." });
@@ -189,17 +217,14 @@ exports.getTrainingWorkout = async (req, res) => {
 exports.savePerformanceAttempt = async (req, res) => {
     try {
         const { userId, skill, score, timeMs } = req.body;
-        const mongoose = require('mongoose');
         const PerformanceLog = mongoose.model('PerformanceLog');
-        const UserEnglish = mongoose.model('UserEnglish'); // 🔥 MUDANÇA TÁTICA AQUI
-
+        
         // 1. Salva o log bruto da execução (Histórico Intocável)
         await new PerformanceLog({ userId, skill, score, responseTimeMs: timeMs }).save();
 
         // 2. Calcula a evolução na habilidade específica
-        // O Training (mix) conta para histórico, mas não muda a média isolada
         if (skill !== 'mix') {
-            const user = await UserEnglish.findOne({ userId: userId }); // 🔥 MUDANÇA TÁTICA AQUI
+            const user = await UserEnglish.findOne({ userId: userId }); 
             
             if (user) {
                 const fieldMap = {
@@ -213,7 +238,6 @@ exports.savePerformanceAttempt = async (req, res) => {
                 if (targetField) {
                     let currentAvg = user[targetField] || 0;
                     
-                    // MÁGICA DA PERFORMANCE: 
                     // Dá peso de 70% ao histórico e 30% à tentativa atual. 
                     let newAvg = currentAvg === 0 ? score : (currentAvg * 0.7) + (score * 0.3);
                     newAvg = Math.min(100, Math.round(newAvg));
@@ -234,13 +258,10 @@ exports.savePerformanceAttempt = async (req, res) => {
 // Puxa as métricas de Performance do usuário para exibir na tela
 exports.getPerformanceStats = async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        const UserEnglish = mongoose.model('UserEnglish'); // 🔥 MUDANÇA TÁTICA AQUI
         const PerformanceLog = mongoose.model('PerformanceLog');
         
-        const user = await UserEnglish.findOne({ userId: req.params.userId }).select('perfListening perfSpeaking perfReading perfWriting'); // 🔥 MUDANÇA TÁTICA AQUI
+        const user = await UserEnglish.findOne({ userId: req.params.userId }).select('perfListening perfSpeaking perfReading perfWriting'); 
         
-        // Conta quantos treinos completos o aluno já sobreviveu
         const trainingCount = await PerformanceLog.countDocuments({ userId: req.params.userId, skill: 'mix' });
 
         res.json({ success: true, stats: user, trainingCount });
