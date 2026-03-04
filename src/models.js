@@ -50,7 +50,13 @@ const statusSchema = new mongoose.Schema({
 });
 const StatusMsg = mongoose.model('StatusMsg', statusSchema);
 
-const GroupSchema = new mongoose.Schema({ name: { type: String, required: true }, admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' } });
+const GroupSchema = new mongoose.Schema({ 
+    name: { type: String, required: true }, 
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], 
+    photoUrl: { type: String, default: 'https://cdn-icons-png.flaticon.com/512/166/166258.png' },
+    description: { type: String, default: '' } 
+});
 const Group = mongoose.model('Group', GroupSchema);
 
 const MessageSchema = new mongoose.Schema({ sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' }, content: String, fileUrl: String, fileType: { type: String, default: 'text' }, status: { type: String, default: 'sent' }, reaction: { type: String, default: null }, timestamp: { type: Date, default: Date.now }, securityFlags: { type: Object, default: null }});

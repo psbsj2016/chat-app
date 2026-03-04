@@ -78,7 +78,7 @@ if (msgInput) {
 }
 
 async function startRecording() { 
-    const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
+    hideElement('attach-menu'); 
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); globalMediaRecorder = new MediaRecorder(audioStream); audioChunks = []; isRecordingCancelled = false; showPreviewAfterStop = false;
         hideElement('message-input'); hideElement('btn-emoji'); hideElement('btn-attach'); showElement('recording-ui'); showElement('recording-active-state'); hideElement('recording-preview-state'); dynamicActionIcon.innerText = 'send'; dynamicActionIcon.style.animation = 'popIn 0.2s ease';
@@ -99,7 +99,7 @@ function resetAudioUI() { hideElement('recording-ui'); showElement('message-inpu
 function drawAudioVisualizer() { const canvas = document.getElementById('audio-visualizer'); if(!canvas) return; const ctx = canvas.getContext('2d'); const draw = () => { if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; requestAnimationFrame(draw); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#EF4444'; const barWidth = 3; const gap = 3; const totalBars = Math.floor(canvas.width / (barWidth + gap)); for(let i = 0; i < totalBars; i++) { const h = Math.random() * (canvas.height - 5) + 5; ctx.fillRect(i * (barWidth + gap), (canvas.height / 2) - (h / 2), barWidth, h); } }; draw(); }
 
 // ==============================================================
-// 🔌 SOCKETS
+// 🔌 SOCKETS E SINCRONIZAÇÃO
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
@@ -108,6 +108,7 @@ socket.on('online_users', (list) => { onlineUsersList = list; document.querySele
 
 function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
+
 socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
 socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) hideElement('typing-indicator'); const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
@@ -124,9 +125,46 @@ socket.on('receive_message', (msg) => {
 });
 
 // ==============================================================
-// 💬 AÇÕES DE CHAT E RENDERIZAÇÃO
+// 💬 AÇÕES, RENDERIZAÇÃO E CLIQUE LONGO DOS CONTATOS
 // ==============================================================
-function openChat(id, name, photo, email, type = 'user') { currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); closeChatSearch(); lastRenderedDate = null; document.getElementById('chat-title').innerText = name; document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); document.getElementById('chat-box').innerHTML = ''; const contactDiv = document.getElementById(`contact-${id}`); if (contactDiv) { contactDiv.classList.remove('has-unread'); const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); const msgArea = contactDiv.querySelector('.contact-last-msg'); if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } } if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); const headerDot = document.getElementById('chat-header-status'); const headerText = document.getElementById('chat-header-status-text'); if (headerDot && headerText) { if (isGroupChat) { headerDot.style.display = 'none'; headerText.innerText = 'Toque para ver membros'; } else { headerDot.style.display = 'block'; const isOnline = onlineUsersList.includes(id); headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; headerText.innerText = isOnline ? 'Online' : 'Offline'; } } if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } }
+function openChat(id, name, photo, email, type = 'user') { 
+    currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
+    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+    updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
+    closeChatSearch(); lastRenderedDate = null; 
+    
+    // ⚡ MÁGICA DE TEXTO DO MENU (Exibir Perfil -> Exibir Grupo)
+    const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
+    if (dropMenu) {
+        const items = dropMenu.querySelectorAll('div, span, a, button');
+        items.forEach(item => {
+            if (item.innerText.includes('Exibir Perfil') || item.innerText.includes('Exibir Grupo')) {
+                item.innerHTML = item.innerHTML.replace(/Exibir Perfil|Exibir Grupo/g, isGroupChat ? 'Exibir Grupo' : 'Exibir Perfil');
+            }
+        });
+    }
+
+    document.getElementById('chat-title').innerText = name; 
+    document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
+    document.getElementById('chat-box').innerHTML = ''; 
+    
+    const contactDiv = document.getElementById(`contact-${id}`); 
+    if (contactDiv) { 
+        contactDiv.classList.remove('has-unread'); 
+        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); 
+        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
+        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
+    } 
+    
+    if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
+    const headerDot = document.getElementById('chat-header-status'); const headerText = document.getElementById('chat-header-status-text');
+    if (headerDot && headerText) { 
+        if (isGroupChat) { headerDot.style.display = 'none'; headerText.innerText = 'Toque para ver membros'; } 
+        else { headerDot.style.display = 'block'; const isOnline = onlineUsersList.includes(id); headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; headerText.innerText = isOnline ? 'Online' : 'Offline'; } 
+    } 
+    if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
+}
 
 async function loadContacts() { if(!myId) return; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); updateAppBadge(); } try { const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); groups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(groups, users); updateAppBadge(); } catch(e) {} }
 
@@ -134,6 +172,7 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
+    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -141,103 +180,59 @@ function renderContactsList(groups, users) {
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); 
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${group.name}</div>${badgeHtml}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
-        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo'); div.appendChild(clickArea); list.appendChild(div); 
+        
+        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
+        div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
+    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
+        
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); 
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
-        setupLongPress(clickArea, user._id, safeName, false, photo, email); div.appendChild(clickArea); list.appendChild(div); 
+        
+        setupLongPress(clickArea, user._id, safeName, false, photo, email);
+        div.appendChild(clickArea); list.appendChild(div); 
     });
 }
 
-// ==============================================================
-// ⚡ MÁGICA: MOTOR DE UPLOAD CORRIGIDO E BLINDADO
-// ==============================================================
-
 window.toggleAttachMenu = function() {
     const menu = document.getElementById('attach-menu');
-    if (menu) {
-        // Força a remoção de display vazio que trava o classList
-        menu.style.display = ''; 
-        menu.classList.toggle('hidden');
-    }
+    if (menu) { menu.style.display = ''; menu.classList.toggle('hidden'); }
 };
 
 window.triggerUpload = function(type) { 
-    const input = document.getElementById('file-input'); 
-    input.value = ''; // Limpa memória do upload anterior
-    input.accept = type; 
-    input.click(); 
-    
-    const menu = document.getElementById('attach-menu');
-    if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
+    const input = document.getElementById('file-input'); input.value = ''; input.accept = type; input.click(); 
+    const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
 };
 
 window.handleFileUpload = async function(input) { 
-    const file = input.files[0]; 
-    if(!file) { input.value = ''; return; }
-    
-    // Aumentado o limite para combinar com o novo banco de dados (15MB)
-    if (file.size > 15 * 1024 * 1024) { 
-        alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); 
-        input.value = ''; 
-        return; 
-    } 
-    
-    let type = 'file'; 
-    if(file.type.startsWith('image/')) type = 'image'; 
-    else if(file.type.startsWith('video/')) type = 'video'; 
-    else if(file.type.startsWith('audio/')) type = 'audio'; 
-    else if(file.type === 'application/pdf') type = 'pdf'; 
-    
+    const file = input.files[0]; if(!file) { input.value = ''; return; }
+    if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); input.value = ''; return; } 
+    let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; 
     executeUpload(file, type); 
 };
 
 async function executeUpload(file, type) { 
-    const tempId = 'temp-' + Date.now(); 
-    const localUrl = URL.createObjectURL(file); 
-    
-    const menu = document.getElementById('attach-menu');
-    if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
-    
-    // Mostra o ficheiro no chat a "carregar"
+    const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); 
+    const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
     const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
     displayMessage(tempMsg); 
-    
     const tempDiv = document.getElementById(`msg-${tempId}`); 
-    if(tempDiv) { 
-        tempDiv.classList.add('uploading-msg'); 
-        const info = tempDiv.querySelector('.msg-info'); 
-        if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; 
-    } 
-    
-    const formData = new FormData(); 
-    formData.append('file', file); 
-    
+    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } 
+    const formData = new FormData(); formData.append('file', file); 
     try { 
-        const res = await fetch('/upload', { method: 'POST', body: formData }); 
-        const data = await res.json();
-        
+        const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Falha na Nuvem'); 
-        
         if(tempDiv) tempDiv.remove(); 
-        
-        // Dispara a mensagem final com a URL gerada no MongoDB
         const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
-        socket.emit('private_message', msgData); 
-        clearTimeout(typingTimeout); emitStopTypingStatus(); 
-    } catch (e) { 
-        if(tempDiv) tempDiv.remove(); 
-        alert("❌ Erro no Envio: " + e.message); 
-    } finally { 
-        document.getElementById('file-input').value = ''; 
-    } 
+        socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
+    } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
 }
 
 function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; }
@@ -301,7 +296,6 @@ function openCreateGroupModal() { showElement('create-group-modal'); selectedUse
 function closeCreateGroup() { hideElement('create-group-modal'); }
 function filterGroupContacts(query) { const items = document.querySelectorAll('.candidate-item'); items.forEach(item => { if(item.innerText.toLowerCase().includes(query.toLowerCase())) item.style.display = 'flex'; else item.style.display = 'none'; }); }
 
-// UPLOAD PARA PERFIL/GRUPO TBM USA A NOVA ROTA
 async function uploadNewGroupPhoto(input) { 
     const file = input.files[0]; if(!file) return; 
     const fd = new FormData(); fd.append('file', file); 
@@ -309,22 +303,108 @@ async function uploadNewGroupPhoto(input) {
         const res = await fetch('/upload', {method:'POST', body:fd}); 
         const data = await res.json(); 
         document.getElementById('new-group-photo').src = data.url; 
-    } catch(e) {
-        alert("Erro ao enviar foto.");
-    }
+    } catch(e) { alert("Erro ao enviar foto."); }
 }
+
 async function submitCreateGroup() { const name = document.getElementById('group-name-input').value.trim(); const photo = document.getElementById('new-group-photo').src; if(!name) return alert("⚠️ Digite um nome para o grupo!"); if(selectedUserIds.length === 0) return alert("⚠️ Selecione pelo menos 1 contato!"); try { await fetch('/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, adminId: myId, members: selectedUserIds, photoUrl: photo }) }); closeCreateGroup(); socket.emit('group_updated'); loadContacts(); alert("🎉 Grupo formado com sucesso!"); } catch (e) {} }
 
 // ==============================================================
-// 👤 EXIBIÇÃO DE PERFIL DINÂMICO DENTRO DO CHAT
+// 👥 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO (NOVO)
 // ==============================================================
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
 
+    // 🔥 NOVO: LÓGICA DE PAINEL DO GRUPO 🔥
     if (isGroupChat) {
-        return alert("👥 Este é um Grupo. Toque no nome do grupo no topo para gerir os membros.");
+        try {
+            const res = await fetch(`/group/${currentChatId}`);
+            const group = await res.json();
+            if (!group) return alert("Grupo não encontrado.");
+            
+            let modal = document.getElementById('dynamic-group-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'dynamic-group-modal';
+                modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
+                document.body.appendChild(modal);
+            }
+
+            const isAdmin = group.admin === myId;
+            let members = group.members || [];
+            
+            // Ordena para que o Admin fique sempre no topo
+            members.sort((a, b) => {
+                if (a._id === group.admin) return -1;
+                if (b._id === group.admin) return 1;
+                return 0;
+            });
+
+            // HTML da Lista de Membros
+            let membersHtml = members.map(m => {
+                const isGroupAdmin = m._id === group.admin;
+                const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]);
+                return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};">
+                            <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span>
+                        </div>
+                        ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            const descText = group.description || 'Nenhuma descrição adicionada ao grupo.';
+            
+            // HTML da Descrição (Editável se for Admin)
+            const descHtml = isAdmin 
+                ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);">
+                     <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p>
+                     <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span>
+                   </div>`
+                : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`;
+
+            modal.innerHTML = `
+                <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;">
+                    
+                    <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
+                    
+                    <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;">
+                        <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
+                        ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''}
+                    </div>
+                    
+                    <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2>
+                    ${descHtml}
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-weight:900; font-size:15px; color:var(--text-color);">Membros (${members.length})</span>
+                        <button onclick="openInviteToGroupModal('${group._id}')" class="chic-btn" style="margin:0; background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); padding:6px 12px; font-size:13px; display:flex; align-items:center; gap:5px;">
+                            <span class="material-icons-round" style="font-size:18px;">person_add</span> Adicionar
+                        </button>
+                    </div>
+
+                    <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;">
+                        ${membersHtml}
+                    </div>
+                </div>
+            `;
+            
+            const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
+            if (dropMenu) dropMenu.classList.add('hidden');
+
+            modal.style.display = 'flex';
+            setTimeout(() => modal.style.opacity = '1', 10);
+            
+        } catch(e) {
+            console.error(e);
+            alert("Erro ao carregar dados do grupo.");
+        }
+        return;
     }
 
+    // LÓGICA DO PERFIL DE USUÁRIO (MANTIDA INTACTA)
     try {
         const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
         const user = cachedUsers.find(u => u._id === currentChatId);
@@ -343,29 +423,22 @@ window.showCurrentChatProfile = async function() {
             modal = document.createElement('div');
             modal.id = 'dynamic-profile-modal';
             modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
-            
-            modal.innerHTML = `
-                <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
-                    <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
-                    <img id="dp-photo" src="" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
-                    <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;"></h2>
-                    <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;"></div>
-                    <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));">
-                        <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;"></span></div>
-                        <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;"></span></div>
-                        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);"></span></b></div>
-                    </div>
-                </div>
-            `;
             document.body.appendChild(modal);
         }
 
-        document.getElementById('dp-photo').src = photo;
-        document.getElementById('dp-name').innerText = name;
-        document.getElementById('dp-vip').innerHTML = isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : '';
-        document.getElementById('dp-email').innerText = email;
-        document.getElementById('dp-phone').innerText = phone;
-        document.getElementById('dp-xp').innerText = xp;
+        modal.innerHTML = `
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+                <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
+                <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
+                <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2>
+                <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div>
+                <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));">
+                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div>
+                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div>
+                    <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div>
+                </div>
+            </div>
+        `;
 
         const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
         if (dropMenu) dropMenu.classList.add('hidden');
@@ -378,3 +451,126 @@ window.showCurrentChatProfile = async function() {
         alert("Erro ao carregar os dados do perfil.");
     }
 };
+
+// ==============================================================
+// 👥 FUNÇÕES DO PAINEL DO GRUPO (CONVITE, EDIÇÃO DE FOTO/DESCRIÇÃO)
+// ==============================================================
+
+window.openInviteToGroupModal = async function(groupId) {
+    try {
+        const resGroups = await fetch(`/group/${groupId}`);
+        const group = await resGroups.json();
+        const currentMemberIds = group.members.map(m => m._id);
+
+        const resUsers = await fetch(`/users/${myId}`);
+        const allUsers = await resUsers.json();
+        
+        // Filtra utilizadores que já estão no grupo
+        const candidates = allUsers.filter(u => !currentMemberIds.includes(u._id));
+        
+        let modal = document.getElementById('invite-group-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'invite-group-modal';
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
+            document.body.appendChild(modal);
+        }
+
+        if (candidates.length === 0) {
+            alert("Não há novos contatos disponíveis para adicionar ao esquadrão.");
+            return;
+        }
+
+        let candidatesHtml = candidates.map(u => {
+            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+            const name = u.displayName || u.email.split('@')[0];
+            return `
+                <label style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
+                    <input type="checkbox" value="${u._id}" class="invite-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);">
+                    <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                    <span style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
+                </label>
+            `;
+        }).join('');
+
+        modal.innerHTML = `
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:380px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height:85vh; display:flex; flex-direction:column;">
+                <h3 style="color:var(--text-color); font-weight:900; font-size:20px; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:8px;"><span class="material-icons-round" style="color:var(--brand-primary);">person_add</span> Reforços</h3>
+                
+                <div style="overflow-y:auto; flex:1; text-align:left; margin-bottom:20px; padding-right:5px;">
+                    ${candidatesHtml}
+                </div>
+                
+                <div style="display:flex; gap:12px;">
+                    <button onclick="document.getElementById('invite-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('invite-group-modal').style.display='none',300);" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color, rgba(255,255,255,0.1));">Cancelar</button>
+                    <button onclick="submitInviteToGroup('${groupId}')" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Adicionar Tropa</button>
+                </div>
+            </div>
+        `;
+        
+        modal.style.display = 'flex';
+        setTimeout(() => modal.style.opacity = '1', 10);
+    } catch(e) {
+        console.error(e);
+        alert("Erro ao buscar reforços.");
+    }
+}
+
+window.submitInviteToGroup = async function(groupId) {
+    const checkboxes = document.querySelectorAll('.invite-checkbox:checked');
+    const userIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if(userIds.length === 0) return alert("Selecione pelo menos um recruta.");
+    
+    try { 
+        await fetch(`/groups/${groupId}/add-members`, { 
+            method: 'PUT', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ userIds }) 
+        }); 
+        
+        document.getElementById('invite-group-modal').style.opacity = '0'; 
+        setTimeout(() => document.getElementById('invite-group-modal').style.display = 'none', 300);
+        
+        socket.emit('group_updated');
+        
+        // Magia: O painel do grupo atualiza-se sozinho para mostrar o novo recruta!
+        showCurrentChatProfile();
+    } catch(e) { alert('Erro ao adicionar membros'); }
+}
+
+window.editGroupDescription = async function(groupId, currentDesc) {
+    const newDesc = prompt("Descreva o propósito deste esquadrão:", currentDesc);
+    if (newDesc !== null) {
+        try {
+            await fetch(`/groups/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: newDesc })
+            });
+            showCurrentChatProfile(); // Refresh visual imediato
+        } catch(e) { alert("Erro ao comunicar com o servidor."); }
+    }
+}
+
+window.uploadAndUpdateGroupPhoto = async function(groupId, input) {
+    const file = input.files[0]; if(!file) return; 
+    const fd = new FormData(); fd.append('file', file); 
+    try {
+        // Envia para o nosso novo Cofre MongoDB
+        const res = await fetch('/upload', {method:'POST', body:fd}); 
+        const data = await res.json(); 
+        
+        // Diz ao Grupo para usar esta nova foto
+        await fetch(`/groups/${groupId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photoUrl: data.url })
+        });
+        
+        socket.emit('group_updated');
+        showCurrentChatProfile(); // Refresh visual imediato
+    } catch(e) {
+        alert("Ocorreu um problema ao atualizar a foto do esquadrão.");
+    }
+}
