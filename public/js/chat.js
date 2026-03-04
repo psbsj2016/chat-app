@@ -7,9 +7,6 @@ let currentSelectedMsgElement = null;
 let selectedMsgData = null;
 let lastRenderedDate = null;
 
-// ==============================================================
-// 👆 MOTOR DE SELEÇÃO MÚLTIPLA E AÇÕES EM MASSA (NOVO)
-// ==============================================================
 window.selectedActionContacts = []; 
 
 function initMultiSelectUI() {
@@ -275,7 +272,10 @@ if (msgInput) {
 }
 
 async function startRecording() { 
-    hideElement('attach-menu'); 
+    // Fecha o menu clip se estiver aberto
+    const attachMenu = document.getElementById('attach-menu');
+    if(attachMenu) attachMenu.classList.add('hidden');
+
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
         globalMediaRecorder = new MediaRecorder(audioStream); 
@@ -288,7 +288,7 @@ async function startRecording() {
         audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(audioStream);
         audioAnalyzer = audioContext.createAnalyser();
-        audioAnalyzer.fftSize = 128; // Define o número de barras
+        audioAnalyzer.fftSize = 128; // Define a resolução da onda
         source.connect(audioAnalyzer);
         audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
 
@@ -296,7 +296,7 @@ async function startRecording() {
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
         hideElement('recording-preview-state'); 
-        showElement('btn-pause-record'); // Mostra o botão de pausa
+        showElement('btn-pause-record'); // Mostra botão pause
         
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
@@ -337,7 +337,7 @@ function drawAudioVisualizer() {
     const canvas = document.getElementById('audio-visualizer'); 
     if(!canvas) return; 
     
-    // Deixa as barras bem nítidas no ecrã (High DPI)
+    // Suavidade High DPI
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     if(canvas.width !== rect.width * dpr) {
@@ -361,14 +361,13 @@ function drawAudioVisualizer() {
         const centerY = rect.height / 2;
 
         for(let i = 0; i < totalBars; i++) { 
-            // Converte o ruído real do microfone para a barra
             const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
             const value = audioDataArray[dataIndex];
             
             const percent = value / 255;
-            let h = Math.max(3, percent * (rect.height - 4)); // Pelo menos 3px de altura
+            let h = Math.max(3, percent * (rect.height - 4)); // Altura dinâmica
             
-            // Cria um gradiente vivo Premium
+            // Gradiente Premium
             const gradient = ctx.createLinearGradient(0, centerY - h/2, 0, centerY + h/2);
             gradient.addColorStop(0, '#EC4899');
             gradient.addColorStop(0.5, '#8B5CF6');
@@ -376,7 +375,7 @@ function drawAudioVisualizer() {
             
             ctx.fillStyle = gradient; 
             
-            // Desenha barras com pontas arredondadas!
+            // Barras com bordas arredondadas
             const x = i * (barWidth + gap);
             const y = centerY - (h / 2);
             
@@ -428,9 +427,9 @@ function resetAudioUI() {
 
 function setupPreviewUI(blob) { 
     hideElement('recording-active-state'); 
-    hideElement('btn-pause-record'); // Esconde botão pausar na preview
+    hideElement('btn-pause-record'); // Esconde pause na preview
     showElement('recording-preview-state'); 
-    dynamicActionBtn.classList.remove('recording-pulse'); // Para de pulsar
+    dynamicActionBtn.classList.remove('recording-pulse'); 
 
     const audioUrl = URL.createObjectURL(blob); 
     previewAudioObj = new Audio(audioUrl); 
@@ -447,7 +446,7 @@ function setupPreviewUI(blob) {
     }; 
     
     previewAudioObj.onended = () => { 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 22px;">play_arrow</span>'; 
+        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
         progressBar.style.width = '0%'; 
         document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText;  
     }; 
@@ -460,10 +459,10 @@ window.togglePreviewAudio = function() {
     const playBtn = document.getElementById('preview-play-btn'); 
     if(previewAudioObj.paused) { 
         previewAudioObj.play(); 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 22px;">pause</span>'; 
+        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
     } else { 
         previewAudioObj.pause(); 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 22px;">play_arrow</span>'; 
+        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
     } 
 }
 
@@ -496,6 +495,46 @@ socket.on('receive_message', (msg) => {
 // ==============================================================
 // 💬 AÇÕES, RENDERIZAÇÃO
 // ==============================================================
+window.toggleAttachMenu = function() {
+    const menu = document.getElementById('attach-menu');
+    if (menu) { 
+        menu.classList.toggle('hidden'); 
+    }
+};
+
+window.triggerUpload = function(type) { 
+    const input = document.getElementById('file-input'); 
+    input.value = ''; input.accept = type; input.click(); 
+    const menu = document.getElementById('attach-menu');
+    if (menu) { menu.classList.add('hidden'); }
+};
+
+window.handleFileUpload = async function(input) { 
+    const file = input.files[0]; if(!file) { input.value = ''; return; }
+    if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); input.value = ''; return; } 
+    let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; 
+    executeUpload(file, type); 
+};
+
+async function executeUpload(file, type) { 
+    const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); 
+    const menu = document.getElementById('attach-menu'); if (menu) { menu.classList.add('hidden'); }
+    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
+    displayMessage(tempMsg); 
+    const tempDiv = document.getElementById(`msg-${tempId}`); 
+    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } 
+    const formData = new FormData(); formData.append('file', file); 
+    try { 
+        const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Falha na Nuvem'); 
+        if(tempDiv) tempDiv.remove(); 
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
+    } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
+}
+
+function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; }
+
 function openChat(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
@@ -574,35 +613,6 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     });
 }
-
-window.toggleAttachMenu = function() { const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.toggle('hidden'); } };
-window.triggerUpload = function(type) { const input = document.getElementById('file-input'); input.value = ''; input.accept = type; input.click(); const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); } };
-
-window.handleFileUpload = async function(input) { 
-    const file = input.files[0]; if(!file) { input.value = ''; return; }
-    if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); input.value = ''; return; } 
-    let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; 
-    executeUpload(file, type); 
-};
-
-async function executeUpload(file, type) { 
-    const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); 
-    const menu = document.getElementById('attach-menu'); if (menu) { menu.style.display = ''; menu.classList.add('hidden'); }
-    const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
-    displayMessage(tempMsg); 
-    const tempDiv = document.getElementById(`msg-${tempId}`); 
-    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } 
-    const formData = new FormData(); formData.append('file', file); 
-    try { 
-        const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Falha na Nuvem'); 
-        if(tempDiv) tempDiv.remove(); 
-        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
-        socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
-    } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
-}
-
-function sendMessage(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; }
 
 async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
