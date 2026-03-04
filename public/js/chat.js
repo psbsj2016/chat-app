@@ -7,9 +7,6 @@ let currentSelectedMsgElement = null;
 let selectedMsgData = null;
 let lastRenderedDate = null;
 
-// ==============================================================
-// 👆 MOTOR DE SELEÇÃO MÚLTIPLA E AÇÕES EM MASSA
-// ==============================================================
 window.selectedActionContacts = []; 
 
 function initMultiSelectUI() {
@@ -18,17 +15,9 @@ function initMultiSelectUI() {
     const style = document.createElement('style');
     style.innerHTML = `
         .selected-for-action { background: rgba(59, 130, 246, 0.15) !important; border-left: 4px solid var(--brand-primary) !important; }
-        
-        /* Barra Adapta-se ao Tema (Claro/Escuro) */
-        #contact-action-bar { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 65px; 
-            background: var(--card-bg); border-bottom: 2px solid var(--brand-primary); 
-            padding: 0 20px; display: flex; align-items: center; justify-content: space-between; 
-            z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.15); color: var(--text-color); 
-        }
-        
-        .bulk-menu-item { padding: 15px 20px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-color); }
-        .bulk-menu-item:hover { background: rgba(128, 128, 128, 0.1); }
+        #contact-action-bar { position: fixed; top: 0; left: 0; width: 100%; height: 65px; background: var(--bg-color); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: white; }
+        .bulk-menu-item { padding: 15px 20px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600; color: white; }
+        .bulk-menu-item:hover { background: rgba(255,255,255,0.05); }
     `;
     document.head.appendChild(style);
 
@@ -44,7 +33,7 @@ function initMultiSelectUI() {
             <span class="material-icons-round" style="cursor:pointer; color: #EF4444; font-size:26px;" onclick="promptBulkDeleteChat()">delete</span>
             <span class="material-icons-round" style="cursor:pointer; font-size:26px;" onclick="toggleBulkMenu(event)">more_vert</span>
             
-            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:45px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; width:280px; box-shadow:0 15px 50px rgba(0,0,0,0.3); overflow: hidden; z-index:10001;">
+            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:45px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.1); border-radius:12px; width:280px; box-shadow:0 15px 50px rgba(0,0,0,0.9); overflow: hidden; z-index:10001; backdrop-filter: blur(10px);">
                 <div class="bulk-menu-item" onclick="openBulkCreateGroupModal(); closeBulkMenu();">
                     <span class="material-icons-round" style="font-size: 22px; color: #10B981;">group_add</span> Criar Grupo
                 </div>
@@ -61,11 +50,11 @@ function initMultiSelectUI() {
     inviteModal.className = 'hidden';
     inviteModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
     inviteModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.3);">
+        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
             <button onclick="hideElement('bulk-invite-modal')" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer;">&times;</button>
             <span class="material-icons-round" style="font-size: 50px; color: var(--brand-primary); margin-bottom: 10px;">radar</span>
-            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px; color: var(--text-color);">Qual Comunidade?</h2>
-            <p style="color:var(--secondary-text); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
+            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px;">Qual Comunidade?</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
             <div id="bulk-invite-comm-list" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
         </div>
     `;
@@ -76,11 +65,11 @@ function initMultiSelectUI() {
     acceptModal.className = 'hidden';
     acceptModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
     acceptModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.3);">
+        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
             <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
-            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px; color: var(--text-color);">Acesso Restrito</h2>
-            <p style="color:var(--secondary-text); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
-            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: var(--text-color); margin-bottom: 30px; background: var(--input-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
+            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
+            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
             <div style="display:flex; gap:12px;">
                 <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
                 <button onclick="acceptCommunityInvite()" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Entrar</button>
@@ -169,7 +158,7 @@ window.openBulkCommunityInviteModal = async function() {
             list.innerHTML += `
                 <div style="display:flex; align-items:center; gap:15px; padding:15px; background:var(--input-bg); border-radius:12px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; transition:0.2s;" onmouseover="this.style.borderColor='var(--brand-primary)'" onmouseout="this.style.borderColor='transparent'" onclick="sendBulkInvite('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')">
                     <img src="${comm.photoUrl}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
-                    <span style="font-weight:900; font-size:15px; color:var(--text-color);">${comm.name}</span>
+                    <span style="font-weight:900; font-size:15px; color:white;">${comm.name}</span>
                 </div>
             `;
         });
@@ -223,7 +212,6 @@ let isRecordingCancelled = false;
 let showPreviewAfterStop = false; 
 let previewAudioObj = null;
 
-// Analisador Web Audio API
 let audioContext = null;
 let audioAnalyzer = null;
 let audioDataArray = null;
@@ -283,7 +271,6 @@ if (msgInput) {
 }
 
 async function startRecording() { 
-    // Fecha o menu clip se estiver aberto
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
 
@@ -294,20 +281,21 @@ async function startRecording() {
         isRecordingCancelled = false; 
         showPreviewAfterStop = false;
         
-        // Setup do Analisador de Frequências (Mágica da Onda)
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(audioStream);
         audioAnalyzer = audioContext.createAnalyser();
-        audioAnalyzer.fftSize = 128; // Define a resolução da onda
+        audioAnalyzer.fftSize = 128; 
         source.connect(audioAnalyzer);
         audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
 
+        // Esconde input e clipe, mostra cápsula
         hideElement('chat-input-container'); 
+        hideElement('btn-attach-wrapper');
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
         hideElement('recording-preview-state'); 
-        showElement('btn-pause-record'); // Mostra botão pause
+        showElement('btn-pause-record'); 
         
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
@@ -348,7 +336,6 @@ function drawAudioVisualizer() {
     const canvas = document.getElementById('audio-visualizer'); 
     if(!canvas) return; 
     
-    // Suavidade High DPI
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     if(canvas.width !== rect.width * dpr) {
@@ -376,9 +363,8 @@ function drawAudioVisualizer() {
             const value = audioDataArray[dataIndex];
             
             const percent = value / 255;
-            let h = Math.max(3, percent * (rect.height - 4)); // Altura dinâmica
+            let h = Math.max(3, percent * (rect.height - 4)); 
             
-            // Gradiente Premium
             const gradient = ctx.createLinearGradient(0, centerY - h/2, 0, centerY + h/2);
             gradient.addColorStop(0, '#EC4899');
             gradient.addColorStop(0.5, '#8B5CF6');
@@ -386,12 +372,8 @@ function drawAudioVisualizer() {
             
             ctx.fillStyle = gradient; 
             
-            // Barras com bordas arredondadas
-            const x = i * (barWidth + gap);
-            const y = centerY - (h / 2);
-            
             ctx.beginPath();
-            ctx.roundRect(x, y, barWidth, h, 2);
+            ctx.roundRect(i * (barWidth + gap), centerY - (h / 2), barWidth, h, 2);
             ctx.fill();
         } 
     }; 
@@ -399,37 +381,28 @@ function drawAudioVisualizer() {
 }
 
 window.stopRecordingForPreview = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        showPreviewAfterStop = true; 
-        globalMediaRecorder.stop(); 
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { showPreviewAfterStop = true; globalMediaRecorder.stop(); } 
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        showPreviewAfterStop = false; 
-        globalMediaRecorder.stop(); 
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { showPreviewAfterStop = false; globalMediaRecorder.stop(); } 
 }
 
 window.cancelRecording = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        isRecordingCancelled = true; 
-        globalMediaRecorder.stop(); 
+        isRecordingCancelled = true; globalMediaRecorder.stop(); 
     } else if (pendingAudioFile && showPreviewAfterStop) { 
-        pendingAudioFile = null; 
-        if(previewAudioObj) previewAudioObj.pause(); 
-        resetAudioUI(); 
+        pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); 
     } 
 }
 
 function resetAudioUI() { 
     hideElement('recording-ui'); 
     showElement('chat-input-container'); 
+    showElement('btn-attach-wrapper'); // Devolve o clip à tela
+
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
-    pendingAudioFile = null; 
-    showPreviewAfterStop = false; 
-    isRecordingCancelled = false; 
+    pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
     dynamicActionBtn.classList.remove('recording-pulse');
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
@@ -438,7 +411,7 @@ function resetAudioUI() {
 
 function setupPreviewUI(blob) { 
     hideElement('recording-active-state'); 
-    hideElement('btn-pause-record'); // Esconde pause na preview
+    hideElement('btn-pause-record'); 
     showElement('recording-preview-state'); 
     dynamicActionBtn.classList.remove('recording-pulse'); 
 
@@ -469,11 +442,9 @@ window.togglePreviewAudio = function() {
     if(!previewAudioObj) return; 
     const playBtn = document.getElementById('preview-play-btn'); 
     if(previewAudioObj.paused) { 
-        previewAudioObj.play(); 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
+        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
     } else { 
-        previewAudioObj.pause(); 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
+        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
     } 
 }
 
