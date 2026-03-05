@@ -468,24 +468,41 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (ANIMAÇÃO TIPO TECLADO)
+// 😊 GAVETA NATIVA DE EMOJIS (ELITE ENGINE)
 // ==============================================================
 window.toggleEmojiPicker = function(e) { 
     if (e) e.stopPropagation(); 
     
     const drawer = document.getElementById('emoji-drawer'); 
+    
     if (drawer) {
         if (drawer.style.height === '300px') {
-            drawer.style.height = '0px';
+            drawer.style.height = '0px'; 
+            const inputContainer = document.getElementById('chat-input-container');
+            if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)'; 
         } else {
-            drawer.style.height = '300px';
-            // Rola o chat para baixo para acompanhar a subida do teclado
+            drawer.style.height = '300px'; 
+            const inputContainer = document.getElementById('chat-input-container');
+            if (inputContainer) inputContainer.style.borderColor = 'var(--brand-primary)'; 
+            
             setTimeout(() => {
                 const box = document.getElementById('chat-box');
                 if(box) box.scrollTop = box.scrollHeight;
             }, 300);
         }
     } 
+};
+
+window.changeEmojiCategory = function(categoryName, element) {
+    const picker = document.getElementById('emoji-picker');
+    if (!picker) return;
+
+    picker.database.getEmojiByGroup(categoryName).then(() => {
+        picker.activeCategory = categoryName;
+    });
+
+    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
+    element.classList.add('active');
 };
 
 setTimeout(() => { 
@@ -495,6 +512,17 @@ setTimeout(() => {
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
             msgInput.innerText += event.detail.unicode; 
+            msgInput.focus(); 
+            
+            try {
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(msgInput);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch(e){}
+
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
             if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
@@ -503,17 +531,28 @@ setTimeout(() => {
         }); 
     } 
     
-    // Fechar gaveta ao clicar em qualquer lugar que não seja nela própria
-    document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
+    if(msgInput) {
+        msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
             if (drawer && drawer.style.height === '300px') {
                 drawer.style.height = '0px'; 
+                const inputContainer = document.getElementById('chat-input-container');
+                if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)';
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji') && !e.target.closest('#btn-attach') && !e.target.closest('#attach-menu')) { 
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+                const inputContainer = document.getElementById('chat-input-container');
+                if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)';
             }
         } 
     }); 
 }, 1000);
-
 
 // ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
@@ -632,6 +671,7 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
+    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -647,6 +687,7 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
+    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
