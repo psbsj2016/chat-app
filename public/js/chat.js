@@ -497,10 +497,25 @@ window.changeEmojiCategory = function(categoryName, element) {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
 
-    picker.database.getEmojiByGroup(categoryName).then(() => {
-        picker.activeCategory = categoryName;
-    });
+    // Lógica para interceptar a aba de "Recentes" (favorites)
+    if (categoryName === 'favorites') {
+        // O componente chama os recentes de 'favorites'
+        picker.activeCategory = 'favorites';
+        
+        // Dá scroll forçado para o topo absoluto (área dos recentes)
+        const root = picker.shadowRoot;
+        if(root) {
+            const scrollArea = root.querySelector('.scroll-wrapper');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
+    } else {
+        // Para categorias normais, busca pelo nome do grupo
+        picker.database.getEmojiByGroup(categoryName).then(() => {
+            picker.activeCategory = categoryName;
+        });
+    }
 
+    // Atualiza o estado visual (A cor verde da barra inferior ou ícone ativo)
     document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
     element.classList.add('active');
 };

@@ -30,56 +30,55 @@
     </script>
     
     <style>
-        /* [NEW ELITE EMOJI STYLE] */
-        #emoji-drawer {
-            height: 0px; 
-            overflow: hidden; 
-            transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
-            background: #0B0F19; /* Fundo escuro como na imagem */
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            box-shadow: inset 0 10px 20px rgba(0,0,0,0.5);
-        }
-        
-        #custom-emoji-categories {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            height: 40px;
-            background: #05050A; /* Fundo mais escuro da barra */
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding: 0 5px;
-            flex-shrink: 0;
-        }
-
-        .category-icon {
-            color: #94A3B8;
-            cursor: pointer;
-            font-size: 22px;
-            padding: 8px;
-            border-radius: 8px;
-            transition: 0.2s;
-        }
-
-        .category-icon:hover { color: var(--brand-primary); }
-        .category-icon.active { color: white; background: rgba(59, 130, 246, 0.1); }
-
-        /* Integrando o picker com o tema escuro e escondendo o header original */
+      /* 🟢 ELITE EMOJI ENGINE: WHATSAPP STYLE */
         emoji-picker {
             width: 100%;
             height: calc(300px - 40px);
             display: block;
-            --background: #0B0F19;
-            --border-color: transparent;
-            --category-icon-color: transparent; /* Vamos usar a nossa barra */
-            --indicator-color: var(--brand-primary);
-            --input-border-color: rgba(128,128,128,0.2);
-            --input-font-color: white;
+            
+            /* Variáveis de Estrutura */
             --num-columns: 8;
+            --emoji-size: 1.8rem;
+            --emoji-padding: 0.3rem;
+            
+            /* Paleta de Cores Modo Escuro (Semelhante WA) */
+            --background: #0B0F19; 
+            --border-color: transparent;
+            --indicator-color: #00A884; /* Verde característico do WhatsApp */
+            --input-border-color: rgba(255,255,255,0.1);
+            --input-font-color: #E9EDEF;
+            --search-icon-color: #8696A0;
         }
 
-        emoji-picker::part(header) { display: none !important; } /* Esconde o cabeçalho original */
+        emoji-picker::part(header) { display: none !important; } /* Esconde o header nativo para usar o nosso */
+
+        /* Formatação exata do WhatsApp para cada emoji */
+        emoji-picker::part(emoji) {
+            border-radius: 8px; /* Arredonda o fundo ao passar o mouse */
+            transition: background-color 0.15s ease;
+        }
+        
+        emoji-picker::part(emoji):hover {
+            background-color: rgba(255, 255, 255, 0.1); /* Efeito de seleção suave */
+            cursor: pointer;
+        }
+
+        /* Formatação das divisórias (Títulos que grudam no topo ao rolar) */
+        emoji-picker::part(category-title) {
+            background-color: #0B0F19; /* Cobre o fundo para dar o efeito sticky */
+            color: #8696A0;
+            font-size: 14px;
+            padding: 10px 15px;
+            text-transform: capitalize;
+            font-weight: 600;
+        }
+
+        /* Melhorando a barra de pesquisa interna do emoji */
+        emoji-picker::part(search-input) {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: white;
+        }
 
         .circular-primary-btn {
             background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
@@ -201,7 +200,9 @@
 
             <div id="emoji-drawer">
                 <div id="custom-emoji-categories">
-                    <span class="material-icons-round category-icon active" data-category="SMILEYS_PEOPLE" onclick="changeEmojiCategory('SMILEYS_PEOPLE', this)">mood</span>
+                    <span class="material-icons-round category-icon active" data-category="favorites" onclick="changeEmojiCategory('favorites', this)" title="Recentes">schedule</span>
+                    
+                    <span class="material-icons-round category-icon" data-category="SMILEYS_PEOPLE" onclick="changeEmojiCategory('SMILEYS_PEOPLE', this)">mood</span>
                     <span class="material-icons-round category-icon" data-category="ANIMALS_NATURE" onclick="changeEmojiCategory('ANIMALS_NATURE', this)">pets</span>
                     <span class="material-icons-round category-icon" data-category="FOOD_DRINK" onclick="changeEmojiCategory('FOOD_DRINK', this)">fastfood</span>
                     <span class="material-icons-round category-icon" data-category="ACTIVITIES" onclick="changeEmojiCategory('ACTIVITIES', this)">sports_soccer</span>
