@@ -30,6 +30,35 @@
     </script>
     
     <style>
+         
+       /* 🟢 GAVETA NATIVA ESCONDIDA INICIALMENTE */
+        #emoji-drawer {
+            height: 0px; 
+            min-height: 0;
+            overflow: hidden; 
+            transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+            background: #0B0F19; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid transparent;
+        }
+        
+        /* Opcional: Se quiser a barra de categorias estilo WhatsApp */
+        #custom-emoji-categories {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 40px;
+            background: #05050A; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 0 5px;
+            flex-shrink: 0;
+        }
+        .category-icon { color: #94A3B8; cursor: pointer; font-size: 22px; padding: 8px; border-radius: 8px; transition: 0.2s; }
+        .category-icon:hover { color: var(--brand-primary); }
+        .category-icon.active { color: white; background: rgba(59, 130, 246, 0.1); }
+
       /* 🟢 ELITE EMOJI ENGINE: WHATSAPP STYLE */
         emoji-picker {
             width: 100%;

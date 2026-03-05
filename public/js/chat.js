@@ -468,23 +468,21 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (ELITE ENGINE)
+// 😊 GAVETA NATIVA DE EMOJIS (ANIMAÇÃO TIPO TECLADO) - WHATSAPP STYLE
 // ==============================================================
 window.toggleEmojiPicker = function(e) { 
     if (e) e.stopPropagation(); 
     
     const drawer = document.getElementById('emoji-drawer'); 
-    
     if (drawer) {
         if (drawer.style.height === '300px') {
-            drawer.style.height = '0px'; 
-            const inputContainer = document.getElementById('chat-input-container');
-            if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)'; 
+            // Fecha a gaveta
+            drawer.style.height = '0px';
         } else {
-            drawer.style.height = '300px'; 
-            const inputContainer = document.getElementById('chat-input-container');
-            if (inputContainer) inputContainer.style.borderColor = 'var(--brand-primary)'; 
+            // Abre a gaveta
+            drawer.style.height = '300px';
             
+            // Rola o chat para baixo para acompanhar a subida do teclado
             setTimeout(() => {
                 const box = document.getElementById('chat-box');
                 if(box) box.scrollTop = box.scrollHeight;
@@ -493,31 +491,26 @@ window.toggleEmojiPicker = function(e) {
     } 
 };
 
+// Navegação de Categorias do WhatsApp (Usando a barra personalizada)
 window.changeEmojiCategory = function(categoryName, element) {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
 
-    // Lógica para interceptar a aba de "Recentes" (favorites)
     if (categoryName === 'favorites') {
-        // O componente chama os recentes de 'favorites'
         picker.activeCategory = 'favorites';
-        
-        // Dá scroll forçado para o topo absoluto (área dos recentes)
         const root = picker.shadowRoot;
         if(root) {
             const scrollArea = root.querySelector('.scroll-wrapper');
             if(scrollArea) scrollArea.scrollTop = 0;
         }
     } else {
-        // Para categorias normais, busca pelo nome do grupo
         picker.database.getEmojiByGroup(categoryName).then(() => {
             picker.activeCategory = categoryName;
         });
     }
 
-    // Atualiza o estado visual (A cor verde da barra inferior ou ícone ativo)
     document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
-    element.classList.add('active');
+    if(element) element.classList.add('active');
 };
 
 setTimeout(() => { 
@@ -527,13 +520,14 @@ setTimeout(() => {
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
             msgInput.innerText += event.detail.unicode; 
-            msgInput.focus(); 
             
+            // UX: Mantém o cursor focado e a piscar no fim do texto após adicionar um emoji
             try {
+                msgInput.focus();
                 const range = document.createRange();
                 const sel = window.getSelection();
                 range.selectNodeContents(msgInput);
-                range.collapse(false);
+                range.collapse(false); // Foca no fim
                 sel.removeAllRanges();
                 sel.addRange(range);
             } catch(e){}
@@ -546,28 +540,27 @@ setTimeout(() => {
         }); 
     } 
     
+    // Fechar gaveta ao clicar na caixa de mensagem para usar o teclado real do celular
     if(msgInput) {
         msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
             if (drawer && drawer.style.height === '300px') {
                 drawer.style.height = '0px'; 
-                const inputContainer = document.getElementById('chat-input-container');
-                if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)';
             }
         });
     }
 
+    // Fechar gaveta ao clicar fora dela ou fora do botão que a abre
     document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji') && !e.target.closest('#btn-attach') && !e.target.closest('#attach-menu')) { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
             const drawer = document.getElementById('emoji-drawer');
             if (drawer && drawer.style.height === '300px') {
                 drawer.style.height = '0px'; 
-                const inputContainer = document.getElementById('chat-input-container');
-                if (inputContainer) inputContainer.style.borderColor = 'rgba(255,255,255,0.05)';
             }
         } 
     }); 
 }, 1000);
+
 
 // ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
