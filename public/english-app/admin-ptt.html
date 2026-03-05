@@ -19,7 +19,6 @@
         .panel { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 25px; display: flex; flex-direction: column; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
         .panel-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: white; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 10px; }
 
-        /* NOVA LÓGICA DE ABAS (ESTRUTURAL VS PERFORMANCE) */
         .core-selector { display: flex; gap: 10px; margin-bottom: 20px; }
         .core-btn { flex: 1; padding: 12px; border-radius: 8px; border: 2px solid transparent; background: rgba(255,255,255,0.05); color: #CBD5E1; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; font-size: 13px; }
         .core-btn.active-blue { background: rgba(59, 130, 246, 0.15); border-color: var(--primary); color: var(--primary); }
@@ -46,6 +45,7 @@
         .exercise-card.speaking { border-color: #F59E0B; }
         .exercise-card.reading { border-color: #8B5CF6; }
         .exercise-card.writing { border-color: #3B82F6; }
+        .exercise-card.training { border-color: #EC4899; }
         
         .ex-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; background: rgba(255,255,255,0.1); }
         .ex-difficulty { position: absolute; top: 15px; right: 15px; font-size: 10px; font-weight: 900; color: #F59E0B; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; }
@@ -61,20 +61,20 @@
         <h1><span class="material-icons-round" style="font-size: 32px;">dashboard_customize</span> Centro de Comando PTT</h1>
         <div style="font-size: 13px; font-weight: 600; color: #94A3B8; display: flex; align-items: center; gap: 5px;">
             <div style="width:8px; height:8px; background:#10B981; border-radius:50%; box-shadow:0 0 10px #10B981;"></div>
-            Rede Neural Online
+            Arquitetura Neural Online
         </div>
     </div>
 
     <div class="dashboard-grid">
         <div class="panel">
-            <div class="panel-title"><span>1. Forjar Missão</span></div>
+            <div class="panel-title"><span>1. Forjar Armamento (Exercício)</span></div>
 
             <div class="core-selector">
                 <div class="core-btn active-blue" id="btn-estrutural" onclick="selectCore('estrutural')">
-                    <span class="material-icons-round">account_tree</span> 🔵 Estrutural
+                    <span class="material-icons-round">account_tree</span> 🔵 Estrutural (Base)
                 </div>
                 <div class="core-btn" id="btn-performance" onclick="selectCore('performance')">
-                    <span class="material-icons-round">speed</span> 🟢 Performance
+                    <span class="material-icons-round">speed</span> 🟢 Performance (Treino)
                 </div>
             </div>
 
@@ -82,35 +82,26 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Fase / Destino</label>
-                    <select id="nodeId" onchange="loadSavedExercises()">
+                    <label>Domínio / Destino</label>
+                    <select id="nodeId" onchange="updateExerciseTypes(); loadSavedExercises();">
                         <optgroup label="🔵 NÚCLEO ESTRUTURAL" id="opt-estrutural">
-                            <option value="som_1">Nó 1: Som (/p/ vs /b/)</option>
-                            <option value="som_2">Nó 2: Som (/t/ vs /d/)</option>
-                            <option value="logica_1">Nó 1: Lógica (Ordem SVO)</option>
-                            <option value="contexto_1">Nó 1: Contexto (Sobrevivência)</option>
-                            <option value="contexto_free_1">Livre: Viagem / Aeroporto</option>
+                            <option value="phonetics_1">Fonética 1: Sons e Vibrações</option>
+                            <option value="syntax_1">Sintaxe 1: Lógica SVO e Ordem</option>
+                            <option value="semantics_1">Semântica 1: Sentidos e Contexto</option>
                         </optgroup>
                         <optgroup label="🟢 NÚCLEO PERFORMANCE" id="opt-performance" class="hidden">
-                            <option value="skill_listening">Piscina: Listening (Auditivo)</option>
-                            <option value="skill_speaking">Piscina: Speaking (Pronúncia)</option>
-                            <option value="skill_reading">Piscina: Reading (Leitura Rápida)</option>
-                            <option value="skill_writing">Piscina: Writing (Escrita Ágil)</option>
-                            <option value="skill_mix">Piscina: Training Mix (Misto)</option>
+                            <option value="skill_listening">🎧 Listening (Escuta)</option>
+                            <option value="skill_speaking">🎙️ Speaking (Fala)</option>
+                            <option value="skill_reading">📖 Reading (Leitura)</option>
+                            <option value="skill_writing">✍️ Writing (Escrita & Digitação)</option>
+                            <option value="skill_training">🏋️ Training (Treinamento Misto)</option>
                         </optgroup>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Mecânica do Exercício</label>
+                    <label>Mecânica Dinâmica</label>
                     <select id="type" onchange="toggleFields()">
-                        <option value="listen_isolate">🔊 Flashcard c/ Áudio (Aprender)</option>
-                        <option value="minimal_pair">🎧 Teste de Ouvido (Múltipla Escolha)</option>
-                        <option value="repeat_word">🎙️ Speaking (Palavra Isolada)</option>
-                        <option value="repeat_sentence">🎙️ Speaking (Frase Completa)</option>
-                        <option value="context_cloze">📖 Reading (Preencher Lacuna)</option>
-                        <option value="sentence_assembly">✍️ Writing (Montar Frase)</option>
-                        <option value="dictation">⌨️ Ditado (Ouvir e Digitar)</option>
-                    </select>
+                        </select>
                 </div>
             </div>
 
@@ -139,39 +130,34 @@
             </div>
 
             <div class="form-group">
-                <label>Objetivo Pedagógico</label>
-                <input type="text" id="pedagogicObj" placeholder="Ex: Fixar a diferença entre som bilabial e dental">
-            </div>
-
-            <div class="form-group">
-                <label>Instrução na Tela (Texto Principal)</label>
-                <input type="text" id="text" placeholder="Ex: Ouça e selecione a palavra correta..." required>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Símbolo Fonético IPA</label>
-                    <input type="text" id="ipa" placeholder="Ex: /pæt/ (Opcional)">
-                </div>
-                <div class="form-group">
-                    <label>Tags (Separadas por vírgula)</label>
-                    <input type="text" id="tags" placeholder="Ex: business, travel, basics">
-                </div>
+                <label>Instrução Principal (Para o aluno)</label>
+                <input type="text" id="text" placeholder="Ex: Selecione o som correto / Traduza a frase..." required>
             </div>
 
             <div id="dynamic-zone" class="dynamic-fields"></div>
 
-            <div class="form-group" style="margin-top: 15px;">
-                <label>Dica Neuro-Cognitiva (Exibida no erro)</label>
-                <textarea id="advTip" placeholder="Ex: Lembre-se que o P vibra os lábios..."></textarea>
+            <div class="form-row" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Objetivo Pedagógico</label>
+                    <input type="text" id="pedagogicObj" placeholder="Ex: Diferenciar P de B">
+                </div>
+                <div class="form-group">
+                    <label>Tags (vírgula)</label>
+                    <input type="text" id="tags" placeholder="Ex: business, travel">
+                </div>
             </div>
 
-            <button class="btn-submit" id="submitBtn" onclick="injectExercise()"><span class="material-icons-round">rocket_launch</span> Engatilhar e Injetar</button>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Dica Neuro-Cognitiva (Exibida no erro)</label>
+                <textarea id="advTip" placeholder="Explique a lógica ou a posição da boca..."></textarea>
+            </div>
+
+            <button class="btn-submit" id="submitBtn" onclick="injectExercise()"><span class="material-icons-round">rocket_launch</span> Injetar no Servidor</button>
         </div>
 
         <div class="panel" style="background: rgba(15, 23, 42, 0.5);">
             <div class="panel-title">
-                <span>2. Arsenal da Fase</span>
+                <span>2. Arsenal da Fase Selecionada</span>
                 <button onclick="loadSavedExercises()" style="background:transparent; border:none; color:var(--primary); cursor:pointer; padding:5px;"><span class="material-icons-round">sync</span></button>
             </div>
             <div id="arsenal-status" style="font-size: 13px; color: #94A3B8; margin-bottom: 15px;">Sincronizando com o Quartel General...</div>
@@ -192,7 +178,7 @@
             if(core === 'estrutural') {
                 btnEst.className = 'core-btn active-blue'; btnPerf.className = 'core-btn';
                 optEst.classList.remove('hidden'); optPerf.classList.add('hidden');
-                document.getElementById('nodeId').value = 'som_1';
+                document.getElementById('nodeId').value = 'phonetics_1';
             } else {
                 btnPerf.className = 'core-btn active-green'; btnEst.className = 'core-btn';
                 optPerf.classList.remove('hidden'); optEst.classList.add('hidden');
@@ -202,60 +188,87 @@
             loadSavedExercises();
         }
 
+        // O CÉREBRO DAS OPÇÕES DINÂMICAS!
         function updateExerciseTypes() {
-            const core = document.getElementById('core-type').value;
             const target = document.getElementById('nodeId').value;
             const typeSelect = document.getElementById('type');
-            
-            // Sugestões inteligentes baseadas na aba
-            if (core === 'performance') {
-                if (target === 'skill_listening') typeSelect.value = 'minimal_pair';
-                if (target === 'skill_speaking') typeSelect.value = 'repeat_sentence';
-                if (target === 'skill_reading') typeSelect.value = 'context_cloze';
-                if (target === 'skill_writing') typeSelect.value = 'sentence_assembly';
+            typeSelect.innerHTML = '';
+
+            // LÓGICA ESTRUTURAL
+            if (target.startsWith('phonetics')) {
+                typeSelect.innerHTML += `<option value="listen_isolate">🔊 Fonética: Ouvir e Isolar Som</option>`;
+                typeSelect.innerHTML += `<option value="minimal_pair">🎧 Fonética: Comparação (Minimal Pairs)</option>`;
+            } else if (target.startsWith('syntax')) {
+                typeSelect.innerHTML += `<option value="syntax_assembly">🧩 Sintaxe: Montagem Estrutural (SVO)</option>`;
+                typeSelect.innerHTML += `<option value="grammar_rules">📐 Sintaxe: Escolha a Regra Certa</option>`;
+            } else if (target.startsWith('semantics')) {
+                typeSelect.innerHTML += `<option value="meaning_match">🧠 Semântica: Associação de Significado</option>`;
+                typeSelect.innerHTML += `<option value="context_cloze">📖 Semântica: Lacuna por Contexto</option>`;
+            } 
+            // LÓGICA PERFORMANCE
+            else if (target === 'skill_listening') {
+                typeSelect.innerHTML += `<option value="dictation">⌨️ Dictation (Ditado de Áudio)</option>`;
+                typeSelect.innerHTML += `<option value="audio_comprehension">🎧 Compreensão Auditiva (Quiz)</option>`;
+            } else if (target === 'skill_speaking') {
+                typeSelect.innerHTML += `<option value="repeat_sentence">🎙️ Fluência Rápida (Falar a Frase)</option>`;
+                typeSelect.innerHTML += `<option value="free_speech">💬 Resposta Aberta com IA</option>`;
+            } else if (target === 'skill_reading') {
+                typeSelect.innerHTML += `<option value="speed_reading">⚡ Speed Reading (Leitura Dinâmica)</option>`;
+                typeSelect.innerHTML += `<option value="true_false">✅ Verdadeiro ou Falso</option>`;
+            } else if (target === 'skill_writing') {
+                typeSelect.innerHTML += `<option value="fast_typing">⌨️ Digitação Ágil (Copiar rápido)</option>`;
+                typeSelect.innerHTML += `<option value="translation">🌍 Tradução Imediata (PT -> EN)</option>`;
+            } else if (target === 'skill_training') {
+                typeSelect.innerHTML += `<option value="memorization">🔁 Memorização Rápida (Spaced Repetition)</option>`;
+                typeSelect.innerHTML += `<option value="simultaneous_training">🔥 Treino 360 (Ouvir, Ler e Digitar)</option>`;
             }
+            
             toggleFields();
         }
 
+        // MOSTRA OS CAMPOS CERTOS PARA O EXERCÍCIO ESCOLHIDO
         function toggleFields() {
             const type = document.getElementById('type').value;
             const zone = document.getElementById('dynamic-zone');
             
-            if (type === 'listen_isolate') {
-                zone.innerHTML = `<div class="form-group"><label style="color:var(--success);">Oculto: Texto do Áudio TTS</label><input type="text" id="audioText" placeholder="Ex: Pat" style="border-color:var(--success);"></div>`;
-            } else if (type === 'minimal_pair') {
+            if (type === 'listen_isolate' || type === 'meaning_match') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Pat, Bat"></div>
-                    <div class="form-group"><label>Índice Correto (0 é o primeiro)</label><input type="number" id="answer" value="0"></div>
-                    <div class="form-group"><label style="color:var(--success);">Oculto: Texto do Áudio TTS</label><input type="text" id="audioText" placeholder="Ex: Pat" style="border-color:var(--success);"></div>
-                `;
-            } else if (type.startsWith('repeat')) {
+                    <div class="form-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pelo robô"></div>
+                    <div class="form-group"><label>IPA Fonético (opcional)</label><input type="text" id="ipa" placeholder="Ex: /pæt/"></div>`;
+            } else if (type === 'minimal_pair' || type === 'audio_comprehension' || type === 'grammar_rules') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="pat has a pet"></div>
-                    <div class="form-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Pat has a pet."></div>
-                `;
-            } else if (type === 'sentence_assembly') {
+                    <div class="form-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Opção A, Opção B, Opção C"></div>
+                    <div class="form-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
+                    <div class="form-group"><label style="color:var(--success);">Áudio Associado (Opcional)</label><input type="text" id="audioText" placeholder="Deixe em branco se não tiver áudio"></div>`;
+            } else if (type === 'syntax_assembly') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Blocos Desordenados (Separados por vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
-                    <div class="form-group"><label>Frase Completa (Validação Exata)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>
-                `;
+                    <div class="form-group"><label>Blocos Desordenados (Vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
+                    <div class="form-group"><label>Frase Completa (Ordem SVO)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>`;
             } else if (type === 'context_cloze') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Contexto da História</label><input type="text" id="context" placeholder="Você está num restaurante..."></div>
-                    <div class="form-group"><label>Frase com Lacuna (Use ___)</label><input type="text" id="clozeText" placeholder="I ___ some water."></div>
-                    <div class="form-group"><label>Opções de Preenchimento (Separadas por vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
-                    <div class="form-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
-                `;
-            } else if (type === 'dictation') {
+                    <div class="form-group"><label>Contexto Base</label><input type="text" id="context" placeholder="Situação inicial..."></div>
+                    <div class="form-group"><label>Opções (Vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
+                    <div class="form-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>`;
+            } else if (type === 'dictation' || type === 'fast_typing' || type === 'translation') {
                 zone.innerHTML = `
-                    <div class="form-group"><label style="color:var(--success);">Oculto: Áudio TTS do Ditado</label><input type="text" id="audioText" placeholder="This is a test." style="border-color:var(--success);"></div>
-                    <div class="form-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="This is a test."></div>
-                `;
+                    <div class="form-group"><label style="color:var(--success);">Áudio de Suporte (TTS)</label><input type="text" id="audioText" placeholder="Texto para tocar no fundo"></div>
+                    <div class="form-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="O que o aluno deve digitar..."></div>`;
+            } else if (type === 'repeat_sentence' || type === 'free_speech') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="Texto alvo"></div>
+                    <div class="form-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Texto formatado"></div>`;
+            } else if (type === 'true_false') {
+                zone.innerHTML = `
+                    <div class="form-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
+            } else if (type === 'simultaneous_training' || type === 'memorization') {
+                zone.innerHTML = `
+                    <div class="form-group"><label style="color:var(--success);">Áudio Disparado (TTS)</label><input type="text" id="audioText" placeholder="Texto falado"></div>
+                    <div class="form-group"><label>Ação ou Tradução Exigida (Atrás do Card)</label><input type="text" id="answerStr" placeholder="Significado ou ação..."></div>`;
             }
         }
         
-        toggleFields();
-        loadSavedExercises();
+        // Inicia os campos baseados no valor por defeito
+        updateExerciseTypes();
 
         async function injectExercise() {
             const btn = document.getElementById('submitBtn');
@@ -263,7 +276,6 @@
             const core = document.getElementById('core-type').value;
             const targetId = document.getElementById('nodeId').value;
             
-            // Estrutura exigida pelo novo Backend QG
             const payload = {
                 core: core,
                 nodeId: targetId,
@@ -274,37 +286,38 @@
                     pedagogicalObjective: document.getElementById('pedagogicObj').value,
                     tags: document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t),
                     text: document.getElementById('text').value,
-                    advTip: document.getElementById('advTip').value,
-                    ipa: document.getElementById('ipa').value
+                    advTip: document.getElementById('advTip').value
                 }
             };
 
-            if (type === 'listen_isolate') {
-                payload.exercise.audioText = document.getElementById('audioText').value;
-            } else if (type === 'minimal_pair') {
-                payload.exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
-                payload.exercise.answer = parseInt(document.getElementById('answer').value);
-                payload.exercise.audioText = document.getElementById('audioText').value;
-            } else if (type.startsWith('repeat')) {
-                payload.exercise.target = document.getElementById('target').value;
-                payload.exercise.displayWord = document.getElementById('displayWord').value;
-            } else if (type === 'sentence_assembly') {
-                payload.exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
-                payload.exercise.answer = document.getElementById('answerStr').value.trim();
-            } else if (type === 'context_cloze') {
-                payload.exercise.context = document.getElementById('context').value;
-                payload.exercise.text = document.getElementById('clozeText').value; 
-                payload.exercise.options = document.getElementById('options').value.split(',').map(s => s.trim());
-                payload.exercise.answer = parseInt(document.getElementById('answer').value);
-            } else if (type === 'dictation') {
-                payload.exercise.audioText = document.getElementById('audioText').value;
-                payload.exercise.answer = document.getElementById('answerStr').value.trim();
-            }
+            // Mapeamento Inteligente dos Dados conforme o Tipo
+            const optEl = document.getElementById('options');
+            if (optEl) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
+            
+            const ansEl = document.getElementById('answer');
+            if (ansEl) payload.exercise.answer = parseInt(ansEl.value);
+
+            const ansStrEl = document.getElementById('answerStr');
+            if (ansStrEl) payload.exercise.answer = ansStrEl.value.trim();
+
+            const audEl = document.getElementById('audioText');
+            if (audEl) payload.exercise.audioText = audEl.value;
+
+            const ipaEl = document.getElementById('ipa');
+            if (ipaEl) payload.exercise.ipa = ipaEl.value;
+
+            const ctxEl = document.getElementById('context');
+            if (ctxEl) payload.exercise.context = ctxEl.value;
+
+            const trgEl = document.getElementById('target');
+            if (trgEl) payload.exercise.target = trgEl.value;
+
+            const dspEl = document.getElementById('displayWord');
+            if (dspEl) payload.exercise.displayWord = dspEl.value;
 
             btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A Processar...`;
             
             try {
-                // ATENÇÃO: Mudou para a nova Rota Universal do QG!
                 const res = await fetch('/api/english/admin/inject', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -314,7 +327,8 @@
                 if (data.success) {
                     btn.style.background = "var(--success)"; btn.innerHTML = `<span class="material-icons-round">check_circle</span> Injetado!`;
                     setTimeout(() => { btn.style.background = ""; btn.innerHTML = `<span class="material-icons-round">rocket_launch</span> Engatilhar e Injetar`; }, 2000);
-                    document.getElementById('text').value = ''; // Limpa o principal para agilizar o próximo
+                    document.getElementById('text').value = ''; 
+                    if(ansStrEl) ansStrEl.value = '';
                     loadSavedExercises(); 
                 } else alert(data.message || data.error);
             } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; }
@@ -333,14 +347,20 @@
                 if (data.success && data.exercises && data.exercises.length > 0) {
                     statusEl.innerHTML = `<b style="color:white;">${data.exercises.length}</b> Armamentos no Módulo.`;
                     data.exercises.forEach((ex, index) => {
-                        let skillName = "Genérico"; let cssClass = ""; let detailsHtml = "";
-                        
-                        if (ex.type === 'listen_isolate') { skillName = "🔊 Ouvir"; cssClass = "listening"; detailsHtml = `<b>Voz:</b> ${ex.audioText}`; }
-                        else if (ex.type === 'minimal_pair') { skillName = "🎧 Teste"; cssClass = "listening"; detailsHtml = `<b>Voz:</b> ${ex.audioText || ex.options[ex.answer]}<br><b>Opções:</b> ${ex.options.join(' | ')}`; }
-                        else if (ex.type.startsWith('repeat')) { skillName = "🎙️ Fala"; cssClass = "speaking"; detailsHtml = `<b>Validação:</b> ${ex.target}`; }
-                        else if (ex.type === 'context_cloze') { skillName = "📖 Leitura"; cssClass = "reading"; detailsHtml = `<b>Contexto:</b> ${ex.context}`; }
-                        else if (ex.type === 'sentence_assembly') { skillName = "✍️ Sintaxe"; cssClass = "writing"; detailsHtml = `<b>Correto:</b> ${ex.answer}`; }
-                        else if (ex.type === 'dictation') { skillName = "⌨️ Ditado"; cssClass = "writing"; detailsHtml = `<b>Resposta Exata:</b> ${ex.answer}`; }
+                        let skillName = ex.type.toUpperCase().replace('_', ' '); 
+                        let cssClass = "training"; 
+                        let detailsHtml = "";
+
+                        // Define Cores
+                        if (ex.type.includes('listen') || ex.type.includes('audio') || ex.type === 'dictation') cssClass = 'listening';
+                        else if (ex.type.includes('repeat') || ex.type.includes('speech')) cssClass = 'speaking';
+                        else if (ex.type.includes('reading') || ex.type.includes('cloze')) cssClass = 'reading';
+                        else if (ex.type.includes('assembly') || ex.type.includes('typing') || ex.type === 'translation') cssClass = 'writing';
+
+                        if (ex.options) detailsHtml += `<b>Opções:</b> ${ex.options.join(' | ')}<br>`;
+                        if (ex.answer !== undefined) detailsHtml += `<b>Correto:</b> ${ex.answer}<br>`;
+                        if (ex.audioText) detailsHtml += `<b>Áudio:</b> ${ex.audioText}<br>`;
+                        if (ex.target) detailsHtml += `<b>Validação IA:</b> ${ex.target}<br>`;
 
                         const tagHtml = (ex.tags && ex.tags.length > 0) ? `<div style="margin-top:5px; font-size:10px; color:var(--primary);">${ex.tags.map(t=>`#${t}`).join(' ')}</div>` : '';
                         const difHtml = ex.difficulty ? `<span class="ex-difficulty">Lvl ${ex.difficulty}</span>` : '';
@@ -367,7 +387,7 @@
         async function clearPhase() {
             if(!confirm("ALERTA MÁXIMO: Isto vai destruir TODAS as missões da fase selecionada. Tem certeza absoluta?")) return;
             const btn = document.getElementById('clearBtn'); const originalText = btn.innerHTML;
-            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A Expurgo em Andamento...`;
+            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Expurgo em Andamento...`;
             try {
                 const res = await fetch('/api/english/admin/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: document.getElementById('nodeId').value }) });
                 const data = await res.json();

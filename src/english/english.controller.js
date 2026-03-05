@@ -147,23 +147,25 @@ exports.clearNodeExercises = async (req, res) => {
 };
 
 // ==========================================
-// 🎯 MOTOR DE TREINO POR HABILIDADE (4 SKILLS)
+// 🎯 MOTOR DE TREINO POR HABILIDADE (ATUALIZADO)
 // ==========================================
 exports.getWorkoutBySkill = async (req, res) => {
     try {
         const { skill } = req.params; 
         
         let validTypes = [];
-        if (skill === 'listening') validTypes = ['listen_isolate', 'minimal_pair'];
-        if (skill === 'speaking') validTypes = ['repeat_word', 'repeat_sentence'];
-        if (skill === 'reading') validTypes = ['context_cloze'];
-        if (skill === 'writing') validTypes = ['sentence_assembly', 'dictation'];
+        // Mapeia as novas inteligências do QG
+        if (skill === 'listening') validTypes = ['listen_isolate', 'minimal_pair', 'dictation', 'audio_comprehension'];
+        if (skill === 'speaking') validTypes = ['repeat_word', 'repeat_sentence', 'free_speech'];
+        if (skill === 'reading') validTypes = ['context_cloze', 'speed_reading', 'true_false'];
+        if (skill === 'writing') validTypes = ['sentence_assembly', 'syntax_assembly', 'fast_typing', 'translation'];
 
         const nodes = await CatalogoNode.find({});
         let matchedExercises = [];
 
         nodes.forEach(node => {
             if (node.exercises && node.exercises.length > 0) {
+                // Filtra os exercícios que dão 'match' com a Habilidade solicitada
                 const filtered = node.exercises.filter(ex => validTypes.includes(ex.type));
                 const withNodeId = filtered.map(ex => {
                     let exObj = typeof ex.toObject === 'function' ? ex.toObject() : ex;
@@ -173,10 +175,11 @@ exports.getWorkoutBySkill = async (req, res) => {
             }
         });
 
+        // Baralha e envia 5 exercícios aleatórios para o treino
         matchedExercises = matchedExercises.sort(() => 0.5 - Math.random()).slice(0, 5);
 
         if (matchedExercises.length === 0) {
-            return res.json({ success: false, message: `Nenhum exercício de ${skill.toUpperCase()} encontrado no QG.` });
+            return res.json({ success: false, message: `Nenhum armamento de ${skill.toUpperCase()} encontrado no QG.` });
         }
 
         res.json({ success: true, exercises: matchedExercises });
