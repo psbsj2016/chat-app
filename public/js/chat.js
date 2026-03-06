@@ -214,6 +214,7 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
+
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
 // ==============================================================
@@ -223,12 +224,14 @@ window.toggleEmojiPicker = function(e) {
     const drawer = document.getElementById('emoji-drawer'); 
     
     if (drawer) {
+        // Se a gaveta já estiver aberta (300px), a gente fecha (0px)
         if (drawer.style.height === '300px') {
             drawer.style.height = '0px'; 
         } else {
+            // Se estiver fechada, a gente abre
             drawer.style.height = '300px'; 
             
-            // Rola o chat suavemente para acompanhar a subida do "teclado"
+            // Dá um scroll no chat para empurrar as mensagens para cima (simulando teclado)
             setTimeout(() => {
                 const box = document.getElementById('chat-box');
                 if(box) box.scrollTop = box.scrollHeight;
@@ -237,6 +240,7 @@ window.toggleEmojiPicker = function(e) {
     } 
 };
 
+// Navegação fluída pelas categorias (Barra superior do WhatsApp)
 window.changeEmojiCategory = function(categoryName, element) {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
@@ -264,20 +268,21 @@ setTimeout(() => {
     
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
-            // Adiciona o emoji
+            // 1. Adiciona o emoji onde o cursor estava
             msgInput.innerText += event.detail.unicode; 
             
-            // Força o foco e o cursor a irem para o fim do texto
+            // 2. Foca de novo no input e coloca o cursor lá no fim para o utilizador continuar a escrever
             try {
                 msgInput.focus();
                 const range = document.createRange();
                 const sel = window.getSelection();
                 range.selectNodeContents(msgInput);
-                range.collapse(false);
+                range.collapse(false); // Colapsa o cursor no fim
                 sel.removeAllRanges();
                 sel.addRange(range);
             } catch(e){}
 
+            // 3. Muda o ícone do microfone para o botão de "Enviar"
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
             if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
@@ -286,7 +291,8 @@ setTimeout(() => {
         }); 
     } 
     
-    // Fechar gaveta de emojis automaticamente se o utilizador focar na caixa de texto (abre o teclado real)
+    // INTELIGÊNCIA: Se o utilizador tocar na caixa de texto normal, o teclado real do telemóvel vai abrir.
+    // Nessa altura, nós fechamos a gaveta de emojis automaticamente para não ocupar espaço a dobrar!
     if(msgInput) {
         msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
@@ -296,7 +302,7 @@ setTimeout(() => {
         });
     }
 
-    // Fechar ao clicar fora da gaveta e do botão
+    // Fechar ao clicar fora da gaveta de emojis ou do botão do emoji
     document.addEventListener('click', (e) => { 
         if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
             const drawer = document.getElementById('emoji-drawer');
@@ -308,7 +314,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -379,7 +385,7 @@ async function startRecording() {
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
 
-    // Força fechar gaveta de emojis se estiver aberta
+    // Força fechar gaveta de emojis se estiver aberta para mostrar a onda sonora limpa
     const drawer = document.getElementById('emoji-drawer');
     if (drawer && drawer.style.height === '300px') drawer.style.height = '0px';
 
@@ -631,6 +637,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
+    // Esconde a gaveta de emojis ao abrir um novo chat
     const emojiDrawer = document.getElementById('emoji-drawer');
     if (emojiDrawer) emojiDrawer.style.height = '0px';
 
