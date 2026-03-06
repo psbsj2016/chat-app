@@ -215,6 +215,99 @@ function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
 // ==============================================================
+// 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
+// ==============================================================
+window.toggleEmojiPicker = function(e) { 
+    if (e) e.stopPropagation(); 
+    
+    const drawer = document.getElementById('emoji-drawer'); 
+    
+    if (drawer) {
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            
+            // Rola o chat suavemente para acompanhar a subida do "teclado"
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
+    } 
+};
+
+window.changeEmojiCategory = function(categoryName, element) {
+    const picker = document.getElementById('emoji-picker');
+    if (!picker) return;
+
+    if (categoryName === 'favorites') {
+        picker.activeCategory = 'favorites';
+        const root = picker.shadowRoot;
+        if(root) {
+            const scrollArea = root.querySelector('.scroll-wrapper');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
+    } else {
+        picker.database.getEmojiByGroup(categoryName).then(() => {
+            picker.activeCategory = categoryName;
+        });
+    }
+
+    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
+    if(element) element.classList.add('active');
+};
+
+setTimeout(() => { 
+    const picker = document.getElementById('emoji-picker'); 
+    const msgInput = document.getElementById('message-input'); 
+    
+    if (picker && msgInput) { 
+        picker.addEventListener('emoji-click', event => { 
+            // Adiciona o emoji
+            msgInput.innerText += event.detail.unicode; 
+            
+            // Força o foco e o cursor a irem para o fim do texto
+            try {
+                msgInput.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(msgInput);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch(e){}
+
+            emitTypingStatus('typing'); 
+            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
+        }); 
+    } 
+    
+    // Fechar gaveta de emojis automaticamente se o utilizador focar na caixa de texto (abre o teclado real)
+    if(msgInput) {
+        msgInput.addEventListener('focus', () => {
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        });
+    }
+
+    // Fechar ao clicar fora da gaveta e do botão
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        } 
+    }); 
+}, 1000);
+
+// ==============================================================
 // 🎙️ MOTOR DE ÁUDIO PREMIUM
 // ==============================================================
 let audioChunks = []; 
@@ -228,7 +321,7 @@ let audioAnalyzer = null;
 let audioDataArray = null;
 let visualizerAnimationId = null;
 
-const msgInput = document.getElementById('message-input'); 
+const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
@@ -252,9 +345,9 @@ function resetDynamicButton() {
     } 
 }
 
-if (msgInput) { 
-    msgInput.addEventListener('input', () => { 
-        const textLength = msgInput.innerText.trim().length; 
+if (msgInputEl) { 
+    msgInputEl.addEventListener('input', () => { 
+        const textLength = msgInputEl.innerText.trim().length; 
         if (textLength > 0) { 
             if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
                 dynamicActionIcon.innerText = 'send'; 
@@ -265,25 +358,17 @@ if (msgInput) {
         } 
         if (pendingAudioFile) { 
             pendingAudioFile = null; 
-            msgInput.setAttribute('data-placeholder', 'Mensagem'); 
+            msgInputEl.setAttribute('data-placeholder', 'Mensagem'); 
             resetAudioUI(); 
         } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
-    
-    // Se o utilizador clicar na caixa para digitar, o teclado real sobe. Escondemos a gaveta de emojis!
-    msgInput.addEventListener('focus', () => {
-        const drawer = document.getElementById('emoji-drawer');
-        if (drawer && drawer.style.height === '300px') {
-            drawer.style.height = '0px';
-        }
-    });
 
-    msgInput.addEventListener('keydown', (e) => { 
+    msgInputEl.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInput.innerText.trim().length > 0 || pendingAudioFile) { 
+            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { 
                 sendMessage(); resetDynamicButton(); resetAudioUI(); 
             } 
         } 
@@ -293,6 +378,10 @@ if (msgInput) {
 async function startRecording() { 
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
+
+    // Força fechar gaveta de emojis se estiver aberta
+    const drawer = document.getElementById('emoji-drawer');
+    if (drawer && drawer.style.height === '300px') drawer.style.height = '0px';
 
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
@@ -468,101 +557,6 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (ANIMAÇÃO TIPO TECLADO) - WHATSAPP STYLE
-// ==============================================================
-window.toggleEmojiPicker = function(e) { 
-    if (e) e.stopPropagation(); 
-    
-    const drawer = document.getElementById('emoji-drawer'); 
-    if (drawer) {
-        if (drawer.style.height === '300px') {
-            // Fecha a gaveta
-            drawer.style.height = '0px';
-        } else {
-            // Abre a gaveta
-            drawer.style.height = '300px';
-            
-            // Rola o chat para baixo para acompanhar a subida do teclado
-            setTimeout(() => {
-                const box = document.getElementById('chat-box');
-                if(box) box.scrollTop = box.scrollHeight;
-            }, 300);
-        }
-    } 
-};
-
-// Navegação de Categorias do WhatsApp (Usando a barra personalizada)
-window.changeEmojiCategory = function(categoryName, element) {
-    const picker = document.getElementById('emoji-picker');
-    if (!picker) return;
-
-    if (categoryName === 'favorites') {
-        picker.activeCategory = 'favorites';
-        const root = picker.shadowRoot;
-        if(root) {
-            const scrollArea = root.querySelector('.scroll-wrapper');
-            if(scrollArea) scrollArea.scrollTop = 0;
-        }
-    } else {
-        picker.database.getEmojiByGroup(categoryName).then(() => {
-            picker.activeCategory = categoryName;
-        });
-    }
-
-    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
-    if(element) element.classList.add('active');
-};
-
-setTimeout(() => { 
-    const picker = document.getElementById('emoji-picker'); 
-    const msgInput = document.getElementById('message-input'); 
-    
-    if (picker && msgInput) { 
-        picker.addEventListener('emoji-click', event => { 
-            msgInput.innerText += event.detail.unicode; 
-            
-            // UX: Mantém o cursor focado e a piscar no fim do texto após adicionar um emoji
-            try {
-                msgInput.focus();
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(msgInput);
-                range.collapse(false); // Foca no fim
-                sel.removeAllRanges();
-                sel.addRange(range);
-            } catch(e){}
-
-            emitTypingStatus('typing'); 
-            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
-                dynamicActionIcon.innerText = 'send'; 
-            } 
-        }); 
-    } 
-    
-    // Fechar gaveta ao clicar na caixa de mensagem para usar o teclado real do celular
-    if(msgInput) {
-        msgInput.addEventListener('focus', () => {
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        });
-    }
-
-    // Fechar gaveta ao clicar fora dela ou fora do botão que a abre
-    document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        } 
-    }); 
-}, 1000);
-
-
-// ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
@@ -637,7 +631,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
-    // Esconde a gaveta de emojis ao abrir um novo chat
     const emojiDrawer = document.getElementById('emoji-drawer');
     if (emojiDrawer) emojiDrawer.style.height = '0px';
 

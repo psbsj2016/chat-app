@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChatPTT QG Max</title>
+    <title>ChatPTT</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
@@ -30,8 +30,7 @@
     </script>
     
     <style>
-         
-       /* 🟢 GAVETA NATIVA ESCONDIDA INICIALMENTE */
+        /* 🟢 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE) */
         #emoji-drawer {
             height: 0px; 
             min-height: 0;
@@ -44,7 +43,6 @@
             border-top: 1px solid transparent;
         }
         
-        /* Opcional: Se quiser a barra de categorias estilo WhatsApp */
         #custom-emoji-categories {
             display: flex;
             justify-content: space-around;
@@ -55,60 +53,39 @@
             padding: 0 5px;
             flex-shrink: 0;
         }
-        .category-icon { color: #94A3B8; cursor: pointer; font-size: 22px; padding: 8px; border-radius: 8px; transition: 0.2s; }
+
+        .category-icon {
+            color: #94A3B8;
+            cursor: pointer;
+            font-size: 22px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+
         .category-icon:hover { color: var(--brand-primary); }
         .category-icon.active { color: white; background: rgba(59, 130, 246, 0.1); }
 
-      /* 🟢 ELITE EMOJI ENGINE: WHATSAPP STYLE */
         emoji-picker {
             width: 100%;
             height: calc(300px - 40px);
             display: block;
-            
-            /* Variáveis de Estrutura */
-            --num-columns: 8;
-            --emoji-size: 1.8rem;
-            --emoji-padding: 0.3rem;
-            
-            /* Paleta de Cores Modo Escuro (Semelhante WA) */
             --background: #0B0F19; 
             --border-color: transparent;
-            --indicator-color: #00A884; /* Verde característico do WhatsApp */
+            --indicator-color: #00A884; 
             --input-border-color: rgba(255,255,255,0.1);
             --input-font-color: #E9EDEF;
             --search-icon-color: #8696A0;
+            --num-columns: 8;
         }
 
-        emoji-picker::part(header) { display: none !important; } /* Esconde o header nativo para usar o nosso */
+        emoji-picker::part(header) { display: none !important; }
+        emoji-picker::part(emoji) { border-radius: 8px; transition: background-color 0.15s ease; }
+        emoji-picker::part(emoji):hover { background-color: rgba(255, 255, 255, 0.1); cursor: pointer; }
+        emoji-picker::part(category-title) { background-color: #0B0F19; color: #8696A0; font-size: 14px; padding: 10px 15px; text-transform: capitalize; font-weight: 600; }
+        emoji-picker::part(search-input) { background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; color: white; }
 
-        /* Formatação exata do WhatsApp para cada emoji */
-        emoji-picker::part(emoji) {
-            border-radius: 8px; /* Arredonda o fundo ao passar o mouse */
-            transition: background-color 0.15s ease;
-        }
-        
-        emoji-picker::part(emoji):hover {
-            background-color: rgba(255, 255, 255, 0.1); /* Efeito de seleção suave */
-            cursor: pointer;
-        }
-
-        /* Formatação das divisórias (Títulos que grudam no topo ao rolar) */
-        emoji-picker::part(category-title) {
-            background-color: #0B0F19; /* Cobre o fundo para dar o efeito sticky */
-            color: #8696A0;
-            font-size: 14px;
-            padding: 10px 15px;
-            text-transform: capitalize;
-            font-weight: 600;
-        }
-
-        /* Melhorando a barra de pesquisa interna do emoji */
-        emoji-picker::part(search-input) {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            color: white;
-        }
-
+        /* 🔥 CHAT PREMIUM AUDIO E INPUT UI 🔥 */
         .circular-primary-btn {
             background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
@@ -126,21 +103,47 @@
         }
         .circular-primary-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6); }
         .circular-primary-btn:active { transform: scale(0.95); }
-        .circular-primary-btn.recording-pulse { animation: recordPulse 1.5s infinite; background: linear-gradient(135deg, #EF4444, #B91C1C); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
-        @keyframes recordPulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        
+        .circular-primary-btn.recording-pulse {
+            animation: recordPulse 1.5s infinite;
+            background: linear-gradient(135deg, #EF4444, #B91C1C);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+        @keyframes recordPulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
         @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .premium-record-ui { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; }
-        .record-action-btn { background: var(--card-bg); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
+        
+        .premium-record-ui {
+            flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; 
+            background: var(--input-bg); padding: 5px 8px; border-radius: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.05);
+            min-width: 0; height: 48px; box-sizing: border-box;
+        }
+        
+        .record-action-btn {
+            background: var(--card-bg); border-radius: 50%; width: 36px; height: 36px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s;
+        }
         .record-action-btn:active { transform: scale(0.9); }
-        .attach-menu-item { padding: 12px 20px; font-size: 14.5px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; color: var(--text-color); }
+
+        .attach-menu-item {
+            padding: 12px 20px; font-size: 14.5px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; color: var(--text-color);
+        }
         .attach-menu-item:hover { background: rgba(255,255,255,0.05); }
+        .attach-menu-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
     <div id="auth-screen" class="app-screen">
         <div class="auth-bg-logo"></div> 
         <div class="auth-glass-card">
-            <img src="favicon.png" class="auth-top-logo" alt="ChatPTT Logo">
+            <img src="favicon.png" class="auth-top-logo" alt="ChatPTT Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
             <h2 id="auth-title" style="margin-bottom: 25px; font-weight: 800; color: var(--brand-primary); font-size: 26px;">Entrar no ChatPTT</h2>
             <form id="auth-form" onsubmit="event.preventDefault(); handleAuth()">
                 <input type="email" id="auth-email" placeholder="E-mail" required autocomplete="username" class="chic-input">
@@ -150,75 +153,194 @@
             </form>
             <div id="auth-toggle-text" class="link" onclick="toggleAuthMode()">Não tem conta? Crie uma</div>
             <div id="forgot-pass-text" class="link" onclick="openForgotPasswordModal()" style="font-size: 13.5px; color: #888; display: block;">Esqueci minha senha</div>
+            <div id="auth-promo-text" class="hidden" style="font-size:14.5px; color:var(--secondary-text); text-align:center; margin-top:20px; line-height: 1.5;">Você está prestes a entrar na comunidade digital mais inovadora!<br><br><span onclick="toggleAuthMode()" style="color:var(--brand-primary); font-weight:bold; cursor:pointer; font-size:16.5px; text-decoration:underline;">⬅ Voltar para o Login</span></div>
         </div>
     </div>
-    <div id="welcome-screen" class="app-screen hidden"><div class="welcome-content"><img src="favicon.png" class="welcome-logo"><h1>ChatPTT</h1><p>Conectando o seu mundo.</p><div style="margin-top: 30px; display: flex; justify-content: center;"><div style="width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div></div></div></div>
-    <div id="permissions-screen" class="app-screen hidden" style="background: var(--bg-color); align-items: center; justify-content: center; padding: 20px;"><div style="background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center;"><span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">settings_suggest</span><h2 style="color: var(--text-color); margin-bottom: 15px;">Configuração Rápida</h2><p style="color: var(--secondary-text); font-size: 15px; margin-bottom: 20px; line-height: 1.5;">Para a experiência completa, precisamos de algumas permissões:</p><button onclick="grantAppPermissions()" class="chic-btn">Entrar na Comunidade</button></div></div>
+
+    <div id="welcome-screen" class="app-screen hidden">
+        <div class="welcome-content">
+            <img src="favicon.png" class="welcome-logo" alt="ChatPTT Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png'">
+            <h1>ChatPTT</h1>
+            <p>Conectando o seu mundo.</p>
+            <div style="margin-top: 30px; display: flex; justify-content: center;">
+                <div style="width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="permissions-screen" class="app-screen hidden" style="background: var(--bg-color); align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center;">
+            <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">settings_suggest</span>
+            <h2 style="color: var(--text-color); margin-bottom: 15px;">Configuração Rápida</h2>
+            <p style="color: var(--secondary-text); font-size: 15px; margin-bottom: 20px; line-height: 1.5;">Para a experiência completa, precisamos de algumas permissões:</p>
+            <div style="text-align: left; background: var(--input-bg); padding: 15px; border-radius: 12px; margin-bottom: 25px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;"><span class="material-icons-round" style="color:var(--brand-secondary); font-size:20px;">notifications_active</span><span style="font-size:14.5px; font-weight:600;">Notificações</span></div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;"><span class="material-icons-round" style="color:var(--brand-secondary); font-size:20px;">volume_up</span><span style="font-size:14.5px; font-weight:600;">Áudio</span></div>
+            </div>
+            <button onclick="grantAppPermissions()" class="chic-btn">Entrar na Comunidade</button>
+        </div>
+    </div>
 
     <div id="main-screen" class="app-screen hidden">
-        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            <button class="icon-btn" onclick="clearContactSelection()"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
-            <span id="selected-contact-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
-            <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptCustomDeleteChat()">delete</span>
+         
+        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+            <button class="icon-btn" onclick="clearContactSelection()" style="margin-right: 15px; padding: 5px;"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
+            <span id="selected-contact-count" style="flex: 1; font-weight: 700; font-size: 18px;">1 Selecionado</span>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptCustomDeleteChat()" title="Apagar Conversa">delete</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="alert('Função de Selecionar Múltiplos em breve!')" title="Selecionar">check_circle</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="alert('Menu de configurações em breve!')" title="Mais opções">more_vert</span>
+            </div>
         </div>    
-        <div class="material-header"><img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onclick="toggleDrawer()"><div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div><button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button></div>
-        <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
-        <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>       
-        <div id="users-list" class="contact-list"></div>
-        <div class="fab-wrapper"><input type="file" id="quick-camera-input" accept="image/*" capture="environment" hidden onchange="handleQuickCamera(this)"><div id="fab-options" class="fab-options-container"><button class="mini-fab" onclick="openAddContactScreen(); toggleFab()"><span class="material-icons-round">person_add</span> <span>Novo Contato</span></button><button class="mini-fab" onclick="openCreateGroupModal(); toggleFab()"><span class="material-icons-round">group_add</span> <span>Criar Grupo</span></button></div><button class="fab main-fab" id="main-fab-btn" onclick="toggleFab()"><span class="material-icons-round" style="transition: transform 0.3s; font-size: 32px;">add</span></button></div>
+
+        <div class="material-header">
+            <img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onclick="toggleDrawer()">
+            <div style="flex:1; text-align: center;">
+                <span style="font-weight: 800; font-size: 18px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span>
+            </div>
+            <button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button>
+        </div>
+
+        <div id="main-search-bar" class="search-container hidden" style="padding: 10px 15px; background: var(--bg-color); border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">
+            <div class="search-box" style="display: flex; align-items: center; background: rgba(79, 70, 229, 0.1); border: 1px solid var(--brand-primary); border-radius: 20px; padding: 5px 15px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);">
+                <span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span>
+                <input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)" style="flex: 1; background: transparent; border: none; color: white; outline: none; padding: 8px 0; font-size: 14.5px; font-weight: 500;">
+                <span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer; font-size: 20px; transition: 0.2s;">close</span>
+            </div>
+        </div>
+   
+        <div class="status-tray" id="status-tray-container">
+            <div class="status-item" onclick="openCreateStatusModal()">
+                <div class="status-create-btn">
+                    <span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span>
+                </div>
+                <span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span>
+            </div>
+            <div id="dynamic-statuses" style="display: contents;"></div>
+        </div>       
+  
+        <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1; padding: 10px;"></div>
+
+        <div class="fab-wrapper">
+            <input type="file" id="quick-camera-input" accept="image/*" capture="environment" hidden onchange="handleQuickCamera(this)">
+            <div id="fab-options" class="fab-options-container">
+               <button class="mini-fab" onclick="openAddContactScreen(); toggleFab()"><span class="material-icons-round">person_add</span> <span>Novo Contato</span></button>
+                <button class="mini-fab" onclick="document.getElementById('quick-camera-input').click(); toggleFab()"><span class="material-icons-round">photo_camera</span> <span>Foto Rápida</span></button>
+                <button class="mini-fab" onclick="switchTab('anotacoes', document.querySelectorAll('.nav-item')[2]); openNoteModal(); toggleFab()"><span class="material-icons-round">edit_note</span> <span>Nova Anotação</span></button>
+                <button class="mini-fab" onclick="openCreateGroupModal(); toggleFab()"><span class="material-icons-round">group_add</span> <span>Criar Grupo</span></button>
+            </div>
+            <button class="fab main-fab" id="main-fab-btn" onclick="toggleFab()">
+                <span class="material-icons-round" style="transition: transform 0.3s; font-size: 32px;">add</span>
+            </button>
+        </div>
     </div>
 
     <div id="chat-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden;">
         
         <div class="header" style="display: flex; align-items: center; padding: max(10px, env(safe-area-inset-top)) 15px 10px 15px; background: var(--card-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; width: 100%; box-sizing: border-box;">
-            <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
-            <div style="display: flex; align-items: center; flex: 1; cursor: pointer;" onclick="viewContactProfile(currentChatId, document.getElementById('chat-title').innerText, document.getElementById('chat-avatar').src, isGroupChat)">
-                <div class="user-avatar-container" style="margin-right: 12px;"><img id="chat-avatar" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover;"><div id="chat-header-status" class="status-dot status-offline"></div></div>
-                <div><h3 id="chat-title" style="margin: 0; font-size: 16px; color: var(--text-color);">Nome</h3><span id="chat-header-status-text" style="font-size: 12px; color: var(--secondary-text);">Offline</span></div>
+            <button class="icon-btn" onclick="backToMain()" style="margin-right: 10px; flex-shrink: 0;"><span class="material-icons-round">arrow_back</span></button>
+            
+            <div style="display: flex; align-items: center; flex: 1; cursor: pointer; min-width: 0;" onclick="viewContactProfile(currentChatId, document.getElementById('chat-title').innerText, document.getElementById('chat-avatar').src, isGroupChat)">
+                <div class="user-avatar-container" style="margin-right: 12px; width: 42px; height: 42px; flex-shrink: 0;">
+                    <img id="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
+                    <div id="chat-header-status" class="status-dot status-offline" style="bottom: 0px; right: 0px;"></div>
+                </div>
+                <div style="display: flex; flex-direction: column; overflow: hidden; white-space: nowrap;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <h3 id="chat-title" style="margin: 0; font-size: 16px; font-weight: bold; color: var(--text-color); overflow: hidden; text-overflow: ellipsis;">Nome</h3>
+                    </div>
+                    <span id="chat-header-status-text" style="font-size: 12px; color: var(--secondary-text); margin-top: 2px;">Offline</span>
+                </div>
             </div>
-            <span class="material-icons-round" style="cursor: pointer; font-size: 24px; color: var(--brand-primary);" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
-            <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="top: 35px; right: 0;"><div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round">search</span> Buscar</div><div class="menu-item logout" onclick="deleteCurrentChat(); toggleMenu('chat-options-menu')"><span class="material-icons-round">delete_outline</span> Apagar</div></div>
+
+            <div style="display: flex; gap: 15px; color: var(--brand-primary); flex-shrink: 0; margin-left: 10px; position: relative;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, false)">call</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, true)">videocam</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
+                
+                <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="width: 220px; z-index: 9999; top: 35px; right: 0;">
+                    <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-secondary);">search</span> Buscar</div>
+                    <div class="menu-item" onclick="showCurrentChatProfile(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: var(--brand-primary);">person</span> Exibir Perfil</div>
+                    <div class="menu-separator" style="margin: 5px 0; border-top: 1px solid var(--input-bg);"></div>
+                    <div class="menu-item" onclick="reportContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #F59E0B;">flag</span> Denunciar</div>
+                    <div class="menu-item" onclick="blockContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">block</span> Bloquear</div>
+                    <div class="menu-item logout" onclick="deleteCurrentChat(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Conversa</div>
+                </div>
+            </div>
         </div>
 
         <div id="in-chat-search-bar" class="hidden" style="display: flex; align-items: center; padding: 10px 15px; background: var(--input-bg); border-bottom: 1px solid var(--border-color); gap: 10px; z-index: 9;">
-            <input type="text" id="in-chat-search-input" placeholder="Buscar na conversa..." class="chic-input" style="margin: 0; flex: 1;" oninput="handleInChatSearch(this.value)">
-            <span id="in-chat-search-counter" style="font-size: 13px; color: var(--secondary-text);">0/0</span>
-            <button class="icon-btn" onclick="closeChatSearch()" style="color: #EF4444;"><span class="material-icons-round">close</span></button>
+            <input type="text" id="in-chat-search-input" placeholder="Buscar na conversa..." class="chic-input" style="margin: 0; flex: 1; padding: 8px 15px; background: var(--card-bg);" oninput="handleInChatSearch(this.value)">
+            <span id="in-chat-search-counter" style="font-size: 13px; color: var(--secondary-text); font-weight: 800; min-width: 35px; text-align: center;">0/0</span>
+            <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_up</span></button>
+            <button class="icon-btn" onclick="navigateChatSearch(1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_down</span></button>
+            <button class="icon-btn" onclick="closeChatSearch()" style="color: #EF4444; padding: 5px; margin-left: 5px;"><span class="material-icons-round">close</span></button>
         </div>
 
-        <div id="chat-box" style="flex: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 10px; background-image: var(--chat-bg-image); background-size: cover; background-position: center; width: 100%; box-sizing: border-box;"></div>
+        <div id="chat-box" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px 15px; display: flex; flex-direction: column; gap: 10px; background-image: var(--chat-bg-image); background-size: cover; background-position: center; width: 100%; box-sizing: border-box;"></div>
 
-        <div id="typing-indicator" class="hidden" style="padding: 2px 15px 5px 15px; font-size: 12px; color: var(--brand-primary); font-style: italic; font-weight: bold; z-index: 5;"></div>        
+        <div id="typing-indicator" class="hidden" style="padding: 2px 15px 5px 15px; font-size: 12px; color: var(--brand-primary); font-style: italic; font-weight: bold; background: transparent; z-index: 5;"></div>        
 
         <div id="reply-preview" class="hidden" style="background: var(--card-bg); border-left: 4px solid var(--brand-primary); padding: 8px 12px; margin: 0 10px 5px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); z-index: 5;">
-            <div style="flex: 1;"><b id="reply-preview-name" style="color: var(--brand-primary); font-size: 13px;">Nome</b><br><span id="reply-preview-text" style="color: var(--secondary-text); font-size: 12px; overflow: hidden; text-overflow: ellipsis; display: block;">Texto...</span></div>
-            <span class="material-icons-round" style="color: var(--secondary-text); cursor: pointer; padding: 5px; font-size: 20px;" onclick="cancelReply()">close</span>
+            <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;">
+                <b id="reply-preview-name" style="color: var(--brand-primary); font-size: 13.5px;">Nome</b><br>
+                <span id="reply-preview-text" style="color: var(--secondary-text); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; display: block;">Texto...</span>
+            </div>
+            <span class="material-icons-round" style="color: var(--secondary-text); cursor: pointer; padding: 5px; font-size: 20px; flex-shrink: 0;" onclick="cancelReply()">close</span>
         </div>
 
         <div style="background: var(--bg-color); box-shadow: 0 -4px 20px rgba(0,0,0,0.3); z-index: 10; width: 100%; display: flex; flex-direction: column; position: relative; flex-shrink: 0;">
             
-            <div id="attach-menu" class="hidden" style="position: absolute; bottom: calc(100% + 5px); right: 65px; min-width: 220px; z-index: 10000; border-radius: 16px; background: var(--card-bg); box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); display: flex; flex-direction: column;">
+            <div id="attach-menu" class="hidden" style="position: absolute; bottom: calc(100% + 5px); right: 65px; min-width: 220px; padding: 8px 0; z-index: 10000; border-radius: 16px; background: var(--card-bg); box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); display: flex; flex-direction: column;">
                 <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-                <div class="attach-menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color: var(--brand-secondary);">image</span> Enviar Foto</div>
-                <div class="attach-menu-item" onclick="triggerUpload('video/*')"><span class="material-icons-round" style="color: #8B5CF6;">videocam</span> Enviar Vídeo</div>
-                <div class="attach-menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons-round" style="color: #EF4444;">picture_as_pdf</span> Enviar PDF</div>
+                <div class="attach-menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color: var(--brand-secondary); font-size: 22px;">image</span> <span style="font-weight: 600;">Enviar Foto</span></div>
+                <div class="attach-menu-item" onclick="triggerUpload('video/*')"><span class="material-icons-round" style="color: #8B5CF6; font-size: 22px;">videocam</span> <span style="font-weight: 600;">Enviar Vídeo</span></div>
+                <div class="attach-menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons-round" style="color: #EF4444; font-size: 22px;">picture_as_pdf</span> <span style="font-weight: 600;">Enviar PDF</span></div>
+                <div style="margin: 4px 0; border-top: 1px solid rgba(255,255,255,0.05);"></div>
+                <div class="attach-menu-item" onclick="triggerUpload('audio/*')">
+                    <span class="material-icons-round" style="color: #10B981; font-size: 22px;">audio_file</span> 
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-weight: 600;">Arquivo de Áudio</span>
+                    </div>
+                </div>
             </div>
 
             <div style="padding: 10px 15px; display: flex; align-items: flex-end; gap: 8px; width: 100%; box-sizing: border-box; position: relative;">
-                <div id="chat-input-container" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 5px 12px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05);">
+                
+                <div id="chat-input-container" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 5px 12px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; min-width: 0;">
                     <span id="btn-emoji" class="material-icons-round" style="color: #94A3B8; font-size: 26px; cursor: pointer; margin-right: 8px; flex-shrink: 0;" onclick="toggleEmojiPicker(event)">sentiment_satisfied_alt</span>
-                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; color: var(--text-color); padding: 8px 0; word-break: break-word;"></div>
+                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15px; color: var(--text-color); padding: 8px 0; word-break: break-word; min-width: 0;"></div>
                 </div>
 
-                <div id="btn-attach-wrapper" style="height: 48px; width: 40px; display:flex; justify-content:center; align-items:center; flex-shrink: 0; cursor: pointer;" onclick="event.stopPropagation(); toggleAttachMenu();">
+                <div id="btn-attach-wrapper" style="display: flex; align-items: center; justify-content: center; height: 48px; width: 40px; flex-shrink: 0; cursor: pointer; transition: 0.2s;" onclick="event.stopPropagation(); toggleAttachMenu();">
                     <span id="btn-attach" class="material-icons-round" style="color: #94A3B8; font-size: 28px; transform: rotate(-45deg);">attach_file</span>
                 </div>
 
                 <div id="recording-ui" class="premium-record-ui hidden">
-                    <div class="record-action-btn" style="color: #EF4444;" onclick="cancelRecording()"><span class="material-icons-round">delete_outline</span></div>
-                    <div id="recording-active-state" style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 10px;">
-                        <span id="recording-timer" style="font-weight: 800; color: #EF4444; font-size: 15px; margin-left:10px;">00:00</span>
-                        <canvas id="audio-visualizer" style="flex: 1; height: 100%; width:100%;"></canvas>
+                    <div class="record-action-btn" style="color: #EF4444;" onclick="cancelRecording()" title="Descartar">
+                        <span class="material-icons-round" style="font-size: 20px;">delete_outline</span>
+                    </div>
+                    
+                    <div id="recording-active-state" style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 10px; min-width: 0; overflow: hidden; height: 100%;">
+                        <div style="display: flex; align-items: center; gap: 6px; margin-left: 5px; flex-shrink: 0;">
+                            <div style="width: 10px; height: 10px; background: #EF4444; border-radius: 50%; box-shadow: 0 0 8px #EF4444; animation: pulseRed 1s infinite;"></div>
+                            <span id="recording-timer" style="font-weight: 800; color: #EF4444; font-size: 15px; font-variant-numeric: tabular-nums;">00:00</span>
+                        </div>
+                        <canvas id="audio-visualizer" style="flex: 1; height: 100%; width: 100%; display: block; min-width: 50px;"></canvas>
+                    </div>
+
+                    <div id="recording-preview-state" class="hidden" style="flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 10px;">
+                        <div class="record-action-btn" id="preview-play-btn" style="color: var(--brand-primary); padding: 4px;" onclick="togglePreviewAudio()">
+                            <span class="material-icons-round" style="font-size: 22px;">play_arrow</span>
+                        </div>
+                        <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; position: relative; overflow: hidden;">
+                            <div id="preview-progress" style="position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: linear-gradient(90deg, #8B5CF6, #06B6D4); border-radius: 3px; transition: width 0.1s linear;"></div>
+                        </div>
+                        <span id="preview-timer" style="font-weight: 700; color: var(--secondary-text); font-size: 12px; font-variant-numeric: tabular-nums;">00:00</span>
+                    </div>
+
+                    <div class="record-action-btn" id="btn-pause-record" style="color: var(--brand-primary);" onclick="stopRecordingForPreview()" title="Pausar e Ouvir">
+                        <span class="material-icons-round" style="font-size: 20px;">pause</span>
                     </div>
                 </div>
 
@@ -230,7 +352,6 @@
             <div id="emoji-drawer">
                 <div id="custom-emoji-categories">
                     <span class="material-icons-round category-icon active" data-category="favorites" onclick="changeEmojiCategory('favorites', this)" title="Recentes">schedule</span>
-                    
                     <span class="material-icons-round category-icon" data-category="SMILEYS_PEOPLE" onclick="changeEmojiCategory('SMILEYS_PEOPLE', this)">mood</span>
                     <span class="material-icons-round category-icon" data-category="ANIMALS_NATURE" onclick="changeEmojiCategory('ANIMALS_NATURE', this)">pets</span>
                     <span class="material-icons-round category-icon" data-category="FOOD_DRINK" onclick="changeEmojiCategory('FOOD_DRINK', this)">fastfood</span>
@@ -248,13 +369,147 @@
 
     </div>
 
-    <div id="screen-explorar" class="app-screen hidden"><div class="explore-header"><h1>Explorar</h1></div><div class="explore-content"><button class="chic-btn" onclick="openImmersiveGame('games/defender/index.html', 'Neon Defender')">Jogar Neon Defender</button></div></div>
+    <div id="screen-explorar" class="app-screen hidden">
+        <div class="explore-header">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+                <h2 style="font-size: 28px; font-weight: 800; color: var(--text-color); letter-spacing: -1px;">Explorar</h2>
+                <img src="favicon.png" style="width:36px; border-radius:12px;" onerror="this.style.display='none'">
+            </div>
+            <div class="explore-magic-search">
+                <span class="material-icons-round search-icon">travel_explore</span>
+                <input type="text" placeholder="Descubra pessoas, IAs e jogos...">
+                <div class="search-filter-btn" onclick="alert('Filtros em breve!')">
+                    <span class="material-icons-round">tune</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="explore-content">
+            <div class="explore-section">
+                <h3 class="explore-section-title">🌐 Conexões & Fóruns</h3>
+                <div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid #10B981; margin-bottom: 15px; cursor: pointer;" onclick="hideAllTabs(); showElement('screen-communities');">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #10B981; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                            <span class="material-icons-round" style="font-size: 28px; color: white;">groups</span>
+                        </div>
+                        <div style="text-align: left; flex: 1;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Minhas Comunidades</h4>
+                            <p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Grupos, Fóruns e Canais de Voz PTT</p>
+                        </div>
+                        <span class="material-icons-round" style="color: #10B981;">chevron_right</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title" style="margin-bottom: 5px;">🛒 Loja PTT <span class="badge-tech">Store</span></h3>
+                <p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 15px;">Use seu XP para desbloquear benefícios.</p>
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🎨 Visual & Perfil</h4>
+                <div class="explore-hscroll" style="margin-bottom: 20px;">
+                    <div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#10B981;">terminal</span><h4>Tema Matrix</h4><button class="chic-btn store-btn" id="btn-theme_matrix" onclick="buyItem('theme_matrix', 100)">100 XP</button></div>
+                    <div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#06B6D4;">chat_bubble</span><h4>Balão Cyber</h4><button class="chic-btn store-btn" id="btn-bubble_cyber" onclick="buyItem('bubble_cyber', 150)">150 XP</button></div>
+                    <div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#F59E0B;">workspace_premium</span><h4>Selo VIP</h4><button class="chic-btn store-btn" id="btn-badge_vip" onclick="buyItem('badge_vip', 300)">300 XP</button></div>
+                </div>
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🕹️ Expansões do Hub</h4>
+                <div class="explore-hscroll" style="margin-bottom: 20px;">
+                    <div class="explore-card store-card" style="border: 1px solid rgba(239, 68, 68, 0.3);"><span class="material-icons-round" style="font-size:32px; color:#EF4444;">sports_motorsports</span><h4>Neon Racer</h4><button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível na próxima atualização!')">500 XP</button></div>
+                </div>
+                <h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">📚 Benefícios Inglês</h4>
+                <div class="explore-hscroll">
+                    <div class="explore-card store-card" style="border: 1px solid rgba(59, 130, 246, 0.3);"><span class="material-icons-round" style="font-size:32px; color:#3B82F6;">lightbulb</span><h4>Dicas Premium IA</h4><button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível em breve!')">300 XP</button></div>
+                </div>
+            </div>
+
+            <div class="explore-section">
+                <h3 class="explore-section-title">🚀 Produtividade & Skills</h3>
+                <div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid #3B82F6; margin-bottom: 15px; cursor: pointer;" onclick="openImmersiveGame('english-app/index.html', 'INGLÊS PTT')">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: #3B82F6; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);"><span class="material-icons-round" style="font-size: 28px; color: white;">record_voice_over</span></div>
+                        <div style="text-align: left; flex: 1;"><h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Inglês PTT</h4><p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Listening • Speaking • Reading • Writing</p></div>
+                        <span class="material-icons-round" style="color: #3B82F6;">chevron_right</span>
+                    </div>
+                </div>
+
+                <div class="explore-card focus-card" id="focus-card-idle">
+                    <div style="flex:1;"><h4 style="font-size:16px; font-weight:700;">Modo Foco (25 min)</h4><p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;">Concentre-se sem distrações e ganhe +50 XP!</p><button class="chic-btn mini-btn" onclick="startFocusMode()" style="background: #EF4444; color: white; width: auto; padding: 6px 15px; font-size:13px;">Iniciar Foco</button></div>
+                    <span class="material-icons-round" style="font-size:40px; color:#EF4444; opacity:0.8;">timer</span>
+                </div>
+                
+                <div class="explore-card focus-card hidden" id="focus-card-active" style="text-align: center; justify-content: center; flex-direction: column;">
+                    <h4 style="font-size:16px; font-weight:800; color: #EF4444; margin-bottom: 5px; text-transform: uppercase;">Em Foco 🤫</h4>
+                    <p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 10px;">Não feche o aplicativo!</p>
+                    <div id="focus-timer-display" style="font-size: 42px; font-weight: 900; letter-spacing: 2px; color: var(--text-color); margin-bottom: 15px; font-variant-numeric: tabular-nums;">25:00</div>
+                    <button class="chic-btn mini-btn" onclick="cancelFocusMode()" style="background: transparent; border: 2px solid #FECACA; color: #EF4444; width: 100%; max-width: 200px; margin: 0 auto;">Desistir</button>
+                </div>
+            </div>
+
+            <div style="padding: 10px 0 40px 0; text-align:center;">
+                <button class="surprise-btn" onclick="openSurprise()"><span class="material-icons-round">redeem</span> <span>Abrir Caixa Surpresa Diária</span></button>
+                <p style="font-size: 11px; color: var(--secondary-text); margin-top: 10px;">Volte todos os dias para acumular XP para a Loja PTT.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-anotacoes" class="app-screen hidden">
+        <div class="material-header">
+            <button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button>
+            <span class="header-title" style="font-size:22px; margin-left: 5px; font-weight:800; color: var(--text-color);">Anotações</span>
+            <div style="flex:1"></div>
+            <button class="icon-btn" onclick="openNoteModal()"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 28px;">add_circle</span></button>
+        </div>
+        <div id="notes-list" style="padding: 15px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; gap: 12px;"></div>
+        <div id="note-modal" class="modal-overlay hidden" style="z-index: 9999;">
+            <div class="modal-content" style="max-width: 600px; width: 90%; height: 75vh; display: flex; flex-direction: column; padding: 0; border-radius: 16px; overflow: hidden; background: var(--bg-color);">
+                <div style="background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="color:var(--brand-primary); margin: 0; font-size: 18px; font-weight: 800;">📝 Bloco de Notas</h3>
+                    <button class="icon-btn" onclick="hideElement('note-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button>
+                </div>
+                <div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+                    <input type="text" id="note-title" placeholder="Título da Anotação" style="font-size: 24px; font-weight: 800; border: none; background: transparent; outline: none; color: var(--text-color); margin-bottom: 15px; width: 100%;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 8px; border-radius: 8px;">
+                        <button class="icon-btn" onclick="formatNote('bold')" title="Negrito" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_bold</span></button>
+                        <button class="icon-btn" onclick="formatNote('italic')" title="Itálico" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_italic</span></button>
+                        <button class="icon-btn" onclick="formatNote('insertUnorderedList')" title="Lista" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_list_bulleted</span></button>
+                    </div>
+                    <div id="note-content" contenteditable="true" placeholder="Comece a digitar sua ideia aqui..." style="flex: 1; outline: none; font-size: 16px; line-height: 1.6; color: var(--text-color); overflow-y: auto;"></div>
+                </div>
+                <div style="padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; justify-content: flex-end;">
+                    <button onclick="saveNote()" class="chic-btn" style="margin: 0; padding: 10px 25px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);">Salvar Anotação</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-jogos" class="app-screen hidden" style="background: #09090b; color: white;">
+        <canvas id="hub-3d-bg" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 0; pointer-events: none; opacity: 0.6;"></canvas>
+        <div class="material-header" style="background: rgba(9, 9, 11, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 2;">
+            <span class="header-title" style="font-size:22px; margin-left: 10px; font-weight:900; background: linear-gradient(90deg, #06B6D4, #8B5CF6); -webkit-background-clip: text; color: transparent;">Arcade CPTT</span>
+        </div>
+        <div class="games-hub-content" style="padding: 20px; overflow-y: auto; height: 100%; padding-bottom: 120px; position: relative; z-index: 1;">
+            <h3 class="hub-section-title">Mais Jogados</h3>
+            <div class="hub-grid">
+                <div class="hub-card" onclick="openImmersiveGame('games/color-bounce/index.html', 'Color Bounce Rush')" style="border-color: #EC4899; box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);"><div class="card-img" style="background: linear-gradient(135deg, #3B82F6, #EC4899);"><span class="material-icons-round" style="font-size: 50px; color: white;">speed</span><div style="position:absolute; top:10px; right:10px; background:#000; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold; color:#0FF;">PvP ONLINE</div></div><div class="card-details"><h4>Color <span style="color:#EC4899;">RUSH</span></h4><span class="card-category">Corrida de Reflexos</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/defender/index.html', 'Neon Defender')"><div class="card-img" style="background: linear-gradient(135deg, #06B6D4, #3B82F6);"><span class="material-icons-round" style="font-size: 50px; color: white;">rocket_launch</span></div><div class="card-details"><h4>Neon <span style="color:#06B6D4;">DEFENDER</span></h4><span class="card-category">Ação / Shooter</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/bounce-arena/index.html', 'Neon Bounce Arena PvP')" style="border-color: var(--brand-accent); box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);"><div class="card-img" style="background: linear-gradient(135deg, #FF007A, #7928CA);"><span class="material-icons-round" style="font-size: 50px; color: white;">sports_kabaddi</span><div style="position:absolute; top:10px; right:10px; background:#000; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold; color:#0FF;">PvP ONLINE</div></div><div class="card-details"><h4>Neon Bounce <span style="color:#FF007A;">ARENA</span></h4><span class="card-category">Multiplayer / Sobrevivência</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/vortex/index.html', 'Neon Vortex: Cyber Blast')"><div class="card-img" style="background: linear-gradient(135deg, #8B5CF6, #06B6D4);"><span class="material-icons-round" style="font-size: 50px; color: white;">track_changes</span></div><div class="card-details"><h4>Neon Vortex</h4><span class="card-category">Ação / Shooter</span></div></div>                
+                <div class="hub-card" onclick="openImmersiveGame('games/tictactoe/index.html', 'Jogo da Velha')"><div class="card-img" style="background: linear-gradient(135deg, #EF4444, #F59E0B);"><span class="material-icons-round" style="font-size: 50px; color: white;">grid_3x3</span></div><div class="card-details"><h4>Tic-Tac-Toe</h4><span class="card-category">Multiplayer Local</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/snake/index.html', 'Predator 4D')"><div class="card-img" style="background: linear-gradient(135deg, #22c55e, #14532d);"><span class="material-icons-round" style="font-size: 50px; color: white;">pest_control</span></div><div class="card-details"><h4>Predator 4D</h4><span class="card-category">Simulação / Caça</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/bounce/index.html', 'Neon Bounce')"><div class="card-img" style="background: linear-gradient(135deg, #F43F5E, #F59E0B);"><span class="material-icons-round" style="font-size: 50px; color: white;">sports_volleyball</span></div><div class="card-details"><h4>Neon Bounce</h4><span class="card-category">Física / Arcade</span></div></div>
+            </div>
+            <h3 class="hub-section-title" style="margin-top: 25px;">Estratégia e Tabuleiro</h3>
+            <div class="hub-grid">
+                <div class="hub-card" onclick="openImmersiveGame('games/chess/index.html', 'Xadrez vs IA')"><div class="card-img" style="background: linear-gradient(135deg, #1E293B, #0F172A);"><span class="material-icons-round" style="font-size: 50px; color: white;">chess</span></div><div class="card-details"><h4>Chess AI</h4><span class="card-category">Estratégia</span></div></div>
+                <div class="hub-card" onclick="openImmersiveGame('games/battleship/index.html', 'Batalha Naval')"><div class="card-img" style="background: linear-gradient(135deg, #0284C7, #1E3A8A);"><span class="material-icons-round" style="font-size: 50px; color: white;">directions_boat</span></div><div class="card-details"><h4>Batalha Naval</h4><span class="card-category">Lógica e Sorte</span></div></div>
+            </div>
+        </div> 
+    </div>
+
     <div id="ai-game-modal" class="modal-overlay hidden"><div class="modal-content"><button class="icon-btn" onclick="closeAIGame()"><span class="material-icons-round">close</span></button><iframe id="ai-game-frame"></iframe></div></div>
+    <div id="game-immersive-modal" class="modal-overlay hidden" style="z-index: 99999; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;"><div style="width: 100%; height: 60px; min-height: 60px; background: #09090b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.08);"><button class="icon-btn" onclick="closeImmersiveGame()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="color: white;">arrow_back</span></button><span id="immersive-game-title" style="color: var(--brand-secondary); font-weight: 900; font-size: 16px; letter-spacing: 1px; text-transform: uppercase;">JOGO</span><div style="width:40px;"></div></div><iframe id="immersive-game-frame" src="" style="width: 100%; flex: 1; border: none; background: #000;"></iframe></div>
     <div id="photo-viewer-modal" class="modal-overlay hidden" onclick="hideElement('photo-viewer-modal')"><img id="viewer-photo" src=""></div>
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer"><div class="drawer-header"><img id="drawer-avatar" src="" onclick="openProfile()"><div class="drawer-user-info"><h3 id="drawer-name">Nome</h3><span id="drawer-email">...</span><div style="margin-top: 8px;"><span class="badge-tech">Nível <span id="drawer-level">1</span></span></div></div></div><div class="drawer-content"><div class="drawer-item" onclick="openProfile()"><span class="material-icons-round">person</span> Meu Perfil</div><div class="drawer-item" onclick="openSettings()"><span class="material-icons-round">settings</span> Configurações</div><div class="drawer-separator"></div><div class="drawer-item" style="color: #EF4444;" onclick="logout()"><span class="material-icons-round" style="color: #EF4444;">logout</span> Sair</div></div></div>
-    <div id="screen-anotacoes" class="app-screen hidden"><div class="material-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Anotações</span></div><div id="notes-list"></div></div>
-    <div id="screen-jogos" class="app-screen hidden"><div class="material-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Arcade CPTT</span></div><div class="games-hub-content"></div></div>
+    
     <div id="screen-communities" class="app-screen hidden"><div class="community-servers-bar"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">chat</span></button></div><div class="community-chat-area"><div id="community-chat-box"></div></div></div>
     <div id="contact-profile-modal" class="modal-overlay hidden" onclick="closeContactProfile()"><div class="modal-content profile-view-card"><img id="view-contact-avatar" src=""><h3 id="view-contact-name">Nome</h3></div></div>
     <div id="video-call-screen" class="hidden"><video id="remote-video" autoplay playsinline></video><video id="local-video" autoplay playsinline muted></video><div class="call-controls"><button onclick="endVideoCall()" style="background:#EF4444;"><span class="material-icons-round">call_end</span></button></div></div>
