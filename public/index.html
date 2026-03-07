@@ -34,27 +34,38 @@
         #chat-box { padding: 10px 3% !important; display: flex; flex-direction: column; gap: 4px !important; }
         .message { position: relative; max-width: 85%; width: fit-content; padding: 6px 10px 8px 10px; border-radius: 12px; font-size: 15.5px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
         .my-msg { align-self: flex-end; background-color: var(--brand-primary); border-top-right-radius: 0px; }
+        .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid var(--brand-primary); border-bottom: 10px solid transparent; }
         .other-msg { align-self: flex-start; background-color: var(--card-bg); border-top-left-radius: 0px; border: 1px solid rgba(255,255,255,0.05); }
+        .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid var(--card-bg); border-bottom: 10px solid transparent; }
         .chat-date-divider { text-align: center; margin: 10px 0; }
         .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 5px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
-        /* 🟢 GAVETA NATIVA DE EMOJIS (A CORREÇÃO DO BLOQUEIO) */
+        /* 🟢 GAVETA NATIVA DE EMOJIS (ESCUDO ANTI-FLUTUAÇÃO) */
         #emoji-drawer {
-            height: 0px; /* Isto garante que começa invisível */
-            overflow: hidden; 
+            height: 0px; 
+            min-height: 0 !important;
+            overflow: hidden !important; 
             transition: height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); 
             background: #0B0F19; 
             width: 100%;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            position: relative !important; /* Trava tudo o que está dentro */
+            z-index: 100 !important;
         }
 
         emoji-picker {
-            width: 100%;
-            height: 300px;
-            display: block;
+            width: 100% !important;
+            height: 300px !important;
+            display: block !important;
+            position: relative !important; /* Força a anular o position: absolute do style.css antigo */
+            bottom: auto !important;
+            left: auto !important;
+            right: auto !important;
+            top: auto !important;
+            margin: 0 !important;
+            
             --background: #0B0F19; 
             --border-color: rgba(255,255,255,0.05);
-            --indicator-color: #00A884; /* Verde WA */
+            --indicator-color: #00A884;
             --input-border-color: rgba(255,255,255,0.1);
             --input-font-color: #E9EDEF;
             --search-icon-color: #8696A0;
@@ -63,7 +74,6 @@
             --emoji-size: 1.8rem;
         }
 
-        /* Moldagem do componente interno */
         emoji-picker::part(emoji) { border-radius: 8px; transition: background-color 0.15s ease; }
         emoji-picker::part(emoji):hover { background-color: rgba(255, 255, 255, 0.1); cursor: pointer; }
         emoji-picker::part(category-title) { background-color: #0B0F19; color: #8696A0; font-size: 13px; padding: 10px 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -198,7 +208,7 @@
             </div>
 
             <div id="emoji-drawer">
-                <emoji-picker id="emoji-picker"></emoji-picker>
+                <emoji-picker id="neo-emoji-picker"></emoji-picker>
             </div>
         </div>
 
@@ -214,7 +224,6 @@
     <div id="notifications-screen" class="app-screen hidden" style="position: relative;"><div class="main-header"><button class="icon-btn" onclick="cancelNotificationSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Notificações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;"><div class="settings-group"><div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Som de Mensagem</span><select id="notification-sound-select" class="chic-input" style="margin:0; padding:10px;"><option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino</option><option value="none">Silencioso</option></select></div></div></div><div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);"><button class="chic-btn" onclick="cancelNotificationSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button><button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button></div></div>
     <div id="classifications-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Classificações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px;"><button class="chic-btn" style="background: var(--brand-secondary); margin-bottom: 20px;" onclick="createNewClassification()">+ Criar Nova Classificação</button><div id="classifications-list"></div></div></div>
     <div id="account-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Conta</span><div style="width: 40px;"></div></div><div class="settings-content"><div class="settings-group"><div class="setting-item"><span style="font-weight:500;">E-mail</span><span id="config-email" style="color:var(--secondary-text);">...</span></div><div class="setting-item" onclick="openChangePasswordModal()"><span style="font-weight:600; color:var(--brand-primary);">Alterar Senha</span></div><div class="setting-item" onclick="deleteAccount()"><span style="color:#EF4444; font-weight:600;"><span class="material-icons-round" style="font-size:18px; vertical-align:middle; color:#EF4444;">delete_forever</span> Excluir Minha Conta</span></div></div></div></div>
-
     <div id="screen-communities" class="app-screen hidden"><div class="community-servers-bar"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">chat</span></button></div><div class="community-chat-area"><div id="community-chat-box"></div></div></div>
     
     <div id="add-contact-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;"><div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);"><div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div><h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3><p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o e-mail ou número de telemóvel exato para encontrar o seu contacto na rede.</p><div style="position: relative; margin-bottom: 20px;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">alternate_email</span><input type="text" id="exact-search-input" placeholder="E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;"></div><button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button></div><div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div></div></div>
