@@ -222,16 +222,11 @@ window.toggleEmojiPicker = function(e) {
     if (e) e.stopPropagation(); 
     
     const drawer = document.getElementById('emoji-drawer'); 
-    
     if (drawer) {
-        // Se a gaveta já estiver aberta (300px), a gente fecha (0px)
         if (drawer.style.height === '300px') {
             drawer.style.height = '0px'; 
         } else {
-            // Se estiver fechada, a gente abre
             drawer.style.height = '300px'; 
-            
-            // Dá um scroll no chat para empurrar as mensagens para cima (simulando teclado)
             setTimeout(() => {
                 const box = document.getElementById('chat-box');
                 if(box) box.scrollTop = box.scrollHeight;
@@ -240,7 +235,6 @@ window.toggleEmojiPicker = function(e) {
     } 
 };
 
-// Navegação fluída pelas categorias (Barra superior do WhatsApp)
 window.changeEmojiCategory = function(categoryName, element) {
     const picker = document.getElementById('emoji-picker');
     if (!picker) return;
@@ -268,21 +262,17 @@ setTimeout(() => {
     
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
-            // 1. Adiciona o emoji onde o cursor estava
             msgInput.innerText += event.detail.unicode; 
-            
-            // 2. Foca de novo no input e coloca o cursor lá no fim para o utilizador continuar a escrever
             try {
                 msgInput.focus();
                 const range = document.createRange();
                 const sel = window.getSelection();
                 range.selectNodeContents(msgInput);
-                range.collapse(false); // Colapsa o cursor no fim
+                range.collapse(false); 
                 sel.removeAllRanges();
                 sel.addRange(range);
             } catch(e){}
 
-            // 3. Muda o ícone do microfone para o botão de "Enviar"
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
             if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
@@ -291,8 +281,6 @@ setTimeout(() => {
         }); 
     } 
     
-    // INTELIGÊNCIA: Se o utilizador tocar na caixa de texto normal, o teclado real do telemóvel vai abrir.
-    // Nessa altura, nós fechamos a gaveta de emojis automaticamente para não ocupar espaço a dobrar!
     if(msgInput) {
         msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
@@ -302,7 +290,6 @@ setTimeout(() => {
         });
     }
 
-    // Fechar ao clicar fora da gaveta de emojis ou do botão do emoji
     document.addEventListener('click', (e) => { 
         if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
             const drawer = document.getElementById('emoji-drawer');
@@ -314,7 +301,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
+// 🎙️ MOTOR DE ÁUDIO PREMIUM
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -385,7 +372,6 @@ async function startRecording() {
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
 
-    // Força fechar gaveta de emojis se estiver aberta para mostrar a onda sonora limpa
     const drawer = document.getElementById('emoji-drawer');
     if (drawer && drawer.style.height === '300px') drawer.style.height = '0px';
 
@@ -637,7 +623,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
-    // Esconde a gaveta de emojis ao abrir um novo chat
     const emojiDrawer = document.getElementById('emoji-drawer');
     if (emojiDrawer) emojiDrawer.style.height = '0px';
 
@@ -718,37 +703,84 @@ async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
+// 🟢 FUNÇÃO DISPLAY MESSAGE WHATSAPP STYLE 🟢
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); 
     const msgDateObj = new Date(msg.timestamp || Date.now()); const dateStr = getChatDateString(msgDateObj);
     if (dateStr !== lastRenderedDate) { const divider = document.createElement('div'); divider.className = 'chat-date-divider'; divider.innerHTML = `<span>${dateStr}</span>`; box.appendChild(divider); lastRenderedDate = dateStr; }
 
-    const div = document.createElement('div'); const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; const isMe = senderIdStr === myId; div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); div.id = `msg-${msg._id}`; 
-    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
-    let securityWarningHtml = ''; let displayContent = msg.content || ''; let quotedHtml = ''; const quoteMatch = displayContent.match(/(<div class="quoted-msg"[\s\S]*?<\/div>)([\s\S]*)/); if (quoteMatch) { quotedHtml = quoteMatch[1]; displayContent = quoteMatch[2] || ''; }
-    let isVip = false; if (isMe && cachedMe.unlockedItems && cachedMe.unlockedItems.includes('badge_vip')) isVip = true; else if (!isMe && typeof msg.sender === 'object' && msg.sender.unlockedItems && msg.sender.unlockedItems.includes('badge_vip')) isVip = true; let vipHtml = isVip ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:14px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
-    let contentHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px; display:flex; align-items:center;">${msg.sender.displayName || 'Membro'}${vipHtml}</div>`; 
+    const div = document.createElement('div'); 
+    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
+    const isMe = senderIdStr === myId; 
     
-    if (msg.fileType === 'image') contentHtml += `<img src="${msg.fileUrl}" class="chat-image" onclick="window.open(this.src)">`; 
-    else if (msg.fileType === 'video') contentHtml += `<video controls src="${msg.fileUrl}" class="chat-video"></video>`; 
-    else if (msg.fileType === 'audio') contentHtml += `<audio controls src="${msg.fileUrl}" class="chat-audio"></audio>`; 
-    else if (msg.fileType === 'pdf') contentHtml += `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
+    div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); 
+    div.id = `msg-${msg._id}`; 
+    
+    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
+    div.addEventListener('touchend', () => clearTimeout(pressTimer)); 
+    div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
+    div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
+    div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
+    
+    let displayContent = msg.content || ''; 
+    let quotedHtml = ''; 
+    const quoteMatch = displayContent.match(/(<div class="quoted-msg"[\s\S]*?<\/div>)([\s\S]*)/); 
+    if (quoteMatch) { quotedHtml = quoteMatch[1]; displayContent = quoteMatch[2] || ''; }
+    
+    let vipHtml = '';
+    if (isGroupChat && !isMe && typeof msg.sender === 'object') {
+        if(msg.sender.unlockedItems && msg.sender.unlockedItems.includes('badge_vip')) {
+            vipHtml = '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:14px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>';
+        }
+    }
+    
+    let contentHtml = ''; 
+    if (isGroupChat && !isMe && typeof msg.sender === 'object') {
+        contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px; display:flex; align-items:center;">${msg.sender.displayName || 'Membro'}${vipHtml}</div>`; 
+    }
+    
+    // Tratamento do conteúdo principal
+    let msgBody = '';
+    if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
+    else if (msg.fileType === 'video') msgBody = `<video controls src="${msg.fileUrl}" class="chat-video" style="border-radius:8px; max-width:100%;"></video>`; 
+    else if (msg.fileType === 'audio') msgBody = `<audio controls src="${msg.fileUrl}" class="chat-audio" style="height:40px; margin-bottom:5px;"></audio>`; 
+    else if (msg.fileType === 'pdf') msgBody = `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf" style="display:flex; align-items:center; gap:5px;"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
     else if (msg.fileType === 'invite') {
         try {
             const invData = JSON.parse(displayContent);
-            contentHtml += `
-                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 12px; padding: 15px; text-align: center; margin-top: 5px; min-width: 200px;">
-                    <span class="material-icons-round" style="font-size: 32px; color: var(--brand-primary); margin-bottom: 5px;">radar</span>
-                    <div style="font-weight: 800; font-size: 15px; margin-bottom: 5px; color: white;">Convite de Comunidade</div>
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">${invData.commName}</div>
-                    <button class="chic-btn" style="margin: 0; padding: 8px 15px; font-size: 13px; background: var(--brand-primary); color: white;" onclick="previewCommunityInvite('${invData.commId}', '${invData.commName}')">Ver Convite</button>
+            msgBody = `
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 10px; text-align: center; margin-top: 5px;">
+                    <span class="material-icons-round" style="font-size: 28px; color: var(--brand-primary); margin-bottom: 5px;">radar</span>
+                    <div style="font-weight: 800; font-size: 14px; color: white;">Convite de Comunidade</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">${invData.commName}</div>
+                    <button class="chic-btn" style="margin: 0; padding: 6px 12px; font-size: 12px; background: var(--brand-primary); color: white;" onclick="previewCommunityInvite('${invData.commId}', '${invData.commName}')">Ver</button>
                 </div>
             `;
-        } catch(e) { contentHtml += `<div class="msg-text-content" style="display:inline;">Erro no convite</div>`; }
+        } catch(e) { msgBody = `Erro no convite`; }
     }
-    else contentHtml += securityWarningHtml + quotedHtml + `<div class="msg-text-content" style="display:inline;">${escapeHTML(displayContent)}</div>`; 
+    else {
+        // Texto normal com espaçamento fantasma para a hora caber em baixo à direita
+        msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; 
+    }
     
-    if (msg.reaction) contentHtml += `<div class="msg-reaction">${msg.reaction}</div>`; const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; div.innerHTML = `${contentHtml}<div class="msg-info"><span class="msg-time">${timeString}</span><span class="msg-status ${msg.status === 'read' ? 'read' : ''}">${isMe ? '<span class="material-icons" style="font-size:15.5px; margin-left:2px;">done_all</span>' : ''}</span></div>`; box.appendChild(div); box.scrollTop = box.scrollHeight; 
+    contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
+    
+    // Status e Hora flutuantes (WhatsApp Style)
+    const date = new Date(msg.timestamp || Date.now()); 
+    const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
+    const tickColor = msg.status === 'read' ? '#38bdf8' : 'rgba(255,255,255,0.6)';
+    const statusHtml = isMe ? `<span class="material-icons-round" style="font-size:15px; margin-left:3px; color:${tickColor};">done_all</span>` : '';
+
+    div.innerHTML = `
+        ${contentHtml}
+        <div style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;">
+            <span class="msg-time">${timeString}</span>${statusHtml}
+        </div>
+        ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''}
+    `; 
+    
+    box.appendChild(div); 
+    box.scrollTop = box.scrollHeight; 
 }
 
 window.initReply = function() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
