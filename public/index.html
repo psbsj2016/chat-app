@@ -52,10 +52,14 @@
         /* 🟢 BOLHAS DE MENSAGEM WHATSAPP STYLE */
         #chat-box { padding: 10px 3% !important; display: flex; flex-direction: column; gap: 4px !important; }
         .message { position: relative; max-width: 85%; width: fit-content; padding: 6px 10px 8px 10px; border-radius: 12px; font-size: 15.5px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
-        .my-msg { align-self: flex-end; background-color: var(--brand-primary); border-top-right-radius: 0px; }
+        
+        /* 🔥 TEXTO CLARO NA BOLHA COLORIDA 🔥 */
+        .my-msg { align-self: flex-end; background-color: var(--brand-primary); border-top-right-radius: 0px; color: #ffffff; }
         .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid var(--brand-primary); border-bottom: 10px solid transparent; }
-        .other-msg { align-self: flex-start; background-color: var(--card-bg); border-top-left-radius: 0px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        .other-msg { align-self: flex-start; background-color: var(--card-bg); border-top-left-radius: 0px; border: 1px solid rgba(255,255,255,0.05); color: var(--text-color); }
         .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid var(--card-bg); border-bottom: 10px solid transparent; }
+        
         .chat-date-divider { text-align: center; margin: 10px 0; }
         .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 5px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
