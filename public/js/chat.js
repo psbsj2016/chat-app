@@ -214,92 +214,6 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
-
-// ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
-// ==============================================================
-window.toggleEmojiPicker = function(e) { 
-    if (e) e.stopPropagation(); 
-    
-    const drawer = document.getElementById('emoji-drawer'); 
-    if (drawer) {
-        if (drawer.style.height === '300px') {
-            drawer.style.height = '0px'; 
-        } else {
-            drawer.style.height = '300px'; 
-            setTimeout(() => {
-                const box = document.getElementById('chat-box');
-                if(box) box.scrollTop = box.scrollHeight;
-            }, 300);
-        }
-    } 
-};
-
-window.changeEmojiCategory = function(categoryName, element) {
-    const picker = document.getElementById('emoji-picker');
-    if (!picker) return;
-
-    if (categoryName === 'favorites') {
-        picker.activeCategory = 'favorites';
-        const root = picker.shadowRoot;
-        if(root) {
-            const scrollArea = root.querySelector('.scroll-wrapper');
-            if(scrollArea) scrollArea.scrollTop = 0;
-        }
-    } else {
-        picker.database.getEmojiByGroup(categoryName).then(() => {
-            picker.activeCategory = categoryName;
-        });
-    }
-
-    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
-    if(element) element.classList.add('active');
-};
-
-setTimeout(() => { 
-    const picker = document.getElementById('emoji-picker'); 
-    const msgInput = document.getElementById('message-input'); 
-    
-    if (picker && msgInput) { 
-        picker.addEventListener('emoji-click', event => { 
-            msgInput.innerText += event.detail.unicode; 
-            try {
-                msgInput.focus();
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(msgInput);
-                range.collapse(false); 
-                sel.removeAllRanges();
-                sel.addRange(range);
-            } catch(e){}
-
-            emitTypingStatus('typing'); 
-            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
-                dynamicActionIcon.innerText = 'send'; 
-            } 
-        }); 
-    } 
-    
-    if(msgInput) {
-        msgInput.addEventListener('focus', () => {
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        });
-    }
-
-    document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        } 
-    }); 
-}, 1000);
-
 // ==============================================================
 // 🎙️ MOTOR DE ÁUDIO PREMIUM
 // ==============================================================
@@ -314,7 +228,7 @@ let audioAnalyzer = null;
 let audioDataArray = null;
 let visualizerAnimationId = null;
 
-const msgInputEl = document.getElementById('message-input'); 
+const msgInput = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
@@ -338,9 +252,9 @@ function resetDynamicButton() {
     } 
 }
 
-if (msgInputEl) { 
-    msgInputEl.addEventListener('input', () => { 
-        const textLength = msgInputEl.innerText.trim().length; 
+if (msgInput) { 
+    msgInput.addEventListener('input', () => { 
+        const textLength = msgInput.innerText.trim().length; 
         if (textLength > 0) { 
             if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
                 dynamicActionIcon.innerText = 'send'; 
@@ -351,17 +265,24 @@ if (msgInputEl) {
         } 
         if (pendingAudioFile) { 
             pendingAudioFile = null; 
-            msgInputEl.setAttribute('data-placeholder', 'Mensagem'); 
+            msgInput.setAttribute('data-placeholder', 'Mensagem'); 
             resetAudioUI(); 
         } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
+    
+    msgInput.addEventListener('focus', () => {
+        const drawer = document.getElementById('emoji-drawer');
+        if (drawer && drawer.style.height === '300px') {
+            drawer.style.height = '0px';
+        }
+    });
 
-    msgInputEl.addEventListener('keydown', (e) => { 
+    msgInput.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { 
+            if (msgInput.innerText.trim().length > 0 || pendingAudioFile) { 
                 sendMessage(); resetDynamicButton(); resetAudioUI(); 
             } 
         } 
@@ -371,9 +292,6 @@ if (msgInputEl) {
 async function startRecording() { 
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
-
-    const drawer = document.getElementById('emoji-drawer');
-    if (drawer && drawer.style.height === '300px') drawer.style.height = '0px';
 
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
@@ -547,6 +465,61 @@ window.togglePreviewAudio = function() {
         previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
     } 
 }
+
+// ==============================================================
+// 😊 GAVETA NATIVA DE EMOJIS (100% BLINDADA)
+// ==============================================================
+window.toggleEmojiPicker = function(e) { 
+    if (e) e.stopPropagation(); 
+    
+    const drawer = document.getElementById('emoji-drawer'); 
+    if (drawer) {
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
+    } 
+};
+
+setTimeout(() => { 
+    const picker = document.getElementById('emoji-picker'); 
+    const msgInput = document.getElementById('message-input'); 
+    
+    if (picker && msgInput) { 
+        picker.addEventListener('emoji-click', event => { 
+            msgInput.innerText += event.detail.unicode; 
+            try {
+                msgInput.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(msgInput);
+                range.collapse(false); 
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch(e){}
+
+            emitTypingStatus('typing'); 
+            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
+        }); 
+    } 
+
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        } 
+    }); 
+}, 1000);
 
 // ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
@@ -739,7 +712,6 @@ function displayMessage(msg) {
         contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px; display:flex; align-items:center;">${msg.sender.displayName || 'Membro'}${vipHtml}</div>`; 
     }
     
-    // Tratamento do conteúdo principal
     let msgBody = '';
     if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
     else if (msg.fileType === 'video') msgBody = `<video controls src="${msg.fileUrl}" class="chat-video" style="border-radius:8px; max-width:100%;"></video>`; 
@@ -759,13 +731,11 @@ function displayMessage(msg) {
         } catch(e) { msgBody = `Erro no convite`; }
     }
     else {
-        // Texto normal com espaçamento fantasma para a hora caber em baixo à direita
         msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; 
     }
     
     contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
     
-    // Status e Hora flutuantes (WhatsApp Style)
     const date = new Date(msg.timestamp || Date.now()); 
     const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
     const tickColor = msg.status === 'read' ? '#38bdf8' : 'rgba(255,255,255,0.6)';
