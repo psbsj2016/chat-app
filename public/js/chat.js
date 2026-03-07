@@ -214,93 +214,6 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
-
-// ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (ESCUDO ANTI-BUG DO ANTIGO CSS)
-// ==============================================================
-window.toggleEmojiPicker = function(e) { 
-    if (e) e.stopPropagation(); 
-    
-    const drawer = document.getElementById('emoji-drawer'); 
-    
-    if (drawer) {
-        if (drawer.style.height === '300px') {
-            drawer.style.height = '0px'; 
-        } else {
-            drawer.style.height = '300px'; 
-            setTimeout(() => {
-                const box = document.getElementById('chat-box');
-                if(box) box.scrollTop = box.scrollHeight;
-            }, 300);
-        }
-    } 
-};
-
-window.changeEmojiCategory = function(categoryName, element) {
-    const picker = document.getElementById('neo-emoji-picker'); // ATENÇÃO AQUI
-    if (!picker) return;
-
-    if (categoryName === 'favorites') {
-        picker.activeCategory = 'favorites';
-        const root = picker.shadowRoot;
-        if(root) {
-            const scrollArea = root.querySelector('.scroll-wrapper');
-            if(scrollArea) scrollArea.scrollTop = 0;
-        }
-    } else {
-        picker.database.getEmojiByGroup(categoryName).then(() => {
-            picker.activeCategory = categoryName;
-        });
-    }
-
-    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
-    if(element) element.classList.add('active');
-};
-
-setTimeout(() => { 
-    const picker = document.getElementById('neo-emoji-picker'); // ATENÇÃO AQUI
-    const msgInput = document.getElementById('message-input'); 
-    
-    if (picker && msgInput) { 
-        picker.addEventListener('emoji-click', event => { 
-            msgInput.innerText += event.detail.unicode; 
-            try {
-                msgInput.focus();
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(msgInput);
-                range.collapse(false); 
-                sel.removeAllRanges();
-                sel.addRange(range);
-            } catch(e){}
-
-            emitTypingStatus('typing'); 
-            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
-                dynamicActionIcon.innerText = 'send'; 
-            } 
-        }); 
-    } 
-    
-    if(msgInput) {
-        msgInput.addEventListener('focus', () => {
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        });
-    }
-
-    document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        } 
-    }); 
-}, 1000);
-
 // ==============================================================
 // 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
 // ==============================================================
@@ -315,7 +228,7 @@ let audioAnalyzer = null;
 let audioDataArray = null;
 let visualizerAnimationId = null;
 
-const msgInputEl = document.getElementById('message-input'); 
+const msgInput = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
@@ -339,9 +252,9 @@ function resetDynamicButton() {
     } 
 }
 
-if (msgInputEl) { 
-    msgInputEl.addEventListener('input', () => { 
-        const textLength = msgInputEl.innerText.trim().length; 
+if (msgInput) { 
+    msgInput.addEventListener('input', () => { 
+        const textLength = msgInput.innerText.trim().length; 
         if (textLength > 0) { 
             if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
                 dynamicActionIcon.innerText = 'send'; 
@@ -352,17 +265,17 @@ if (msgInputEl) {
         } 
         if (pendingAudioFile) { 
             pendingAudioFile = null; 
-            msgInputEl.setAttribute('data-placeholder', 'Mensagem'); 
+            msgInput.setAttribute('data-placeholder', 'Mensagem'); 
             resetAudioUI(); 
         } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
-
-    msgInputEl.addEventListener('keydown', (e) => { 
+    
+    msgInput.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { 
+            if (msgInput.innerText.trim().length > 0 || pendingAudioFile) { 
                 sendMessage(); resetDynamicButton(); resetAudioUI(); 
             } 
         } 
@@ -550,6 +463,71 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
+// 😊 GAVETA NATIVA DE EMOJIS (100% BLINDADA ANTI-BUG)
+// ==============================================================
+window.toggleEmojiPicker = function(e) { 
+    if (e) e.stopPropagation(); 
+    
+    const drawer = document.getElementById('emoji-drawer'); 
+    if (drawer) {
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
+    } 
+};
+
+setTimeout(() => { 
+    // AGORA BUSCAMOS O ID CORRETO DO COMPONENTE NATIVO
+    const picker = document.getElementById('neo-emoji-picker'); 
+    const msgInput = document.getElementById('message-input'); 
+    
+    if (picker && msgInput) { 
+        picker.addEventListener('emoji-click', event => { 
+            msgInput.innerText += event.detail.unicode; 
+            try {
+                msgInput.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(msgInput);
+                range.collapse(false); 
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch(e){}
+
+            emitTypingStatus('typing'); 
+            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
+        }); 
+    } 
+
+    if(msgInput) {
+        msgInput.addEventListener('focus', () => {
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        } 
+    }); 
+}, 1000);
+
+// ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
@@ -665,7 +643,6 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
-    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -673,18 +650,35 @@ function renderContactsList(groups, users) {
         if (isSelected) extraGroupClass += ' selected-for-action';
 
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = group.name.replace(/'/g, "\\'"); 
-        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Grupo'; let lastMsgStyle = isUnreadG ? '' : 'color:var(--brand-primary)';
-        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name">${group.name}</div>${badgeHtml}</div><div class="contact-last-msg" style="${lastMsgStyle}">${lastMsgText}</div></div>`; 
+        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
+        
+        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
+        let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
+        let timeText = isUnreadG ? 'Agora' : '';
+
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
+                <img src="${photo}" class="avatar-small">
+            </div>
+            <div class="user-item-info">
+                <div class="user-item-top">
+                    <div class="user-item-name">${group.name}</div>
+                    <div class="user-item-time" style="${isUnreadG ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
+                </div>
+                <div class="user-item-bottom">
+                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
+                    ${badgeHtml}
+                </div>
+            </div>
+        `; 
         
         setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
-    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
-        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let lastMsgText = isUnreadU ? 'Nova mensagem!' : 'Toque para conversar'; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
@@ -692,8 +686,29 @@ function renderContactsList(groups, users) {
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
         if (isSelected) extraClass += ' selected-for-action';
 
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.flex = '1'; const safeName = name.replace(/'/g, "\\'"); 
-        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small" style="width:50px; height:50px;"></div><div class="info"><div style="display:flex; justify-content:space-between; align-items:center;"><div class="contact-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>${badgeHtml}</div><div class="contact-last-msg">${lastMsgText}</div></div>`; 
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
+        
+        let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
+        let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
+        let timeText = isUnreadU ? 'Agora' : '';
+
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
+                <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
+                ${sectorLabel}
+                <img src="${photo}" class="avatar-small">
+            </div>
+            <div class="user-item-info">
+                <div class="user-item-top">
+                    <div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>
+                    <div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
+                </div>
+                <div class="user-item-bottom">
+                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
+                    ${badgeHtml}
+                </div>
+            </div>
+        `; 
         
         setupLongPress(clickArea, user._id, safeName, false, photo, email);
         div.appendChild(clickArea); list.appendChild(div); 
