@@ -159,24 +159,32 @@ window.openBulkCreateGroupModal = function() {
     openCreateGroupModal(usersOnly.map(u => u.id)); clearContactSelection();
 };
 
+// 🟢 CORREÇÃO: BUSCA AS COMUNIDADES EM TEMPO REAL PARA EVITAR O ERRO
 window.openBulkCommunityInviteModal = async function() {
     const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
     if(usersOnly.length === 0) return alert("Selecione contatos válidos.");
     showElement('bulk-invite-modal'); const list = document.getElementById('bulk-invite-comm-list');
-    list.innerHTML = '<div style="padding:20px; text-align:center;">Buscando base...</div>';
+    list.innerHTML = '<div style="padding:20px; text-align:center;"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando base...</div>';
+    
     try {
-        const ownedComms = myCommunities.filter(c => c.ownerId === myId);
+        const res = await fetch(`/communities/user/${myId}`);
+        const allComms = await res.json();
+        const ownedComms = allComms.filter(c => c && c.ownerId === myId); // Apenas as que o usuario eh General
+        
         if(ownedComms.length === 0) { list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Você não é General de nenhuma Comunidade.</div>'; return; }
+        
         list.innerHTML = '';
         ownedComms.forEach(comm => {
             list.innerHTML += `
                 <div style="display:flex; align-items:center; gap:15px; padding:15px; background:var(--input-bg); border-radius:12px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; transition:0.2s;" onmouseover="this.style.borderColor='var(--brand-primary)'" onmouseout="this.style.borderColor='transparent'" onclick="sendBulkInvite('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')">
-                    <img src="${comm.photoUrl}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
+                    <img src="${comm.photoUrl || 'https://cdn-icons-png.flaticon.com/512/844/844004.png'}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
                     <span style="font-weight:900; font-size:15px; color:var(--text-color);">${comm.name}</span>
                 </div>
             `;
         });
-    } catch(e) {}
+    } catch(e) {
+        list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Erro ao conectar ao QG. Tente novamente.</div>';
+    }
 };
 
 window.sendBulkInvite = function(commId, commName) {
@@ -214,6 +222,93 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
+
+// ==============================================================
+// 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
+// ==============================================================
+window.toggleEmojiPicker = function(e) { 
+    if (e) e.stopPropagation(); 
+    
+    const drawer = document.getElementById('emoji-drawer'); 
+    
+    if (drawer) {
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
+    } 
+};
+
+window.changeEmojiCategory = function(categoryName, element) {
+    const picker = document.getElementById('neo-emoji-picker');
+    if (!picker) return;
+
+    if (categoryName === 'favorites') {
+        picker.activeCategory = 'favorites';
+        const root = picker.shadowRoot;
+        if(root) {
+            const scrollArea = root.querySelector('.scroll-wrapper');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
+    } else {
+        picker.database.getEmojiByGroup(categoryName).then(() => {
+            picker.activeCategory = categoryName;
+        });
+    }
+
+    document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
+    if(element) element.classList.add('active');
+};
+
+setTimeout(() => { 
+    const picker = document.getElementById('neo-emoji-picker'); 
+    const msgInput = document.getElementById('message-input'); 
+    
+    if (picker && msgInput) { 
+        picker.addEventListener('emoji-click', event => { 
+            msgInput.innerText += event.detail.unicode; 
+            try {
+                msgInput.focus();
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(msgInput);
+                range.collapse(false); 
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } catch(e){}
+
+            emitTypingStatus('typing'); 
+            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
+        }); 
+    } 
+    
+    if(msgInput) {
+        msgInput.addEventListener('focus', () => {
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => { 
+        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
+            const drawer = document.getElementById('emoji-drawer');
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
+        } 
+    }); 
+}, 1000);
+
 // ==============================================================
 // 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
 // ==============================================================
@@ -228,7 +323,7 @@ let audioAnalyzer = null;
 let audioDataArray = null;
 let visualizerAnimationId = null;
 
-const msgInput = document.getElementById('message-input'); 
+const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
@@ -252,9 +347,9 @@ function resetDynamicButton() {
     } 
 }
 
-if (msgInput) { 
-    msgInput.addEventListener('input', () => { 
-        const textLength = msgInput.innerText.trim().length; 
+if (msgInputEl) { 
+    msgInputEl.addEventListener('input', () => { 
+        const textLength = msgInputEl.innerText.trim().length; 
         if (textLength > 0) { 
             if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
                 dynamicActionIcon.innerText = 'send'; 
@@ -265,17 +360,17 @@ if (msgInput) {
         } 
         if (pendingAudioFile) { 
             pendingAudioFile = null; 
-            msgInput.setAttribute('data-placeholder', 'Mensagem'); 
+            msgInputEl.setAttribute('data-placeholder', 'Mensagem'); 
             resetAudioUI(); 
         } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
-    
-    msgInput.addEventListener('keydown', (e) => { 
+
+    msgInputEl.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInput.innerText.trim().length > 0 || pendingAudioFile) { 
+            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { 
                 sendMessage(); resetDynamicButton(); resetAudioUI(); 
             } 
         } 
@@ -463,71 +558,6 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (100% BLINDADA ANTI-BUG)
-// ==============================================================
-window.toggleEmojiPicker = function(e) { 
-    if (e) e.stopPropagation(); 
-    
-    const drawer = document.getElementById('emoji-drawer'); 
-    if (drawer) {
-        if (drawer.style.height === '300px') {
-            drawer.style.height = '0px'; 
-        } else {
-            drawer.style.height = '300px'; 
-            setTimeout(() => {
-                const box = document.getElementById('chat-box');
-                if(box) box.scrollTop = box.scrollHeight;
-            }, 300);
-        }
-    } 
-};
-
-setTimeout(() => { 
-    // AGORA BUSCAMOS O ID CORRETO DO COMPONENTE NATIVO
-    const picker = document.getElementById('neo-emoji-picker'); 
-    const msgInput = document.getElementById('message-input'); 
-    
-    if (picker && msgInput) { 
-        picker.addEventListener('emoji-click', event => { 
-            msgInput.innerText += event.detail.unicode; 
-            try {
-                msgInput.focus();
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(msgInput);
-                range.collapse(false); 
-                sel.removeAllRanges();
-                sel.addRange(range);
-            } catch(e){}
-
-            emitTypingStatus('typing'); 
-            const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
-                dynamicActionIcon.innerText = 'send'; 
-            } 
-        }); 
-    } 
-
-    if(msgInput) {
-        msgInput.addEventListener('focus', () => {
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        });
-    }
-
-    document.addEventListener('click', (e) => { 
-        if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
-            const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') {
-                drawer.style.height = '0px'; 
-            }
-        } 
-    }); 
-}, 1000);
-
-// ==============================================================
 // 🔌 SOCKETS E SINCRONIZAÇÃO
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
@@ -643,6 +673,7 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
+    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -676,6 +707,7 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
+    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
