@@ -302,7 +302,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E RETOMA)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -312,6 +312,11 @@ let previewAudioObj = null;
 
 let recordingInterval = null;
 let recordingSeconds = 0;
+
+let audioContext = null;
+let audioAnalyzer = null;
+let audioDataArray = null;
+let visualizerAnimationId = null;
 
 const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
@@ -367,7 +372,6 @@ if (msgInputEl) {
     }); 
 }
 
-// 🟢 1. INICIAR GRAVAÇÃO
 async function startRecording() { 
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
@@ -381,7 +385,7 @@ async function startRecording() {
         audioChunks = []; 
         isRecordingCancelled = false; 
         showPreviewAfterStop = false;
-
+        
         hideElement('chat-input-container'); 
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
@@ -389,6 +393,7 @@ async function startRecording() {
         
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
+        dynamicActionBtn.classList.add('recording-pulse');
 
         globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
         
@@ -418,25 +423,25 @@ async function startRecording() {
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
 }
 
-// 🟢 2. PAUSAR GRAVAÇÃO (Vai para a Preview)
 window.stopRecordingForPreview = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        globalMediaRecorder.pause(); // Pausa nativa
+        globalMediaRecorder.pause();
         clearInterval(recordingInterval);
         
-        // Esconde ativa, mostra preview
+        dynamicActionBtn.classList.remove('recording-pulse');
+        
         hideElement('recording-active-state');
         showElement('recording-preview-state');
         document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
     } 
 }
 
-// 🟢 3. RETOMAR GRAVAÇÃO
 window.resumeRecording = function() {
     if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
         globalMediaRecorder.resume();
         hideElement('recording-preview-state');
         showElement('recording-active-state');
+        dynamicActionBtn.classList.add('recording-pulse');
         
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
@@ -447,18 +452,16 @@ window.resumeRecording = function() {
     }
 }
 
-// 🟢 4. ENVIAR
 window.stopAndSendRecording = function() { 
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         showPreviewAfterStop = false; 
-        globalMediaRecorder.stop(); // O stop dispara o onstop que cria e envia
+        globalMediaRecorder.stop(); 
     } else if (pendingAudioFile) { 
         sendMessage(); 
         resetAudioUI(); 
     } 
 }
 
-// 🟢 5. CANCELAR / LIXEIRA
 window.cancelRecording = function() { 
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         isRecordingCancelled = true; 
@@ -476,16 +479,16 @@ function resetAudioUI() {
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
-    
+    dynamicActionBtn.classList.remove('recording-pulse');
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
 }
 
 function setupPreviewUI(blob) { 
-    // Só é chamada se a gravação parar totalmente e pedir preview (fluxo alternativo)
     hideElement('recording-active-state'); 
     showElement('recording-preview-state'); 
+    dynamicActionBtn.classList.remove('recording-pulse');
 
     const audioUrl = URL.createObjectURL(blob); 
     previewAudioObj = new Audio(audioUrl); 
@@ -506,11 +509,6 @@ function setupPreviewUI(blob) {
 }
 
 window.togglePreviewAudio = function() { 
-    // Se estivermos no estado paused do MediaRecorder, não temos o arquivo completo ainda.
-    // Esta função reproduz apenas se a gravação já foi totalmente parada e estamos a rever (fluxo antigo).
-    // Num fluxo perfeito de Whatsapp, teríamos de usar o previewAudioObj, mas aqui, como usamos resume(), 
-    // a reprodução só acontece se terminarmos a gravação, o que impede o resume.
-    // Vamos manter a pausa visual como principal por agora.
     if(previewAudioObj) {
         const playBtn = document.getElementById('preview-play-btn'); 
         if(previewAudioObj.paused) { 
@@ -660,11 +658,29 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-async function loadContacts() { if(!myId) return; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); updateAppBadge(); } try { const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); groups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(groups, users); updateAppBadge(); } catch(e) {} }
-
+// 🟢 INJEÇÃO DO ROBÔ IA PTT COMO CONTATO FIXO 🟢
 function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
-    if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
+    
+    list.innerHTML += `
+        <div class="user-item" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--brand-primary) !important;" onclick="openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA')">
+            <div class="user-avatar-container">
+                <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar-small" style="border: 2px solid var(--brand-primary); background: white; padding: 2px;">
+                <div class="status-dot status-online" style="background: var(--brand-primary); box-shadow: 0 0 5px var(--brand-primary);"></div>
+            </div>
+            <div class="user-item-info">
+                <div class="user-item-top">
+                    <div class="user-item-name" style="color: var(--brand-primary); display:flex; align-items:center;">Robô IA Oficial <span class="material-icons-round" style="font-size:16px; margin-left:4px; color:var(--brand-primary);">verified</span></div>
+                    <div class="user-item-time" style="color: var(--brand-primary); font-weight: 800;">24/7</div>
+                </div>
+                <div class="user-item-bottom">
+                    <div class="user-item-msg" style="color: var(--text-color); font-weight: 600;">Toque para conversar com a Inteligência Artificial</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
@@ -1037,7 +1053,7 @@ window.toggleFab = function() {
     }
 };
 
-// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR
+// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR E ROBÔ PTT
 window.openAddContactScreen = function() {
     document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
     const screen = document.getElementById('add-contact-screen');
@@ -1061,7 +1077,7 @@ window.executeExactSearch = async function() {
         
         // Tenta buscar TODOS os usuários globais da aplicação e filtra localmente
         let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); // Fallback comum em Node.js
+        if(!res.ok) res = await fetch('/api/users'); 
         
         if(res.ok) {
             const allUsers = await res.json();
@@ -1071,7 +1087,6 @@ window.executeExactSearch = async function() {
                 (u.phone && u.phone.includes(term))
             );
         } else {
-            // Fallback 2: Rota de busca específica do backend
             const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
             if(searchRes.ok) {
                 const data = await searchRes.json();
@@ -1079,7 +1094,6 @@ window.executeExactSearch = async function() {
             }
         }
 
-        // Tira o próprio usuário logado dos resultados
         foundUsers = foundUsers.filter(u => u._id !== myId);
 
         if(foundUsers.length > 0) {
@@ -1121,7 +1135,6 @@ window.startChatWithNewUser = function(id, name, photo, email) {
     document.getElementById('main-screen').classList.remove('hidden');
     openChat(id, name, photo, email, 'user');
     
-    // Atira mensagem silenciosa pro backend registrar a sala e exibir na lista
     socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
 };
 
