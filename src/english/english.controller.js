@@ -9,6 +9,7 @@ exports.getDashboardData = async (req, res) => {
         if (!userStats) {
             userStats = await new UserEnglish({ userId }).save();
         }
+
         const userMicros = await MicroMastery.find({ userId });
         res.json({ success: true, stats: userStats, micros: userMicros });
     } catch (e) {
@@ -22,6 +23,7 @@ exports.submitAttempt = async (req, res) => {
         const result = await EnglishService.processAttempt(userId, nodeId, exerciseId, score, timeMs);
         res.json({ success: true, data: result });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: 'Falha ao processar tentativa' });
     }
 };
@@ -32,6 +34,7 @@ exports.getDailyWorkout = async (req, res) => {
         const workoutQueue = await EnglishService.generateDailyWorkout(userId);
         res.json({ success: true, exercises: workoutQueue });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: 'Falha ao gerar o Treino Diário' });
     }
 };
@@ -45,6 +48,7 @@ exports.getNodeExercises = async (req, res) => {
         }
         res.json({ success: true, exercises: node.exercises });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ success: false, error: 'Erro ao buscar lição' });
     }
 };
@@ -59,16 +63,18 @@ exports.injectUniversalExercise = async (req, res) => {
         const defaultTrack = core === 'performance' ? 'performance' : 'estrutural';
         const defaultTitle = core === 'performance' ? `Piscina: ${nodeId}` : `Fase: ${nodeId}`;
 
-        await CatalogoNode.findOneAndUpdate(
+        const node = await CatalogoNode.findOneAndUpdate(
             { nodeId: nodeId },
             { 
                 $push: { exercises: exercise },
                 $setOnInsert: { track: defaultTrack, category: 'base', title: defaultTitle }
             },
-            { new: true, upsert: true, runValidators: false }
+            { new: true, upsert: true, runValidators: false } 
         );
-        res.json({ success: true, message: '✅ Armamento injetado com sucesso!' });
+
+        res.json({ success: true, message: '✅ Armamento injetado com sucesso no QG!' });
     } catch (e) {
+        console.error("Erro no QG Admin:", e);
         res.status(500).json({ success: false, message: 'Erro DB: ' + e.message });
     }
 };
@@ -81,7 +87,7 @@ exports.addExerciseToNode = async (req, res) => {
         if (!node) return res.status(404).json({ success: false, message: 'Nó não encontrado.' });
         res.json({ success: true, message: '✅ Exercício injetado!', node });
     } catch (e) {
-        res.status(500).json({ error: 'Erro crítico ao adicionar exercício.' });
+        res.status(500).json({ error: 'Erro ao adicionar exercício.' });
     }
 };
 
@@ -90,13 +96,13 @@ exports.clearNodeExercises = async (req, res) => {
         const { nodeId } = req.body;
         const node = await CatalogoNode.findOneAndUpdate({ nodeId: nodeId }, { $set: { exercises: [] } }, { new: true });
         if (!node) return res.status(404).json({ success: false, message: 'Nó não encontrado.' });
-        res.json({ success: true, message: '💥 Fase limpa com sucesso!' });
+        res.json({ success: true, message: '💥 Fase limpa!' });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao limpar a fase.' });
     }
 };
 
-// 🔥 NOVA FUNÇÃO: REORGANIZAR EXERCÍCIOS
+// 🔥 FUNÇÃO DE REORDENAÇÃO (GRAVA O NOVO ARRAY) 🔥
 exports.reorderExercises = async (req, res) => {
     try {
         const { nodeId, newOrder } = req.body;
@@ -106,9 +112,9 @@ exports.reorderExercises = async (req, res) => {
             { new: true }
         );
         if (!node) return res.status(404).json({ success: false, message: 'Nó não encontrado.' });
-        res.json({ success: true, message: 'Ordem atualizada com sucesso!' });
+        res.json({ success: true, message: 'Ordem atualizada!' });
     } catch (e) {
-        res.status(500).json({ error: 'Erro ao reordenar exercícios.' });
+        res.status(500).json({ error: 'Erro ao reordenar.' });
     }
 };
 
@@ -136,7 +142,7 @@ exports.getWorkoutBySkill = async (req, res) => {
         });
 
         matchedExercises = matchedExercises.sort(() => 0.5 - Math.random()).slice(0, 5);
-        if (matchedExercises.length === 0) return res.json({ success: false, message: `Nenhum armamento encontrado.` });
+        if (matchedExercises.length === 0) return res.json({ success: false, message: `Vazio.` });
         res.json({ success: true, exercises: matchedExercises });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao gerar treino.' });
@@ -157,10 +163,10 @@ exports.getTrainingWorkout = async (req, res) => {
             }
         });
         let randomExercises = allExercises.sort(() => 0.5 - Math.random()).slice(0, 10);
-        if (randomExercises.length === 0) return res.json({ success: false, message: "O QG está vazio." });
+        if (randomExercises.length === 0) return res.json({ success: false, message: "Vazio." });
         res.json({ success: true, exercises: randomExercises });
     } catch (e) {
-        res.status(500).json({ error: 'Erro ao gerar treino intensivo.' });
+        res.status(500).json({ error: 'Erro treino intensivo.' });
     }
 };
 
@@ -183,9 +189,9 @@ exports.savePerformanceAttempt = async (req, res) => {
                 }
             }
         }
-        res.json({ success: true, message: 'Métricas de performance atualizadas.' });
+        res.json({ success: true, message: 'Atualizado.' });
     } catch (e) {
-        res.status(500).json({ error: 'Erro ao processar performance.' });
+        res.status(500).json({ error: 'Erro performance.' });
     }
 };
 
@@ -196,6 +202,6 @@ exports.getPerformanceStats = async (req, res) => {
         const trainingCount = await PerformanceLog.countDocuments({ userId: req.params.userId, skill: 'mix' });
         res.json({ success: true, stats: user, trainingCount });
     } catch (e) {
-        res.status(500).json({ error: 'Erro ao buscar métricas.' });
+        res.status(500).json({ error: 'Erro métricas.' });
     }
 };
