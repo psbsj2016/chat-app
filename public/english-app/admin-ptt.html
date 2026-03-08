@@ -7,47 +7,76 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        :root { --bg: #05050A; --surface: #0f172a; --surface-border: rgba(255,255,255,0.1); --primary: #3B82F6; --success: #10B981; --danger: #EF4444; --text: #F8FAFC; --text-muted: #94A3B8; }
+        /* 🟢 DESIGN MOBILE FIRST - ESTILO APLICATIVO NATIVO */
+        :root {
+            --bg: #05050A;
+            --surface: #0f172a;
+            --surface-border: rgba(255,255,255,0.1);
+            --primary: #3B82F6;
+            --success: #10B981;
+            --danger: #EF4444;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+        }
+        
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
         
+        /* CABEÇALHO DO APP */
         .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--surface-border); z-index: 10; }
         .header h1 { font-size: 18px; font-weight: 900; color: var(--primary); display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+        
+        /* CORPO ROLÁVEL */
         .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; } 
 
+        /* BOTÕES DE ABAS PRINCIPAIS */
         .mode-toggle { display: flex; background: var(--surface); border-radius: 16px; padding: 6px; margin-bottom: 25px; border: 1px solid var(--surface-border); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .mode-btn { flex: 1; padding: 12px; text-align: center; border-radius: 12px; border: none; background: transparent; color: var(--text-muted); font-weight: 800; font-size: 13px; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; }
+        .mode-btn { flex: 1; padding: 12px; text-align: center; border-radius: 12px; border: none; background: transparent; color: var(--text-muted); font-weight: 800; font-size: 12px; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .mode-btn.active.blue { background: rgba(59, 130, 246, 0.15); color: var(--primary); box-shadow: 0 2px 10px rgba(59,130,246,0.2); }
         .mode-btn.active.green { background: rgba(16, 185, 129, 0.15); color: var(--success); box-shadow: 0 2px 10px rgba(16,185,129,0.2); }
 
+        /* INPUTS MODERNOS */
         .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        .input-group label { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .input-group input, .input-group select, .input-group textarea { width: 100%; background: var(--surface); border: 1px solid var(--surface-border); color: white; padding: 16px; border-radius: 14px; font-size: 15px; outline: none; transition: 0.2s; appearance: none; }
         .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .input-group textarea { resize: vertical; min-height: 80px; }
+        
+        /* FILTRO SECUNDÁRIO (DESTAQUE) */
+        .focus-select { border-color: var(--primary) !important; background: rgba(59, 130, 246, 0.05) !important; font-weight: 800; color: var(--primary) !important; }
+        .focus-select-green { border-color: var(--success) !important; background: rgba(16, 185, 129, 0.05) !important; font-weight: 800; color: var(--success) !important; }
+
         .row { display: flex; gap: 15px; }
         .row .input-group { flex: 1; margin-bottom: 15px; }
 
+        /* ZONA DINÂMICA DE EXERCÍCIO */
         .dynamic-zone { background: rgba(0,0,0,0.4); padding: 18px; border-radius: 16px; border: 1px dashed rgba(255,255,255,0.2); margin-top: 10px; margin-bottom: 20px; }
+        .dynamic-zone .input-group:last-child { margin-bottom: 0; }
 
+        /* BARRA DE AÇÃO INFERIOR FIXA */
         .bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 20px; background: rgba(5,5,10,0.95); backdrop-filter: blur(15px); border-top: 1px solid var(--surface-border); display: flex; gap: 12px; z-index: 50; }
         .btn-main { flex: 1; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 900; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; cursor: pointer; text-transform: uppercase; }
         .btn-main:active { transform: scale(0.95); }
+        .btn-main.green { background: var(--success); }
+        
+        /* BOTÃO PARA ABRIR O ARSENAL */
         .btn-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--surface); border: 1px solid var(--surface-border); display: flex; justify-content: center; align-items: center; color: var(--text-muted); transition: 0.2s; cursor: pointer; }
         .btn-icon:active { transform: scale(0.9); background: rgba(255,255,255,0.1); color: white; }
 
-        /* GAVETA DO ARSENAL */
+        /* GAVETA DO ARSENAL (MODAL QUE SOBE) */
         .arsenal-modal { position: fixed; top: 100%; left: 0; width: 100%; height: 100%; background: var(--bg); transition: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; }
         .arsenal-modal.open { top: 0; }
         .arsenal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--surface); border-bottom: 1px solid var(--surface-border); }
         .arsenal-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 
+        /* CARDS DO ARSENAL E SETAS DE REORDENAÇÃO */
         .exercise-card { background: var(--surface); border-left: 4px solid var(--primary); padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); position: relative; }
         .ex-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; background: rgba(255,255,255,0.1); }
         .ex-text { font-size: 15px; font-weight: 700; margin-bottom: 5px; color: white; }
-        .ex-details { font-size: 12px; color: #94A3B8; display: flex; flex-direction: column; gap: 4px; }
+        .ex-details { font-size: 12px; color: #94A3B8; display: flex; flex-direction: column; gap: 4px; line-height: 1.4; }
         
         .reorder-btns { display: flex; align-items: center; gap: 4px; }
-        .reorder-btn { background: rgba(255,255,255,0.05); border: none; color: white; cursor: pointer; border-radius: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .reorder-btn { background: rgba(255,255,255,0.05); border: none; color: white; cursor: pointer; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
         .reorder-btn:active { background: var(--primary); }
         .reorder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -65,37 +94,48 @@
     </div>
 
     <div class="content">
+        
         <div class="mode-toggle">
             <button class="mode-btn active blue" id="btn-estrutural" onclick="selectCore('estrutural')">
-                <span class="material-icons-round" style="font-size: 28px;">account_tree</span> Estrutural
+                <span class="material-icons-round" style="font-size: 28px;">account_tree</span>
+                Metodologia PTT
             </button>
             <button class="mode-btn" id="btn-performance" onclick="selectCore('performance')">
-                <span class="material-icons-round" style="font-size: 28px;">speed</span> Performance
+                <span class="material-icons-round" style="font-size: 28px;">speed</span>
+                4 Habilidades
             </button>
         </div>
 
         <input type="hidden" id="core-type" value="estrutural">
 
-        <div class="input-group">
-            <label>Alvo da Missão (Nó/Habilidade)</label>
-            <select id="nodeId" onchange="updateExerciseTypes(); loadSavedExercises();">
-                <optgroup label="🔵 NÚCLEO ESTRUTURAL" id="opt-estrutural">
-                    <option value="phonetics_1">Fonética 1: Sons e Vibrações</option>
-                    <option value="syntax_1">Sintaxe 1: Lógica SVO e Ordem</option>
-                    <option value="semantics_1">Semântica 1: Sentidos e Contexto</option>
-                </optgroup>
-                <optgroup label="🟢 NÚCLEO PERFORMANCE" id="opt-performance" class="hidden">
-                    <option value="skill_listening">🎧 Listening (Escuta)</option>
-                    <option value="skill_speaking">🎙️ Speaking (Fala)</option>
-                    <option value="skill_reading">📖 Reading (Leitura)</option>
-                    <option value="skill_writing">✍️ Writing (Escrita & Digitação)</option>
-                    <option value="skill_training">🏋️ Training (Treinamento Misto)</option>
-                </optgroup>
+        <div id="focus-estrutural-container" class="input-group">
+            <label>Qual Pilar de Atuação?</label>
+            <select id="focus-estrutural" class="focus-select" onchange="updateNodeOptions()">
+                <option value="logica">🧩 Lógica (Sintaxe)</option>
+                <option value="contexto">💬 Contexto (Semântica)</option>
+                <option value="som">🔊 Som (Fonética)</option>
             </select>
         </div>
 
+        <div id="focus-performance-container" class="input-group hidden">
+            <label>Qual Habilidade Alvo?</label>
+            <select id="focus-performance" class="focus-select-green" onchange="updateNodeOptions()">
+                <option value="listening">🎧 Listening (Escuta)</option>
+                <option value="speaking">🎙️ Speaking (Fala)</option>
+                <option value="reading">📖 Reading (Leitura)</option>
+                <option value="writing">✍️ Writing (Escrita)</option>
+                <option value="training">🏋️ Skills Training (Treino Mix)</option>
+            </select>
+        </div>
+
+        <div class="input-group" style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="color: white;"><span class="material-icons-round" style="font-size: 14px; vertical-align: middle;">gps_fixed</span> Destino da Injeção</label>
+            <select id="nodeId" onchange="updateExerciseTypes(); loadSavedExercises();" style="background: rgba(0,0,0,0.5); margin-top: 5px;">
+                </select>
+        </div>
+
         <div class="input-group">
-            <label>Mecânica de Combate (Tipo)</label>
+            <label>Mecânica do Exercício (Tipo)</label>
             <select id="type" onchange="toggleFields()"></select>
         </div>
 
@@ -103,7 +143,7 @@
             <div class="input-group">
                 <label>Dificuldade</label>
                 <select id="difficulty">
-                    <option value="1">Lvl 1 - Lento</option>
+                    <option value="1">Lvl 1 - Recruta (Lento)</option>
                     <option value="2">Lvl 2 - Base</option>
                     <option value="3">Lvl 3 - Médio</option>
                     <option value="4">Lvl 4 - Rápido</option>
@@ -121,7 +161,7 @@
         </div>
 
         <div class="input-group">
-            <label>Comando / Instrução</label>
+            <label>Comando / Instrução para o Aluno</label>
             <input type="text" id="text" placeholder="Ex: Traduza a frase..." required>
         </div>
 
@@ -129,18 +169,18 @@
 
         <div class="row">
             <div class="input-group">
-                <label>Objetivo Pedagógico</label>
+                <label>Objetivo (Foco)</label>
                 <input type="text" id="pedagogicObj" placeholder="Ex: Foco no Verbo To Be">
             </div>
             <div class="input-group">
-                <label>Tags</label>
+                <label>Tags (vírgula)</label>
                 <input type="text" id="tags" placeholder="Ex: travel, food">
             </div>
         </div>
 
         <div class="input-group">
             <label>Dica Neuro-Cognitiva (Exibida no erro)</label>
-            <textarea id="advTip" placeholder="Explique a lógica ou a posição da boca..."></textarea>
+            <textarea id="advTip" placeholder="Explique a lógica da regra ou a posição da boca..."></textarea>
         </div>
     </div>
 
@@ -149,82 +189,205 @@
             <span class="material-icons-round" style="font-size: 28px;">inventory_2</span>
         </button>
         <button class="btn-main" id="submitBtn" onclick="injectExercise()">
-            <span class="material-icons-round">rocket_launch</span> INJETAR
+            <span class="material-icons-round">rocket_launch</span> INJETAR MISSÃO
         </button>
     </div>
 
     <div id="arsenal-modal" class="arsenal-modal">
         <div class="arsenal-header">
             <h2 style="margin:0; font-size: 18px; color: var(--primary); display:flex; align-items:center; gap:8px;">
-                <span class="material-icons-round">inventory_2</span> Arsenal
+                <span class="material-icons-round">inventory_2</span> Arsenal de Missões
             </h2>
-            <button class="btn-icon" style="width: 40px; height: 40px;" onclick="closeArsenal()"><span class="material-icons-round">expand_more</span></button>
+            <button class="btn-icon" style="width: 40px; height: 40px;" onclick="closeArsenal()">
+                <span class="material-icons-round">expand_more</span>
+            </button>
         </div>
-        <div style="padding: 15px 20px 0 20px; font-size: 13px; color: var(--text-muted);" id="arsenal-status">A verificar base de dados...</div>
+        
+        <div style="padding: 15px 20px 0 20px; font-size: 13px; color: var(--text-muted);" id="arsenal-status">
+            A verificar base de dados...
+        </div>
+        
         <div id="arsenal-list" class="arsenal-list"></div>
+        
         <div style="padding: 20px; background: var(--surface); border-top: 1px solid var(--surface-border);">
             <button class="btn-main" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%;" id="clearBtn" onclick="clearPhase()">
-                <span class="material-icons-round">delete_sweep</span> Expurgo Total da Fase
+                <span class="material-icons-round">delete_sweep</span> Expurgo Total da Base
             </button>
         </div>
     </div>
 
     <script>
-        let currentArsenalList = []; // Guarda a lista em tempo real para podermos reordenar
+        let currentArsenalList = []; // Guarda a lista para reordenação local
 
+        // INICIALIZA O SISTEMA
+        window.onload = () => { selectCore('estrutural'); };
+
+        // 1. ALTERNA ENTRE METODOLOGIA E HABILIDADES
         function selectCore(core) {
             document.getElementById('core-type').value = core;
-            const btnEst = document.getElementById('btn-estrutural'); const btnPerf = document.getElementById('btn-performance');
-            const optEst = document.getElementById('opt-estrutural'); const optPerf = document.getElementById('opt-performance');
+            const btnEst = document.getElementById('btn-estrutural');
+            const btnPerf = document.getElementById('btn-performance');
+            const focusEst = document.getElementById('focus-estrutural-container');
+            const focusPerf = document.getElementById('focus-performance-container');
+            const submitBtn = document.getElementById('submitBtn');
 
             if(core === 'estrutural') {
                 btnEst.className = 'mode-btn active blue'; btnPerf.className = 'mode-btn';
-                optEst.classList.remove('hidden'); optPerf.classList.add('hidden');
-                document.getElementById('nodeId').value = 'phonetics_1';
+                focusEst.classList.remove('hidden'); focusPerf.classList.add('hidden');
+                submitBtn.className = 'btn-main';
             } else {
                 btnPerf.className = 'mode-btn active green'; btnEst.className = 'mode-btn';
-                optPerf.classList.remove('hidden'); optEst.classList.add('hidden');
-                document.getElementById('nodeId').value = 'skill_listening';
+                focusPerf.classList.remove('hidden'); focusEst.classList.add('hidden');
+                submitBtn.className = 'btn-main green'; 
             }
-            updateExerciseTypes(); loadSavedExercises();
+            updateNodeOptions();
         }
 
-        function openArsenal() { document.getElementById('arsenal-modal').classList.add('open'); loadSavedExercises(); }
-        function closeArsenal() { document.getElementById('arsenal-modal').classList.remove('open'); }
+        // 2. FUNIL INTELIGENTE: PREENCHE O DESTINO BASEADO NA ESCOLHA DO PILAR
+        function updateNodeOptions() {
+            const core = document.getElementById('core-type').value;
+            const nodeSelect = document.getElementById('nodeId');
+            nodeSelect.innerHTML = '';
 
+            if (core === 'estrutural') {
+                const focus = document.getElementById('focus-estrutural').value; 
+                if (focus === 'logica') {
+                    nodeSelect.innerHTML = `
+                        <option value="syntax_1">🧠 Parte Normal (Fase Lógica 1)</option>
+                        <option value="syntax_treino">⚡ Botão de Treino Diário (Lógica)</option>
+                    `;
+                } else if (focus === 'contexto') {
+                    nodeSelect.innerHTML = `
+                        <option value="semantics_1">💬 Parte Normal (Fase Contexto 1)</option>
+                        <option value="semantics_treino">⚡ Botão de Treino Diário (Contexto)</option>
+                    `;
+                } else if (focus === 'som') {
+                    nodeSelect.innerHTML = `
+                        <option value="phonetics_1">🔊 Parte Normal (Fase Som 1)</option>
+                        <option value="phonetics_treino">⚡ Botão de Treino Diário (Som)</option>
+                    `;
+                }
+            } else {
+                const focus = document.getElementById('focus-performance').value; 
+                if (focus === 'listening') nodeSelect.innerHTML = `<option value="skill_listening">🎧 Injeção para Área de Listening</option>`;
+                if (focus === 'speaking') nodeSelect.innerHTML = `<option value="skill_speaking">🎙️ Injeção para Área de Speaking</option>`;
+                if (focus === 'reading') nodeSelect.innerHTML = `<option value="skill_reading">📖 Injeção para Área de Reading</option>`;
+                if (focus === 'writing') nodeSelect.innerHTML = `<option value="skill_writing">✍️ Injeção para Área de Writing</option>`;
+                if (focus === 'training') nodeSelect.innerHTML = `<option value="skill_training">🏋️ Injeção para Skills Training (Treino Mix)</option>`;
+            }
+
+            updateExerciseTypes();
+            loadSavedExercises();
+        }
+
+        // 3. O CÉREBRO DAS OPÇÕES DINÂMICAS! (Adaptado aos novos IDs)
         function updateExerciseTypes() {
             const target = document.getElementById('nodeId').value;
             const typeSelect = document.getElementById('type');
             typeSelect.innerHTML = '';
-            if (target.startsWith('phonetics')) { typeSelect.innerHTML += `<option value="listen_isolate">🔊 Fonética: Isolar Som</option><option value="minimal_pair">🎧 Fonética: Comparação</option>`; } 
-            else if (target.startsWith('syntax')) { typeSelect.innerHTML += `<option value="syntax_assembly">🧩 Sintaxe: Montagem</option><option value="grammar_rules">📐 Sintaxe: Regra</option>`; } 
-            else if (target.startsWith('semantics')) { typeSelect.innerHTML += `<option value="meaning_match">🧠 Semântica: Significado</option><option value="context_cloze">📖 Semântica: Lacuna</option>`; } 
-            else if (target === 'skill_listening') { typeSelect.innerHTML += `<option value="dictation">⌨️ Dictation</option><option value="audio_comprehension">🎧 Compreensão</option>`; } 
-            else if (target === 'skill_speaking') { typeSelect.innerHTML += `<option value="repeat_sentence">🎙️ Fluência Rápida</option><option value="free_speech">💬 Resposta com IA</option>`; } 
-            else if (target === 'skill_reading') { typeSelect.innerHTML += `<option value="speed_reading">⚡ Speed Reading</option><option value="true_false">✅ V ou F</option>`; } 
-            else if (target === 'skill_writing') { typeSelect.innerHTML += `<option value="fast_typing">⌨️ Digitação Ágil</option><option value="translation">🌍 Tradução Imediata</option>`; } 
-            else if (target === 'skill_training') { typeSelect.innerHTML += `<option value="memorization">🔁 Memorização</option><option value="simultaneous_training">🔥 Treino 360</option>`; }
+
+            // Se for Som (Fonética)
+            if (target.startsWith('phonetics')) {
+                typeSelect.innerHTML += `<option value="listen_isolate">🔊 Fonética: Ouvir e Isolar Som</option>`;
+                typeSelect.innerHTML += `<option value="minimal_pair">🎧 Fonética: Comparação (Minimal Pairs)</option>`;
+            } 
+            // Se for Lógica (Sintaxe)
+            else if (target.startsWith('syntax')) {
+                typeSelect.innerHTML += `<option value="syntax_assembly">🧩 Sintaxe: Montagem Estrutural (SVO)</option>`;
+                typeSelect.innerHTML += `<option value="grammar_rules">📐 Sintaxe: Escolha a Regra Certa</option>`;
+            } 
+            // Se for Contexto (Semântica)
+            else if (target.startsWith('semantics')) {
+                typeSelect.innerHTML += `<option value="meaning_match">🧠 Semântica: Associação de Significado</option>`;
+                typeSelect.innerHTML += `<option value="context_cloze">📖 Semântica: Lacuna por Contexto</option>`;
+            } 
+            // Se for Habilidades
+            else if (target === 'skill_listening') {
+                typeSelect.innerHTML += `<option value="dictation">⌨️ Dictation (Ditado de Áudio)</option>`;
+                typeSelect.innerHTML += `<option value="audio_comprehension">🎧 Compreensão Auditiva (Quiz)</option>`;
+            } else if (target === 'skill_speaking') {
+                typeSelect.innerHTML += `<option value="repeat_sentence">🎙️ Fluência Rápida (Falar a Frase)</option>`;
+                typeSelect.innerHTML += `<option value="free_speech">💬 Resposta Aberta com IA</option>`;
+            } else if (target === 'skill_reading') {
+                typeSelect.innerHTML += `<option value="speed_reading">⚡ Speed Reading (Leitura Dinâmica)</option>`;
+                typeSelect.innerHTML += `<option value="true_false">✅ Verdadeiro ou Falso</option>`;
+            } else if (target === 'skill_writing') {
+                typeSelect.innerHTML += `<option value="fast_typing">⌨️ Digitação Ágil (Copiar rápido)</option>`;
+                typeSelect.innerHTML += `<option value="translation">🌍 Tradução Imediata (PT -> EN)</option>`;
+            } else if (target === 'skill_training') {
+                typeSelect.innerHTML += `<option value="memorization">🔁 Memorização Rápida (Spaced Repetition)</option>`;
+                typeSelect.innerHTML += `<option value="simultaneous_training">🔥 Treino 360 (Ouvir, Ler e Digitar)</option>`;
+            }
+            
             toggleFields();
         }
 
+        // 4. MOSTRA OS CAMPOS CERTOS PARA O EXERCÍCIO ESCOLHIDO
         function toggleFields() {
             const type = document.getElementById('type').value;
             const zone = document.getElementById('dynamic-zone');
-            if (type === 'listen_isolate' || type === 'meaning_match') zone.innerHTML = `<div class="input-group"><label style="color:var(--success);">Áudio TTS</label><input type="text" id="audioText"></div><div class="input-group"><label>IPA Fonético</label><input type="text" id="ipa"></div>`;
-            else if (type === 'minimal_pair' || type === 'audio_comprehension' || type === 'grammar_rules') zone.innerHTML = `<div class="input-group"><label>Opções (Vírgula)</label><input type="text" id="options"></div><div class="input-group"><label>Índice Correto (0, 1, 2)</label><input type="number" id="answer" value="0"></div><div class="input-group"><label style="color:var(--success);">Áudio Associado</label><input type="text" id="audioText"></div>`;
-            else if (type === 'syntax_assembly') zone.innerHTML = `<div class="input-group"><label>Blocos Desordenados</label><input type="text" id="options"></div><div class="input-group"><label>Frase Completa</label><input type="text" id="answerStr"></div>`;
-            else if (type === 'context_cloze') zone.innerHTML = `<div class="input-group"><label>Contexto Base</label><input type="text" id="context"></div><div class="input-group"><label>Opções (Vírgula)</label><input type="text" id="options"></div><div class="input-group"><label>Índice Correto</label><input type="number" id="answer" value="0"></div>`;
-            else if (type === 'dictation' || type === 'fast_typing' || type === 'translation') zone.innerHTML = `<div class="input-group"><label style="color:var(--success);">Áudio Suporte</label><input type="text" id="audioText"></div><div class="input-group"><label>Resposta Exata</label><input type="text" id="answerStr"></div>`;
-            else if (type === 'repeat_sentence' || type === 'free_speech') zone.innerHTML = `<div class="input-group"><label>Alvo Validação IA</label><input type="text" id="target"></div><div class="input-group"><label>Texto Exibido</label><input type="text" id="displayWord"></div>`;
-            else if (type === 'true_false') zone.innerHTML = `<div class="input-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
-            else if (type === 'simultaneous_training' || type === 'memorization') zone.innerHTML = `<div class="input-group"><label style="color:var(--success);">Áudio TTS</label><input type="text" id="audioText"></div><div class="input-group"><label>Tradução Exigida</label><input type="text" id="answerStr"></div>`;
+            
+            if (type === 'listen_isolate' || type === 'meaning_match') {
+                zone.innerHTML = `
+                    <div class="input-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pelo robô"></div>
+                    <div class="input-group"><label>IPA Fonético (opcional)</label><input type="text" id="ipa" placeholder="Ex: /pæt/"></div>`;
+            } else if (type === 'minimal_pair' || type === 'audio_comprehension' || type === 'grammar_rules') {
+                zone.innerHTML = `
+                    <div class="input-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Opção A, Opção B, Opção C"></div>
+                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
+                    <div class="input-group"><label style="color:var(--success);">Áudio Associado (Opcional)</label><input type="text" id="audioText" placeholder="Deixe em branco se não tiver áudio"></div>`;
+            } else if (type === 'syntax_assembly') {
+                zone.innerHTML = `
+                    <div class="input-group"><label>Blocos Desordenados (Vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
+                    <div class="input-group"><label>Frase Completa (Ordem SVO)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>`;
+            } else if (type === 'context_cloze') {
+                zone.innerHTML = `
+                    <div class="input-group"><label>Contexto Base</label><input type="text" id="context" placeholder="Situação inicial..."></div>
+                    <div class="input-group"><label>Opções (Vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
+                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>`;
+            } else if (type === 'dictation' || type === 'fast_typing' || type === 'translation') {
+                zone.innerHTML = `
+                    <div class="input-group"><label style="color:var(--success);">Áudio de Suporte (TTS)</label><input type="text" id="audioText" placeholder="Texto para tocar no fundo"></div>
+                    <div class="input-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="O que o aluno deve digitar..."></div>`;
+            } else if (type === 'repeat_sentence' || type === 'free_speech') {
+                zone.innerHTML = `
+                    <div class="input-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="Texto alvo"></div>
+                    <div class="input-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Texto formatado"></div>`;
+            } else if (type === 'true_false') {
+                zone.innerHTML = `
+                    <div class="input-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
+            } else if (type === 'simultaneous_training' || type === 'memorization') {
+                zone.innerHTML = `
+                    <div class="input-group"><label style="color:var(--success);">Áudio Disparado (TTS)</label><input type="text" id="audioText" placeholder="Texto falado"></div>
+                    <div class="input-group"><label>Ação ou Tradução Exigida (Atrás do Card)</label><input type="text" id="answerStr" placeholder="Significado ou ação..."></div>`;
+            }
         }
-        updateExerciseTypes();
+
+        // GESTÃO DA GAVETA ARSENAL
+        function openArsenal() { document.getElementById('arsenal-modal').classList.add('open'); loadSavedExercises(); }
+        function closeArsenal() { document.getElementById('arsenal-modal').classList.remove('open'); }
 
         async function injectExercise() {
             const btn = document.getElementById('submitBtn');
-            const type = document.getElementById('type').value; const core = document.getElementById('core-type').value; const targetId = document.getElementById('nodeId').value;
-            const payload = { core, nodeId: targetId, exercise: { type, difficulty: parseInt(document.getElementById('difficulty').value), voiceProfile: document.getElementById('voiceProfile').value, pedagogicalObjective: document.getElementById('pedagogicObj').value, tags: document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t), text: document.getElementById('text').value, advTip: document.getElementById('advTip').value } };
+            const originalContent = btn.innerHTML;
+            const type = document.getElementById('type').value;
+            const core = document.getElementById('core-type').value;
+            const targetId = document.getElementById('nodeId').value;
+            
+            const payload = {
+                core: core,
+                nodeId: targetId,
+                exercise: {
+                    type: type,
+                    difficulty: parseInt(document.getElementById('difficulty').value),
+                    voiceProfile: document.getElementById('voiceProfile').value,
+                    pedagogicalObjective: document.getElementById('pedagogicObj').value,
+                    tags: document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t),
+                    text: document.getElementById('text').value,
+                    advTip: document.getElementById('advTip').value
+                }
+            };
+
             const optEl = document.getElementById('options'); if (optEl) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
             const ansEl = document.getElementById('answer'); if (ansEl) payload.exercise.answer = parseInt(ansEl.value);
             const ansStrEl = document.getElementById('answerStr'); if (ansStrEl) payload.exercise.answer = ansStrEl.value.trim();
@@ -234,77 +397,96 @@
             const trgEl = document.getElementById('target'); if (trgEl) payload.exercise.target = trgEl.value;
             const dspEl = document.getElementById('displayWord'); if (dspEl) payload.exercise.displayWord = dspEl.value;
 
-            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Processando...`;
+            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A PROCESSAR...`;
+            
             try {
                 const res = await fetch('/api/english/admin/inject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
-                if (data.success) { btn.innerHTML = `<span class="material-icons-round">check_circle</span> Injetado!`; setTimeout(() => { btn.innerHTML = `<span class="material-icons-round">rocket_launch</span> INJETAR`; }, 2000); document.getElementById('text').value = ''; if(ansStrEl) ansStrEl.value = ''; loadSavedExercises(); } else alert(data.message);
-            } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; }
+                
+                if (data.success) {
+                    btn.innerHTML = `<span class="material-icons-round">check_circle</span> INJETADO COM SUCESSO!`;
+                    setTimeout(() => { btn.innerHTML = originalContent; }, 2000);
+                    document.getElementById('text').value = ''; if(ansStrEl) ansStrEl.value = '';
+                    loadSavedExercises(); 
+                } else alert(data.message || data.error);
+            } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; setTimeout(() => { btn.innerHTML = originalContent; }, 2000); }
         }
 
         async function loadSavedExercises() {
             const nodeId = document.getElementById('nodeId').value;
             const statusEl = document.getElementById('arsenal-status');
+            const listEl = document.getElementById('arsenal-list');
+            
             try {
                 const res = await fetch(`/api/english/node/${nodeId}`);
                 const data = await res.json();
+
                 if (data.success && data.exercises && data.exercises.length > 0) {
                     currentArsenalList = data.exercises;
-                    statusEl.innerHTML = `Foram encontrados <b style="color:white;">${data.exercises.length}</b> Armamentos.`;
+                    statusEl.innerHTML = `Foram encontrados <b style="color:white;">${data.exercises.length}</b> Armamentos nesta base.`;
                     renderArsenalUI();
                 } else {
                     currentArsenalList = [];
                     statusEl.innerText = "Aviso: Nenhuma missão cadastrada."; 
-                    document.getElementById('arsenal-list').innerHTML = `<div style="text-align:center; color:#64748B; padding:40px 20px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">inventory_2</span><br>Base Vazia.</div>`;
+                    listEl.innerHTML = `<div style="text-align:center; color:#64748B; padding:40px 20px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">inventory_2</span><br>Base Vazia.</div>`;
                 }
             } catch (e) { statusEl.innerText = "Falha ao conectar com a Base de Dados."; }
         }
 
         function renderArsenalUI() {
             const listEl = document.getElementById('arsenal-list'); listEl.innerHTML = '';
+            
             currentArsenalList.forEach((ex, index) => {
                 let skillName = ex.type.toUpperCase().replace('_', ' '); 
-                let detailsHtml = "";
+                let cssClass = "training"; let detailsHtml = "";
+
+                if (ex.type.includes('listen') || ex.type.includes('audio') || ex.type === 'dictation') cssClass = 'listening';
+                else if (ex.type.includes('repeat') || ex.type.includes('speech')) cssClass = 'speaking';
+                else if (ex.type.includes('reading') || ex.type.includes('cloze')) cssClass = 'reading';
+                else if (ex.type.includes('assembly') || ex.type.includes('typing') || ex.type === 'translation') cssClass = 'writing';
+
                 if (ex.options) detailsHtml += `<b>Opções:</b> ${ex.options.join(' | ')}<br>`;
                 if (ex.answer !== undefined) detailsHtml += `<b>Correto:</b> ${ex.answer}<br>`;
-                if (ex.target) detailsHtml += `<b>Alvo:</b> ${ex.target}<br>`;
+                if (ex.audioText) detailsHtml += `<b>Áudio:</b> ${ex.audioText}<br>`;
+                if (ex.target) detailsHtml += `<b>Validação IA:</b> ${ex.target}<br>`;
+
+                const tagHtml = (ex.tags && ex.tags.length > 0) ? `<div style="margin-top:5px; font-size:10px; color:var(--primary);">${ex.tags.map(t=>`#${t}`).join(' ')}</div>` : '';
 
                 // 🔥 BOTÕES DE REORDENAÇÃO (CIMA E BAIXO) 🔥
                 const arrowsHtml = `
                     <div class="reorder-btns">
-                        <button class="reorder-btn" onclick="moveExercise(${index}, -1)" ${index === 0 ? 'disabled' : ''}><span class="material-icons-round">arrow_upward</span></button>
-                        <button class="reorder-btn" onclick="moveExercise(${index}, 1)" ${index === currentArsenalList.length - 1 ? 'disabled' : ''}><span class="material-icons-round">arrow_downward</span></button>
-                        <span style="font-size:12px; color:var(--primary); font-weight:900; margin-left:8px;">#${index + 1}</span>
+                        <button class="reorder-btn" onclick="moveExercise(${index}, -1)" ${index === 0 ? 'disabled' : ''}><span class="material-icons-round">keyboard_arrow_up</span></button>
+                        <button class="reorder-btn" onclick="moveExercise(${index}, 1)" ${index === currentArsenalList.length - 1 ? 'disabled' : ''}><span class="material-icons-round">keyboard_arrow_down</span></button>
+                        <span style="font-size:11px; color:#64748B; font-weight:800; margin-left:5px;">Nº ${index + 1}</span>
                     </div>
                 `;
 
                 listEl.innerHTML += `
-                    <div class="exercise-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                    <div class="exercise-card ${cssClass}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                             <span class="ex-badge">${skillName}</span>
                             ${arrowsHtml}
                         </div>
                         <div class="ex-text">${ex.text || 'Sem instrução'}</div>
-                        <div class="ex-details">${detailsHtml}</div>
+                        <div class="ex-details">${detailsHtml}${tagHtml}</div>
                     </div>
                 `;
             });
         }
 
-        // 🔥 FUNÇÃO DE REORDENAÇÃO 🔥
+        // 🔥 FUNÇÃO DE TROCAR A ORDEM NO BANCO DE DADOS 🔥
         async function moveExercise(index, direction) {
             if (direction === -1 && index === 0) return;
             if (direction === 1 && index === currentArsenalList.length - 1) return;
 
-            // Troca os elementos de posição localmente
+            // Troca na RAM (Front-end)
             const temp = currentArsenalList[index];
             currentArsenalList[index] = currentArsenalList[index + direction];
             currentArsenalList[index + direction] = temp;
 
-            // Renderiza logo para sensação de rapidez
-            renderArsenalUI();
+            renderArsenalUI(); // Atualiza a tela de imediato
 
-            // Grava na Nuvem
+            // Dispara para salvar a nova ordem na nuvem
             try {
                 const res = await fetch('/api/english/admin/reorder', {
                     method: 'POST',
@@ -312,8 +494,14 @@
                     body: JSON.stringify({ nodeId: document.getElementById('nodeId').value, newOrder: currentArsenalList })
                 });
                 const data = await res.json();
-                if (!data.success) { alert("Erro ao salvar ordem no servidor."); loadSavedExercises(); }
-            } catch(e) { alert("Falha na rede ao reordenar."); loadSavedExercises(); }
+                if (!data.success) {
+                    alert("Erro ao salvar ordem no servidor.");
+                    loadSavedExercises(); 
+                }
+            } catch(e) {
+                alert("Falha na rede ao reordenar.");
+                loadSavedExercises(); 
+            }
         }
 
         async function clearPhase() {
