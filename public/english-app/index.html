@@ -9,7 +9,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            /* Tema Escuro para a Aula (Mantém Foco) */
+            /* Tema Escuro para a Aula */
             --bg-color: #05050A; 
             --card-bg: rgba(15, 23, 42, 0.7);
             --text-main: #F8FAFC;
@@ -19,59 +19,45 @@
             --som-color: #10B981;
             --logica-color: #3B82F6;
             --contexto-color: #8B5CF6;
+            --arena-color: #EC4899;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #F9FAFB; /* Fundo branco/cinza do App */ overflow-y: auto; overflow-x: hidden; }
+        body { background-color: #F9FAFB; overflow-y: auto; overflow-x: hidden; }
         .hidden { display: none !important; }
         .app-screen { min-height: 100dvh; display: flex; flex-direction: column; }
 
-        /* 🔥 DESIGN LIGHT (EXATO AO PRINT) 🔥 */
+        /* 🔥 DESIGN LIGHT DASHBOARD 🔥 */
         .light-dashboard { background-color: #F9FAFB; padding: 20px; color: #1E293B; }
-        
         .ld-section { margin-bottom: 30px; }
         .ld-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .ld-title { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 900; color: #334155; }
-        .ld-title img { width: 22px; height: 22px; }
-        
         .ld-badge { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 12px; letter-spacing: 0.5px; }
         .badge-purple { background: #F3E8FF; color: #9333EA; }
         .badge-blue { background: #DBEAFE; color: #2563EB; }
         .badge-teal { background: #CCFBF1; color: #0D9488; }
-
         .ld-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .ld-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-
-        /* Os Cartões Brancos */
         .ld-card { background: white; border-radius: 20px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.2s; }
         .ld-card:active { transform: scale(0.96); }
-        
-        /* O fundo colorido dos Ícones */
         .ld-icon-wrap { width: 55px; height: 55px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
         .ld-icon-wrap .material-icons-round { color: white; font-size: 28px; }
-        
         .ld-card h3 { font-size: 14px; font-weight: 800; color: #1E293B; margin-bottom: 4px; }
         .ld-card p { font-size: 11px; font-weight: 600; color: #94A3B8; margin: 0; }
-
         .ld-card.full-width { flex-direction: row; padding: 20px; text-align: left; justify-content: flex-start; gap: 15px; }
         .ld-card.full-width .ld-icon-wrap { margin-bottom: 0; flex-shrink: 0; }
         .ld-full-info { flex: 1; }
         .ld-full-info h3 { font-size: 16px; margin-bottom: 3px; }
-        .ld-arrow { color: #94A3B8; font-size: 24px; }
-
-        /* Cores exatas do Print */
+        
         .icon-logica { background: #8B5CF6; box-shadow: 0 4px 15px rgba(139,92,246,0.3); } 
         .icon-contexto { background: #F59E0B; box-shadow: 0 4px 15px rgba(245,158,11,0.3); } 
         .icon-som { background: #10B981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); } 
-        
         .icon-listening { background: #EF4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3); } 
         .icon-speaking { background: #3B82F6; box-shadow: 0 4px 15px rgba(59,130,246,0.3); } 
         .icon-reading { background: #6366F1; box-shadow: 0 4px 15px rgba(99,102,241,0.3); } 
         .icon-writing { background: #EC4899; box-shadow: 0 4px 15px rgba(236,72,153,0.3); } 
-        
         .icon-training { background: #06B6D4; box-shadow: 0 4px 15px rgba(6,182,212,0.3); } 
 
-        /* O Interruptor Estiloso Solo vs Arena */
         .mode-toggle-pill { display: flex; background: #E2E8F0; border-radius: 12px; padding: 4px; margin-bottom: 20px; }
         .mode-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 800; color: #64748B; cursor: pointer; border-radius: 10px; transition: 0.3s; }
         .mode-tab.active { background: white; color: #1E293B; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -79,8 +65,6 @@
         /* --- TELA DE MAPA (ESTRUTURAL) --- */
         .map-screen { background: var(--bg-color); color: var(--text-main); padding: 20px; }
         .map-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-        
-        /* Botão Novo de Treino Diário dentro do Mapa */
         .daily-workout-btn { background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; padding: 15px 20px; border-radius: 16px; font-size: 16px; font-weight: 900; width: 100%; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); transition: 0.2s; margin-bottom: 25px; }
         .daily-workout-btn:active { transform: scale(0.97); }
 
@@ -98,7 +82,13 @@
         .lesson-progress-container { flex: 1; margin: 0 20px; display: flex; gap: 5px; }
         .lesson-step { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; transition: 0.3s; }
         .lesson-step.active { background: var(--primary); }
-        
+        .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(16px); }
+
         .exercise-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px 0; width: 100%; }
         .ipa-text { font-family: monospace; font-size: 22px; color: var(--primary); font-weight: bold; margin-bottom: 10px; letter-spacing: 2px; }
         .instruction-text { font-size: 18px; font-weight: 800; margin-bottom: 25px; line-height: 1.4; width: 100%; }
@@ -109,6 +99,7 @@
         .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 20px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
 
+        /* Componentes de Exercício Dinâmicos */
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-top: 20px; }
         .option-btn { background: var(--card-bg); border: 2px solid rgba(255,255,255,0.1); padding: 20px 10px; border-radius: 16px; font-size: 18px; font-weight: 800; color: white; cursor: pointer; transition: 0.2s; }
         .option-btn.selected { border-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
@@ -120,7 +111,12 @@
         .word-pool { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; min-height: 80px; }
         .word-block { background: var(--card-bg); border: 2px solid rgba(255,255,255,0.1); padding: 12px 18px; border-radius: 12px; font-size: 18px; font-weight: 800; color: white; cursor: pointer; transition: 0.2s; }
         .word-block:active { transform: scale(0.9); }
+        
         .cloze-blank { display: inline-block; min-width: 60px; border-bottom: 3px solid var(--text-muted); padding: 0 5px; text-align: center; color: var(--primary); font-weight: 900; transition: 0.3s; }
+        
+        /* NOVO: Input de digitação de texto */
+        .text-input-exercise { width: 100%; padding: 15px 20px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; font-size: 18px; font-weight: 600; margin-top: 15px; outline: none; text-align: center; transition: 0.2s; }
+        .text-input-exercise:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(59,130,246,0.3); }
 
         .action-footer { margin-top: auto; padding-top: 20px; }
         .action-btn { background: var(--card-bg); color: var(--text-muted); border: none; padding: 18px; border-radius: 16px; font-size: 16px; font-weight: 900; width: 100%; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
@@ -130,12 +126,9 @@
         .feedback-text { min-height: 24px; font-weight: 800; margin-top: 15px; font-size: 14px; text-align: center; width: 100%; }
 
         .chic-btn { border: none; border-radius: 12px; cursor: pointer; transition: 0.2s; }
-
-        /* 🔥 HUD DE PERFORMANCE E ARENA 🔥 */
         .perf-hud { background: rgba(244, 63, 94, 0.1); border: 1px solid #F43F5E; border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.2); }
         .perf-timer { color: #F43F5E; font-family: monospace; font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 5px; }
         .perf-timer.urgent { animation: blinkRed 1s infinite; }
-        
         .arena-hud { background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(59, 130, 246, 0.15)); border: 1px solid var(--arena-color); border-radius: 12px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3); }
     </style>
 </head>
@@ -145,7 +138,7 @@
         
         <div class="ld-section">
             <div class="ld-header">
-                <div class="ld-title"><span class="material-icons-round" style="color: #334155;">layers</span> Método PTT</div>
+                <div class="ld-title"><span class="material-icons-round" style="color: #334155;">layers</span> Metodologia PTT</div>
                 <div class="ld-badge badge-purple">3 PILARES</div>
             </div>
             <div class="ld-grid-3">
@@ -203,13 +196,12 @@
             <div class="ld-card full-width" onclick="startTrainingWorkout()">
                 <div class="ld-icon-wrap icon-training"><span class="material-icons-round">camera</span></div>
                 <div class="ld-full-info">
-                    <h3>Training Completo</h3>
-                    <p>Integra método PTT + 4 habilidades</p>
+                    <h3>Skills Training</h3>
+                    <p>Mix de 4 Habilidades (4 Min)</p>
                 </div>
                 <span class="material-icons-round ld-arrow">chevron_right</span>
             </div>
         </div>
-
     </div>
 
     <div id="map-screen" class="app-screen map-screen hidden">
@@ -217,25 +209,13 @@
             <button class="icon-btn" onclick="backToDashboard()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; border:none; color:white; cursor:pointer;"><span class="material-icons-round">arrow_back</span></button>
             <div>
                 <h2 id="map-title" style="font-size: 20px; font-weight: 900;">Módulo</h2>
-                <p id="map-subtitle" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Executar missões na ordem</p>
+                <p id="map-subtitle" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Metodologia Base</p>
             </div>
         </div>
-
-        <button class="daily-workout-btn" onclick="startDailyWorkout()">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <span class="material-icons-round" style="font-size: 32px;">bolt</span>
-                <div style="text-align: left;">
-                    <div style="font-size: 16px; font-weight: 900;">Iniciar Treino Diário</div>
-                    <div style="font-size: 11px; font-weight: 600; opacity: 0.9;">Revisão de Fixação Rápida</div>
-                </div>
-            </div>
-            <span class="material-icons-round">play_circle_filled</span>
-        </button>
-        
         <div class="core-path" id="map-core-container"></div>
     </div>
 
-    <div id="lesson-screen" class="app-screen lesson-dark hidden">
+    <div id="lesson-screen" class="app-screen lesson-dark hidden" style="position: absolute; top:0; left:0; width:100%; z-index: 100;">
         <div class="lesson-header">
             <button class="icon-btn" onclick="abortLesson()" style="background: transparent; border:none; color:var(--text-muted); cursor:pointer;"><span class="material-icons-round">close</span></button>
             <div class="lesson-progress-container" id="lesson-progress"></div>
@@ -275,10 +255,20 @@
         const myId = localStorage.getItem('myId'); 
         const myName = localStorage.getItem('displayName') || 'Aluno VIP';
 
+        // O Catálogo reflete EXATAMENTE os nodes injetados pelo QG Admin
         const nodesCatalog = {
-            som: [{ id: 'som_1', type: 'core', title: '/p/ vs /b/', desc: 'Consoantes Bilabiais', icon: 'record_voice_over' }],
-            logica: [{ id: 'logica_1', type: 'core', title: 'Ordem SVO', desc: 'Estrutura Base', icon: 'account_tree' }],
-            contexto: [{ id: 'contexto_1', type: 'core', title: 'Sobrevivência', desc: 'Básico', icon: 'directions' }]
+            som: [
+                { id: 'phonetics_1', type: 'core', title: 'Fase Base: Som', desc: 'Conhecimento Estrutural', icon: 'record_voice_over' },
+                { id: 'phonetics_treino', type: 'core', title: 'Treino Diário de Som', desc: 'Fixação do Pilar', icon: 'bolt' }
+            ],
+            logica: [
+                { id: 'syntax_1', type: 'core', title: 'Fase Base: Lógica', desc: 'Estrutura SVO', icon: 'account_tree' },
+                { id: 'syntax_treino', type: 'core', title: 'Treino Diário de Lógica', desc: 'Fixação do Pilar', icon: 'bolt' }
+            ],
+            contexto: [
+                { id: 'semantics_1', type: 'core', title: 'Fase Base: Contexto', desc: 'Sentido e Significado', icon: 'directions' },
+                { id: 'semantics_treino', type: 'core', title: 'Treino Diário de Contexto', desc: 'Fixação do Pilar', icon: 'bolt' }
+            ]
         };
 
         const currentExerciseQueue = [];
@@ -287,234 +277,151 @@
         let currentExercise = null; let selectedOption = null; let stepState = 'ready'; 
         let exerciseStartTime = 0; let assembledSentence = []; let poolWords = [];
 
-        let currentActiveMode = 'solo'; // solo | arena
-
-        // ⏱️ VARIAVEIS DE PERFORMANCE 
-        let isPerformanceMode = false;
-        let currentPerfSkill = '';
-        let perfTimerInterval = null;
-        let perfSecondsRemaining = 0;
-
-        let socket = null;
-        let isArenaMode = false;
-        let arenaRoomId = null;
-        let opponentData = null;
-        let myArenaScore = 0;
-        let opponentArenaScore = 0;
+        let currentActiveMode = 'solo'; 
+        let isPerformanceMode = false; let currentPerfSkill = '';
+        let perfTimerInterval = null; let perfSecondsRemaining = 0;
+        let socket = null; let isArenaMode = false; let arenaRoomId = null; let opponentData = null;
+        let myArenaScore = 0; let opponentArenaScore = 0;
 
         window.addEventListener('DOMContentLoaded', async () => {
             if(!myId) return;
-            
-            // 🌐 INICIA O RADAR ONLINE
             if(typeof io !== 'undefined') {
                 socket = io();
-                
                 socket.on('english_arena_waiting', (data) => {
-                    const area = document.getElementById('exercise-area');
-                    area.innerHTML = `
+                    document.getElementById('exercise-area').innerHTML = `
                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
                             <div class="material-icons-round" style="font-size: 60px; color: var(--arena-color); animation: pulse 1s infinite;">wifi_tethering</div>
                             <h3 style="margin-top:20px; color:white;">Procurando Oponente...</h3>
                             <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">${data.message}</p>
-                            <button class="chic-btn" style="margin-top:30px; background: rgba(255,255,255,0.1); color: white; padding: 10px 20px; border-radius: 12px; border:none;" onclick="cancelMatchmaking()">Cancelar Batalha</button>
+                            <button class="chic-btn" style="margin-top:30px; background: rgba(255,255,255,0.1); color: white; padding: 10px 20px; border-radius: 12px;" onclick="cancelMatchmaking()">Cancelar Batalha</button>
                         </div>`;
                 });
 
                 socket.on('english_arena_match_found', async (data) => {
-                    arenaRoomId = data.roomId;
-                    const { p1, p2, skill } = data;
-                    opponentData = p1.id === myId ? p2 : p1;
-                    
+                    arenaRoomId = data.roomId; opponentData = data.p1.id === myId ? data.p2 : data.p1;
                     myArenaScore = 0; opponentArenaScore = 0;
-                    
                     try {
-                        const res = await fetch(`/api/english/skill/${skill}`);
-                        const fetch_data = await res.json();
-                        
+                        const res = await fetch(`/api/english/skill/${data.skill}`); const fetch_data = await res.json();
                         if (fetch_data.success && fetch_data.exercises.length > 0) { 
                             currentExerciseQueue.length = 0; currentExerciseQueue.push(...fetch_data.exercises); 
-                            currentNodeId = 'arena_' + skill; exerciseIndex = 0;
-                            
+                            currentNodeId = 'arena_' + data.skill; exerciseIndex = 0;
                             const progressContainer = document.getElementById('lesson-progress'); progressContainer.innerHTML = '';
                             currentExerciseQueue.forEach((_, i) => progressContainer.innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                            
                             document.getElementById('btn-action').classList.remove('hidden');
                             document.getElementById('arena-hud').classList.remove('hidden');
                             document.getElementById('arena-opp-name').innerText = opponentData.name.toUpperCase();
-                            updateArenaHud();
-                            
-                            loadExercise();
-                        } else { alert("Erro ao carregar missão da Arena."); cancelMatchmaking(); }
-                    } catch (e) { alert("Falha na comunicação."); cancelMatchmaking(); }
+                            updateArenaHud(); loadExercise();
+                        } else { alert("Erro ao carregar missão."); cancelMatchmaking(); }
+                    } catch (e) { alert("Falha na rede."); cancelMatchmaking(); }
                 });
 
-                socket.on('opponent_progress', (data) => {
-                    opponentArenaScore += data.score;
-                    updateArenaHud();
-                });
-
-                socket.on('opponent_left_arena', () => {
-                    if(isArenaMode) {
-                        alert("Oponente fugiu! Vitória atribuída a você.");
-                        isArenaMode = false; finishLesson(true);
-                    }
-                });
+                socket.on('opponent_progress', (data) => { opponentArenaScore += data.score; updateArenaHud(); });
+                socket.on('opponent_left_arena', () => { if(isArenaMode) { alert("Oponente fugiu! Vitória W.O."); isArenaMode = false; finishLesson(true); } });
             }
         });
 
         function switchMode(mode) {
             currentActiveMode = mode;
             if(mode === 'solo') {
-                document.getElementById('tab-solo').classList.add('active');
-                document.getElementById('tab-arena').classList.remove('active');
+                document.getElementById('tab-solo').classList.add('active'); document.getElementById('tab-arena').classList.remove('active');
             } else {
-                document.getElementById('tab-arena').classList.add('active');
-                document.getElementById('tab-solo').classList.remove('active');
+                document.getElementById('tab-arena').classList.add('active'); document.getElementById('tab-solo').classList.remove('active');
             }
         }
 
         function handleSkillClick(skill) {
-            if(currentActiveMode === 'solo') {
-                startSkillWorkout(skill);
-            } else {
-                openArenaMatchmaking(skill);
-            }
+            if(currentActiveMode === 'solo') startSkillWorkout(skill);
+            else openArenaMatchmaking(skill);
         }
 
-        // ===============================================
-        // 🎤 VOZ E CRONÓMETRO (HUDs)
-        // ===============================================
+        // MIC & TTS ADVANCED
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; let recognizer = null;
         if (SpeechRecognition) {
             recognizer = new SpeechRecognition(); recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
             recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
             recognizer.onspeechend = () => stopMic();
-            recognizer.onerror = (e) => { stopMic(); setFeedback("Erro na escuta.", "var(--danger)"); };
+            recognizer.onerror = () => { stopMic(); setFeedback("Erro na escuta.", "var(--danger)"); };
         }
-        function toggleMic() { if(!recognizer) return alert("Microfone não suportado."); const micBtn = document.getElementById('mic-btn'); if(isRecording) stopMic(); else { try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } catch(e) { stopMic(); } } }
-        function stopMic() { if (!isRecording) return; isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); try { recognizer.stop(); } catch(e) {} document.getElementById('mic-status').innerText = "Processando..."; }
+        function toggleMic() { if(!recognizer) return alert("Microfone indisponível."); const micBtn = document.getElementById('mic-btn'); if(isRecording) stopMic(); else { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } }
+        function stopMic() { if (!isRecording) return; isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); try { recognizer.stop(); }catch(e){} document.getElementById('mic-status').innerText = "Falar"; }
 
-        // 🟢 TIMER DE 4 MINUTOS (240 Segundos)
         function startPerfTimer(seconds) {
-            clearInterval(perfTimerInterval); 
-            perfSecondsRemaining = seconds; // Passado 240 na loadExercise
-            updateTimerUI();
+            clearInterval(perfTimerInterval); perfSecondsRemaining = seconds; updateTimerUI();
             document.getElementById('perf-timer-display').classList.remove('urgent');
-            
             perfTimerInterval = setInterval(() => {
-                perfSecondsRemaining--; 
-                updateTimerUI();
+                perfSecondsRemaining--; updateTimerUI();
                 if (perfSecondsRemaining <= 10) document.getElementById('perf-timer-display').classList.add('urgent');
                 if(perfSecondsRemaining <= 0) { clearInterval(perfTimerInterval); handleTimeOut(); }
             }, 1000);
         }
-        
-        function updateTimerUI() { 
-            const m = Math.floor(perfSecondsRemaining / 60).toString().padStart(2, '0');
-            const s = (perfSecondsRemaining % 60).toString().padStart(2, '0');
-            document.getElementById('perf-time-value').innerText = `${m}:${s}`; 
-        }
+        function updateTimerUI() { const m = Math.floor(perfSecondsRemaining / 60).toString().padStart(2, '0'); const s = (perfSecondsRemaining % 60).toString().padStart(2, '0'); document.getElementById('perf-time-value').innerText = `${m}:${s}`; }
         function stopPerfTimer() { clearInterval(perfTimerInterval); document.getElementById('perf-timer-display').classList.remove('urgent'); }
-        
-        function updateArenaHud() {
-            document.getElementById('arena-my-score').innerText = `${myArenaScore}`;
-            document.getElementById('arena-opp-score').innerText = `${opponentArenaScore}`;
-        }
+        function updateArenaHud() { document.getElementById('arena-my-score').innerText = `${myArenaScore}`; document.getElementById('arena-opp-score').innerText = `${opponentArenaScore}`; }
 
-        // ===============================================
-        // 🚀 INÍCIO DE MÓDULOS 
-        // ===============================================
         function openMap(track) {
-            currentTrack = track; 
-            document.getElementById('dashboard-screen').classList.add('hidden'); 
-            document.getElementById('map-screen').classList.remove('hidden');
-            
-            const titles = { 'som': 'Som (Fonética)', 'logica': 'Lógica (Sintaxe)', 'contexto': 'Contexto (Semântica)' }; 
-            document.getElementById('map-title').innerText = titles[track];
-            
-            const coreContainer = document.getElementById('map-core-container'); 
-            const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
-            
+            currentTrack = track; document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('map-screen').classList.remove('hidden');
+            const titles = { 'som': 'Som (Fonética)', 'logica': 'Lógica (Sintaxe)', 'contexto': 'Contexto (Semântica)' }; document.getElementById('map-title').innerText = titles[track];
+            const coreContainer = document.getElementById('map-core-container'); const color = track === 'som' ? 'var(--som-color)' : track === 'logica' ? 'var(--logica-color)' : 'var(--contexto-color)';
             coreContainer.innerHTML = '';
             (nodesCatalog[track] || []).forEach((node) => {
-                const btnClass = 'unlocked'; const clickAction = `onclick="startNodeLesson('${node.id}')"`; const bgStyle = `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;`;
-                coreContainer.innerHTML += `<div class="node-wrapper"><div class="node-btn ${btnClass}" ${clickAction} style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; color: white;">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
+                const btnClass = 'unlocked'; const bgStyle = `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;`;
+                // Se for Treino Diário, usa ícone de Raio e botão diferente
+                if(node.id.includes('treino')) {
+                    coreContainer.innerHTML += `<button class="daily-workout-btn" onclick="startNodeLesson('${node.id}')" style="background: ${color}; box-shadow: 0 10px 25px ${color}50;"><div style="display: flex; align-items: center; gap: 15px;"><span class="material-icons-round" style="font-size: 32px;">${node.icon}</span><div style="text-align: left;"><div style="font-size: 16px; font-weight: 900;">${node.title}</div><div style="font-size: 11px; font-weight: 600; opacity: 0.9;">${node.desc}</div></div></div><span class="material-icons-round">play_circle_filled</span></button>`;
+                } else {
+                    coreContainer.innerHTML += `<div class="node-wrapper"><div class="node-btn ${btnClass}" onclick="startNodeLesson('${node.id}')" style="${bgStyle}"><span class="material-icons-round" style="font-size: 32px; color: white;">${node.icon}</span></div><div class="node-label">${node.title}</div><div class="node-desc">${node.desc}</div></div>`;
+                }
             });
         }
-        
         function backToDashboard() { document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); }
+
+        async function startNodeLesson(nodeId) {
+            isArenaMode = false; isPerformanceMode = false; currentPerfSkill = ''; currentNodeId = nodeId;
+            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden'); 
+            document.getElementById('exercise-area').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A buscar missão no QG...</h3></div>`;
+            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('arena-hud').classList.add('hidden'); document.getElementById('performance-hud').classList.add('hidden');
+            document.getElementById('lesson-type-badge').innerText = nodeId.includes('treino') ? "TREINO DIÁRIO" : "AULA ESTRUTURAL";
+
+            try {
+                const res = await fetch(`/api/english/node/${nodeId}`); const data = await res.json();
+                if (data.success && data.exercises.length > 0) { 
+                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); exerciseIndex = 0;
+                    document.getElementById('lesson-progress').innerHTML = '';
+                    currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
+                    document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
+                } else { alert("Nenhum exercício injetado neste nó ainda."); abortLesson(); }
+            } catch (e) { abortLesson(); } 
+        }
 
         async function startSkillWorkout(skill) {
             isArenaMode = false; isPerformanceMode = true; currentPerfSkill = skill;
-            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('lesson-screen').classList.remove('hidden'); 
-            
-            const area = document.getElementById('exercise-area');
-            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A montar treino Solo...</h3></div>`;
+            document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden'); 
+            document.getElementById('exercise-area').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A montar treino Solo...</h3></div>`;
             document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = ''; document.getElementById('arena-hud').classList.add('hidden');
+            document.getElementById('lesson-type-badge').innerText = "PERFORMANCE";
 
             try {
                 const res = await fetch(`/api/english/skill/${skill}`); const data = await res.json();
                 if (data.success && data.exercises.length > 0) { 
-                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
-                    currentNodeId = 'skill_' + skill; exerciseIndex = 0;
+                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); currentNodeId = 'skill_' + skill; exerciseIndex = 0;
                     currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
                     document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
-                } else { alert(data.message || "Sem exercícios no QG."); abortLesson(); }
+                } else { alert("Sem exercícios disponíveis no QG."); abortLesson(); }
             } catch (e) { abortLesson(); } 
         }
 
         async function startTrainingWorkout() { startSkillWorkout('mix'); } 
-
         function openArenaMatchmaking(skill) {
-            if(!socket) return alert("Radar Offline. Tente recarregar o aplicativo.");
+            if(!socket) return alert("Radar Offline.");
             isArenaMode = true; isPerformanceMode = true; currentPerfSkill = skill;
-            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('lesson-screen').classList.remove('hidden');
-            
-            const area = document.getElementById('exercise-area');
-            area.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
-                    <div class="material-icons-round" style="font-size: 60px; color: var(--arena-color); animation: pulse 1s infinite;">wifi_tethering</div>
-                    <h3 style="margin-top:20px; color:white;">Procurando Oponente...</h3>
-                    <button class="chic-btn" style="margin-top:30px; background: rgba(255,255,255,0.1); color: white; padding: 10px 20px; border-radius: 12px; border:none;" onclick="cancelMatchmaking()">Cancelar Batalha</button>
-                </div>`;
-            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = '';
-            document.getElementById('performance-hud').classList.add('hidden'); document.getElementById('arena-hud').classList.add('hidden');
-            
+            document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden');
+            document.getElementById('exercise-area').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 60px; color: var(--arena-color); animation: pulse 1s infinite;">wifi_tethering</div><h3 style="margin-top:20px; color:white;">Procurando Oponente...</h3><button class="chic-btn" style="margin-top:30px; background: rgba(255,255,255,0.1); color: white; padding: 10px 20px;" onclick="cancelMatchmaking()">Cancelar</button></div>`;
+            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('performance-hud').classList.add('hidden'); document.getElementById('arena-hud').classList.add('hidden');
             socket.emit('join_english_arena', { userId: myId, userName: myName, skill: skill });
         }
+        function cancelMatchmaking() { if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId); else if(socket) socket.emit('leave_english_arena', 'queue'); isArenaMode = false; abortLesson(); }
 
-        function cancelMatchmaking() {
-            if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
-            else if (socket) socket.emit('leave_english_arena', 'queue');
-            isArenaMode = false; abortLesson();
-        }
-
-        // TREINO DIÁRIO DOS PILARES
-        async function startDailyWorkout() {
-            isArenaMode = false; isPerformanceMode = false; currentPerfSkill = '';
-            document.getElementById('map-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('lesson-screen').classList.remove('hidden'); 
-            
-            const area = document.getElementById('exercise-area');
-            area.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: #F59E0B; animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A montar Treino Diário...</h3></div>`;
-            document.getElementById('btn-action').classList.add('hidden'); document.getElementById('lesson-progress').innerHTML = ''; document.getElementById('arena-hud').classList.add('hidden'); document.getElementById('performance-hud').classList.add('hidden');
-
-            try {
-                const res = await fetch(`/api/english/daily/${myId}`); const data = await res.json();
-                if (data.success && data.exercises.length > 0) { 
-                    currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); 
-                    currentNodeId = 'daily'; exerciseIndex = 0;
-                    currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
-                    document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
-                } else { alert("Nenhum exercício diário disponível hoje."); abortLesson(); }
-            } catch (e) { abortLesson(); } 
-        }
-
-        // ===============================================
-        // 🎮 MOTOR DO EXERCÍCIO (UI)
-        // ===============================================
+        // 🔥 MOTOR DE RENDERIZAÇÃO UNIVERSAL 🔥
         function loadExercise() {
             if (exerciseIndex >= currentExerciseQueue.length) { finishLesson(); return; }
             currentExercise = currentExerciseQueue[exerciseIndex];
@@ -522,139 +429,149 @@
             document.getElementById('lesson-feedback').innerText = '';
             document.getElementById('btn-action').className = "action-btn"; document.getElementById('btn-action').innerText = "Verificar";
             
-            const steps = document.querySelectorAll('.lesson-step');
-            steps.forEach((s, i) => s.className = i <= exerciseIndex ? 'lesson-step active' : 'lesson-step');
+            document.querySelectorAll('.lesson-step').forEach((s, i) => s.className = i <= exerciseIndex ? 'lesson-step active' : 'lesson-step');
 
             if (isPerformanceMode) {
                 document.getElementById('performance-hud').classList.remove('hidden');
                 document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'MIX (4 MIN)' : currentPerfSkill.toUpperCase();
-                
-                // 🟢 SE O CRONOMETRO ESTIVER PARADO, INICIA COM 4 MINUTOS (240 Seg) 🟢
-                if(perfSecondsRemaining <= 0) {
-                    startPerfTimer(240); 
-                }
-            } else {
-                document.getElementById('performance-hud').classList.add('hidden');
-                document.getElementById('lesson-type-badge').innerText = "ESTRUTURAL";
+                if(perfSecondsRemaining <= 0) startPerfTimer(240); 
             }
 
-            const area = document.getElementById('exercise-area'); let html = '';
+            const area = document.getElementById('exercise-area'); 
+            
             const ipaBlock = (isAdvancedMode && currentExercise.ipa) ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
             const advBlock = (isAdvancedMode && currentExercise.advTip) ? `<div class="advanced-tip"><span class="material-icons-round">psychology</span> ${currentExercise.advTip}</div>` : '';
+            const ctxBlock = currentExercise.context ? `<div style="font-size:16px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div>` : '';
+            const ttsBtn = currentExercise.audioText ? `<button class="play-btn" onclick="playTTS('${currentExercise.audioText.replace(/'/g, "\\'")}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>` : '';
+            
+            let instructionText = currentExercise.text;
+            // Se for cloze e tiver "___", sublinha bonito
+            if(currentExercise.type.includes('cloze')) instructionText = instructionText.replace('___', '<span class="cloze-blank" id="cloze-blank"></span>');
 
-            if (currentExercise.type === 'listen_isolate') {
-                const audioTxt = currentExercise.audioText || currentExercise.text;
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>`;
+            const instBlock = `<div class="instruction-text" style="${currentExercise.type.includes('cloze') ? 'font-size: 24px;' : ''}">${instructionText}</div>`;
+
+            // CLASSIFICAÇÃO DA MECÂNICA
+            const isMultipleChoice = ['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false', 'minimal_pair', 'context_cloze'].includes(currentExercise.type);
+            const isAssembly = ['reorder_sentence', 'build_sentence', 'syntax_assembly', 'sentence_assembly'].includes(currentExercise.type);
+            const isTyping = ['find_error', 'dictation', 'fast_typing', 'translation', 'simultaneous_training', 'memorization'].includes(currentExercise.type);
+            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word'].includes(currentExercise.type);
+            const isListenIsolate = currentExercise.type === 'listen_isolate';
+
+            let html = '';
+            if (isMultipleChoice) {
+                let optsHtml = currentExercise.options ? `<div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="${currentExercise.type.includes('cloze') ? `selectClozeOption(${i})` : `selectOption(${i})`}">${opt}</div>`).join('')}</div>` : '';
+                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}${ttsBtn}${optsHtml}`;
+            } else if (isAssembly) {
+                assembledSentence = []; poolWords = currentExercise.options ? [...currentExercise.options] : [];
+                html = `${advBlock}${ctxBlock}${instBlock}${ttsBtn}<div class="assembly-workspace" id="assembly-workspace"></div>`;
+            } else if (isTyping) {
+                html = `${advBlock}${ctxBlock}${instBlock}${ttsBtn}<input type="text" id="typing-answer" class="text-input-exercise" placeholder="Digite a resposta exata..." autocomplete="off">`;
+                setTimeout(() => { const inp = document.getElementById('typing-answer'); if(inp) { inp.focus(); inp.addEventListener('input', () => { document.getElementById('btn-action').className = "action-btn ready"; }); } }, 100);
+            } else if (isSpeech) {
+                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}<div class="target-word">${currentExercise.displayWord || ''}</div>${ttsBtn}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>`;
+            } else if (isListenIsolate) {
+                html = `${ipaBlock}${advBlock}${instBlock}${ttsBtn}`;
                 document.getElementById('btn-action').innerText = "Continuar"; document.getElementById('btn-action').className = "action-btn ready";
-            } else if (currentExercise.type === 'minimal_pair') {
-                const audioTxt = currentExercise.audioText || currentExercise.options[currentExercise.answer];
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><button class="play-btn" onclick="playTTS('${audioTxt}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>`;
-            } else if (currentExercise.type.startsWith('repeat')) {
-                html = `${ipaBlock}${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="target-word">${currentExercise.displayWord}</div><button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>`;
-            } else if (currentExercise.type === 'sentence_assembly') {
-                assembledSentence = []; poolWords = [...currentExercise.options];
-                html = `${advBlock}<div class="instruction-text">${currentExercise.text}</div><div class="assembly-workspace" id="assembly-workspace"></div>`;
-            } else if (currentExercise.type === 'context_cloze') {
-                html = `${advBlock}<div style="font-size:14px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div><div class="instruction-text" id="cloze-text" style="font-size: 24px;">${currentExercise.text.replace('___', '<span class="cloze-blank"></span>')}</div><div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectClozeOption(${i})">${opt}</div>`).join('')}</div>`;
-            }
+            } else { html = `<div style="color:var(--danger);">Mecânica "${currentExercise.type}" não suportada.</div>`; }
 
             area.innerHTML = html;
-            if (currentExercise.type === 'sentence_assembly') renderAssemblyWorkspace();
+            if (isAssembly) renderAssemblyWorkspace();
         }
 
-        // LÓGICA DE RESPOSTAS
-        function playTTS(text) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; window.speechSynthesis.speak(u); }
+        // 🔥 TTS INTELIGENTE (Lê os perfis do QG)
+        function playTTS(text) { 
+            const u = new SpeechSynthesisUtterance(text); 
+            u.lang = 'en-US'; let pitch = 1; let rate = 1;
+            if(currentExercise.voiceProfile) {
+                if(currentExercise.voiceProfile.includes('GB')) u.lang = 'en-GB';
+                if(currentExercise.voiceProfile.includes('boy') || currentExercise.voiceProfile.includes('girl')) pitch = 1.4;
+                if(currentExercise.voiceProfile.includes('young')) { pitch = 1.2; rate = 1.1; }
+                if(currentExercise.voiceProfile === 'audiobook') { pitch = 0.9; rate = 0.85; }
+            }
+            u.pitch = pitch; u.rate = rate; window.speechSynthesis.speak(u); 
+        }
+
         function selectOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('btn-action').className = "action-btn ready"; }
-        function selectClozeOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('cloze-text').innerHTML = currentExercise.text.replace('___', `<span class="cloze-blank" style="color:var(--contexto-color); border-color:var(--contexto-color);">${currentExercise.options[idx]}</span>`); document.getElementById('btn-action').className = "action-btn ready"; }
-        function renderAssemblyWorkspace() { const workspace = document.getElementById('assembly-workspace'); if(!workspace) return; let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join(''); let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join(''); workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque...</span>'}</div><div class="word-pool">${poolHtml}</div>`; if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn"; }
+        function selectClozeOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('cloze-blank').innerHTML = currentExercise.options[idx]; document.getElementById('cloze-blank').style.color = "var(--contexto-color)"; document.getElementById('cloze-blank').style.borderColor = "var(--contexto-color)"; document.getElementById('btn-action').className = "action-btn ready"; }
+        function renderAssemblyWorkspace() { const workspace = document.getElementById('assembly-workspace'); if(!workspace) return; let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join(''); let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join(''); workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras...</span>'}</div><div class="word-pool">${poolHtml}</div>`; if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn"; }
         function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
         function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
 
         function handleTimeOut() { 
-            if(stepState !== 'ready') return; 
-            if(isRecording) stopMic(); 
-            setFeedback("Tempo de Treino Esgotado!", "var(--danger)"); 
-            document.getElementById('btn-action').className = "action-btn"; 
-            document.getElementById('btn-action').innerText = "Ver Resultados"; 
-            stepState = 'verified'; 
-            
+            if(stepState !== 'ready') return; if(isRecording) stopMic(); 
+            setFeedback("Tempo Esgotado!", "var(--danger)"); document.getElementById('btn-action').className = "action-btn"; document.getElementById('btn-action').innerText = "Ver Resultados"; stepState = 'verified'; 
             setTimeout(() => { finishLesson(); }, 1500); 
         }
         
-        function evaluateSpeech(transcript) { const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase(); let score = (cleanT.includes(target) || target.includes(cleanT)) ? 95 : 40; if(score>90){ setFeedback("Excelente!", "var(--som-color)"); document.getElementById('btn-action').className = "action-btn success"; } else setFeedback("Requer ajuste.", "var(--danger)"); document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); }
+        function evaluateSpeech(transcript) { 
+            const cleanT = transcript.toLowerCase().trim(); const target = (currentExercise.target || currentExercise.displayWord || "").toLowerCase().trim(); 
+            let score = (cleanT.includes(target) || target.includes(cleanT)) ? 95 : 40; 
+            if(score>90){ setFeedback("Excelente pronúncia!", "var(--som-color)"); document.getElementById('btn-action').className = "action-btn success"; } else setFeedback("Requer ajuste. Tente ler exatamente a frase.", "var(--danger)"); 
+            document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); 
+        }
 
+        // 🔥 MOTOR DE VALIDAÇÃO UNIVERSAL 🔥
         function handleLessonAction() {
             if (currentExercise.type === 'listen_isolate') { verifyAndSendScore(100); return; } 
             if (stepState === 'verified') { exerciseIndex++; loadExercise(); return; }
             if (stepState !== 'ready') return;
 
             let score = 0; const btn = document.getElementById('btn-action');
+            
+            const isMultipleChoice = ['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false', 'minimal_pair', 'context_cloze'].includes(currentExercise.type);
+            const isAssembly = ['reorder_sentence', 'build_sentence', 'syntax_assembly', 'sentence_assembly'].includes(currentExercise.type);
+            const isTyping = ['find_error', 'dictation', 'fast_typing', 'translation', 'simultaneous_training', 'memorization'].includes(currentExercise.type);
+            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word'].includes(currentExercise.type);
 
-            if (currentExercise.type === 'sentence_assembly') {
+            if (isAssembly) {
                 if (assembledSentence.length === 0) return alert("Monte a frase!"); 
-                if (assembledSentence.join(' ') === currentExercise.answer) { setFeedback("Perfeito!", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
-                else { setFeedback(`Incorreto. Era:\n"${currentExercise.answer}"`, "var(--danger)"); score = 20; }
-            } else if (currentExercise.type === 'minimal_pair' || currentExercise.type === 'context_cloze') {
+                const uAns = assembledSentence.join(' ').toLowerCase().trim(); const eAns = (currentExercise.answerStr || currentExercise.answer || "").toString().toLowerCase().trim();
+                if (uAns === eAns) { setFeedback("Perfeito!", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
+                else { setFeedback(`Incorreto. Era:\n"${currentExercise.answerStr || currentExercise.answer}"`, "var(--danger)"); score = 20; }
+            } else if (isMultipleChoice) {
                 if (selectedOption === null) return alert("Selecione uma opção!"); 
                 if (selectedOption === currentExercise.answer) { setFeedback("Correto!", "var(--som-color)"); btn.className = "action-btn success"; score = 100; document.querySelectorAll('.option-btn')[selectedOption].classList.add('correct'); } 
                 else { setFeedback("Incorreto.", "var(--danger)"); score = 20; document.querySelectorAll('.option-btn')[selectedOption].classList.add('wrong'); document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct'); }
-            } else if (currentExercise.type.startsWith('repeat')) { return alert("Grave sua voz!"); }
+            } else if (isTyping) {
+                const inputEl = document.getElementById('typing-answer');
+                if(!inputEl || !inputEl.value.trim()) return alert("Digite algo para verificar!");
+                const uAns = inputEl.value.trim().toLowerCase(); const eAns = (currentExercise.answerStr || currentExercise.answer || "").toString().toLowerCase().trim();
+                if (uAns === eAns || (currentExercise.target && uAns.includes(currentExercise.target.toLowerCase()))) { setFeedback("Exato!", "var(--som-color)"); btn.className = "action-btn success"; score = 100; } 
+                else { setFeedback(`Incorreto. O sistema esperava:\n"${currentExercise.answerStr || currentExercise.answer}"`, "var(--danger)"); score = 20; }
+            } else if (isSpeech) { return alert("Aperte o microfone e fale a frase."); }
 
             btn.innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score);
         }
 
         function verifyAndSendScore(score) {
-            if(isArenaMode && socket && arenaRoomId) {
-                myArenaScore += score; updateArenaHud();
-                socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex });
-            }
+            if(isArenaMode && socket && arenaRoomId) { myArenaScore += score; updateArenaHud(); socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex }); }
             sendAttemptToBackend(score);
-            
-            if(currentExercise.type === 'listen_isolate') {
-                exerciseIndex++; loadExercise();
-            }
+            if(currentExercise.type === 'listen_isolate') { exerciseIndex++; loadExercise(); }
         }
 
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
         
         async function sendAttemptToBackend(score) {
             if(!myId) return; const timeTaken = Date.now() - exerciseStartTime;
-            if (isPerformanceMode) {
-                fetch('/api/english/performance/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken }) }).catch(e=>{});
-            } else {
-                fetch('/api/english/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, nodeId: currentNodeId, exerciseId: currentExercise.id, score: score, timeMs: timeTaken }) }).catch(e=>{});
-            }
+            if (isPerformanceMode) fetch('/api/english/performance/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken }) }).catch(e=>{});
+            else fetch('/api/english/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, nodeId: currentNodeId, exerciseId: currentExercise.id, score: score, timeMs: timeTaken }) }).catch(e=>{});
         }
 
         function finishLesson(wonByWO = false) {
-            stopPerfTimer();
-            document.getElementById('performance-hud').classList.add('hidden');
+            stopPerfTimer(); document.getElementById('performance-hud').classList.add('hidden');
             let resultHtml = '';
-            
             if (isArenaMode) {
                 const won = wonByWO || (myArenaScore >= opponentArenaScore);
-                resultHtml = `
-                    <span class="material-icons-round" style="font-size:80px; color:${won ? '#10B981' : '#EF4444'}; margin-bottom:20px;">${won ? 'emoji_events' : 'sentiment_dissatisfied'}</span>
-                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color:${won ? '#10B981' : '#EF4444'};">${won ? 'VITÓRIA NA ARENA!' : 'DERROTA'}</h2>
-                    <p style="color:var(--text-muted); font-weight:600;">Placar Final: Você ${myArenaScore} x ${opponentArenaScore} ${opponentData ? opponentData.name : 'Oponente'}</p>
-                `;
+                resultHtml = `<span class="material-icons-round" style="font-size:80px; color:${won ? '#10B981' : '#EF4444'}; margin-bottom:20px;">${won ? 'emoji_events' : 'sentiment_dissatisfied'}</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color:${won ? '#10B981' : '#EF4444'};">${won ? 'VITÓRIA NA ARENA!' : 'DERROTA'}</h2><p style="color:var(--text-muted); font-weight:600;">Placar: Você ${myArenaScore} x ${opponentArenaScore} ${opponentData ? opponentData.name : 'Oponente'}</p>`;
                 if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
             } else if (isPerformanceMode) {
-                resultHtml = `
-                    <span class="material-icons-round" style="font-size:80px; color:var(--primary); margin-bottom:20px;">emoji_events</span>
-                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Treino Concluído!</h2>
-                    <p style="color:var(--text-muted); font-weight:600;">Métricas de Fluência salvas com sucesso.</p>
-                `;
+                resultHtml = `<span class="material-icons-round" style="font-size:80px; color:var(--primary); margin-bottom:20px;">emoji_events</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Treino Concluído!</h2><p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados.</p>`;
             } else {
-                resultHtml = `
-                    <span class="material-icons-round" style="font-size:80px; color:#F59E0B; margin-bottom:20px;">bolt</span>
-                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Missão Estrutural Concluída!</h2>
-                    <p style="color:var(--text-muted); font-weight:600;">O seu Domínio Macro foi atualizado.</p>
-                `;
+                resultHtml = `<span class="material-icons-round" style="font-size:80px; color:#F59E0B; margin-bottom:20px;">bolt</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Missão Estrutural Concluída!</h2><p style="color:var(--text-muted); font-weight:600;">Domínio Macro atualizado.</p>`;
             }
 
             document.getElementById('exercise-area').innerHTML = resultHtml;
-            document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
+            document.getElementById('btn-action').innerText = "Voltar ao Início"; document.getElementById('btn-action').className = "action-btn ready";
             document.getElementById('btn-action').onclick = () => {
                 isArenaMode = false; arenaRoomId = null; perfSecondsRemaining = 0;
                 document.getElementById('arena-hud').classList.add('hidden');
@@ -664,7 +581,7 @@
         }
 
         function abortLesson() {
-            if(confirm("Abandonar treino e perder progresso?")) { 
+            if(confirm("Abandonar missão? (Progresso não salvo)")) { 
                 stopPerfTimer(); perfSecondsRemaining = 0;
                 if(isRecording) stopMic(); window.speechSynthesis.cancel(); 
                 if(isArenaMode && socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
@@ -672,7 +589,6 @@
                 document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); 
             }
         }
-        
     </script>
 </body>
 </html>
