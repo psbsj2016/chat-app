@@ -159,7 +159,6 @@ window.openBulkCreateGroupModal = function() {
     openCreateGroupModal(usersOnly.map(u => u.id)); clearContactSelection();
 };
 
-// 🟢 CORREÇÃO: BUSCA AS COMUNIDADES EM TEMPO REAL PARA EVITAR O ERRO
 window.openBulkCommunityInviteModal = async function() {
     const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
     if(usersOnly.length === 0) return alert("Selecione contatos válidos.");
@@ -169,7 +168,7 @@ window.openBulkCommunityInviteModal = async function() {
     try {
         const res = await fetch(`/communities/user/${myId}`);
         const allComms = await res.json();
-        const ownedComms = allComms.filter(c => c && c.ownerId === myId); // Apenas as que o usuario eh General
+        const ownedComms = allComms.filter(c => c && c.ownerId === myId);
         
         if(ownedComms.length === 0) { list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Você não é General de nenhuma Comunidade.</div>'; return; }
         
@@ -221,7 +220,6 @@ window.handleInChatSearch = function(query) {
 window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) return; currentSearchIndex += dir; if (currentSearchIndex >= chatSearchMatches.length) currentSearchIndex = 0; if (currentSearchIndex < 0) currentSearchIndex = chatSearchMatches.length - 1; updateSearchHighlight(); };
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
-
 
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
@@ -673,7 +671,6 @@ function renderContactsList(groups, users) {
     const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
-    // Render Grupos
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -707,7 +704,6 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
-    // Render Usuários
     visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
@@ -751,7 +747,6 @@ async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
-// 🟢 FUNÇÃO DISPLAY MESSAGE WHATSAPP STYLE 🟢
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); 
     const msgDateObj = new Date(msg.timestamp || Date.now()); const dateStr = getChatDateString(msgDateObj);
@@ -980,92 +975,262 @@ window.showCurrentChatProfile = async function() {
     }
 };
 
-window.openInviteToGroupModal = async function(groupId) {
-    try {
-        const resGroups = await fetch(`/group/${groupId}`);
-        const group = await resGroups.json();
-        const currentMemberIds = group.members.map(m => m._id);
+// ==============================================================
+// ➕ SISTEMA FAB: NOVO CONTATO E GRUPOS (RESTAURADO E BLINDADO)
+// ==============================================================
+window.toggleFab = function() {
+    const options = document.getElementById('fab-options');
+    const mainBtn = document.getElementById('main-fab-btn');
+    if (!options) return;
+    
+    if (options.style.display === 'flex') {
+        options.style.opacity = '0';
+        options.style.transform = 'translateY(10px)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
+        setTimeout(() => { options.style.display = 'none'; }, 200);
+    } else {
+        options.style.display = 'flex';
+        options.style.flexDirection = 'column';
+        options.style.gap = '10px';
+        options.style.position = 'absolute';
+        options.style.bottom = '80px';
+        options.style.right = '0';
+        options.style.transition = 'all 0.2s';
+        
+        // Força a renderização para a animação ocorrer
+        void options.offsetWidth; 
+        
+        options.style.opacity = '1';
+        options.style.transform = 'translateY(0)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
+    }
+};
 
-        const resUsers = await fetch(`/users/${myId}`);
-        const allUsers = await resUsers.json();
+// 🟢 FUNÇÃO: ABRIR TELA DE BUSCA DE CONTATO
+window.openAddContactScreen = function() {
+    document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
+    const screen = document.getElementById('add-contact-screen');
+    if (screen) screen.classList.remove('hidden');
+    
+    const input = document.getElementById('exact-search-input');
+    if (input) input.value = '';
+    const res = document.getElementById('exact-search-result');
+    if (res) res.innerHTML = '';
+};
+
+// 🟢 FUNÇÃO: PESQUISAR USUÁRIO NO RADAR
+window.executeExactSearch = async function() {
+    const term = document.getElementById('exact-search-input').value.trim().toLowerCase();
+    if(!term) return alert("Digite o e-mail ou nome exato.");
+    
+    const resDiv = document.getElementById('exact-search-result');
+    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando na Nuvem...</div>';
+    
+    try {
+        // Primeiro tenta encontrar na cache para não sobrecarregar
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        const foundLocal = cachedUsers.find(u => (u.email && u.email.toLowerCase() === term) || (u.displayName && u.displayName.toLowerCase() === term) || (u.phone && u.phone === term));
         
-        const candidates = allUsers.filter(u => !currentMemberIds.includes(u._id));
-        
-        let modal = document.getElementById('invite-group-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'invite-group-modal';
-            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
-            document.body.appendChild(modal);
+        if(foundLocal) {
+            renderExactSearchResult(foundLocal, resDiv);
+            return;
         }
 
-        if (candidates.length === 0) { alert("Não há novos contatos disponíveis."); return; }
-
-        let candidatesHtml = candidates.map(u => {
-            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-            const name = u.displayName || u.email.split('@')[0];
-            return `
-                <label style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
-                    <input type="checkbox" value="${u._id}" class="invite-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);">
-                    <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
-                    <span style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
-                </label>
-            `;
-        }).join('');
-
-        modal.innerHTML = `
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:380px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height:85vh; display:flex; flex-direction:column;">
-                <h3 style="color:var(--text-color); font-weight:900; font-size:20px; margin-bottom:15px; display:flex; justify-content:center; align-items:center; gap:8px;"><span class="material-icons-round" style="color:var(--brand-primary);">person_add</span> Reforços</h3>
-                <div style="overflow-y:auto; flex:1; text-align:left; margin-bottom:20px; padding-right:5px;">
-                    ${candidatesHtml}
-                </div>
-                <div style="display:flex; gap:12px;">
-                    <button onclick="document.getElementById('invite-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('invite-group-modal').style.display='none',300);" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color); border:1px solid var(--border-color, rgba(255,255,255,0.1));">Cancelar</button>
-                    <button onclick="submitInviteToGroup('${groupId}')" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Adicionar Tropa</button>
-                </div>
-            </div>
-        `;
+        // Se não achar, vai no servidor pesquisar
+        const response = await fetch(`/users/search/exact?term=${encodeURIComponent(term)}`);
         
+        // Se a rota não existir, tenta bater na lista global do usuário
+        if(response.status === 404) {
+            const fallbackRes = await fetch(`/users/${myId}`);
+            const allUsers = await fallbackRes.json();
+            const foundServer = allUsers.find(u => (u.email && u.email.toLowerCase() === term) || (u.displayName && u.displayName.toLowerCase() === term) || (u.phone && u.phone === term));
+            
+            if(foundServer) renderExactSearchResult(foundServer, resDiv);
+            else resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Contato não encontrado. Verifique o termo.</div>';
+            return;
+        }
+
+        const data = await response.json();
+        
+        if(data.success && data.user) {
+            renderExactSearchResult(data.user, resDiv);
+        } else {
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Contato não encontrado no radar.</div>';
+        }
+    } catch(e) {
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o QG.</div>';
+    }
+};
+
+window.renderExactSearchResult = function(u, resDiv) {
+    if(u._id === myId) {
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Você não pode adicionar a si mesmo.</div>';
+        return;
+    }
+    const name = u.displayName || u.email.split('@')[0];
+    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    
+    resDiv.innerHTML = `
+        <div style="background: var(--input-bg); border: 1px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            <div style="flex: 1; text-align: left;">
+                <div style="font-weight: 800; color: white;">${name}</div>
+                <div style="font-size: 12px; color: var(--text-muted);">${u.email}</div>
+            </div>
+            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px;">
+                <span class="material-icons-round" style="font-size: 24px;">chat</span>
+            </button>
+        </div>
+    `;
+};
+
+window.startChatWithNewUser = function(id, name, photo, email) {
+    document.getElementById('add-contact-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    openChat(id, name, photo, email, 'user');
+    
+    // Força o contato a aparecer na lista atirando uma mensagem "fantasma" do sistema
+    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
+};
+
+// 🟢 FUNÇÃO: ABRIR TELA DE CRIAR GRUPO
+window.openCreateGroupModal = async function(preselectedIds = []) {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
         modal.style.display = 'flex';
         setTimeout(() => modal.style.opacity = '1', 10);
-    } catch(e) { console.error(e); alert("Erro ao buscar reforços."); }
-}
-
-window.submitInviteToGroup = async function(groupId) {
-    const checkboxes = document.querySelectorAll('.invite-checkbox:checked');
-    const userIds = Array.from(checkboxes).map(cb => cb.value);
-    if(userIds.length === 0) return alert("Selecione pelo menos um recruta.");
-    try { 
-        await fetch(`/groups/${groupId}/add-members`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userIds }) }); 
-        document.getElementById('invite-group-modal').style.opacity = '0'; setTimeout(() => document.getElementById('invite-group-modal').style.display = 'none', 300);
-        socket.emit('group_updated'); showCurrentChatProfile();
-    } catch(e) { alert('Erro ao adicionar membros'); }
-}
-
-window.editGroupDescription = async function(groupId, currentDesc) {
-    const newDesc = prompt("Descreva o propósito deste esquadrão:", currentDesc);
-    if (newDesc !== null) {
-        try {
-            await fetch(`/groups/${groupId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: newDesc }) });
-            showCurrentChatProfile(); 
-        } catch(e) { alert("Erro ao comunicar com o servidor."); }
     }
-}
-
-window.uploadAndUpdateGroupPhoto = async function(groupId, input) {
-    const file = input.files[0]; if(!file) return; 
-    const fd = new FormData(); fd.append('file', file); 
+    
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-search-input').value = '';
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
+    
     try {
-        const res = await fetch('/upload', {method:'POST', body:fd}); 
-        const data = await res.json(); 
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        if (cachedUsers.length > 0) {
+            window.groupCandidates = cachedUsers;
+            renderGroupCandidates(cachedUsers, preselectedIds);
+        }
         
-        await fetch(`/groups/${groupId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ photoUrl: data.url })
+        const res = await fetch(`/users/${myId}`);
+        const users = await res.json();
+        window.groupCandidates = users;
+        renderGroupCandidates(users, preselectedIds);
+    } catch(e) {
+        if(list.innerHTML.includes('Carregando')) {
+            list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>';
+        }
+    }
+};
+
+window.renderGroupCandidates = function(users, preselectedIds = []) {
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '';
+    if(users.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível.</div>';
+        return;
+    }
+    
+    users.forEach(u => {
+        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
+        const name = u.displayName || u.email.split('@')[0];
+        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        list.innerHTML += `
+            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
+                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
+                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
+            </label>
+        `;
+    });
+};
+
+window.filterGroupContacts = function(query) {
+    const term = query.toLowerCase();
+    const items = document.querySelectorAll('.group-candidate-item');
+    items.forEach(item => {
+        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
+        if(name.includes(term)) item.style.display = 'flex';
+        else item.style.display = 'none';
+    });
+};
+
+window.closeCreateGroup = function() {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300);
+    }
+};
+
+// 🟢 FUNÇÃO: SUBMETER E FORJAR O GRUPO NA BASE DE DADOS
+window.submitCreateGroup = async function() {
+    const name = document.getElementById('group-name-input').value.trim();
+    if(!name) return alert("Dê um nome para a Tropa.");
+    
+    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
+    const members = Array.from(checkboxes).map(cb => cb.value);
+    if(members.length === 0) return alert("Recrute pelo menos um membro.");
+    
+    members.push(myId); // Garante que o criador entra no grupo
+
+    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
+
+    try {
+        const imgEl = document.getElementById('new-group-photo');
+        let photoUrl = imgEl.src;
+        if(photoUrl.includes('166258.png')) photoUrl = ''; 
+
+        // Tenta a rota REST principal
+        const res = await fetch('/groups', { 
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, members, admin: myId, photoUrl })
         });
         
-        socket.emit('group_updated');
-        showCurrentChatProfile(); 
-    } catch(e) { alert("Erro ao atualizar a foto da tropa."); }
-}
+        let data;
+        if(res.status === 404) {
+            // Rota de fallback caso a principal seja diferente no backend
+            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, admin: myId, photoUrl }) });
+            data = await res2.json();
+        } else {
+            data = await res.json();
+        }
+
+        if(data.success || data._id) {
+            closeCreateGroup();
+            socket.emit('group_updated');
+            loadContacts();
+            
+            const gId = data.group ? data.group._id : data._id;
+            const gName = data.group ? data.group.name : data.name;
+            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
+            
+            openChat(gId, gName, gPhoto, 'Grupo', 'group');
+        } else {
+            alert(data.error || "Falha na criação da base de dados.");
+        }
+    } catch(e) {
+        alert("Erro de comunicação com o QG.");
+    } finally {
+        btn.innerText = originalText;
+    }
+};
+
+window.uploadNewGroupPhoto = async function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/upload', {method:'POST', body:fd});
+        const data = await res.json();
+        document.getElementById('new-group-photo').src = data.url;
+    } catch(e) {
+        alert("Erro ao enviar foto para a nuvem.");
+    }
+};

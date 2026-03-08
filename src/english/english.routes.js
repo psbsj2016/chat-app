@@ -12,19 +12,16 @@ router.get('/node/:nodeId', EnglishController.getNodeExercises);
 // ==========================================
 // 🛡️ ROTAS DO QUARTEL GENERAL (ADMIN)
 // ==========================================
-router.post('/admin/inject', EnglishController.injectUniversalExercise); // 🔥 NOVA ROTA DO SUPER QG!
-router.post('/admin/exercise', EnglishController.addExerciseToNode); // Mantida por segurança (Antiga)
+router.post('/admin/inject', EnglishController.injectUniversalExercise); 
+router.post('/admin/exercise', EnglishController.addExerciseToNode); 
 router.post('/admin/clear', EnglishController.clearNodeExercises);
+router.post('/admin/reorder', EnglishController.reorderExercises); // 🔥 NOVA ROTA DE REORGANIZAÇÃO
 
 // ==========================================
 // 🎓 ROTAS DO APLICATIVO (ALUNOS E LEITURA)
 // ==========================================
-
-// Rotas de Treinamento Específico (As 4 Habilidades e Academia)
 router.get('/skill/:skill', EnglishController.getWorkoutBySkill);
 router.get('/training/mix', EnglishController.getTrainingWorkout);
-
-// Rotas de Métricas de Performance (Isoladas da área Estrutural)
 router.post('/performance/attempt', EnglishController.savePerformanceAttempt);
 router.get('/performance/stats/:userId', EnglishController.getPerformanceStats);
 
