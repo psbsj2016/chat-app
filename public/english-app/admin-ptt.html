@@ -143,33 +143,36 @@
             <div class="input-group">
                 <label>Dificuldade</label>
                 <select id="difficulty">
-                    <option value="1">Lvl 1 - Recruta (Lento)</option>
-                    <option value="2">Lvl 2 - Base</option>
-                    <option value="3">Lvl 3 - Médio</option>
-                    <option value="4">Lvl 4 - Rápido</option>
-                    <option value="5">Lvl 5 - Nativo</option>
+                    <option value="1">Lvl 1 - Iniciante (Lento)</option>
+                    <option value="2">Lvl 2 - Básico</option>
+                    <option value="3">Lvl 3 - Intermediário</option>
+                    <option value="4">Lvl 4 - Avançado</option>
+                    <option value="5">Lvl 5 - Fluente (Rápido)</option>
                 </select>
             </div>
             <div class="input-group">
                 <label>Voz da IA (TTS)</label>
                 <select id="voiceProfile">
-                    <option value="en-US-male">🇺🇸 US Masc</option>
-                    <option value="en-US-female">🇺🇸 US Fem</option>
-                    <option value="en-GB-male">🇬🇧 UK Masc</option>
+                    <option value="en-US-male">🇺🇸 US Masculino Adulto</option>
+                    <option value="en-US-female">🇺🇸 US Feminino Adulto</option>
+                    <option value="en-US-boy">🇺🇸 US Infantil Masc.</option>
+                    <option value="en-US-girl">🇺🇸 US Infantil Fem.</option>
+                    <option value="en-GB-male">🇬🇧 UK Masculino Adulto</option>
+                    <option value="en-GB-female">🇬🇧 UK Feminino Adulto</option>
                 </select>
             </div>
         </div>
 
         <div class="input-group">
-            <label>Comando / Instrução para o Aluno</label>
-            <input type="text" id="text" placeholder="Ex: Traduza a frase..." required>
+            <label>Instrução Exibida na Tela</label>
+            <input type="text" id="text" placeholder="Ex: Ordene as palavras corretamente..." required>
         </div>
 
         <div id="dynamic-zone" class="dynamic-zone"></div>
 
         <div class="row">
             <div class="input-group">
-                <label>Objetivo (Foco)</label>
+                <label>Objetivo</label>
                 <input type="text" id="pedagogicObj" placeholder="Ex: Foco no Verbo To Be">
             </div>
             <div class="input-group">
@@ -179,8 +182,8 @@
         </div>
 
         <div class="input-group">
-            <label>Dica Neuro-Cognitiva (Exibida no erro)</label>
-            <textarea id="advTip" placeholder="Explique a lógica da regra ou a posição da boca..."></textarea>
+            <label>Feedback Automático (Exibido no Erro/Dica)</label>
+            <textarea id="advTip" placeholder="Explique a regra sintática, o sentido da palavra ou a posição da boca..."></textarea>
         </div>
     </div>
 
@@ -217,12 +220,10 @@
     </div>
 
     <script>
-        let currentArsenalList = []; // Guarda a lista para reordenação local
+        let currentArsenalList = []; 
 
-        // INICIALIZA O SISTEMA
         window.onload = () => { selectCore('estrutural'); };
 
-        // 1. ALTERNA ENTRE METODOLOGIA E HABILIDADES
         function selectCore(core) {
             document.getElementById('core-type').value = core;
             const btnEst = document.getElementById('btn-estrutural');
@@ -243,7 +244,6 @@
             updateNodeOptions();
         }
 
-        // 2. FUNIL INTELIGENTE: PREENCHE O DESTINO BASEADO NA ESCOLHA DO PILAR
         function updateNodeOptions() {
             const core = document.getElementById('core-type').value;
             const nodeSelect = document.getElementById('nodeId');
@@ -252,20 +252,11 @@
             if (core === 'estrutural') {
                 const focus = document.getElementById('focus-estrutural').value; 
                 if (focus === 'logica') {
-                    nodeSelect.innerHTML = `
-                        <option value="syntax_1">🧠 Parte Normal (Fase Lógica 1)</option>
-                        <option value="syntax_treino">⚡ Botão de Treino Diário (Lógica)</option>
-                    `;
+                    nodeSelect.innerHTML = `<option value="syntax_1">🧠 Parte Normal (Fase Lógica 1)</option><option value="syntax_treino">⚡ Botão de Treino Diário (Lógica)</option>`;
                 } else if (focus === 'contexto') {
-                    nodeSelect.innerHTML = `
-                        <option value="semantics_1">💬 Parte Normal (Fase Contexto 1)</option>
-                        <option value="semantics_treino">⚡ Botão de Treino Diário (Contexto)</option>
-                    `;
+                    nodeSelect.innerHTML = `<option value="semantics_1">💬 Parte Normal (Fase Contexto 1)</option><option value="semantics_treino">⚡ Botão de Treino Diário (Contexto)</option>`;
                 } else if (focus === 'som') {
-                    nodeSelect.innerHTML = `
-                        <option value="phonetics_1">🔊 Parte Normal (Fase Som 1)</option>
-                        <option value="phonetics_treino">⚡ Botão de Treino Diário (Som)</option>
-                    `;
+                    nodeSelect.innerHTML = `<option value="phonetics_1">🔊 Parte Normal (Fase Som 1)</option><option value="phonetics_treino">⚡ Botão de Treino Diário (Som)</option>`;
                 }
             } else {
                 const focus = document.getElementById('focus-performance').value; 
@@ -280,90 +271,100 @@
             loadSavedExercises();
         }
 
-        // 3. O CÉREBRO DAS OPÇÕES DINÂMICAS! (Adaptado aos novos IDs)
+        // 🔥 O NOVO CÉREBRO PEDAGÓGICO: MECÂNICAS EXATAS 🔥
         function updateExerciseTypes() {
-            const target = document.getElementById('nodeId').value;
+            const focusEst = document.getElementById('focus-estrutural').value;
+            const core = document.getElementById('core-type').value;
             const typeSelect = document.getElementById('type');
             typeSelect.innerHTML = '';
 
-            // Se for Som (Fonética)
-            if (target.startsWith('phonetics')) {
-                typeSelect.innerHTML += `<option value="listen_isolate">🔊 Fonética: Ouvir e Isolar Som</option>`;
-                typeSelect.innerHTML += `<option value="minimal_pair">🎧 Fonética: Comparação (Minimal Pairs)</option>`;
-            } 
-            // Se for Lógica (Sintaxe)
-            else if (target.startsWith('syntax')) {
-                typeSelect.innerHTML += `<option value="syntax_assembly">🧩 Sintaxe: Montagem Estrutural (SVO)</option>`;
-                typeSelect.innerHTML += `<option value="grammar_rules">📐 Sintaxe: Escolha a Regra Certa</option>`;
-            } 
-            // Se for Contexto (Semântica)
-            else if (target.startsWith('semantics')) {
-                typeSelect.innerHTML += `<option value="meaning_match">🧠 Semântica: Associação de Significado</option>`;
-                typeSelect.innerHTML += `<option value="context_cloze">📖 Semântica: Lacuna por Contexto</option>`;
-            } 
-            // Se for Habilidades
-            else if (target === 'skill_listening') {
-                typeSelect.innerHTML += `<option value="dictation">⌨️ Dictation (Ditado de Áudio)</option>`;
-                typeSelect.innerHTML += `<option value="audio_comprehension">🎧 Compreensão Auditiva (Quiz)</option>`;
-            } else if (target === 'skill_speaking') {
-                typeSelect.innerHTML += `<option value="repeat_sentence">🎙️ Fluência Rápida (Falar a Frase)</option>`;
-                typeSelect.innerHTML += `<option value="free_speech">💬 Resposta Aberta com IA</option>`;
-            } else if (target === 'skill_reading') {
-                typeSelect.innerHTML += `<option value="speed_reading">⚡ Speed Reading (Leitura Dinâmica)</option>`;
-                typeSelect.innerHTML += `<option value="true_false">✅ Verdadeiro ou Falso</option>`;
-            } else if (target === 'skill_writing') {
-                typeSelect.innerHTML += `<option value="fast_typing">⌨️ Digitação Ágil (Copiar rápido)</option>`;
-                typeSelect.innerHTML += `<option value="translation">🌍 Tradução Imediata (PT -> EN)</option>`;
-            } else if (target === 'skill_training') {
-                typeSelect.innerHTML += `<option value="memorization">🔁 Memorização Rápida (Spaced Repetition)</option>`;
-                typeSelect.innerHTML += `<option value="simultaneous_training">🔥 Treino 360 (Ouvir, Ler e Digitar)</option>`;
+            if (core === 'estrutural') {
+                if (focusEst === 'logica') {
+                    typeSelect.innerHTML = `
+                        <option value="reorder_sentence">🧩 Reorganizar frase (Embaralhado)</option>
+                        <option value="complete_sentence">✏️ Completar frase (Lacuna Gramatical)</option>
+                        <option value="choose_correct">✅ Escolher frase correta</option>
+                        <option value="find_error">❌ Corrigir erro na frase</option>
+                        <option value="build_sentence">🏗️ Construir frase (SVO)</option>
+                    `;
+                } else if (focusEst === 'contexto') {
+                    typeSelect.innerHTML = `
+                        <option value="synonym">🔗 Escolher sinônimo</option>
+                        <option value="antonym">↔️ Escolher antônimo</option>
+                        <option value="meaning_cloze">📖 Completar frase por sentido</option>
+                        <option value="interpret">🤔 Interpretar frase</option>
+                        <option value="context_word">🎯 Escolher palavra adequada ao contexto</option>
+                    `;
+                } else if (focusEst === 'som') {
+                    typeSelect.innerHTML = `
+                        <option value="minimal_pairs">🎧 Minimal pairs (Ouvir e escolher)</option>
+                        <option value="identify_sound">👂 Identificar som</option>
+                        <option value="dictation">✍️ Ditado</option>
+                        <option value="repetition">🎙️ Repetição (Fala e Grava)</option>
+                        <option value="classify_sound">🗂️ Classificação de sons</option>
+                    `;
+                }
+            } else {
+                // PERFORMANCE TYPES MANTIDOS PARA O APP FUNCIONAR
+                const focusPerf = document.getElementById('focus-performance').value;
+                if (focusPerf === 'listening') typeSelect.innerHTML = `<option value="dictation">⌨️ Dictation (Ditado)</option><option value="audio_comprehension">🎧 Compreensão Auditiva</option>`;
+                if (focusPerf === 'speaking') typeSelect.innerHTML = `<option value="repeat_sentence">🎙️ Fluência Rápida</option><option value="free_speech">💬 Resposta Livre</option>`;
+                if (focusPerf === 'reading') typeSelect.innerHTML = `<option value="speed_reading">⚡ Speed Reading</option><option value="true_false">✅ Verdadeiro/Falso</option>`;
+                if (focusPerf === 'writing') typeSelect.innerHTML = `<option value="fast_typing">⌨️ Digitação Rápida</option><option value="translation">🌍 Tradução Imediata</option>`;
+                if (focusPerf === 'training') typeSelect.innerHTML = `<option value="simultaneous_training">🔥 Treino 360 (Mix)</option>`;
             }
-            
             toggleFields();
         }
 
-        // 4. MOSTRA OS CAMPOS CERTOS PARA O EXERCÍCIO ESCOLHIDO
+        // 🔥 CAMPOS DINÂMICOS BASEADOS NA MECÂNICA 🔥
         function toggleFields() {
             const type = document.getElementById('type').value;
             const zone = document.getElementById('dynamic-zone');
             
-            if (type === 'listen_isolate' || type === 'meaning_match') {
+            // GRUPO: Múltipla Escolha e Contexto (A maioria se encaixa aqui)
+            if (['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false'].includes(type)) {
                 zone.innerHTML = `
-                    <div class="input-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pelo robô"></div>
-                    <div class="input-group"><label>IPA Fonético (opcional)</label><input type="text" id="ipa" placeholder="Ex: /pæt/"></div>`;
-            } else if (type === 'minimal_pair' || type === 'audio_comprehension' || type === 'grammar_rules') {
+                    <div class="input-group"><label>Contexto / Frase com Lacuna (___)</label><input type="text" id="context" placeholder="Ex: The cat is ___ the table."></div>
+                    <div class="input-group"><label>Opções de Resposta (Separadas por vírgula)</label><input type="text" id="options" placeholder="on, in, at"></div>
+                    <div class="input-group"><label>Índice da Resposta Correta (0 é a primeira)</label><input type="number" id="answer" value="0"></div>
+                    <div class="input-group"><label style="color:var(--success);">Áudio de Apoio (TTS Opcional)</label><input type="text" id="audioText" placeholder="Texto para a voz ler..."></div>
+                `;
+            } 
+            // GRUPO: Construção e Reordenação
+            else if (['reorder_sentence', 'build_sentence', 'syntax_assembly'].includes(type)) {
                 zone.innerHTML = `
-                    <div class="input-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Opção A, Opção B, Opção C"></div>
-                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
-                    <div class="input-group"><label style="color:var(--success);">Áudio Associado (Opcional)</label><input type="text" id="audioText" placeholder="Deixe em branco se não tiver áudio"></div>`;
-            } else if (type === 'syntax_assembly') {
+                    <div class="input-group"><label>Palavras Embaralhadas (Vírgula)</label><input type="text" id="options" placeholder="like, I, coffee"></div>
+                    <div class="input-group"><label>Frase Completa e Correta</label><input type="text" id="answerStr" placeholder="I like coffee"></div>
+                `;
+            } 
+            // GRUPO: Corrigir Erro
+            else if (['find_error'].includes(type)) {
                 zone.innerHTML = `
-                    <div class="input-group"><label>Blocos Desordenados (Vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
-                    <div class="input-group"><label>Frase Completa (Ordem SVO)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>`;
-            } else if (type === 'context_cloze') {
+                    <div class="input-group"><label>Frase com Erro</label><input type="text" id="context" placeholder="Ex: She don't like cats."></div>
+                    <div class="input-group"><label>Frase Corrigida (Resposta Exata)</label><input type="text" id="answerStr" placeholder="She doesn't like cats."></div>
+                `;
+            } 
+            // GRUPO: Ditado e Escrita Direta
+            else if (['dictation', 'fast_typing', 'translation', 'simultaneous_training'].includes(type)) {
                 zone.innerHTML = `
-                    <div class="input-group"><label>Contexto Base</label><input type="text" id="context" placeholder="Situação inicial..."></div>
-                    <div class="input-group"><label>Opções (Vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
-                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>`;
-            } else if (type === 'dictation' || type === 'fast_typing' || type === 'translation') {
+                    <div class="input-group"><label style="color:var(--success);">Áudio Disparado (TTS Obrigatório)</label><input type="text" id="audioText" placeholder="Texto para o robô falar"></div>
+                    <div class="input-group"><label>Resposta Exata Exigida (Digitada)</label><input type="text" id="answerStr" placeholder="A frase que o aluno deve escrever"></div>
+                `;
+            } 
+            // GRUPO: Fala e Repetição
+            else if (['repetition', 'repeat_sentence', 'free_speech'].includes(type)) {
                 zone.innerHTML = `
-                    <div class="input-group"><label style="color:var(--success);">Áudio de Suporte (TTS)</label><input type="text" id="audioText" placeholder="Texto para tocar no fundo"></div>
-                    <div class="input-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="O que o aluno deve digitar..."></div>`;
-            } else if (type === 'repeat_sentence' || type === 'free_speech') {
-                zone.innerHTML = `
-                    <div class="input-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="Texto alvo"></div>
-                    <div class="input-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Texto formatado"></div>`;
-            } else if (type === 'true_false') {
-                zone.innerHTML = `
-                    <div class="input-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
-            } else if (type === 'simultaneous_training' || type === 'memorization') {
-                zone.innerHTML = `
-                    <div class="input-group"><label style="color:var(--success);">Áudio Disparado (TTS)</label><input type="text" id="audioText" placeholder="Texto falado"></div>
-                    <div class="input-group"><label>Ação ou Tradução Exigida (Atrás do Card)</label><input type="text" id="answerStr" placeholder="Significado ou ação..."></div>`;
+                    <div class="input-group"><label>Texto Exibido para o Aluno Ler</label><input type="text" id="displayWord" placeholder="What is your name?"></div>
+                    <div class="input-group"><label>Alvo do Algoritmo IA (Palavra/Frase a detetar)</label><input type="text" id="target" placeholder="what is your name"></div>
+                    <div class="input-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pela IA primeiro"></div>
+                `;
+            }
+            // Fallback Genérico
+            else {
+                zone.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center;">Configure a mecânica no Backend se não houver campos.</div>`;
             }
         }
 
-        // GESTÃO DA GAVETA ARSENAL
         function openArsenal() { document.getElementById('arsenal-modal').classList.add('open'); loadSavedExercises(); }
         function closeArsenal() { document.getElementById('arsenal-modal').classList.remove('open'); }
 
@@ -388,14 +389,13 @@
                 }
             };
 
-            const optEl = document.getElementById('options'); if (optEl) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
-            const ansEl = document.getElementById('answer'); if (ansEl) payload.exercise.answer = parseInt(ansEl.value);
-            const ansStrEl = document.getElementById('answerStr'); if (ansStrEl) payload.exercise.answer = ansStrEl.value.trim();
-            const audEl = document.getElementById('audioText'); if (audEl) payload.exercise.audioText = audEl.value;
-            const ipaEl = document.getElementById('ipa'); if (ipaEl) payload.exercise.ipa = ipaEl.value;
-            const ctxEl = document.getElementById('context'); if (ctxEl) payload.exercise.context = ctxEl.value;
-            const trgEl = document.getElementById('target'); if (trgEl) payload.exercise.target = trgEl.value;
-            const dspEl = document.getElementById('displayWord'); if (dspEl) payload.exercise.displayWord = dspEl.value;
+            const optEl = document.getElementById('options'); if (optEl && optEl.value) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
+            const ansEl = document.getElementById('answer'); if (ansEl && ansEl.value) payload.exercise.answer = parseInt(ansEl.value);
+            const ansStrEl = document.getElementById('answerStr'); if (ansStrEl && ansStrEl.value) payload.exercise.answerStr = ansStrEl.value.trim();
+            const audEl = document.getElementById('audioText'); if (audEl && audEl.value) payload.exercise.audioText = audEl.value;
+            const ctxEl = document.getElementById('context'); if (ctxEl && ctxEl.value) payload.exercise.context = ctxEl.value;
+            const trgEl = document.getElementById('target'); if (trgEl && trgEl.value) payload.exercise.target = trgEl.value;
+            const dspEl = document.getElementById('displayWord'); if (dspEl && dspEl.value) payload.exercise.displayWord = dspEl.value;
 
             btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A PROCESSAR...`;
             
@@ -406,7 +406,10 @@
                 if (data.success) {
                     btn.innerHTML = `<span class="material-icons-round">check_circle</span> INJETADO COM SUCESSO!`;
                     setTimeout(() => { btn.innerHTML = originalContent; }, 2000);
-                    document.getElementById('text').value = ''; if(ansStrEl) ansStrEl.value = '';
+                    document.getElementById('text').value = ''; 
+                    if(ansStrEl) ansStrEl.value = '';
+                    if(ctxEl) ctxEl.value = '';
+                    if(optEl) optEl.value = '';
                     loadSavedExercises(); 
                 } else alert(data.message || data.error);
             } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; setTimeout(() => { btn.innerHTML = originalContent; }, 2000); }
@@ -440,19 +443,20 @@
                 let skillName = ex.type.toUpperCase().replace('_', ' '); 
                 let cssClass = "training"; let detailsHtml = "";
 
-                if (ex.type.includes('listen') || ex.type.includes('audio') || ex.type === 'dictation') cssClass = 'listening';
+                if (ex.type.includes('listen') || ex.type.includes('audio') || ex.type.includes('dictation') || ex.type.includes('sound')) cssClass = 'listening';
                 else if (ex.type.includes('repeat') || ex.type.includes('speech')) cssClass = 'speaking';
-                else if (ex.type.includes('reading') || ex.type.includes('cloze')) cssClass = 'reading';
-                else if (ex.type.includes('assembly') || ex.type.includes('typing') || ex.type === 'translation') cssClass = 'writing';
+                else if (ex.type.includes('reading') || ex.type.includes('cloze') || ex.type.includes('synonym') || ex.type.includes('antonym')) cssClass = 'reading';
+                else if (ex.type.includes('assembly') || ex.type.includes('typing') || ex.type.includes('translation') || ex.type.includes('reorder') || ex.type.includes('build')) cssClass = 'writing';
 
                 if (ex.options) detailsHtml += `<b>Opções:</b> ${ex.options.join(' | ')}<br>`;
-                if (ex.answer !== undefined) detailsHtml += `<b>Correto:</b> ${ex.answer}<br>`;
+                if (ex.answer !== undefined) detailsHtml += `<b>Correto (Index):</b> ${ex.answer}<br>`;
+                if (ex.answerStr !== undefined) detailsHtml += `<b>Resposta:</b> ${ex.answerStr}<br>`;
                 if (ex.audioText) detailsHtml += `<b>Áudio:</b> ${ex.audioText}<br>`;
-                if (ex.target) detailsHtml += `<b>Validação IA:</b> ${ex.target}<br>`;
+                if (ex.context) detailsHtml += `<b>Contexto:</b> ${ex.context}<br>`;
 
                 const tagHtml = (ex.tags && ex.tags.length > 0) ? `<div style="margin-top:5px; font-size:10px; color:var(--primary);">${ex.tags.map(t=>`#${t}`).join(' ')}</div>` : '';
 
-                // 🔥 BOTÕES DE REORDENAÇÃO (CIMA E BAIXO) 🔥
+                // 🔥 BOTÕES DE REORDENAÇÃO 🔥
                 const arrowsHtml = `
                     <div class="reorder-btns">
                         <button class="reorder-btn" onclick="moveExercise(${index}, -1)" ${index === 0 ? 'disabled' : ''}><span class="material-icons-round">keyboard_arrow_up</span></button>
@@ -474,19 +478,16 @@
             });
         }
 
-        // 🔥 FUNÇÃO DE TROCAR A ORDEM NO BANCO DE DADOS 🔥
         async function moveExercise(index, direction) {
             if (direction === -1 && index === 0) return;
             if (direction === 1 && index === currentArsenalList.length - 1) return;
 
-            // Troca na RAM (Front-end)
             const temp = currentArsenalList[index];
             currentArsenalList[index] = currentArsenalList[index + direction];
             currentArsenalList[index + direction] = temp;
 
-            renderArsenalUI(); // Atualiza a tela de imediato
+            renderArsenalUI();
 
-            // Dispara para salvar a nova ordem na nuvem
             try {
                 const res = await fetch('/api/english/admin/reorder', {
                     method: 'POST',
@@ -494,14 +495,8 @@
                     body: JSON.stringify({ nodeId: document.getElementById('nodeId').value, newOrder: currentArsenalList })
                 });
                 const data = await res.json();
-                if (!data.success) {
-                    alert("Erro ao salvar ordem no servidor.");
-                    loadSavedExercises(); 
-                }
-            } catch(e) {
-                alert("Falha na rede ao reordenar.");
-                loadSavedExercises(); 
-            }
+                if (!data.success) { alert("Erro ao salvar ordem no servidor."); loadSavedExercises(); }
+            } catch(e) { alert("Falha na rede."); loadSavedExercises(); }
         }
 
         async function clearPhase() {
