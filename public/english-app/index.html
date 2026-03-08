@@ -23,11 +23,11 @@
             --arena-color: #EC4899;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-color); color: var(--text-main); overflow-y: auto; overflow-x: hidden; }
         
         .hidden { display: none !important; }
-        .app-screen { min-height: 100vh; padding: 20px; display: flex; flex-direction: column; }
+        .app-screen { min-height: 100dvh; padding: 20px; display: flex; flex-direction: column; }
 
         /* --- DASHBOARD E TRILHAS --- */
         .mastery-header { background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.4)); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 25px 20px; display: flex; align-items: center; gap: 20px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -117,7 +117,7 @@
         .action-btn.ready { background: var(--primary); color: white; box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4); }
         .action-btn.success { background: var(--som-color); color: white; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
         .target-word { font-size: 32px; font-weight: 900; margin: 15px 0; color: white; }
-        .feedback-text { min-height: 24px; font-weight: 800; margin-top: 15px; font-size: 14px; }
+        .feedback-text { min-height: 24px; font-weight: 800; margin-top: 15px; font-size: 14px; text-align: center; width: 100%; }
         
         .chic-btn { border: none; border-radius: 12px; cursor: pointer; transition: 0.2s; }
 
@@ -189,7 +189,7 @@
             <span class="material-icons-round" style="color: var(--perf-color);">speed</span> 
             <span style="color: white; font-size: 16px;">Área de Performance</span>
         </div>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Treino de execução real. Meça sua fluidez, tempo de resposta e precisão.</p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Treino de execução real de 4 MINUTOS. Meça sua fluidez e precisão.</p>
 
         <div style="display: flex; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; margin-bottom: 15px;">
             <button id="tab-solo" class="chic-btn" style="flex: 1; margin: 0; background: var(--card-bg); color: white; font-size: 13px; padding: 10px;" onclick="switchPerformanceTab('solo')">👤 Treino Solo</button>
@@ -212,7 +212,7 @@
                 </button>
             </div>
             <button style="background: linear-gradient(135deg, #F43F5E, #9F1239); color: white; border: none; padding: 18px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(244, 63, 94, 0.4); text-transform: uppercase; letter-spacing: 1px;" onclick="startTrainingWorkout()">
-                <span class="material-icons-round" style="font-size: 24px;">fitness_center</span> Training (Mix)
+                <span class="material-icons-round" style="font-size: 24px;">fitness_center</span> Training (Mix 4 Min)
             </button>
         </div>
 
@@ -220,7 +220,7 @@
             <div style="background: rgba(236, 72, 153, 0.1); border: 1px dashed #EC4899; border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;">
                 <span class="material-icons-round" style="color: #EC4899; font-size: 32px; margin-bottom: 5px;">wifi_tethering</span>
                 <div style="font-size: 13px; font-weight: 800; color: white;">Batalha de Fluência Ao Vivo</div>
-                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Aguarde e encontre oponentes na rede PTT para um duelo em tempo real.</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Aguarde e encontre oponentes na rede PTT para um duelo em tempo real de 4 Minutos.</p>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -280,7 +280,7 @@
 
         <div id="performance-hud" class="perf-hud hidden">
             <div class="perf-timer" id="perf-timer-display">
-                <span class="material-icons-round">timer</span> <span id="perf-time-value">00:15</span>
+                <span class="material-icons-round">timer</span> <span id="perf-time-value">04:00</span>
             </div>
             <div style="color: white; font-weight: 900; font-size: 14px; letter-spacing: 1px;" id="perf-skill-label">SKILL</div>
         </div>
@@ -314,7 +314,7 @@
         let currentExercise = null; let selectedOption = null; let stepState = 'ready'; 
         let exerciseStartTime = 0; let assembledSentence = []; let poolWords = [];
 
-        // Variáveis de Performance e Arena
+        // ⏱️ VARIAVEIS DE PERFORMANCE 
         let isPerformanceMode = false;
         let currentPerfSkill = '';
         let perfTimerInterval = null;
@@ -427,16 +427,26 @@
         function toggleMic() { if(!recognizer) return alert("Microfone não suportado."); const micBtn = document.getElementById('mic-btn'); if(isRecording) stopMic(); else { try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } catch(e) { stopMic(); } } }
         function stopMic() { if (!isRecording) return; isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); try { recognizer.stop(); } catch(e) {} document.getElementById('mic-status').innerText = "Processando..."; }
 
+        // 🟢 ATENÇÃO: TIMER DE 4 MINUTOS (240 Segundos) INJETADO AQUI 🟢
         function startPerfTimer(seconds) {
-            clearInterval(perfTimerInterval); perfSecondsRemaining = seconds; updateTimerUI();
+            clearInterval(perfTimerInterval); 
+            perfSecondsRemaining = seconds; // Esta variavel será alimentada com 240 na loadExercise()
+            updateTimerUI();
             document.getElementById('perf-timer-display').classList.remove('urgent');
+            
             perfTimerInterval = setInterval(() => {
-                perfSecondsRemaining--; updateTimerUI();
-                if (perfSecondsRemaining <= 5) document.getElementById('perf-timer-display').classList.add('urgent');
+                perfSecondsRemaining--; 
+                updateTimerUI();
+                if (perfSecondsRemaining <= 10) document.getElementById('perf-timer-display').classList.add('urgent');
                 if(perfSecondsRemaining <= 0) { clearInterval(perfTimerInterval); handleTimeOut(); }
             }, 1000);
         }
-        function updateTimerUI() { document.getElementById('perf-time-value').innerText = `00:${perfSecondsRemaining.toString().padStart(2, '0')}`; }
+        
+        function updateTimerUI() { 
+            const m = Math.floor(perfSecondsRemaining / 60).toString().padStart(2, '0');
+            const s = (perfSecondsRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('perf-time-value').innerText = `${m}:${s}`; 
+        }
         function stopPerfTimer() { clearInterval(perfTimerInterval); document.getElementById('perf-timer-display').classList.remove('urgent'); }
         
         function updateArenaHud() {
@@ -477,7 +487,7 @@
             } catch (e) { abortLesson(); } 
         }
 
-        async function startTrainingWorkout() { startSkillWorkout('mix'); } // Simplificado para usar a mesma lógica
+        async function startTrainingWorkout() { startSkillWorkout('mix'); } 
 
         // ⚔️ SISTEMA DE MATCHMAKING (ARENA)
         function openArenaMatchmaking(skill) {
@@ -521,9 +531,12 @@
 
             if (isPerformanceMode) {
                 document.getElementById('performance-hud').classList.remove('hidden');
-                document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'MIX' : currentPerfSkill.toUpperCase();
-                let timeAllowed = currentExercise.type === 'sentence_assembly' || currentExercise.type === 'context_cloze' ? 20 : 10;
-                startPerfTimer(timeAllowed);
+                document.getElementById('perf-skill-label').innerText = currentPerfSkill === 'mix' ? 'MIX (4 MIN)' : currentPerfSkill.toUpperCase();
+                
+                // 🟢 SE O CRONOMETRO ESTIVER PARADO, INICIA COM 4 MINUTOS (240 Seg) 🟢
+                if(perfSecondsRemaining <= 0) {
+                    startPerfTimer(240); 
+                }
             }
 
             const area = document.getElementById('exercise-area'); let html = '';
@@ -558,37 +571,52 @@
         function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
         function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
 
-        function handleTimeOut() { if(stepState !== 'ready') return; if(isRecording) stopMic(); setFeedback("Tempo Esgotado!", "var(--danger)"); document.getElementById('btn-action').className = "action-btn"; document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(0); }
-        function evaluateSpeech(transcript) { if(isPerformanceMode) stopPerfTimer(); const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase(); let score = (cleanT.includes(target) || target.includes(cleanT)) ? 95 : 40; if(score>90){ setFeedback("Excelente!", "var(--som-color)"); document.getElementById('btn-action').className = "action-btn success"; } else setFeedback("Requer ajuste.", "var(--danger)"); document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); }
+        // O QUE ACONTECE SE O CRONOMETRO DOS 4 MINUTOS ACABAR A MEIO
+        function handleTimeOut() { 
+            if(stepState !== 'ready') return; 
+            if(isRecording) stopMic(); 
+            setFeedback("Tempo de Treino Esgotado!", "var(--danger)"); 
+            document.getElementById('btn-action').className = "action-btn"; 
+            document.getElementById('btn-action').innerText = "Ver Resultados"; 
+            stepState = 'verified'; 
+            
+            setTimeout(() => { finishLesson(); }, 1500); 
+        }
+        
+        function evaluateSpeech(transcript) { const cleanT = transcript.toLowerCase().trim(); const target = currentExercise.target.toLowerCase(); let score = (cleanT.includes(target) || target.includes(cleanT)) ? 95 : 40; if(score>90){ setFeedback("Excelente!", "var(--som-color)"); document.getElementById('btn-action').className = "action-btn success"; } else setFeedback("Requer ajuste.", "var(--danger)"); document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); }
 
         function handleLessonAction() {
-            if (currentExercise.type === 'listen_isolate') { if(isPerformanceMode) stopPerfTimer(); verifyAndSendScore(100); return; } 
+            if (currentExercise.type === 'listen_isolate') { verifyAndSendScore(100); return; } 
             if (stepState === 'verified') { exerciseIndex++; loadExercise(); return; }
             if (stepState !== 'ready') return;
 
-            if(isPerformanceMode) stopPerfTimer();
             let score = 0; const btn = document.getElementById('btn-action');
 
             if (currentExercise.type === 'sentence_assembly') {
-                if (assembledSentence.length === 0) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Monte a frase!"); }
+                if (assembledSentence.length === 0) return alert("Monte a frase!"); 
                 if (assembledSentence.join(' ') === currentExercise.answer) { setFeedback("Perfeito!", "var(--logica-color)"); btn.className = "action-btn success"; score = 100; } 
                 else { setFeedback(`Incorreto. Era:\n"${currentExercise.answer}"`, "var(--danger)"); score = 20; }
             } else if (currentExercise.type === 'minimal_pair' || currentExercise.type === 'context_cloze') {
-                if (selectedOption === null) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Selecione uma opção!"); }
+                if (selectedOption === null) return alert("Selecione uma opção!"); 
                 if (selectedOption === currentExercise.answer) { setFeedback("Correto!", "var(--som-color)"); btn.className = "action-btn success"; score = 100; document.querySelectorAll('.option-btn')[selectedOption].classList.add('correct'); } 
                 else { setFeedback("Incorreto.", "var(--danger)"); score = 20; document.querySelectorAll('.option-btn')[selectedOption].classList.add('wrong'); document.querySelectorAll('.option-btn')[currentExercise.answer].classList.add('correct'); }
-            } else if (currentExercise.type.startsWith('repeat')) { if(isPerformanceMode) startPerfTimer(perfSecondsRemaining); return alert("Grave sua voz!"); }
+            } else if (currentExercise.type.startsWith('repeat')) { return alert("Grave sua voz!"); }
 
             btn.innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score);
         }
 
         function verifyAndSendScore(score) {
-            // Se for Arena Online, atira o dano no inimigo!
             if(isArenaMode && socket && arenaRoomId) {
                 myArenaScore += score; updateArenaHud();
                 socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex });
             }
             sendAttemptToBackend(score);
+            
+            // SE for aula normal (ou isolate) avança para o próximo. 
+            // O botão do front-end fará isso.
+            if(currentExercise.type === 'listen_isolate') {
+                exerciseIndex++; loadExercise();
+            }
         }
 
         function setFeedback(msg, color) { const fb = document.getElementById('lesson-feedback'); fb.innerText = msg; fb.style.color = color; }
@@ -601,6 +629,7 @@
         }
 
         function finishLesson(wonByWO = false) {
+            stopPerfTimer();
             document.getElementById('performance-hud').classList.add('hidden');
             let resultHtml = '';
             
@@ -615,15 +644,15 @@
             } else {
                 resultHtml = `
                     <span class="material-icons-round" style="font-size:80px; color:var(--perf-color); margin-bottom:20px;">emoji_events</span>
-                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Treino Concluído!</h2>
-                    <p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados</p>
+                    <h2 style="font-size:24px; font-weight:900; margin-bottom:10px;">Treino de 4 Minutos Concluído!</h2>
+                    <p style="color:var(--text-muted); font-weight:600;">Métricas de Fluência salvas no Banco de Dados</p>
                 `;
             }
 
             document.getElementById('exercise-area').innerHTML = resultHtml;
             document.getElementById('btn-action').innerText = "Voltar ao QG"; document.getElementById('btn-action').className = "action-btn ready";
             document.getElementById('btn-action').onclick = async () => {
-                isArenaMode = false; arenaRoomId = null;
+                isArenaMode = false; arenaRoomId = null; perfSecondsRemaining = 0;
                 document.getElementById('arena-hud').classList.add('hidden');
                 document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden');
                 await fetchDashboardData(); 
@@ -631,8 +660,9 @@
         }
 
         function abortLesson() {
-            if(confirm("Abandonar treino?")) { 
-                stopPerfTimer(); if(isRecording) stopMic(); window.speechSynthesis.cancel(); 
+            if(confirm("Abandonar treino e perder progresso?")) { 
+                stopPerfTimer(); perfSecondsRemaining = 0;
+                if(isRecording) stopMic(); window.speechSynthesis.cancel(); 
                 if(isArenaMode && socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
                 isArenaMode = false; arenaRoomId = null;
                 document.getElementById('lesson-screen').classList.add('hidden'); document.getElementById('dashboard-screen').classList.remove('hidden'); 

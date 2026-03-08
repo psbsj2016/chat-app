@@ -2,190 +2,240 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QG Admin Max - Inglês PTT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QG Admin Max - Mobile</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        :root { --bg-color: #05050A; --card-bg: rgba(15, 23, 42, 0.9); --primary: #3B82F6; --success: #10B981; --danger: #EF4444; --text-main: #F8FAFC; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        /* 🟢 DESIGN MOBILE FIRST - ESTILO APLICATIVO NATIVO */
+        :root {
+            --bg: #05050A;
+            --surface: #0f172a;
+            --surface-border: rgba(255,255,255,0.1);
+            --primary: #3B82F6;
+            --success: #10B981;
+            --danger: #EF4444;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+        }
         
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
-        .header h1 { font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
         
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; flex: 1; overflow: hidden; }
+        /* CABEÇALHO DO APP */
+        .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--surface-border); z-index: 10; }
+        .header h1 { font-size: 18px; font-weight: 900; color: var(--primary); display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
         
-        .panel { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 25px; display: flex; flex-direction: column; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        .panel-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: white; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 10px; }
+        /* CORPO ROLÁVEL */
+        .content { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px; } /* Espaço para a barra inferior */
 
-        .core-selector { display: flex; gap: 10px; margin-bottom: 20px; }
-        .core-btn { flex: 1; padding: 12px; border-radius: 8px; border: 2px solid transparent; background: rgba(255,255,255,0.05); color: #CBD5E1; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; font-size: 13px; }
-        .core-btn.active-blue { background: rgba(59, 130, 246, 0.15); border-color: var(--primary); color: var(--primary); }
-        .core-btn.active-green { background: rgba(16, 185, 129, 0.15); border-color: var(--success); color: var(--success); }
+        /* BOTÕES DE ABAS (ESTRUTURAL VS PERFORMANCE) */
+        .mode-toggle { display: flex; background: var(--surface); border-radius: 16px; padding: 6px; margin-bottom: 25px; border: 1px solid var(--surface-border); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .mode-btn { flex: 1; padding: 12px; text-align: center; border-radius: 12px; border: none; background: transparent; color: var(--text-muted); font-weight: 800; font-size: 13px; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .mode-btn.active.blue { background: rgba(59, 130, 246, 0.15); color: var(--primary); box-shadow: 0 2px 10px rgba(59,130,246,0.2); }
+        .mode-btn.active.green { background: rgba(16, 185, 129, 0.15); color: var(--success); box-shadow: 0 2px 10px rgba(16,185,129,0.2); }
 
-        .form-group { margin-bottom: 15px; }
-        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
-        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        /* INPUTS MODERNOS */
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-group input, .input-group select, .input-group textarea { width: 100%; background: var(--surface); border: 1px solid var(--surface-border); color: white; padding: 16px; border-radius: 14px; font-size: 15px; outline: none; transition: 0.2s; appearance: none; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .input-group textarea { resize: vertical; min-height: 80px; }
         
-        label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 6px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; }
-        input, select, textarea { width: 100%; background: #0B0F19; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 12px; border-radius: 8px; font-size: 14px; transition: 0.2s; outline: none; }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(59,130,246,0.3); }
-        textarea { resize: vertical; min-height: 70px; }
-        
-        .dynamic-fields { padding: 15px; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15); margin-top: 15px; }
-        
-        .btn-submit { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-top: 20px; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59,130,246,0.4); }
-        .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); margin-top: 10px; }
-        .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 5px 15px rgba(239,68,68,0.4); }
+        .row { display: flex; gap: 15px; }
+        .row .input-group { flex: 1; margin-bottom: 15px; }
 
-        .exercise-card { background: #0B0F19; border-left: 4px solid var(--primary); padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative; }
+        /* ZONA DINÂMICA DE EXERCÍCIO */
+        .dynamic-zone { background: rgba(0,0,0,0.4); padding: 18px; border-radius: 16px; border: 1px dashed rgba(255,255,255,0.2); margin-top: 10px; margin-bottom: 20px; }
+        .dynamic-zone .input-group:last-child { margin-bottom: 0; }
+
+        /* BARRA DE AÇÃO INFERIOR FIXA */
+        .bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 20px; background: rgba(5,5,10,0.95); backdrop-filter: blur(15px); border-top: 1px solid var(--surface-border); display: flex; gap: 12px; z-index: 50; }
+        .btn-main { flex: 1; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 16px; font-size: 16px; font-weight: 900; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; cursor: pointer; text-transform: uppercase; }
+        .btn-main:active { transform: scale(0.95); }
+        .btn-main.green { background: var(--success); }
+        
+        /* BOTÃO PARA ABRIR O ARSENAL */
+        .btn-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--surface); border: 1px solid var(--surface-border); display: flex; justify-content: center; align-items: center; color: var(--text-muted); transition: 0.2s; cursor: pointer; }
+        .btn-icon:active { transform: scale(0.9); background: rgba(255,255,255,0.1); color: white; }
+
+        /* GAVETA DO ARSENAL (MODAL QUE SOBE) */
+        .arsenal-modal { position: fixed; top: 100%; left: 0; width: 100%; height: 100%; background: var(--bg); transition: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 100; display: flex; flex-direction: column; }
+        .arsenal-modal.open { top: 0; }
+        .arsenal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--surface); border-bottom: 1px solid var(--surface-border); }
+        .arsenal-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+        /* CARDS DO ARSENAL */
+        .exercise-card { background: var(--surface); border-left: 4px solid var(--primary); padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); position: relative; }
         .exercise-card.listening { border-color: #10B981; }
         .exercise-card.speaking { border-color: #F59E0B; }
         .exercise-card.reading { border-color: #8B5CF6; }
         .exercise-card.writing { border-color: #3B82F6; }
-        .exercise-card.training { border-color: #EC4899; }
         
         .ex-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; background: rgba(255,255,255,0.1); }
-        .ex-difficulty { position: absolute; top: 15px; right: 15px; font-size: 10px; font-weight: 900; color: #F59E0B; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; }
-        
         .ex-text { font-size: 15px; font-weight: 700; margin-bottom: 5px; color: white; }
         .ex-details { font-size: 12px; color: #94A3B8; display: flex; flex-direction: column; gap: 4px; line-height: 1.4; }
+        
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1><span class="material-icons-round" style="font-size: 32px;">dashboard_customize</span> Centro de Comando PTT</h1>
-        <div style="font-size: 13px; font-weight: 600; color: #94A3B8; display: flex; align-items: center; gap: 5px;">
-            <div style="width:8px; height:8px; background:#10B981; border-radius:50%; box-shadow:0 0 10px #10B981;"></div>
-            Arquitetura Neural Online
+        <h1><span class="material-icons-round">bolt</span> QG Admin</h1>
+        <div style="font-size: 12px; font-weight: 800; color: var(--success); display: flex; align-items: center; gap: 4px;">
+            <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 10px var(--success); animation: pulseRed 1.5s infinite;"></div>
+            ON-LINE
         </div>
     </div>
 
-    <div class="dashboard-grid">
-        <div class="panel">
-            <div class="panel-title"><span>1. Forjar Armamento (Exercício)</span></div>
-
-            <div class="core-selector">
-                <div class="core-btn active-blue" id="btn-estrutural" onclick="selectCore('estrutural')">
-                    <span class="material-icons-round">account_tree</span> 🔵 Estrutural (Base)
-                </div>
-                <div class="core-btn" id="btn-performance" onclick="selectCore('performance')">
-                    <span class="material-icons-round">speed</span> 🟢 Performance (Treino)
-                </div>
-            </div>
-
-            <input type="hidden" id="core-type" value="estrutural">
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Domínio / Destino</label>
-                    <select id="nodeId" onchange="updateExerciseTypes(); loadSavedExercises();">
-                        <optgroup label="🔵 NÚCLEO ESTRUTURAL" id="opt-estrutural">
-                            <option value="phonetics_1">Fonética 1: Sons e Vibrações</option>
-                            <option value="syntax_1">Sintaxe 1: Lógica SVO e Ordem</option>
-                            <option value="semantics_1">Semântica 1: Sentidos e Contexto</option>
-                        </optgroup>
-                        <optgroup label="🟢 NÚCLEO PERFORMANCE" id="opt-performance" class="hidden">
-                            <option value="skill_listening">🎧 Listening (Escuta)</option>
-                            <option value="skill_speaking">🎙️ Speaking (Fala)</option>
-                            <option value="skill_reading">📖 Reading (Leitura)</option>
-                            <option value="skill_writing">✍️ Writing (Escrita & Digitação)</option>
-                            <option value="skill_training">🏋️ Training (Treinamento Misto)</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Mecânica Dinâmica</label>
-                    <select id="type" onchange="toggleFields()">
-                        </select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Dificuldade</label>
-                    <select id="difficulty">
-                        <option value="1">Lvl 1 - Recruta (Lento)</option>
-                        <option value="2">Lvl 2 - Iniciante</option>
-                        <option value="3">Lvl 3 - Intermediário</option>
-                        <option value="4">Lvl 4 - Avançado</option>
-                        <option value="5">Lvl 5 - Nativo (Rápido)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Voz TTS</label>
-                    <select id="voiceProfile">
-                        <option value="en-US-male">🇺🇸 US Masculino</option>
-                        <option value="en-US-female">🇺🇸 US Feminino</option>
-                        <option value="en-GB-male">🇬🇧 UK Masculino</option>
-                        <option value="en-GB-female">🇬🇧 UK Feminino</option>
-                        <option value="en-US-young">🇺🇸 US Dinâmico (Jovem)</option>
-                        <option value="audiobook">📚 Audiobook (Narrador)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Instrução Principal (Para o aluno)</label>
-                <input type="text" id="text" placeholder="Ex: Selecione o som correto / Traduza a frase..." required>
-            </div>
-
-            <div id="dynamic-zone" class="dynamic-fields"></div>
-
-            <div class="form-row" style="margin-top: 15px;">
-                <div class="form-group">
-                    <label>Objetivo Pedagógico</label>
-                    <input type="text" id="pedagogicObj" placeholder="Ex: Diferenciar P de B">
-                </div>
-                <div class="form-group">
-                    <label>Tags (vírgula)</label>
-                    <input type="text" id="tags" placeholder="Ex: business, travel">
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-top: 15px;">
-                <label>Dica Neuro-Cognitiva (Exibida no erro)</label>
-                <textarea id="advTip" placeholder="Explique a lógica ou a posição da boca..."></textarea>
-            </div>
-
-            <button class="btn-submit" id="submitBtn" onclick="injectExercise()"><span class="material-icons-round">rocket_launch</span> Injetar no Servidor</button>
+    <div class="content">
+        
+        <div class="mode-toggle">
+            <button class="mode-btn active blue" id="btn-estrutural" onclick="selectCore('estrutural')">
+                <span class="material-icons-round" style="font-size: 28px;">account_tree</span>
+                Estrutural
+            </button>
+            <button class="mode-btn" id="btn-performance" onclick="selectCore('performance')">
+                <span class="material-icons-round" style="font-size: 28px;">speed</span>
+                Performance
+            </button>
         </div>
 
-        <div class="panel" style="background: rgba(15, 23, 42, 0.5);">
-            <div class="panel-title">
-                <span>2. Arsenal da Fase Selecionada</span>
-                <button onclick="loadSavedExercises()" style="background:transparent; border:none; color:var(--primary); cursor:pointer; padding:5px;"><span class="material-icons-round">sync</span></button>
+        <input type="hidden" id="core-type" value="estrutural">
+
+        <div class="input-group">
+            <label>Alvo da Missão (Nó/Habilidade)</label>
+            <select id="nodeId" onchange="updateExerciseTypes(); loadSavedExercises();">
+                <optgroup label="🔵 NÚCLEO ESTRUTURAL" id="opt-estrutural">
+                    <option value="phonetics_1">Fonética 1: Sons e Vibrações</option>
+                    <option value="syntax_1">Sintaxe 1: Lógica SVO e Ordem</option>
+                    <option value="semantics_1">Semântica 1: Sentidos e Contexto</option>
+                </optgroup>
+                <optgroup label="🟢 NÚCLEO PERFORMANCE" id="opt-performance" class="hidden">
+                    <option value="skill_listening">🎧 Listening (Escuta)</option>
+                    <option value="skill_speaking">🎙️ Speaking (Fala)</option>
+                    <option value="skill_reading">📖 Reading (Leitura)</option>
+                    <option value="skill_writing">✍️ Writing (Escrita & Digitação)</option>
+                    <option value="skill_training">🏋️ Training (Treinamento Misto)</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>Mecânica de Combate (Tipo)</label>
+            <select id="type" onchange="toggleFields()"></select>
+        </div>
+
+        <div class="row">
+            <div class="input-group">
+                <label>Dificuldade</label>
+                <select id="difficulty">
+                    <option value="1">Lvl 1 - Lento</option>
+                    <option value="2">Lvl 2 - Base</option>
+                    <option value="3">Lvl 3 - Médio</option>
+                    <option value="4">Lvl 4 - Rápido</option>
+                    <option value="5">Lvl 5 - Nativo</option>
+                </select>
             </div>
-            <div id="arsenal-status" style="font-size: 13px; color: #94A3B8; margin-bottom: 15px;">Sincronizando com o Quartel General...</div>
-            <div id="arsenal-list" style="display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 5px;"></div>
-            
-            <button class="btn-submit btn-danger" id="clearBtn" onclick="clearPhase()"><span class="material-icons-round">delete_sweep</span> Expurgo Total da Fase</button>
+            <div class="input-group">
+                <label>Voz da IA (TTS)</label>
+                <select id="voiceProfile">
+                    <option value="en-US-male">🇺🇸 US Masc</option>
+                    <option value="en-US-female">🇺🇸 US Fem</option>
+                    <option value="en-GB-male">🇬🇧 UK Masc</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Comando / Instrução</label>
+            <input type="text" id="text" placeholder="Ex: Traduza a frase..." required>
+        </div>
+
+        <div id="dynamic-zone" class="dynamic-zone"></div>
+
+        <div class="row">
+            <div class="input-group">
+                <label>Objetivo</label>
+                <input type="text" id="pedagogicObj" placeholder="Ex: Foco no Verbo To Be">
+            </div>
+            <div class="input-group">
+                <label>Tags</label>
+                <input type="text" id="tags" placeholder="Ex: travel, food">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Dica Neuro-Cognitiva (Em caso de erro)</label>
+            <textarea id="advTip" placeholder="Explique a lógica ou a posição da boca..."></textarea>
+        </div>
+    </div>
+
+    <div class="bottom-bar">
+        <button class="btn-icon" onclick="openArsenal()" title="Ver Arsenal">
+            <span class="material-icons-round" style="font-size: 28px;">inventory_2</span>
+        </button>
+        <button class="btn-main" id="submitBtn" onclick="injectExercise()">
+            <span class="material-icons-round">rocket_launch</span> INJETAR MISSÃO
+        </button>
+    </div>
+
+    <div id="arsenal-modal" class="arsenal-modal">
+        <div class="arsenal-header">
+            <h2 style="margin:0; font-size: 18px; color: var(--primary); display:flex; align-items:center; gap:8px;">
+                <span class="material-icons-round">inventory_2</span> Arsenal Carregado
+            </h2>
+            <button class="btn-icon" style="width: 40px; height: 40px;" onclick="closeArsenal()">
+                <span class="material-icons-round">expand_more</span>
+            </button>
+        </div>
+        
+        <div style="padding: 15px 20px 0 20px; font-size: 13px; color: var(--text-muted);" id="arsenal-status">
+            A verificar base de dados...
+        </div>
+        
+        <div id="arsenal-list" class="arsenal-list"></div>
+        
+        <div style="padding: 20px; background: var(--surface); border-top: 1px solid var(--surface-border);">
+            <button class="btn-main" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%;" id="clearBtn" onclick="clearPhase()">
+                <span class="material-icons-round">delete_sweep</span> Expurgo Total da Fase
+            </button>
         </div>
     </div>
 
     <script>
+        // LOGICA DE ABAS MOBILE
         function selectCore(core) {
             document.getElementById('core-type').value = core;
             const btnEst = document.getElementById('btn-estrutural');
             const btnPerf = document.getElementById('btn-performance');
             const optEst = document.getElementById('opt-estrutural');
             const optPerf = document.getElementById('opt-performance');
+            const submitBtn = document.getElementById('submitBtn');
 
             if(core === 'estrutural') {
-                btnEst.className = 'core-btn active-blue'; btnPerf.className = 'core-btn';
+                btnEst.className = 'mode-btn active blue'; btnPerf.className = 'mode-btn';
                 optEst.classList.remove('hidden'); optPerf.classList.add('hidden');
                 document.getElementById('nodeId').value = 'phonetics_1';
+                submitBtn.className = 'btn-main';
             } else {
-                btnPerf.className = 'core-btn active-green'; btnEst.className = 'core-btn';
+                btnPerf.className = 'mode-btn active green'; btnEst.className = 'mode-btn';
                 optPerf.classList.remove('hidden'); optEst.classList.add('hidden');
                 document.getElementById('nodeId').value = 'skill_listening';
+                submitBtn.className = 'btn-main green'; // Fica verde na performance
             }
             updateExerciseTypes();
             loadSavedExercises();
+        }
+
+        // GESTÃO DA GAVETA ARSENAL
+        function openArsenal() {
+            document.getElementById('arsenal-modal').classList.add('open');
+            loadSavedExercises();
+        }
+        function closeArsenal() {
+            document.getElementById('arsenal-modal').classList.remove('open');
         }
 
         // O CÉREBRO DAS OPÇÕES DINÂMICAS!
@@ -233,45 +283,45 @@
             
             if (type === 'listen_isolate' || type === 'meaning_match') {
                 zone.innerHTML = `
-                    <div class="form-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pelo robô"></div>
-                    <div class="form-group"><label>IPA Fonético (opcional)</label><input type="text" id="ipa" placeholder="Ex: /pæt/"></div>`;
+                    <div class="input-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pelo robô"></div>
+                    <div class="input-group"><label>IPA Fonético (opcional)</label><input type="text" id="ipa" placeholder="Ex: /pæt/"></div>`;
             } else if (type === 'minimal_pair' || type === 'audio_comprehension' || type === 'grammar_rules') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Opção A, Opção B, Opção C"></div>
-                    <div class="form-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
-                    <div class="form-group"><label style="color:var(--success);">Áudio Associado (Opcional)</label><input type="text" id="audioText" placeholder="Deixe em branco se não tiver áudio"></div>`;
+                    <div class="input-group"><label>Opções de Botões (Separadas por vírgula)</label><input type="text" id="options" placeholder="Opção A, Opção B, Opção C"></div>
+                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>
+                    <div class="input-group"><label style="color:var(--success);">Áudio Associado (Opcional)</label><input type="text" id="audioText" placeholder="Deixe em branco se não tiver áudio"></div>`;
             } else if (type === 'syntax_assembly') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Blocos Desordenados (Vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
-                    <div class="form-group"><label>Frase Completa (Ordem SVO)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>`;
+                    <div class="input-group"><label>Blocos Desordenados (Vírgula)</label><input type="text" id="options" placeholder="coffee, like, I"></div>
+                    <div class="input-group"><label>Frase Completa (Ordem SVO)</label><input type="text" id="answerStr" placeholder="I like coffee"></div>`;
             } else if (type === 'context_cloze') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Contexto Base</label><input type="text" id="context" placeholder="Situação inicial..."></div>
-                    <div class="form-group"><label>Opções (Vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
-                    <div class="form-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>`;
+                    <div class="input-group"><label>Contexto Base</label><input type="text" id="context" placeholder="Situação inicial..."></div>
+                    <div class="input-group"><label>Opções (Vírgula)</label><input type="text" id="options" placeholder="want, wants, wanting"></div>
+                    <div class="input-group"><label>Índice Correto (0, 1, 2...)</label><input type="number" id="answer" value="0"></div>`;
             } else if (type === 'dictation' || type === 'fast_typing' || type === 'translation') {
                 zone.innerHTML = `
-                    <div class="form-group"><label style="color:var(--success);">Áudio de Suporte (TTS)</label><input type="text" id="audioText" placeholder="Texto para tocar no fundo"></div>
-                    <div class="form-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="O que o aluno deve digitar..."></div>`;
+                    <div class="input-group"><label style="color:var(--success);">Áudio de Suporte (TTS)</label><input type="text" id="audioText" placeholder="Texto para tocar no fundo"></div>
+                    <div class="input-group"><label>Resposta Exata Exigida</label><input type="text" id="answerStr" placeholder="O que o aluno deve digitar..."></div>`;
             } else if (type === 'repeat_sentence' || type === 'free_speech') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="Texto alvo"></div>
-                    <div class="form-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Texto formatado"></div>`;
+                    <div class="input-group"><label>Alvo do Algoritmo (O que a IA vai validar na fala)</label><input type="text" id="target" placeholder="Texto alvo"></div>
+                    <div class="input-group"><label>Texto Exibido para Leitura</label><input type="text" id="displayWord" placeholder="Texto formatado"></div>`;
             } else if (type === 'true_false') {
                 zone.innerHTML = `
-                    <div class="form-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
+                    <div class="input-group"><label>Resposta</label><select id="answer"><option value="1">Verdadeiro</option><option value="0">Falso</option></select></div>`;
             } else if (type === 'simultaneous_training' || type === 'memorization') {
                 zone.innerHTML = `
-                    <div class="form-group"><label style="color:var(--success);">Áudio Disparado (TTS)</label><input type="text" id="audioText" placeholder="Texto falado"></div>
-                    <div class="form-group"><label>Ação ou Tradução Exigida (Atrás do Card)</label><input type="text" id="answerStr" placeholder="Significado ou ação..."></div>`;
+                    <div class="input-group"><label style="color:var(--success);">Áudio Disparado (TTS)</label><input type="text" id="audioText" placeholder="Texto falado"></div>
+                    <div class="input-group"><label>Ação ou Tradução Exigida (Atrás do Card)</label><input type="text" id="answerStr" placeholder="Significado ou ação..."></div>`;
             }
         }
         
-        // Inicia os campos baseados no valor por defeito
         updateExerciseTypes();
 
         async function injectExercise() {
             const btn = document.getElementById('submitBtn');
+            const originalContent = btn.innerHTML;
             const type = document.getElementById('type').value;
             const core = document.getElementById('core-type').value;
             const targetId = document.getElementById('nodeId').value;
@@ -290,68 +340,47 @@
                 }
             };
 
-            // Mapeamento Inteligente dos Dados conforme o Tipo
-            const optEl = document.getElementById('options');
-            if (optEl) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
-            
-            const ansEl = document.getElementById('answer');
-            if (ansEl) payload.exercise.answer = parseInt(ansEl.value);
+            const optEl = document.getElementById('options'); if (optEl) payload.exercise.options = optEl.value.split(',').map(s => s.trim());
+            const ansEl = document.getElementById('answer'); if (ansEl) payload.exercise.answer = parseInt(ansEl.value);
+            const ansStrEl = document.getElementById('answerStr'); if (ansStrEl) payload.exercise.answer = ansStrEl.value.trim();
+            const audEl = document.getElementById('audioText'); if (audEl) payload.exercise.audioText = audEl.value;
+            const ipaEl = document.getElementById('ipa'); if (ipaEl) payload.exercise.ipa = ipaEl.value;
+            const ctxEl = document.getElementById('context'); if (ctxEl) payload.exercise.context = ctxEl.value;
+            const trgEl = document.getElementById('target'); if (trgEl) payload.exercise.target = trgEl.value;
+            const dspEl = document.getElementById('displayWord'); if (dspEl) payload.exercise.displayWord = dspEl.value;
 
-            const ansStrEl = document.getElementById('answerStr');
-            if (ansStrEl) payload.exercise.answer = ansStrEl.value.trim();
-
-            const audEl = document.getElementById('audioText');
-            if (audEl) payload.exercise.audioText = audEl.value;
-
-            const ipaEl = document.getElementById('ipa');
-            if (ipaEl) payload.exercise.ipa = ipaEl.value;
-
-            const ctxEl = document.getElementById('context');
-            if (ctxEl) payload.exercise.context = ctxEl.value;
-
-            const trgEl = document.getElementById('target');
-            if (trgEl) payload.exercise.target = trgEl.value;
-
-            const dspEl = document.getElementById('displayWord');
-            if (dspEl) payload.exercise.displayWord = dspEl.value;
-
-            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A Processar...`;
+            btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> A PROCESSAR...`;
             
             try {
-                const res = await fetch('/api/english/admin/inject', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                const res = await fetch('/api/english/admin/inject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 
                 if (data.success) {
-                    btn.style.background = "var(--success)"; btn.innerHTML = `<span class="material-icons-round">check_circle</span> Injetado!`;
-                    setTimeout(() => { btn.style.background = ""; btn.innerHTML = `<span class="material-icons-round">rocket_launch</span> Engatilhar e Injetar`; }, 2000);
-                    document.getElementById('text').value = ''; 
-                    if(ansStrEl) ansStrEl.value = '';
+                    btn.innerHTML = `<span class="material-icons-round">check_circle</span> INJETADO COM SUCESSO!`;
+                    setTimeout(() => { btn.innerHTML = originalContent; }, 2000);
+                    document.getElementById('text').value = ''; if(ansStrEl) ansStrEl.value = '';
                     loadSavedExercises(); 
                 } else alert(data.message || data.error);
-            } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; }
+            } catch (e) { alert("Falha na rede."); btn.innerHTML = "Erro Crítico"; setTimeout(() => { btn.innerHTML = originalContent; }, 2000); }
         }
 
         async function loadSavedExercises() {
             const nodeId = document.getElementById('nodeId').value;
             const statusEl = document.getElementById('arsenal-status');
             const listEl = document.getElementById('arsenal-list');
-            statusEl.innerText = "A Escanear Servidor..."; listEl.innerHTML = '';
-
+            
             try {
                 const res = await fetch(`/api/english/node/${nodeId}`);
                 const data = await res.json();
 
                 if (data.success && data.exercises && data.exercises.length > 0) {
-                    statusEl.innerHTML = `<b style="color:white;">${data.exercises.length}</b> Armamentos no Módulo.`;
+                    statusEl.innerHTML = `Foram encontrados <b style="color:white;">${data.exercises.length}</b> Armamentos nesta base.`;
+                    listEl.innerHTML = '';
                     data.exercises.forEach((ex, index) => {
                         let skillName = ex.type.toUpperCase().replace('_', ' '); 
                         let cssClass = "training"; 
                         let detailsHtml = "";
 
-                        // Define Cores
                         if (ex.type.includes('listen') || ex.type.includes('audio') || ex.type === 'dictation') cssClass = 'listening';
                         else if (ex.type.includes('repeat') || ex.type.includes('speech')) cssClass = 'speaking';
                         else if (ex.type.includes('reading') || ex.type.includes('cloze')) cssClass = 'reading';
@@ -363,11 +392,9 @@
                         if (ex.target) detailsHtml += `<b>Validação IA:</b> ${ex.target}<br>`;
 
                         const tagHtml = (ex.tags && ex.tags.length > 0) ? `<div style="margin-top:5px; font-size:10px; color:var(--primary);">${ex.tags.map(t=>`#${t}`).join(' ')}</div>` : '';
-                        const difHtml = ex.difficulty ? `<span class="ex-difficulty">Lvl ${ex.difficulty}</span>` : '';
 
                         listEl.innerHTML += `
                             <div class="exercise-card ${cssClass}">
-                                ${difHtml}
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                                     <span class="ex-badge">${skillName}</span>
                                     <span style="font-size:11px; color:#64748B; font-weight:800;">Nº ${index + 1}</span>
@@ -379,7 +406,7 @@
                     });
                 } else {
                     statusEl.innerText = "Aviso: Nenhuma missão cadastrada."; 
-                    listEl.innerHTML = `<div style="text-align:center; color:#64748B; padding:30px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">inventory_2</span><br>Base Vazia.</div>`;
+                    listEl.innerHTML = `<div style="text-align:center; color:#64748B; padding:40px 20px;"><span class="material-icons-round" style="font-size:40px; margin-bottom:10px; opacity:0.5;">inventory_2</span><br>Base Vazia.</div>`;
                 }
             } catch (e) { statusEl.innerText = "Falha ao conectar com a Base de Dados."; }
         }
@@ -391,7 +418,7 @@
             try {
                 const res = await fetch('/api/english/admin/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: document.getElementById('nodeId').value }) });
                 const data = await res.json();
-                if(data.success) { btn.innerHTML = `<span class="material-icons-round">done_all</span> Base Limpa!`; setTimeout(() => { btn.innerHTML = originalText; }, 2000); loadSavedExercises(); }
+                if(data.success) { btn.innerHTML = `<span class="material-icons-round">done_all</span> Base Limpa!`; setTimeout(() => { btn.innerHTML = originalText; closeArsenal(); }, 1500); loadSavedExercises(); }
             } catch(e) { alert("Erro ao limpar."); btn.innerHTML = originalText; }
         }
     </script>
