@@ -96,27 +96,27 @@
         emoji-picker::part(category-title) { background-color: #0B0F19; color: #8696A0; font-size: 13px; padding: 10px 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         emoji-picker::part(search-input) { background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; color: white; }
 
-        /* 🔥 CHAT BOTÕES UI (NOVO VISUAL DO MIC) 🔥 */
+        /* 🔥 CHAT BOTÕES UI E ÁUDIO PREMIUM 🔥 */
         .circular-primary-btn { 
-            background: #00A884; /* Verde WhatsApp Limpo */
+            background: #00A884; /* Verde WhatsApp */
             box-shadow: 0 2px 10px rgba(0, 168, 132, 0.4); 
             border: none; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-bottom: 2px; 
         }
         .circular-primary-btn:active { transform: scale(0.95); }
         .circular-primary-btn.recording-pulse { 
-            background: #EF4444; /* Vermelho Escuro ao Gravar */
+            background: #EF4444; 
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); 
             animation: recordPulse 1.5s infinite; 
         }
         @keyframes recordPulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         
-        .premium-record-ui { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 46px; box-sizing: border-box; margin-bottom: 2px;}
-        .record-action-btn { background: var(--card-bg); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
-        .record-action-btn:active { transform: scale(0.9); }
         .attach-menu-item { padding: 12px 20px; font-size: 14.5px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; color: var(--text-color); }
         .attach-menu-item:hover { background: rgba(255,255,255,0.05); }
         .attach-menu-item:last-child { border-bottom: none; }
+        
+        .icon-btn { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
+        .icon-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
     </style>
 </head>
 <body>
@@ -213,33 +213,45 @@
                 <div class="attach-menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981; font-size: 22px;">headphones</span> <span style="font-weight: 600;">Áudio</span></div>
             </div>
 
-            <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
+            <div id="chat-input-wrapper" style="display:flex; align-items:flex-end; gap:10px; padding:0 10px; width:100%; box-sizing: border-box; margin-bottom: 5px;">
                 
-                <div id="chat-input-container" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 4px 10px; min-height: 46px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                    <span id="btn-emoji" class="material-icons-round" style="color: #94A3B8; font-size: 26px; cursor: pointer; margin-right: 6px; padding: 5px 0; flex-shrink: 0;" onclick="toggleEmojiPicker(event)">mood</span>
-                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15.5px; color: var(--text-color); padding: 8px 0; word-break: break-word; min-width: 0;"></div>
-                    <span class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; padding: 6px 4px; flex-shrink: 0; transform: rotate(-45deg);" onclick="event.stopPropagation(); toggleAttachMenu();">attach_file</span>
-                    <span class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; padding: 6px 4px; margin-left: 2px; flex-shrink: 0;" onclick="document.getElementById('file-input').click()">camera_alt</span>
+                <div id="chat-input-container" style="flex:1; display:flex; align-items:center; gap:8px; background:var(--input-bg); border-radius:24px; padding:4px 10px; min-height:48px; border:1px solid rgba(255,255,255,0.05); box-shadow:0 1px 2px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 4px; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
+                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex:1; max-height:100px; overflow-y:auto; color:var(--text-color); font-size:15.5px; padding:10px 0; outline:none; word-break: break-word; min-width: 0;"></div>
+                    <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 4px; flex-shrink: 0; transform: rotate(-45deg);"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
+                    <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 4px; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
                 </div>
 
-                <div id="recording-ui" class="premium-record-ui hidden" style="border-radius: 24px; height: 46px;">
-                    <div class="record-action-btn" style="color: #EF4444;" onclick="cancelRecording()" title="Descartar"><span class="material-icons-round" style="font-size: 20px;">delete_outline</span></div>
+                <div id="recording-ui" class="hidden" style="flex:1; flex-direction:column; justify-content:center; background:var(--input-bg); border-radius:24px; padding:5px 8px; min-height:48px; border:1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); box-sizing:border-box;">
                     
-                    <div id="recording-active-state" style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 10px; min-width: 0; overflow: hidden; height: 100%;">
-                        <div style="display: flex; align-items: center; gap: 6px; margin-left: 5px; flex-shrink: 0;">
-                            <div style="width: 8px; height: 8px; background: #EF4444; border-radius: 50%; animation: pulseRed 1s infinite;"></div>
-                            <span id="recording-timer" style="font-weight: 800; color: #EF4444; font-size: 14px; font-variant-numeric: tabular-nums;">00:00</span>
+                    <div id="recording-active-state" class="hidden" style="display:flex; justify-content:space-between; align-items:center; width:100%; height: 100%;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-left: 5px;">
+                            <div style="width:8px; height:8px; background:#EF4444; border-radius:50%; animation: pulseRed 1s infinite;"></div>
+                            <div style="font-size:16px; color:var(--text-color); font-weight:600; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
                         </div>
-                        <canvas id="audio-visualizer" style="flex: 1; height: 100%; width: 100%; display: block; min-width: 50px;"></canvas>
+                        <div style="display:flex; align-items:center; gap:15px; margin-right: 5px;">
+                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
+                        </div>
                     </div>
 
-                    <div class="record-action-btn" id="btn-pause-record" style="color: var(--brand-primary); margin-left: 5px;" onclick="stopRecordingForPreview()" title="Pausar e Ouvir">
-                        <span class="material-icons-round" style="font-size: 20px;">pause</span>
+                    <div id="recording-preview-state" class="hidden" style="display:flex; align-items:center; justify-content:space-between; width:100%; height: 100%;">
+                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                        
+                        <div style="flex:1; display:flex; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden;">
+                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
+                            <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;">
+                                <div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div>
+                            </div>
+                            <div style="font-size:12px; color:var(--text-muted); font-family:monospace;" id="preview-timer-total">0:00</div>
+                        </div>
+
+                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
 
                 <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()">
-                    <span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span>
+                    <span id="dynamic-action-icon" class="material-icons-round" style="font-size: 24px;">mic</span>
                 </button>
             </div>
 
@@ -350,22 +362,7 @@
         <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
     </div>
 
-    <div id="add-contact-screen" class="app-screen hidden">
-    <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
-    <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
-        <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
-            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div>
-            <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
-            <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p>
-            <div style="position: relative; margin-bottom: 20px;">
-                <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span>
-                <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
-            </div>
-            <button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button>
-        </div>
-        <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
-    </div>
-</div>
+    <div id="add-contact-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;"><div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);"><div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div><h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3><p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p><div style="position: relative; margin-bottom: 20px;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span><input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;"></div><button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button></div><div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div></div></div>
     <div id="custom-delete-chat-modal" class="modal-overlay hidden" style="z-index: 10000;"><div class="modal-content" style="max-width: 320px; text-align: center;"><div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;"><span class="material-icons-round" style="font-size: 32px; color: #EF4444;">delete_forever</span></div><h3 style="color: var(--text-color); margin-bottom: 10px; font-weight: 800;">Apagar Conversa?</h3><p style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Tudo será apagado e <b id="delete-target-name" style="color: var(--brand-primary);">o contato</b> não será mais exibido na sua área de conversas.<br><br>Para voltar a conversar com essa pessoa, você terá que fazer uma busca e enviar uma nova mensagem.</p><div style="display: flex; gap: 10px; width: 100%;"><button onclick="hideElement('custom-delete-chat-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text); margin: 0;">Cancelar</button><button onclick="executeCustomDeleteChat()" class="chic-btn" style="flex: 1; margin: 0; background: #EF4444;">Apagar Tudo</button></div></div></div>
     <div id="start-chat-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content profile-view-card" style="text-align: center;"><img id="start-chat-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; border: 3px solid var(--brand-primary); object-fit: cover;"><h3 id="start-chat-name" style="margin-bottom: 5px; font-size: 22px; font-weight: 800;">Nome</h3><p id="start-chat-info" style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px;">info@email.com</p><div style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('start-chat-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text); border: 1px solid var(--input-bg);">Cancelar</button><button id="btn-confirm-start-chat" class="chic-btn">Enviar Mensagem</button></div></div></div>
     <div id="note-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 600px; width: 90%; height: 75vh; display: flex; flex-direction: column; padding: 0; border-radius: 16px; overflow: hidden; background: var(--bg-color);"><div style="background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);"><h3 style="color:var(--brand-primary); margin: 0; font-size: 18px; font-weight: 800;">📝 Bloco de Notas</h3><button class="icon-btn" onclick="hideElement('note-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button></div><div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto;"><input type="text" id="note-title" placeholder="Título da Anotação" style="font-size: 24px; font-weight: 800; border: none; background: transparent; outline: none; color: var(--text-color); margin-bottom: 15px; width: 100%;"><div style="display: flex; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 8px; border-radius: 8px;"><button class="icon-btn" onclick="formatNote('bold')" title="Negrito" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_bold</span></button><button class="icon-btn" onclick="formatNote('italic')" title="Itálico" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_italic</span></button><button class="icon-btn" onclick="formatNote('insertUnorderedList')" title="Lista" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_list_bulleted</span></button></div><div id="note-content" contenteditable="true" placeholder="Comece a digitar sua ideia aqui..." style="flex: 1; outline: none; font-size: 16px; line-height: 1.6; color: var(--text-color); overflow-y: auto;"></div></div><div style="padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; justify-content: flex-end;"><button onclick="saveNote()" class="chic-btn" style="margin: 0; padding: 10px 25px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);">Salvar Anotação</button></div></div></div>
@@ -391,8 +388,6 @@
     <div id="explore-communities-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 450px; height: 85%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><h3 style="color: var(--brand-secondary); margin: 0; font-size: 20px; font-weight: 800;"><span class="material-icons-round" style="vertical-align: middle; color: var(--brand-secondary);">explore</span> Descobrir Servidores</h3><button class="icon-btn" onclick="hideElement('explore-communities-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button></div><div id="explore-communities-list" style="flex: 1; overflow-y: auto; padding-right: 5px;"></div></div></div>
     <div id="create-channel-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 320px;"><h3 style="margin-bottom: 15px;">Criar Novo Canal</h3><input type="hidden" id="new-channel-type" value="text"><div style="display: flex; align-items: center; background: var(--input-bg); border-radius: 12px; padding: 0 10px; margin-bottom: 20px;"><span class="material-icons-round" style="color: var(--secondary-text);">tag</span><input type="text" id="new-channel-name" placeholder="nome-do-canal" class="chic-input" style="background: transparent; border: none; margin: 0; box-shadow: none;"></div><div style="display: flex; gap: 10px; width: 100%;"><button onclick="hideElement('create-channel-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text);">Cancelar</button><button onclick="submitCreateChannel()" class="chic-btn" style="flex: 1; margin: 0; background: var(--brand-secondary);">Criar</button></div></div></div>
     <div id="create-community-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 350px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><h3 style="margin: 0; color: var(--brand-primary); font-weight: 800;"><span class="material-icons-round" style="vertical-align: middle;">add_box</span> Novo Servidor</h3><button class="icon-btn" onclick="hideElement('create-community-modal')"><span class="material-icons-round">close</span></button></div><input type="text" id="new-comm-name" placeholder="Nome da Tropa/Comunidade" class="chic-input"><textarea id="new-comm-desc" placeholder="Qual o propósito deste servidor?" class="chic-input" style="resize:none; height:70px;"></textarea><button onclick="submitNewCommunity()" class="chic-btn" style="background: var(--brand-primary); margin-top: 10px;">Forjar Servidor</button></div></div>
-    <div id="incoming-call-modal" class="modal-overlay hidden" style="z-index: 10000; background: rgba(5, 5, 10, 0.95); backdrop-filter: blur(15px);"><div style="display:flex; flex-direction:column; align-items:center; color:white; text-align: center;"><img id="caller-photo" src="" style="width:120px; height:120px; border-radius:50%; margin-bottom:20px; border: 4px solid #10B981; animation: pulse 1.5s infinite; object-fit: cover;"><h2 id="caller-name" style="margin-bottom: 5px; font-size: 24px; font-weight: 900;">Contato</h2><p style="color: #10B981; margin-bottom: 40px; font-weight: 600; letter-spacing: 1px;">Chamada de Vídeo Recebida...</p><div style="display:flex; gap:40px;"><button onclick="rejectCall()" style="background:#EF4444; border:none; width:70px; height:70px; border-radius:50%; color:white; cursor:pointer; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;"><span class="material-icons-round" style="font-size:35px;">call_end</span></button><button onclick="acceptCall()" style="background:#10B981; border:none; width:70px; height:70px; border-radius:50%; color:white; cursor:pointer; box-shadow: 0 10px 25px rgba(16,185,129,0.5); transition: 0.2s;"><span class="material-icons-round" style="font-size:35px;">videocam</span></button></div></div></div>
-    <div id="video-call-screen" class="hidden" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; z-index: 10001; display:flex; flex-direction:column;"><video id="remote-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video><video id="local-video" autoplay playsinline muted style="position:absolute; top:20px; right:20px; width:110px; height:160px; object-fit:cover; border-radius:16px; border:2px solid rgba(255,255,255,0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 2;"></video><div style="position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; gap:15px; background:rgba(15,23,42,0.8); padding:15px 25px; border-radius:40px; backdrop-filter:blur(10px); z-index: 3; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"><button onclick="toggleVideoMic()" id="btn-toggle-mic" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">mic</span></button><button onclick="toggleVideoCam()" id="btn-toggle-cam" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">videocam</span></button><button onclick="flipCamera()" id="btn-flip-cam" style="background:rgba(255,255,255,0.2); border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">cameraswitch</span></button><button onclick="endVideoCall()" style="background:#EF4444; border:none; width:55px; height:55px; border-radius:50%; color:white; cursor:pointer; transition:0.2s;"><span class="material-icons-round" style="font-size: 28px;">call_end</span></button></div></div>
     
     <nav id="bottom-navigation" class="bottom-nav hidden">
         <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
@@ -400,6 +395,27 @@
         <div class="nav-item" onclick="switchTab('anotacoes', this)"><div class="nav-icon"><span class="material-icons-round">note_alt</span></div><span>Notas</span></div>
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                reg.update(); 
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log("Atualização detectada! Reiniciando...");
+                            window.location.reload();
+                        }
+                    };
+                };
+            });
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) { window.location.reload(); refreshing = true; }
+            });
+        }
+    </script>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/core.js"></script>
