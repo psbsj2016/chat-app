@@ -1,5 +1,5 @@
 // ==============================================================
-// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS
+// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (BLINDADO E PREMIUM)
 // ==============================================================
 let searchTimeout = null;
 let pressTimer = null;
@@ -144,11 +144,13 @@ window.executeBulkDeleteChat = async function() {
             } else {
                 await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); 
                 messageCache[contact.id] = []; 
-                if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); 
+                const safeHidden = window.hiddenChats || [];
+                if(!safeHidden.includes(contact.id)) safeHidden.push(contact.id); 
+                window.hiddenChats = safeHidden;
             }
         } catch(e) {}
     }
-    localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); 
+    localStorage.setItem('hiddenChats', JSON.stringify(window.hiddenChats || [])); 
     clearContactSelection(); 
     loadContacts();
 };
@@ -214,7 +216,6 @@ window.handleInChatSearch = function(query) {
 window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) return; currentSearchIndex += dir; if (currentSearchIndex >= chatSearchMatches.length) currentSearchIndex = 0; if (currentSearchIndex < 0) currentSearchIndex = chatSearchMatches.length - 1; updateSearchHighlight(); };
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
-
 
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
@@ -302,7 +303,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
+// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E RETOMA INJETADO)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -312,11 +313,6 @@ let previewAudioObj = null;
 
 let recordingInterval = null;
 let recordingSeconds = 0;
-
-let audioContext = null;
-let audioAnalyzer = null;
-let audioDataArray = null;
-let visualizerAnimationId = null;
 
 const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
@@ -385,7 +381,7 @@ async function startRecording() {
         audioChunks = []; 
         isRecordingCancelled = false; 
         showPreviewAfterStop = false;
-        
+
         hideElement('chat-input-container'); 
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
@@ -425,7 +421,7 @@ async function startRecording() {
 
 window.stopRecordingForPreview = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        globalMediaRecorder.pause();
+        globalMediaRecorder.pause(); 
         clearInterval(recordingInterval);
         
         dynamicActionBtn.classList.remove('recording-pulse');
@@ -480,6 +476,7 @@ function resetAudioUI() {
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
     dynamicActionBtn.classList.remove('recording-pulse');
+    
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
@@ -549,16 +546,19 @@ function emitTypingStatus(action) { if (!currentChatId) return; const myName = l
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
 socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
-socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) hideElement('typing-indicator'); const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
+socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) hideElement('typing-indicator'); const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); const safeUnreadC = window.unreadCounts || {}; const safeUnreadG = window.unreadGroups || []; if(safeUnreadC[targetId] > 0 || safeUnreadG.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { const safeUnreadC = window.unreadCounts || {}; safeUnreadC[currentChatId] = 0; window.unreadCounts = safeUnreadC; localStorage.setItem('unreadCounts', JSON.stringify(safeUnreadC)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId; const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender }; const senderId = senderObj._id;
     let targetId; if (isGroup) { targetId = msg.groupId; } else { const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver; targetId = (senderId === myId) ? receiverId : senderId; }
-    if (hiddenChats.includes(targetId) && senderId !== myId) { hiddenChats = hiddenChats.filter(id => id !== targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); }
-    if (currentChatId === targetId) { if (!document.getElementById(`msg-${msg._id}`)) { displayMessage(msg); if (!messageCache[currentChatId]) messageCache[currentChatId] = []; messageCache[currentChatId].push(msg); } if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId }); } else { if (senderId !== myId) { if (isGroup) { unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1; localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); } if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); playNotificationSound('modern'); } }
+    
+    const safeHidden = window.hiddenChats || [];
+    if (safeHidden.includes(targetId) && senderId !== myId) { window.hiddenChats = safeHidden.filter(id => id !== targetId); localStorage.setItem('hiddenChats', JSON.stringify(window.hiddenChats)); }
+    
+    if (currentChatId === targetId) { if (!document.getElementById(`msg-${msg._id}`)) { displayMessage(msg); if (!messageCache[currentChatId]) messageCache[currentChatId] = []; messageCache[currentChatId].push(msg); } if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId }); } else { if (senderId !== myId) { if (isGroup) { const safeUnreadG = window.unreadGroups || []; safeUnreadG[targetId] = (safeUnreadG[targetId] || 0) + 1; window.unreadGroups = safeUnreadG; localStorage.setItem('unreadGroups', JSON.stringify(safeUnreadG)); } else { const safeUnreadC = window.unreadCounts || {}; safeUnreadC[targetId] = (safeUnreadC[targetId] || 0) + 1; window.unreadCounts = safeUnreadC; localStorage.setItem('unreadCounts', JSON.stringify(safeUnreadC)); } if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); playNotificationSound('modern'); } }
     if (!isGroup && senderObj.displayName && senderId !== myId) { let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const existingIndex = cachedUsers.findIndex(u => u._id === senderId); if (existingIndex === -1) { cachedUsers.unshift(senderObj); } else { const userToMove = cachedUsers.splice(existingIndex, 1)[0]; userToMove.displayName = senderObj.displayName; userToMove.photoUrl = senderObj.photoUrl; cachedUsers.unshift(userToMove); } localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); }
     loadContacts();
 });
@@ -608,7 +608,10 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
 
 window.openChat = function(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+    
+    const safeUnread = window.unreadCounts || {};
+    safeUnread[id] = 0; window.unreadCounts = safeUnread;
+    localStorage.setItem('unreadCounts', JSON.stringify(safeUnread)); 
     updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
     closeChatSearch(); lastRenderedDate = null; 
     
@@ -649,7 +652,8 @@ window.openChat = function(id, name, photo, email, type = 'user') {
             headerText.style.color = 'var(--secondary-text)';
         } else { 
             headerDot.style.display = 'block'; 
-            const isOnline = onlineUsersList.includes(id); 
+            const safeOnline = window.onlineUsersList || [];
+            const isOnline = safeOnline.includes(id); 
             headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
             headerText.innerText = isOnline ? 'Online' : 'Offline'; 
             headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
@@ -658,12 +662,52 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🟢 INJEÇÃO DO ROBÔ IA PTT COMO CONTATO FIXO 🟢
-function renderContactsList(groups, users) {
-    const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
+// 🟢 RENDERIZAÇÃO DOS CONTATOS COM O ROBÔ FIXO 🟢
+async function loadContacts() { 
+    if(!myId) return; 
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; 
     
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
+        cachedGroups.forEach(g => socket.emit('join_group', g._id)); 
+        renderContactsList(cachedGroups, cachedUsers); 
+        if (typeof updateAppBadge === 'function') updateAppBadge(); 
+    } 
+    
+    try { 
+        const resUnread = await fetch(`/unread/${myId}`); 
+        const serverCounts = await resUnread.json(); 
+        const safeUnread = window.unreadCounts || {};
+        cachedUsers.forEach(u => { safeUnread[u._id] = serverCounts[u._id] || 0; }); 
+        window.unreadCounts = safeUnread;
+        localStorage.setItem('unreadCounts', JSON.stringify(safeUnread)); 
+        
+        const resGroups = await fetch(`/groups/${myId}`); 
+        const groups = await resGroups.json(); 
+        
+        const resUsers = await fetch(`/users/${myId}`); 
+        const users = await resUsers.json(); 
+        
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
+        localStorage.setItem('cacheUsers', JSON.stringify(users)); 
+        
+        groups.forEach(g => socket.emit('join_group', g._id)); 
+        renderContactsList(groups, users); 
+        if (typeof updateAppBadge === 'function') updateAppBadge(); 
+    } catch(e) {} 
+}
+
+function renderContactsList(groups, users) {
+    const list = document.getElementById('users-list'); 
+    list.innerHTML = ''; 
+    
+    const safeHidden = window.hiddenChats || [];
+    const visibleUsers = users.filter(user => !safeHidden.includes(user._id));
+    const safeUnread = window.unreadCounts || {};
+    
+    // 🤖 ROBÔ IA OFICIAL INJETADO AQUI
     list.innerHTML += `
-        <div class="user-item" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--brand-primary) !important;" onclick="openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA')">
+        <div class="user-item" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--brand-primary) !important;" onclick="if(typeof openImmersiveGame === 'function') { openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA') } else { window.open('https://www.jotform.com/app/260666845284670', '_blank') }">
             <div class="user-avatar-container">
                 <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar-small" style="border: 2px solid var(--brand-primary); background: white; padding: 2px;">
                 <div class="status-dot status-online" style="background: var(--brand-primary); box-shadow: 0 0 5px var(--brand-primary);"></div>
@@ -680,11 +724,14 @@ function renderContactsList(groups, users) {
         </div>
     `;
 
-    if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
+    if (groups.length === 0 && visibleUsers.length === 0) { 
+        list.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3></div>`; 
+        return; 
+    }
     
-    groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
+    groups.sort((a, b) => (safeUnread[b._id] || 0) - (safeUnread[a._id] || 0));
     groups.forEach(group => { 
-        let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
+        let count = safeUnread[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
         const isSelected = selectedActionContacts.some(c => c.id === group._id);
         if (isSelected) extraGroupClass += ' selected-for-action';
 
@@ -715,11 +762,11 @@ function renderContactsList(groups, users) {
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
-    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    visibleUsers.sort((a, b) => (safeUnread[b._id] || 0) - (safeUnread[a._id] || 0)); 
     visibleUsers.forEach(user => { 
-        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
-        let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
+        let count = safeUnread[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = (window.onlineUsersList || []).includes(user._id) ? 'status-online' : 'status-offline'; 
+        let sectorLabel = ''; const safeSectors = window.currentSectors || []; safeSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
         
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
@@ -873,8 +920,10 @@ window.blockContact = function(id) {
     if(!id) return;
     if(confirm("Tem certeza que deseja bloquear este contato? Não receberá mais notificações dele.")) {
         alert("Contato bloqueado.");
-        if(!hiddenChats.includes(id)) hiddenChats.push(id);
-        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+        const safeHidden = window.hiddenChats || [];
+        if(!safeHidden.includes(id)) safeHidden.push(id);
+        window.hiddenChats = safeHidden;
+        localStorage.setItem('hiddenChats', JSON.stringify(safeHidden));
         backToMain();
         loadContacts();
     }
@@ -1053,7 +1102,7 @@ window.toggleFab = function() {
     }
 };
 
-// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR E ROBÔ PTT
+// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR
 window.openAddContactScreen = function() {
     document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
     const screen = document.getElementById('add-contact-screen');
@@ -1077,7 +1126,7 @@ window.executeExactSearch = async function() {
         
         // Tenta buscar TODOS os usuários globais da aplicação e filtra localmente
         let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); 
+        if(!res.ok) res = await fetch('/api/users'); // Fallback comum em Node.js
         
         if(res.ok) {
             const allUsers = await res.json();
@@ -1087,6 +1136,7 @@ window.executeExactSearch = async function() {
                 (u.phone && u.phone.includes(term))
             );
         } else {
+            // Fallback 2: Rota de busca específica do backend
             const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
             if(searchRes.ok) {
                 const data = await searchRes.json();
@@ -1094,6 +1144,7 @@ window.executeExactSearch = async function() {
             }
         }
 
+        // Tira o próprio usuário logado dos resultados
         foundUsers = foundUsers.filter(u => u._id !== myId);
 
         if(foundUsers.length > 0) {
@@ -1135,6 +1186,7 @@ window.startChatWithNewUser = function(id, name, photo, email) {
     document.getElementById('main-screen').classList.remove('hidden');
     openChat(id, name, photo, email, 'user');
     
+    // Atira mensagem silenciosa pro backend registrar a sala e exibir na lista
     socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
 };
 

@@ -117,6 +117,9 @@
         .attach-menu-item { padding: 12px 20px; font-size: 14.5px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; color: var(--text-color); }
         .attach-menu-item:hover { background: rgba(255,255,255,0.05); }
         .attach-menu-item:last-child { border-bottom: none; }
+        
+        .icon-btn { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
+        .icon-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
     </style>
 </head>
 <body>
@@ -216,13 +219,13 @@
             <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
                 
                 <div id="chat-input-container" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 4px 10px; min-height: 46px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                    <span id="btn-emoji" class="material-icons-round" style="color: #94A3B8; font-size: 26px; cursor: pointer; margin-right: 6px; padding: 5px 0; flex-shrink: 0;" onclick="toggleEmojiPicker(event)">mood</span>
-                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15.5px; color: var(--text-color); padding: 8px 0; word-break: break-word; min-width: 0;"></div>
-                    <span class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; padding: 6px 4px; flex-shrink: 0; transform: rotate(-45deg);" onclick="event.stopPropagation(); toggleAttachMenu();">attach_file</span>
-                    <span class="material-icons-round" style="color: #94A3B8; font-size: 24px; cursor: pointer; padding: 6px 4px; margin-left: 2px; flex-shrink: 0;" onclick="document.getElementById('file-input').click()">camera_alt</span>
+                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
+                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; overflow-y: auto; outline: none; font-size: 15.5px; color: var(--text-color); padding: 8px 4px; word-break: break-word; min-width: 0;"></div>
+                    <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none; transform: rotate(-45deg);"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
+                    <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
                 </div>
 
-                <div id="recording-ui" class="hidden" style="flex:1; flex-direction:column; justify-content:center; background:var(--input-bg); border-radius:24px; padding:5px 8px; min-height:46px; border:1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); box-sizing:border-box;">
+                <div id="recording-ui" class="hidden premium-record-ui">
                     
                     <div id="recording-active-state" class="hidden" style="display:flex; justify-content:space-between; align-items:center; width:100%; height: 100%;">
                         <div style="display:flex; align-items:center; gap:6px; margin-left: 5px;">
@@ -230,23 +233,23 @@
                             <div style="font-size:16px; color:var(--text-color); font-weight:600; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
                         </div>
                         <div style="display:flex; align-items:center; gap:15px; margin-right: 5px;">
-                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
+                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
                         </div>
                     </div>
 
                     <div id="recording-preview-state" class="hidden" style="display:flex; align-items:center; justify-content:space-between; width:100%; height: 100%;">
-                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
                         
                         <div style="flex:1; display:flex; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden;">
-                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
+                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
                             <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;">
                                 <div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div>
                             </div>
                             <div style="font-size:12px; color:var(--text-muted); font-family:monospace;" id="preview-timer-total">0:00</div>
                         </div>
 
-                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
+                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
 
@@ -363,22 +366,21 @@
     </div>
 
     <div id="add-contact-screen" class="app-screen hidden">
-        <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
-        <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
-            <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
-                <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div>
-                <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
-                <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p>
-                <div style="position: relative; margin-bottom: 20px;">
-                    <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span>
-                    <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
-                </div>
-                <button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button>
+    <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
+    <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
+        <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
+            <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div>
+            <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
+            <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p>
+            <div style="position: relative; margin-bottom: 20px;">
+                <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span>
+                <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
             </div>
-            <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
+            <button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button>
         </div>
+        <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
     </div>
-    
+</div>
     <div id="custom-delete-chat-modal" class="modal-overlay hidden" style="z-index: 10000;"><div class="modal-content" style="max-width: 320px; text-align: center;"><div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;"><span class="material-icons-round" style="font-size: 32px; color: #EF4444;">delete_forever</span></div><h3 style="color: var(--text-color); margin-bottom: 10px; font-weight: 800;">Apagar Conversa?</h3><p style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Tudo será apagado e <b id="delete-target-name" style="color: var(--brand-primary);">o contato</b> não será mais exibido na sua área de conversas.<br><br>Para voltar a conversar com essa pessoa, você terá que fazer uma busca e enviar uma nova mensagem.</p><div style="display: flex; gap: 10px; width: 100%;"><button onclick="hideElement('custom-delete-chat-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text); margin: 0;">Cancelar</button><button onclick="executeCustomDeleteChat()" class="chic-btn" style="flex: 1; margin: 0; background: #EF4444;">Apagar Tudo</button></div></div></div>
     <div id="start-chat-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content profile-view-card" style="text-align: center;"><img id="start-chat-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; border: 3px solid var(--brand-primary); object-fit: cover;"><h3 id="start-chat-name" style="margin-bottom: 5px; font-size: 22px; font-weight: 800;">Nome</h3><p id="start-chat-info" style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px;">info@email.com</p><div style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('start-chat-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text); border: 1px solid var(--input-bg);">Cancelar</button><button id="btn-confirm-start-chat" class="chic-btn">Enviar Mensagem</button></div></div></div>
     <div id="note-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 600px; width: 90%; height: 75vh; display: flex; flex-direction: column; padding: 0; border-radius: 16px; overflow: hidden; background: var(--bg-color);"><div style="background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);"><h3 style="color:var(--brand-primary); margin: 0; font-size: 18px; font-weight: 800;">📝 Bloco de Notas</h3><button class="icon-btn" onclick="hideElement('note-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button></div><div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto;"><input type="text" id="note-title" placeholder="Título da Anotação" style="font-size: 24px; font-weight: 800; border: none; background: transparent; outline: none; color: var(--text-color); margin-bottom: 15px; width: 100%;"><div style="display: flex; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 8px; border-radius: 8px;"><button class="icon-btn" onclick="formatNote('bold')" title="Negrito" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_bold</span></button><button class="icon-btn" onclick="formatNote('italic')" title="Itálico" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_italic</span></button><button class="icon-btn" onclick="formatNote('insertUnorderedList')" title="Lista" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_list_bulleted</span></button></div><div id="note-content" contenteditable="true" placeholder="Comece a digitar sua ideia aqui..." style="flex: 1; outline: none; font-size: 16px; line-height: 1.6; color: var(--text-color); overflow-y: auto;"></div></div><div style="padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; justify-content: flex-end;"><button onclick="saveNote()" class="chic-btn" style="margin: 0; padding: 10px 25px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);">Salvar Anotação</button></div></div></div>
