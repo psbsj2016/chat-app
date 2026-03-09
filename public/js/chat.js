@@ -217,6 +217,7 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
+
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
 // ==============================================================
@@ -303,7 +304,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E RETOMA INJETADO)
+// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E RETOMA)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -662,7 +663,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🟢 RENDERIZAÇÃO DOS CONTATOS COM O ROBÔ FIXO 🟢
+// 🟢 RENDERIZAÇÃO DOS CONTATOS (BLINDADA CONTRA BUGS E COM ROBÔ) 🟢
 async function loadContacts() { 
     if(!myId) return; 
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
@@ -705,27 +706,39 @@ function renderContactsList(groups, users) {
     const visibleUsers = users.filter(user => !safeHidden.includes(user._id));
     const safeUnread = window.unreadCounts || {};
     
-    // 🤖 ROBÔ IA OFICIAL INJETADO AQUI
-    list.innerHTML += `
-        <div class="user-item" style="background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--brand-primary) !important;" onclick="if(typeof openImmersiveGame === 'function') { openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA') } else { window.open('https://www.jotform.com/app/260666845284670', '_blank') }">
-            <div class="user-avatar-container">
-                <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar-small" style="border: 2px solid var(--brand-primary); background: white; padding: 2px;">
-                <div class="status-dot status-online" style="background: var(--brand-primary); box-shadow: 0 0 5px var(--brand-primary);"></div>
+    // 🤖 ROBÔ IA OFICIAL INJETADO AQUI (Com estilo idêntico aos cards originais do chat)
+    const botItem = document.createElement('div');
+    botItem.className = 'user-item';
+    botItem.style = "border: 1px solid var(--brand-primary); background: var(--card-bg);";
+    botItem.onclick = () => {
+        if(typeof openImmersiveGame === 'function') { 
+            openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA'); 
+        } else { 
+            window.open('https://www.jotform.com/app/260666845284670', '_blank'); 
+        }
+    };
+    botItem.innerHTML = `
+        <div class="user-avatar-container">
+            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar-small" style="border: 2px solid var(--brand-primary); background: white; padding: 2px;">
+            <div class="status-dot status-online" style="background: var(--brand-primary); box-shadow: 0 0 5px var(--brand-primary);"></div>
+        </div>
+        <div class="user-item-info">
+            <div class="user-item-top">
+                <div class="user-item-name" style="color: var(--brand-primary); display:flex; align-items:center;">Robô IA Oficial <span class="material-icons-round" style="font-size:16px; margin-left:4px; color:var(--brand-primary);">verified</span></div>
+                <div class="user-item-time" style="color: var(--brand-primary); font-weight: 800;">24/7</div>
             </div>
-            <div class="user-item-info">
-                <div class="user-item-top">
-                    <div class="user-item-name" style="color: var(--brand-primary); display:flex; align-items:center;">Robô IA Oficial <span class="material-icons-round" style="font-size:16px; margin-left:4px; color:var(--brand-primary);">verified</span></div>
-                    <div class="user-item-time" style="color: var(--brand-primary); font-weight: 800;">24/7</div>
-                </div>
-                <div class="user-item-bottom">
-                    <div class="user-item-msg" style="color: var(--text-color); font-weight: 600;">Toque para conversar com a Inteligência Artificial</div>
-                </div>
+            <div class="user-item-bottom">
+                <div class="user-item-msg" style="color: var(--text-color); font-weight: 600;">Toque para conversar com a Inteligência Artificial</div>
             </div>
         </div>
     `;
+    list.appendChild(botItem);
 
     if (groups.length === 0 && visibleUsers.length === 0) { 
-        list.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3></div>`; 
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style = "display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);";
+        emptyDiv.innerHTML = `<h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3>`;
+        list.appendChild(emptyDiv);
         return; 
     }
     
@@ -736,15 +749,15 @@ function renderContactsList(groups, users) {
         if (isSelected) extraGroupClass += ' selected-for-action';
 
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
+        const safeName = group.name.replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
         let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadG ? 'Agora' : '';
 
-        clickArea.innerHTML = `
+        div.innerHTML = `
             <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
-                <img src="${photo}" class="avatar-small">
+                <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/166/166258.png'">
             </div>
             <div class="user-item-info">
                 <div class="user-item-top">
@@ -758,8 +771,8 @@ function renderContactsList(groups, users) {
             </div>
         `; 
         
-        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
-        div.appendChild(clickArea); list.appendChild(div); 
+        setupLongPress(div, group._id, safeName, true, photo, 'Grupo');
+        list.appendChild(div); 
     }); 
 
     visibleUsers.sort((a, b) => (safeUnread[b._id] || 0) - (safeUnread[a._id] || 0)); 
@@ -772,17 +785,17 @@ function renderContactsList(groups, users) {
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
         if (isSelected) extraClass += ' selected-for-action';
 
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const safeName = name.replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
         let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadU ? 'Agora' : '';
 
-        clickArea.innerHTML = `
+        div.innerHTML = `
             <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
                 <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
                 ${sectorLabel}
-                <img src="${photo}" class="avatar-small">
+                <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
             </div>
             <div class="user-item-info">
                 <div class="user-item-top">
@@ -796,8 +809,8 @@ function renderContactsList(groups, users) {
             </div>
         `; 
         
-        setupLongPress(clickArea, user._id, safeName, false, photo, email);
-        div.appendChild(clickArea); list.appendChild(div); 
+        setupLongPress(div, user._id, safeName, false, photo, email);
+        list.appendChild(div); 
     });
 }
 
@@ -1124,9 +1137,8 @@ window.executeExactSearch = async function() {
     try {
         let foundUsers = [];
         
-        // Tenta buscar TODOS os usuários globais da aplicação e filtra localmente
         let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); // Fallback comum em Node.js
+        if(!res.ok) res = await fetch('/api/users'); 
         
         if(res.ok) {
             const allUsers = await res.json();
@@ -1136,7 +1148,6 @@ window.executeExactSearch = async function() {
                 (u.phone && u.phone.includes(term))
             );
         } else {
-            // Fallback 2: Rota de busca específica do backend
             const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
             if(searchRes.ok) {
                 const data = await searchRes.json();
@@ -1144,7 +1155,6 @@ window.executeExactSearch = async function() {
             }
         }
 
-        // Tira o próprio usuário logado dos resultados
         foundUsers = foundUsers.filter(u => u._id !== myId);
 
         if(foundUsers.length > 0) {
@@ -1186,11 +1196,9 @@ window.startChatWithNewUser = function(id, name, photo, email) {
     document.getElementById('main-screen').classList.remove('hidden');
     openChat(id, name, photo, email, 'user');
     
-    // Atira mensagem silenciosa pro backend registrar a sala e exibir na lista
     socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
 };
 
-// 🟢 CRIAR GRUPO: BLINDADO
 window.openCreateGroupModal = async function(preselectedIds = []) {
     const modal = document.getElementById('create-group-modal');
     if (modal) {
