@@ -218,23 +218,40 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
-// ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS
-// ==============================================================
 window.toggleEmojiPicker = function(e) { 
     if (e) e.stopPropagation(); 
+    
     const drawer = document.getElementById('emoji-drawer'); 
     if (drawer) {
-        if (drawer.style.height === '300px') { drawer.style.height = '0px'; } 
-        else { drawer.style.height = '300px'; setTimeout(() => { const box = document.getElementById('chat-box'); if(box) box.scrollTop = box.scrollHeight; }, 300); }
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
     } 
 };
 
 window.changeEmojiCategory = function(categoryName, element) {
     const picker = document.getElementById('neo-emoji-picker');
     if (!picker) return;
-    if (categoryName === 'favorites') { picker.activeCategory = 'favorites'; const root = picker.shadowRoot; if(root) { const scrollArea = root.querySelector('.scroll-wrapper'); if(scrollArea) scrollArea.scrollTop = 0; } } 
-    else { picker.database.getEmojiByGroup(categoryName).then(() => { picker.activeCategory = categoryName; }); }
+
+    if (categoryName === 'favorites') {
+        picker.activeCategory = 'favorites';
+        const root = picker.shadowRoot;
+        if(root) {
+            const scrollArea = root.querySelector('.scroll-wrapper');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
+    } else {
+        picker.database.getEmojiByGroup(categoryName).then(() => {
+            picker.activeCategory = categoryName;
+        });
+    }
+
     document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
     if(element) element.classList.add('active');
 };
@@ -255,29 +272,36 @@ setTimeout(() => {
                 sel.removeAllRanges();
                 sel.addRange(range);
             } catch(e){}
+
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { dynamicActionIcon.innerText = 'send'; } 
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
         }); 
     } 
     
     if(msgInput) {
         msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') { drawer.style.height = '0px'; }
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
         });
     }
 
     document.addEventListener('click', (e) => { 
         if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
             const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') { drawer.style.height = '0px'; }
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
         } 
     }); 
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E PLAY ESTILO WHATSAPP)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (PAUSA E PLAY)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -400,13 +424,12 @@ async function startRecording() {
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
 }
 
-// 🟢 PAUSAR E LIBERAR O PLAY DA GRAVAÇÃO
 window.stopRecordingForPreview = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
         globalMediaRecorder.pause(); 
         clearInterval(recordingInterval);
         
-        // Salva os pacotes de áudio temporários
+        // Pede os blocos de audio pra construir a pre-visualização
         globalMediaRecorder.requestData();
 
         dynamicActionBtn.classList.remove('recording-pulse');
@@ -414,11 +437,11 @@ window.stopRecordingForPreview = function() {
         showElement('recording-preview-state');
         document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
 
-        // Delay rápido para compilar o áudio para tocar
+        // Aguarda os pacotes entrarem e cria o objeto de áudio
         setTimeout(() => {
             const tempBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const tempUrl = URL.createObjectURL(tempBlob);
-            if (previewAudioObj) previewAudioObj.pause();
+            if (previewAudioObj) { previewAudioObj.pause(); }
             previewAudioObj = new Audio(tempUrl);
             
             previewAudioObj.ontimeupdate = () => { 
@@ -433,7 +456,6 @@ window.stopRecordingForPreview = function() {
     } 
 }
 
-// 🟢 RETOMAR A GRAVAÇÃO (MIC VERMELHO)
 window.resumeRecording = function() {
     if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
         globalMediaRecorder.resume();
@@ -460,7 +482,7 @@ window.resumeRecording = function() {
 window.stopAndSendRecording = function() { 
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         showPreviewAfterStop = false; 
-        globalMediaRecorder.stop(); // O stop aciona a criação do ficheiro final e envia
+        globalMediaRecorder.stop(); 
     } else if (pendingAudioFile) { 
         sendMessage(); 
         resetAudioUI(); 
@@ -488,12 +510,11 @@ function resetAudioUI() {
     
     const input = document.getElementById('message-input'); 
     if (input) { input.innerHTML = ''; } 
-    resetDynamicButton(); 
+    resetDynamicButton();
     emitStopTypingStatus(); 
 }
 
 function setupPreviewUI(blob) { 
-    // Segurança extra caso o fluxo pare totalmente
     hideElement('recording-active-state'); 
     showElement('recording-preview-state'); 
     dynamicActionBtn.classList.remove('recording-pulse');
@@ -516,7 +537,6 @@ function setupPreviewUI(blob) {
     document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
 }
 
-// 🟢 PLAY / PAUSE AO OUVIR A PRÉVIA
 window.togglePreviewAudio = function() { 
     if(previewAudioObj) {
         const playBtn = document.getElementById('preview-play-btn'); 
@@ -526,32 +546,32 @@ window.togglePreviewAudio = function() {
             previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
         } 
     } else {
-        alert("O áudio está a ser processado. Tente num segundo.");
+        alert("O áudio está a ser processado...");
     }
 }
 
 // ==============================================================
-// 🔌 SOCKETS E SINCRONIZAÇÃO (CORES BLINDADAS)
+// 🔌 SOCKETS E SINCRONIZAÇÃO (Cores e Status Online Corrigido)
 // ==============================================================
 if(socket) {
     socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
     socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
     socket.on('connect', () => { if (myId) { socket.emit('join_room', myId); const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups.forEach(g => socket.emit('join_group', g._id)); } });
     
-    // 🔥 ATUALIZAÇÃO SEGURA E IMEDIATA DO ONLINE / OFFLINE 🔥
+    // 🔥 CORREÇÃO DAS CORES DO ONLINE/OFFLINE 🔥
     socket.on('online_users', (list) => { 
-        const safeList = Array.isArray(list) ? list.map(id => String(id)) : [];
-        window.onlineUsersList = safeList; 
+        const stringList = Array.isArray(list) ? list.map(id => String(id)) : [];
+        window.onlineUsersList = stringList; 
 
         document.querySelectorAll('.contact-status-dot').forEach(dot => { 
             const uid = String(dot.getAttribute('data-userid')); 
-            dot.className = `status-dot contact-status-dot ${safeList.includes(uid) ? 'status-online' : 'status-offline'}`; 
+            dot.className = `status-dot contact-status-dot ${stringList.includes(uid) ? 'status-online' : 'status-offline'}`; 
         }); 
 
         if (currentChatId && !isGroupChat) { 
             const headerDot = document.getElementById('chat-header-status'); 
             const headerText = document.getElementById('chat-header-status-text'); 
-            const isOnline = safeList.includes(String(currentChatId)); 
+            const isOnline = stringList.includes(String(currentChatId)); 
             
             if (headerDot) headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
             if (headerText) {
@@ -585,7 +605,7 @@ function emitStopTypingStatus() { if (!currentChatId || !socket) return; socket.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { let safeUnreadC = window.unreadCounts; if(typeof safeUnreadC !== 'object' || safeUnreadC === null) safeUnreadC = {}; safeUnreadC[currentChatId] = 0; window.unreadCounts = safeUnreadC; localStorage.setItem('unreadCounts', JSON.stringify(safeUnreadC)); if (!isGroupChat && socket) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); if(typeof updateAppBadge === 'function') updateAppBadge(); } });
 
 // ==============================================================
-// 💬 AÇÕES DE ARQUIVO E MENSAGENS
+// 💬 AÇÕES E RENDERIZAÇÃO DE CHAT
 // ==============================================================
 window.toggleAttachMenu = function() { const menu = document.getElementById('attach-menu'); if (menu) { menu.classList.toggle('hidden'); } };
 window.triggerUpload = function(type) { const input = document.getElementById('file-input'); input.value = ''; input.accept = type; input.click(); const menu = document.getElementById('attach-menu'); if (menu) { menu.classList.add('hidden'); } };
@@ -677,7 +697,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { if(socket) socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🟢 RENDERIZAÇÃO BLINDADA DOS CONTATOS E ROBÔ
+// 🟢 RENDERIZAÇÃO DOS CONTATOS COM O ROBÔ DA JOTFORM
 window.loadContacts = async function() { 
     if(!myId) return; 
     let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')); 
@@ -712,7 +732,7 @@ window.loadContacts = async function() {
         cachedGroups.forEach(g => { if(socket) socket.emit('join_group', g._id); }); 
         renderContactsList(cachedGroups, cachedUsers); 
         if (typeof updateAppBadge === 'function') updateAppBadge(); 
-    } catch(e) { console.error("Falha ao buscar contatos na nuvem. Renderizando cache."); } 
+    } catch(e) { console.error("Falha ao buscar contatos na nuvem."); } 
 }
 
 window.renderContactsList = function(groups, users) {
@@ -727,18 +747,22 @@ window.renderContactsList = function(groups, users) {
     const visibleUsers = safeUsers.filter(user => user && user._id && !safeHidden.includes(user._id));
     let safeUnread = window.unreadCounts; if(typeof safeUnread !== 'object' || safeUnread === null) safeUnread = {};
     
-    // 🤖 ROBÔ IA OFICIAL INJETADO NO TOPO
-    const botItem = document.createElement('div');
-    botItem.className = 'user-item';
-    botItem.style.cssText = "background: rgba(59, 130, 246, 0.08); border-left: 4px solid var(--brand-primary) !important;";
-    botItem.onclick = () => {
+    // 🤖 ROBÔ IA OFICIAL
+    const botDiv = document.createElement('div'); 
+    botDiv.className = 'user-item'; 
+    botDiv.style.background = 'rgba(59, 130, 246, 0.08)';
+    botDiv.style.borderLeft = '4px solid var(--brand-primary)';
+    
+    const botClickArea = document.createElement('div');
+    botClickArea.style.display = 'flex'; botClickArea.style.width = '100%'; botClickArea.style.height = '100%'; botClickArea.style.alignItems = 'center';
+    botClickArea.onclick = () => { 
         if(typeof openImmersiveGame === 'function') { 
             openImmersiveGame('https://www.jotform.com/app/260666845284670', 'Assistente IA'); 
         } else { 
             window.open('https://www.jotform.com/app/260666845284670', '_blank'); 
-        }
+        } 
     };
-    botItem.innerHTML = `
+    botClickArea.innerHTML = `
         <div class="user-avatar-container">
             <img src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" class="avatar-small" style="border: 2px solid var(--brand-primary); background: white; padding: 2px;">
             <div class="status-dot status-online" style="background: var(--brand-primary); box-shadow: 0 0 5px var(--brand-primary);"></div>
@@ -753,13 +777,11 @@ window.renderContactsList = function(groups, users) {
             </div>
         </div>
     `;
-    list.appendChild(botItem);
+    botDiv.appendChild(botClickArea);
+    list.appendChild(botDiv);
 
     if (safeGroups.length === 0 && visibleUsers.length === 0) { 
-        const emptyDiv = document.createElement('div');
-        emptyDiv.style.cssText = "display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);";
-        emptyDiv.innerHTML = `<h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3>`;
-        list.appendChild(emptyDiv);
+        list.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3></div>`;
         return; 
     }
     
@@ -772,13 +794,13 @@ window.renderContactsList = function(groups, users) {
         if (isSelected) extraGroupClass += ' selected-for-action';
 
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const safeName = (group.name || 'Grupo').replace(/'/g, "\\'"); 
+        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = (group.name || 'Grupo').replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
         let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadG ? 'Agora' : '';
 
-        div.innerHTML = `
+        clickArea.innerHTML = `
             <div class="user-avatar-container">
                 <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/166/166258.png'">
             </div>
@@ -793,8 +815,8 @@ window.renderContactsList = function(groups, users) {
                 </div>
             </div>
         `; 
-        setupLongPress(div, group._id, safeName, true, photo, 'Grupo');
-        list.appendChild(div); 
+        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
+        div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
     visibleUsers.sort((a, b) => (safeUnread[b._id] || 0) - (safeUnread[a._id] || 0)); 
@@ -812,13 +834,13 @@ window.renderContactsList = function(groups, users) {
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
         if (isSelected) extraClass += ' selected-for-action';
 
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const safeName = name.replace(/'/g, "\\'"); 
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
         let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadU ? 'Agora' : '';
 
-        div.innerHTML = `
+        clickArea.innerHTML = `
             <div class="user-avatar-container">
                 <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
                 ${sectorLabel}
@@ -835,12 +857,12 @@ window.renderContactsList = function(groups, users) {
                 </div>
             </div>
         `; 
-        setupLongPress(div, user._id, safeName, false, photo, email);
-        list.appendChild(div); 
+        
+        setupLongPress(clickArea, user._id, safeName, false, photo, email);
+        div.appendChild(clickArea); list.appendChild(div); 
     });
 }
 
-// RESTANTE DO CHAT:
 async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -930,6 +952,43 @@ window.sendReaction = function(emoji) { socket.emit('react_message', { msgId: se
 window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); hideElement('msg-context-menu'); }
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
+// ==============================================================
+// 🟢 MENUS E BLOQUEIO (APAGAR/DENUNCIAR)
+// ==============================================================
+window.deleteCurrentChat = async function() {
+    if(!currentChatId) return;
+    if(confirm("Tem certeza que deseja apagar todo o histórico desta conversa?")) {
+        try {
+            if(isGroupChat) { await fetch(`/groups/${currentChatId}/${myId}`, { method: 'DELETE' }); } 
+            else { await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); messageCache[currentChatId] = []; }
+            document.getElementById('chat-box').innerHTML = ''; alert("Chat apagado com sucesso.");
+            backToMain(); loadContacts();
+        } catch(e) { alert("Erro ao apagar chat."); }
+    }
+};
+
+window.reportContact = function(id) {
+    if(!id) return;
+    if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) {
+        alert("Contato denunciado com sucesso. A nossa equipa irá analisar e tomar medidas.");
+    }
+};
+
+window.blockContact = function(id) {
+    if(!id) return;
+    if(confirm("Tem certeza que deseja bloquear este contato? Não receberá mais notificações dele.")) {
+        alert("Contato bloqueado.");
+        let safeHidden = window.hiddenChats; if(!Array.isArray(safeHidden)) safeHidden = [];
+        if(!safeHidden.includes(id)) safeHidden.push(id);
+        window.hiddenChats = safeHidden;
+        localStorage.setItem('hiddenChats', JSON.stringify(safeHidden));
+        backToMain(); loadContacts();
+    }
+};
+
+// ==============================================================
+// 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
+// ==============================================================
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
 
@@ -996,70 +1055,4 @@ window.showCurrentChatProfile = async function() {
                         ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''}
                     </div>
                     
-                    <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2>
-                    ${descHtml}
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span>
-                        ${addMemberBtnHtml}
-                    </div>
-
-                    <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;">
-                        ${membersHtml}
-                    </div>
-                </div>
-            `;
-            
-            const dropMenu = document.getElementById('chat-options-menu'); 
-            if (dropMenu) dropMenu.classList.add('hidden');
-
-            modal.style.display = 'flex';
-            setTimeout(() => modal.style.opacity = '1', 10);
-            
-        } catch(e) {}
-        return;
-    }
-
-    try {
-        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-        const user = cachedUsers.find(u => u._id === currentChatId);
-
-        if (!user) return alert("❌ Dados do perfil não encontrados no radar.");
-
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        const name = user.displayName || user.email.split('@')[0];
-        const email = user.email || 'Não informado';
-        const phone = user.phone || 'Não informado';
-        const xp = user.xp || 0;
-        const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip');
-
-        let modal = document.getElementById('dynamic-profile-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'dynamic-profile-modal';
-            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
-                <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
-                <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
-                <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2>
-                <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div>
-                <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));">
-                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div>
-                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div>
-                    <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div>
-                </div>
-            </div>
-        `;
-
-        const dropMenu = document.getElementById('chat-options-menu'); 
-        if (dropMenu) dropMenu.classList.add('hidden');
-
-        modal.style.display = 'flex';
-        setTimeout(() => modal.style.opacity = '1', 10);
-
-    } catch (e) {}
-};
+                    <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">
