@@ -1,5 +1,5 @@
 // ==============================================================
-// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (BLINDADO)
+// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS
 // ==============================================================
 let searchTimeout = null;
 let pressTimer = null;
@@ -226,8 +226,15 @@ window.toggleEmojiPicker = function(e) {
     
     const drawer = document.getElementById('emoji-drawer'); 
     if (drawer) {
-        if (drawer.style.height === '300px') { drawer.style.height = '0px'; } 
-        else { drawer.style.height = '300px'; setTimeout(() => { const box = document.getElementById('chat-box'); if(box) box.scrollTop = box.scrollHeight; }, 300); }
+        if (drawer.style.height === '300px') {
+            drawer.style.height = '0px'; 
+        } else {
+            drawer.style.height = '300px'; 
+            setTimeout(() => {
+                const box = document.getElementById('chat-box');
+                if(box) box.scrollTop = box.scrollHeight;
+            }, 300);
+        }
     } 
 };
 
@@ -238,9 +245,14 @@ window.changeEmojiCategory = function(categoryName, element) {
     if (categoryName === 'favorites') {
         picker.activeCategory = 'favorites';
         const root = picker.shadowRoot;
-        if(root) { const scrollArea = root.querySelector('.scroll-wrapper'); if(scrollArea) scrollArea.scrollTop = 0; }
+        if(root) {
+            const scrollArea = root.querySelector('.scroll-wrapper');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
     } else {
-        picker.database.getEmojiByGroup(categoryName).then(() => { picker.activeCategory = categoryName; });
+        picker.database.getEmojiByGroup(categoryName).then(() => {
+            picker.activeCategory = categoryName;
+        });
     }
 
     document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
@@ -266,27 +278,33 @@ setTimeout(() => {
 
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { dynamicActionIcon.innerText = 'send'; } 
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+                dynamicActionIcon.innerText = 'send'; 
+            } 
         }); 
     } 
     
     if(msgInput) {
         msgInput.addEventListener('focus', () => {
             const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') { drawer.style.height = '0px'; }
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
         });
     }
 
     document.addEventListener('click', (e) => { 
         if (!e.target.closest('#emoji-drawer') && !e.target.closest('#btn-emoji')) { 
             const drawer = document.getElementById('emoji-drawer');
-            if (drawer && drawer.style.height === '300px') { drawer.style.height = '0px'; }
+            if (drawer && drawer.style.height === '300px') {
+                drawer.style.height = '0px'; 
+            }
         } 
     }); 
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E PLAY ESTILO WHATSAPP)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT (PAUSA E PLAY)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -294,6 +312,10 @@ let isRecordingCancelled = false;
 let showPreviewAfterStop = false; 
 let previewAudioObj = null;
 
+let audioContext = null;
+let audioAnalyzer = null;
+let audioDataArray = null;
+let visualizerAnimationId = null;
 let recordingInterval = null;
 let recordingSeconds = 0;
 
@@ -364,11 +386,21 @@ async function startRecording() {
         audioChunks = []; 
         isRecordingCancelled = false; 
         showPreviewAfterStop = false;
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(audioStream);
+        audioAnalyzer = audioContext.createAnalyser();
+        audioAnalyzer.fftSize = 128; 
+        source.connect(audioAnalyzer);
+        audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
 
         hideElement('chat-input-container'); 
+        hideElement('btn-attach-wrapper');
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
         hideElement('recording-preview-state'); 
+        showElement('btn-pause-record'); 
         
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
@@ -379,50 +411,97 @@ async function startRecording() {
         globalMediaRecorder.onstop = () => { 
             clearInterval(recordingInterval); 
             audioStream.getTracks().forEach(track => track.stop()); 
+            if(audioContext && audioContext.state !== 'closed') audioContext.close();
+            cancelAnimationFrame(visualizerAnimationId);
 
             if (isRecordingCancelled) { pendingAudioFile = null; resetAudioUI(); return; } 
             
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
             pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            if (showPreviewAfterStop) { 
-                setupPreviewUI(audioBlob); 
-            } else { 
-                sendMessage(); 
-                resetAudioUI(); 
-            } 
+            if (showPreviewAfterStop) { setupPreviewUI(audioBlob); } else { sendMessage(); resetAudioUI(); } 
         }; 
         
         recordingSeconds = 0; 
-        document.getElementById('recording-timer').innerText = "0:00"; 
+        document.getElementById('recording-timer').innerText = "00:00"; 
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60); 
+            const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0'); 
             const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
             document.getElementById('recording-timer').innerText = `${m}:${s}`; 
         }, 1000); 
         
         globalMediaRecorder.start(); 
         emitTypingStatus('recording'); 
+        drawAudioVisualizer(); 
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
 }
 
-// 🟢 PAUSAR GRAVAÇÃO (Vai para a Preview com Botão Play)
+function drawAudioVisualizer() { 
+    const canvas = document.getElementById('audio-visualizer'); 
+    if(!canvas) return; 
+    
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if(canvas.width !== rect.width * dpr) {
+        canvas.width = rect.width * dpr; 
+        canvas.height = rect.height * dpr;
+    }
+    
+    const ctx = canvas.getContext('2d'); 
+    ctx.scale(dpr, dpr);
+    
+    const draw = () => { 
+        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
+        visualizerAnimationId = requestAnimationFrame(draw); 
+        
+        audioAnalyzer.getByteFrequencyData(audioDataArray);
+        ctx.clearRect(0, 0, rect.width, rect.height); 
+        
+        const barWidth = 3.5; 
+        const gap = 2.5; 
+        const totalBars = Math.floor(rect.width / (barWidth + gap)); 
+        const centerY = rect.height / 2;
+
+        for(let i = 0; i < totalBars; i++) { 
+            const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
+            const value = audioDataArray[dataIndex];
+            
+            const percent = value / 255;
+            let h = Math.max(3, percent * (rect.height - 4)); 
+            
+            const gradient = ctx.createLinearGradient(0, centerY - h/2, 0, centerY + h/2);
+            gradient.addColorStop(0, '#EC4899');
+            gradient.addColorStop(0.5, '#8B5CF6');
+            gradient.addColorStop(1, '#3B82F6');
+            
+            ctx.fillStyle = gradient; 
+            
+            ctx.beginPath();
+            ctx.roundRect(i * (barWidth + gap), centerY - (h / 2), barWidth, h, 2);
+            ctx.fill();
+        } 
+    }; 
+    draw(); 
+}
+
+// 🔥 A MÁGICA: PAUSAR A GRAVAÇÃO E GERAR O BOTÃO DE PLAY
 window.stopRecordingForPreview = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
         globalMediaRecorder.pause(); 
         clearInterval(recordingInterval);
         
-        // Pede os pacotes gravados até agora
+        // Pede os blocos de áudio até o momento da pausa
         globalMediaRecorder.requestData();
 
         dynamicActionBtn.classList.remove('recording-pulse');
         
+        // Ajusta o visual: Oculta o microfone de gravação e mostra o Player
         hideElement('recording-active-state');
         showElement('recording-preview-state');
         document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
 
-        // Aguarda os pacotes e cria o previewAudioObj para o Play
+        // Um timeout leve para garantir que o requestData preencheu a array
         setTimeout(() => {
             const tempBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const tempUrl = URL.createObjectURL(tempBlob);
@@ -441,7 +520,7 @@ window.stopRecordingForPreview = function() {
     } 
 }
 
-// 🟢 RETOMAR GRAVAÇÃO (Clica no Mic Vermelho)
+// RETOMAR A GRAVAÇÃO (O Microfone Vermelho)
 window.resumeRecording = function() {
     if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
         globalMediaRecorder.resume();
@@ -452,16 +531,18 @@ window.resumeRecording = function() {
         if(previewAudioObj) {
             previewAudioObj.pause();
             previewAudioObj.currentTime = 0;
-            document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>';
+            document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
             document.getElementById('preview-progress').style.width = '0%'; 
         }
 
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60); 
+            const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0'); 
             const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
             document.getElementById('recording-timer').innerText = `${m}:${s}`; 
         }, 1000);
+        
+        drawAudioVisualizer();
     }
 }
 
@@ -479,7 +560,7 @@ window.cancelRecording = function() {
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         isRecordingCancelled = true; 
         globalMediaRecorder.stop(); 
-    } else if (pendingAudioFile) { 
+    } else if (pendingAudioFile && showPreviewAfterStop) { 
         pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); 
     } else {
         resetAudioUI();
@@ -489,21 +570,21 @@ window.cancelRecording = function() {
 function resetAudioUI() { 
     hideElement('recording-ui'); 
     showElement('chat-input-container'); 
+    showElement('btn-attach-wrapper'); 
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
     dynamicActionBtn.classList.remove('recording-pulse');
-    
     const input = document.getElementById('message-input'); 
-    if (input) { input.innerHTML = ''; } 
-    resetDynamicButton();
+    if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
 }
 
 function setupPreviewUI(blob) { 
     hideElement('recording-active-state'); 
+    hideElement('btn-pause-record'); 
     showElement('recording-preview-state'); 
-    dynamicActionBtn.classList.remove('recording-pulse');
+    dynamicActionBtn.classList.remove('recording-pulse'); 
 
     const audioUrl = URL.createObjectURL(blob); 
     previewAudioObj = new Audio(audioUrl); 
@@ -513,53 +594,54 @@ function setupPreviewUI(blob) {
     previewAudioObj.ontimeupdate = () => { 
         const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
         progressBar.style.width = `${progress}%`; 
+        const curr = Math.floor(previewAudioObj.currentTime); 
+        const m = Math.floor(curr / 60).toString().padStart(2, '0'); 
+        const s = (curr % 60).toString().padStart(2, '0'); 
+        document.getElementById('preview-timer').innerText = `${m}:${s}`; 
     }; 
     
     previewAudioObj.onended = () => { 
         playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
         progressBar.style.width = '0%'; 
+        document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText;  
     }; 
     
-    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
+    document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText; 
 }
 
-// 🟢 PLAY NO ÁUDIO PAUSADO
+// O BOTÃO DE PLAY QUANDO PAUSADO
 window.togglePreviewAudio = function() { 
-    if(previewAudioObj) {
-        const playBtn = document.getElementById('preview-play-btn'); 
-        if(previewAudioObj.paused) { 
-            previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
-        } else { 
-            previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
-        } 
-    } else {
-        alert("O áudio está a ser processado. Tente novamente em um segundo.");
-    }
+    if(!previewAudioObj) return; 
+    const playBtn = document.getElementById('preview-play-btn'); 
+    if(previewAudioObj.paused) { 
+        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
+    } else { 
+        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
+    } 
 }
 
 // ==============================================================
-// 🔌 SOCKETS E SINCRONIZAÇÃO (Cores e Status Online Corrigido)
+// 🔌 SOCKETS E SINCRONIZAÇÃO DA LISTA E CORES
 // ==============================================================
-if(socket) {
+if (socket) {
     socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
     socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
     socket.on('connect', () => { if (myId) { socket.emit('join_room', myId); const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups.forEach(g => socket.emit('join_group', g._id)); } });
     
-    // 🔥 FORÇA CONVERSÃO DE ID PARA STRING PARA NÃO FALHAR A COR 🔥
+    // 🔥 CORREÇÃO DAS CORES (STRING FORCE)
     socket.on('online_users', (list) => { 
         const safeList = Array.isArray(list) ? list.map(id => String(id)) : [];
         window.onlineUsersList = safeList; 
-
+        
         document.querySelectorAll('.contact-status-dot').forEach(dot => { 
             const uid = String(dot.getAttribute('data-userid')); 
             dot.className = `status-dot contact-status-dot ${safeList.includes(uid) ? 'status-online' : 'status-offline'}`; 
         }); 
-
+        
         if (currentChatId && !isGroupChat) { 
             const headerDot = document.getElementById('chat-header-status'); 
             const headerText = document.getElementById('chat-header-status-text'); 
             const isOnline = safeList.includes(String(currentChatId)); 
-            
             if (headerDot) headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
             if (headerText) {
                 headerText.innerText = isOnline ? 'Online' : 'Offline'; 
@@ -586,17 +668,17 @@ if(socket) {
     });
 }
 
-function emitTypingStatus(action) { if (!currentChatId || !socket) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
-function emitStopTypingStatus() { if (!currentChatId || !socket) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
+function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
+function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
-document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { let safeUnreadC = window.unreadCounts; if(typeof safeUnreadC !== 'object' || safeUnreadC === null) safeUnreadC = {}; safeUnreadC[currentChatId] = 0; window.unreadCounts = safeUnreadC; localStorage.setItem('unreadCounts', JSON.stringify(safeUnreadC)); if (!isGroupChat && socket) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); if(typeof updateAppBadge === 'function') updateAppBadge(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { let safeUnreadC = window.unreadCounts; if(typeof safeUnreadC !== 'object' || safeUnreadC === null) safeUnreadC = {}; safeUnreadC[currentChatId] = 0; window.unreadCounts = safeUnreadC; localStorage.setItem('unreadCounts', JSON.stringify(safeUnreadC)); if (!isGroupChat && socket) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); if (typeof updateAppBadge === 'function') updateAppBadge(); } });
 
 // ==============================================================
 // 💬 AÇÕES E RENDERIZAÇÃO DE CHAT
 // ==============================================================
 window.toggleAttachMenu = function() { const menu = document.getElementById('attach-menu'); if (menu) { menu.classList.toggle('hidden'); } };
 window.triggerUpload = function(type) { const input = document.getElementById('file-input'); input.value = ''; input.accept = type; input.click(); const menu = document.getElementById('attach-menu'); if (menu) { menu.classList.add('hidden'); } };
-window.handleFileUpload = async function(input) { const file = input.files[0]; if(!file) { input.value = ''; return; } if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! Limite de 15MB."); input.value = ''; return; } let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); };
+window.handleFileUpload = async function(input) { const file = input.files[0]; if(!file) { input.value = ''; return; } if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); input.value = ''; return; } let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; executeUpload(file, type); };
 
 async function executeUpload(file, type) { 
     const tempId = 'temp-' + Date.now(); const localUrl = URL.createObjectURL(file); 
@@ -612,7 +694,7 @@ async function executeUpload(file, type) {
         if(tempDiv) tempDiv.remove(); 
         const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
         if(socket) socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
-    } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio."); } finally { document.getElementById('file-input').value = ''; } 
+    } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
 }
 
 window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') { 
@@ -622,9 +704,7 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
     if((!content && !fileUrl) || !currentChatId) return; 
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; 
-    if(socket) socket.emit('private_message', msgData); 
-    clearTimeout(typingTimeout); emitStopTypingStatus(); 
-    if(!fileUrl) { input.innerHTML = ''; } 
+    if(socket) socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerText = ''; 
 }
 
 window.openChat = function(id, name, photo, email, type = 'user') { 
@@ -640,7 +720,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     const emojiDrawer = document.getElementById('emoji-drawer');
     if (emojiDrawer) emojiDrawer.style.height = '0px';
 
-    const dropMenu = document.getElementById('chat-options-menu'); 
+    const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
     if (dropMenu) {
         const items = dropMenu.querySelectorAll('div, span, a, button');
         items.forEach(item => {
@@ -684,61 +764,62 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { if(socket) socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🟢 RENDERIZAÇÃO BLINDADA DOS CONTATOS (AGORA SEM O ROBÔ IA)
+// 🟢 RENDERIZAÇÃO DA LISTA DE CONTATOS (SEM ROBÔ IA)
 window.loadContacts = async function() { 
     if(!myId) return; 
-    let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')); 
-    if (!Array.isArray(cachedUsers)) cachedUsers = [];
-    let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')); 
-    if (!Array.isArray(cachedGroups)) cachedGroups = [];
+    let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')); if(!Array.isArray(cachedUsers)) cachedUsers = []; 
+    let cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')); if(!Array.isArray(cachedGroups)) cachedGroups = []; 
     
-    renderContactsList(cachedGroups, cachedUsers); 
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
+        cachedGroups.forEach(g => { if(socket) socket.emit('join_group', g._id); }); 
+        renderContactsList(cachedGroups, cachedUsers); 
+        if (typeof updateAppBadge === 'function') updateAppBadge(); 
+    } 
     
     try { 
         const resUnread = await fetch(`/unread/${myId}`); 
         if (resUnread.ok) {
             const serverCounts = await resUnread.json(); 
-            window.unreadCounts = serverCounts || {};
-            localStorage.setItem('unreadCounts', JSON.stringify(window.unreadCounts)); 
+            let safeUnread = window.unreadCounts; if(typeof safeUnread !== 'object' || safeUnread === null) safeUnread = {};
+            cachedUsers.forEach(u => { safeUnread[u._id] = serverCounts[u._id] || 0; }); 
+            window.unreadCounts = safeUnread;
+            localStorage.setItem('unreadCounts', JSON.stringify(safeUnread)); 
         }
         
         const resGroups = await fetch(`/groups/${myId}`); 
-        if (resGroups.ok) {
-            cachedGroups = await resGroups.json();
-            if(!Array.isArray(cachedGroups)) cachedGroups = [];
-            localStorage.setItem('cacheGroups', JSON.stringify(cachedGroups)); 
+        if(resGroups.ok) {
+            const groups = await resGroups.json(); 
+            localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
+            cachedGroups = groups;
         }
-        
+
         const resUsers = await fetch(`/users/${myId}`); 
-        if (resUsers.ok) {
-            cachedUsers = await resUsers.json();
-            if(!Array.isArray(cachedUsers)) cachedUsers = [];
-            localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); 
+        if(resUsers.ok) {
+            const users = await resUsers.json(); 
+            localStorage.setItem('cacheUsers', JSON.stringify(users)); 
+            cachedUsers = users;
         }
         
         cachedGroups.forEach(g => { if(socket) socket.emit('join_group', g._id); }); 
         renderContactsList(cachedGroups, cachedUsers); 
         if (typeof updateAppBadge === 'function') updateAppBadge(); 
-    } catch(e) { console.error("Falha ao buscar contatos na nuvem."); } 
+    } catch(e) { console.error("Falha ao atualizar base da nuvem. Mantendo cache."); } 
 }
 
 window.renderContactsList = function(groups, users) {
     const list = document.getElementById('users-list'); 
-    if (!list) return; 
+    if(!list) return;
     list.innerHTML = ''; 
     
     let safeHidden = window.hiddenChats; if(!Array.isArray(safeHidden)) safeHidden = [];
     let safeUsers = Array.isArray(users) ? users : [];
     let safeGroups = Array.isArray(groups) ? groups : [];
-    
+
     const visibleUsers = safeUsers.filter(user => user && user._id && !safeHidden.includes(user._id));
     let safeUnread = window.unreadCounts; if(typeof safeUnread !== 'object' || safeUnread === null) safeUnread = {};
-
+    
     if (safeGroups.length === 0 && visibleUsers.length === 0) { 
-        const emptyDiv = document.createElement('div');
-        emptyDiv.style.cssText = "display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; color:var(--text-color);";
-        emptyDiv.innerHTML = `<h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa humana ainda.<br>Clique no + para pesquisar.</h3>`;
-        list.appendChild(emptyDiv);
+        list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; 
         return; 
     }
     
@@ -746,20 +827,19 @@ window.renderContactsList = function(groups, users) {
     safeGroups.forEach(group => { 
         if(!group || !group._id) return;
         let count = safeUnread[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
-        
         const isSelected = selectedActionContacts.some(c => c.id === group._id);
         if (isSelected) extraGroupClass += ' selected-for-action';
 
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const safeName = (group.name || 'Grupo').replace(/'/g, "\\'"); 
+        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = (group.name || 'Grupo').replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
         let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadG ? 'Agora' : '';
 
-        div.innerHTML = `
-            <div class="user-avatar-container">
-                <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/166/166258.png'">
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
+                <img src="${photo}" class="avatar-small">
             </div>
             <div class="user-item-info">
                 <div class="user-item-top">
@@ -772,36 +852,37 @@ window.renderContactsList = function(groups, users) {
                 </div>
             </div>
         `; 
-        setupLongPress(div, group._id, safeName, true, photo, 'Grupo');
-        list.appendChild(div); 
+        
+        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
+        div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
     visibleUsers.sort((a, b) => (safeUnread[b._id] || 0) - (safeUnread[a._id] || 0)); 
     visibleUsers.forEach(user => { 
         if(!user || !user._id) return;
         let count = safeUnread[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || (user.email ? user.email.split('@')[0] : 'Usuario'); const email = user.email || ''; 
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'); const email = user.email || ''; 
         
         const safeOnline = window.onlineUsersList || [];
         const statusClass = safeOnline.includes(String(user._id)) ? 'status-online' : 'status-offline'; 
         
-        let sectorLabel = ''; const safeSectors = window.currentSectors || []; safeSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
+        let sectorLabel = ''; const safeSectors = window.currentSectors || []; safeSectors.forEach(sec => { if(sec && sec.members && sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
         
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
         if (isSelected) extraClass += ' selected-for-action';
 
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const safeName = name.replace(/'/g, "\\'"); 
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
         
         let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
         let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadU ? 'Agora' : '';
 
-        div.innerHTML = `
-            <div class="user-avatar-container">
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
                 <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
                 ${sectorLabel}
-                <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                <img src="${photo}" class="avatar-small">
             </div>
             <div class="user-item-info">
                 <div class="user-item-top">
@@ -814,12 +895,12 @@ window.renderContactsList = function(groups, users) {
                 </div>
             </div>
         `; 
-        setupLongPress(div, user._id, safeName, false, photo, email);
-        list.appendChild(div); 
+        
+        setupLongPress(clickArea, user._id, safeName, false, photo, email);
+        div.appendChild(clickArea); list.appendChild(div); 
     });
 }
 
-// RESTANTE DO CHAT (MENSAGENS E OPÇÕES)
 async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -916,10 +997,16 @@ window.deleteCurrentChat = async function() {
     if(!currentChatId) return;
     if(confirm("Tem certeza que deseja apagar todo o histórico desta conversa?")) {
         try {
-            if(isGroupChat) { await fetch(`/groups/${currentChatId}/${myId}`, { method: 'DELETE' }); } 
-            else { await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' }); messageCache[currentChatId] = []; }
-            document.getElementById('chat-box').innerHTML = ''; alert("Chat apagado com sucesso.");
-            backToMain(); loadContacts();
+            if(isGroupChat) {
+                await fetch(`/groups/${currentChatId}/${myId}`, { method: 'DELETE' });
+            } else {
+                await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' });
+                messageCache[currentChatId] = [];
+            }
+            document.getElementById('chat-box').innerHTML = '';
+            alert("Chat apagado com sucesso.");
+            backToMain();
+            loadContacts();
         } catch(e) { alert("Erro ao apagar chat."); }
     }
 };
@@ -939,7 +1026,8 @@ window.blockContact = function(id) {
         if(!safeHidden.includes(id)) safeHidden.push(id);
         window.hiddenChats = safeHidden;
         localStorage.setItem('hiddenChats', JSON.stringify(safeHidden));
-        backToMain(); loadContacts();
+        backToMain();
+        loadContacts();
     }
 };
 
@@ -1026,7 +1114,7 @@ window.showCurrentChatProfile = async function() {
                 </div>
             `;
             
-            const dropMenu = document.getElementById('chat-options-menu'); 
+            const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
             if (dropMenu) dropMenu.classList.add('hidden');
 
             modal.style.display = 'flex';
@@ -1074,11 +1162,273 @@ window.showCurrentChatProfile = async function() {
             </div>
         `;
 
-        const dropMenu = document.getElementById('chat-options-menu'); 
+        const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
         if (dropMenu) dropMenu.classList.add('hidden');
 
         modal.style.display = 'flex';
         setTimeout(() => modal.style.opacity = '1', 10);
 
-    } catch (e) {}
+    } catch (e) {
+        console.error("Falha ao abrir perfil: ", e);
+        alert("Erro ao carregar os dados do perfil.");
+    }
+};
+
+// ==============================================================
+// ➕ SISTEMA FAB: NOVO CONTATO E GRUPOS (BLINDADO)
+// ==============================================================
+window.toggleFab = function() {
+    const options = document.getElementById('fab-options');
+    const mainBtn = document.getElementById('main-fab-btn');
+    if (!options) return;
+    
+    if (options.style.display === 'flex') {
+        options.style.opacity = '0';
+        options.style.transform = 'translateY(10px)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
+        setTimeout(() => { options.style.display = 'none'; }, 200);
+    } else {
+        options.style.display = 'flex';
+        options.style.flexDirection = 'column';
+        options.style.gap = '10px';
+        options.style.position = 'absolute';
+        options.style.bottom = '80px';
+        options.style.right = '0';
+        options.style.transition = 'all 0.2s';
+        
+        void options.offsetWidth; // Força a renderização
+        
+        options.style.opacity = '1';
+        options.style.transform = 'translateY(0)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
+    }
+};
+
+// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR
+window.openAddContactScreen = function() {
+    document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
+    const screen = document.getElementById('add-contact-screen');
+    if (screen) screen.classList.remove('hidden');
+    
+    const input = document.getElementById('exact-search-input');
+    if (input) input.value = '';
+    const res = document.getElementById('exact-search-result');
+    if (res) res.innerHTML = '';
+};
+
+window.executeExactSearch = async function() {
+    const term = document.getElementById('exact-search-input').value.trim().toLowerCase();
+    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
+    
+    const resDiv = document.getElementById('exact-search-result');
+    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando no radar global...</div>';
+    
+    try {
+        let foundUsers = [];
+        
+        // Tenta buscar TODOS os usuários globais da aplicação e filtra localmente
+        let res = await fetch('/users');
+        if(!res.ok) res = await fetch('/api/users'); // Fallback comum em Node.js
+        
+        if(res.ok) {
+            const allUsers = await res.json();
+            foundUsers = allUsers.filter(u => 
+                (u.email && u.email.toLowerCase().includes(term)) || 
+                (u.displayName && u.displayName.toLowerCase().includes(term)) || 
+                (u.phone && u.phone.includes(term))
+            );
+        } else {
+            // Fallback 2: Rota de busca específica do backend
+            const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
+            if(searchRes.ok) {
+                const data = await searchRes.json();
+                foundUsers = data.users || data || [];
+            }
+        }
+
+        // Tira o próprio usuário logado dos resultados
+        foundUsers = foundUsers.filter(u => u._id !== myId);
+
+        if(foundUsers.length > 0) {
+            resDiv.innerHTML = '';
+            foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
+        } else {
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum recruta encontrado com estes dados na Base PTT.</div>';
+        }
+    } catch(e) {
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o QG Central.</div>';
+    }
+};
+
+window.renderExactSearchResult = function(u, resDiv, clear = true) {
+    if(clear) resDiv.innerHTML = '';
+    const name = u.displayName || u.email.split('@')[0];
+    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const phoneHtml = u.phone ? `<div style="font-size: 11px; color: var(--brand-secondary); margin-top: 2px;"><span class="material-icons-round" style="font-size:10px; vertical-align:middle;">phone</span> ${u.phone}</div>` : '';
+    
+    const html = `
+        <div style="background: var(--input-bg); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 10px;">
+            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            <div style="flex: 1; text-align: left; overflow: hidden;">
+                <div style="font-weight: 800; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${name}</div>
+                <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.email}</div>
+                ${phoneHtml}
+            </div>
+            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px; flex-shrink:0;">
+                <span class="material-icons-round" style="font-size: 24px;">chat</span>
+            </button>
+        </div>
+    `;
+    if(clear) resDiv.innerHTML = html;
+    else resDiv.insertAdjacentHTML('beforeend', html);
+};
+
+window.startChatWithNewUser = function(id, name, photo, email) {
+    document.getElementById('add-contact-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    openChat(id, name, photo, email, 'user');
+    
+    // Atira mensagem silenciosa pro backend registrar a sala e exibir na lista
+    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
+};
+
+// 🟢 CRIAR GRUPO: BLINDADO
+window.openCreateGroupModal = async function(preselectedIds = []) {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.style.opacity = '1', 10);
+    }
+    
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-search-input').value = '';
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
+    
+    try {
+        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
+        if (cachedUsers.length > 0) {
+            window.groupCandidates = cachedUsers;
+            renderGroupCandidates(cachedUsers, preselectedIds);
+        }
+        
+        const res = await fetch(`/users/${myId}`);
+        if (res.ok) {
+            const users = await res.json();
+            window.groupCandidates = users;
+            renderGroupCandidates(users, preselectedIds);
+        }
+    } catch(e) {
+        if(list.innerHTML.includes('Carregando')) {
+            list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>';
+        }
+    }
+};
+
+window.renderGroupCandidates = function(users, preselectedIds = []) {
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '';
+    if(users.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível no seu chat.</div>';
+        return;
+    }
+    
+    users.forEach(u => {
+        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
+        const name = u.displayName || u.email.split('@')[0];
+        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        list.innerHTML += `
+            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
+                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
+                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
+            </label>
+        `;
+    });
+};
+
+window.filterGroupContacts = function(query) {
+    const term = query.toLowerCase();
+    const items = document.querySelectorAll('.group-candidate-item');
+    items.forEach(item => {
+        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
+        if(name.includes(term)) item.style.display = 'flex';
+        else item.style.display = 'none';
+    });
+};
+
+window.closeCreateGroup = function() {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300);
+    }
+};
+
+window.submitCreateGroup = async function() {
+    const name = document.getElementById('group-name-input').value.trim();
+    if(!name) return alert("Dê um nome para a Tropa.");
+    
+    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
+    const members = Array.from(checkboxes).map(cb => cb.value);
+    if(members.length === 0) return alert("Recrute pelo menos um membro.");
+    
+    members.push(myId); 
+
+    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
+
+    try {
+        const imgEl = document.getElementById('new-group-photo');
+        let photoUrl = imgEl.src;
+        if(photoUrl.includes('166258.png')) photoUrl = ''; 
+
+        const res = await fetch('/groups', { 
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, members, admin: myId, photoUrl })
+        });
+        
+        let data;
+        if(res.status === 404) {
+            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, admin: myId, photoUrl }) });
+            data = await res2.json();
+        } else {
+            data = await res.json();
+        }
+
+        if(data.success || data._id) {
+            closeCreateGroup();
+            socket.emit('group_updated');
+            loadContacts();
+            
+            const gId = data.group ? data.group._id : data._id;
+            const gName = data.group ? data.group.name : data.name;
+            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
+            
+            openChat(gId, gName, gPhoto, 'Grupo', 'group');
+        } else {
+            alert(data.error || "Falha na criação da base de dados.");
+        }
+    } catch(e) {
+        alert("Erro de comunicação com o QG.");
+    } finally {
+        btn.innerText = originalText;
+    }
+};
+
+window.uploadNewGroupPhoto = async function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/upload', {method:'POST', body:fd});
+        const data = await res.json();
+        document.getElementById('new-group-photo').src = data.url;
+    } catch(e) {
+        alert("Erro ao enviar foto para a nuvem.");
+    }
 };

@@ -1106,3 +1106,18 @@ body.bubble-cyber {
     object-fit: cover;
     border: 2px solid var(--bg-color); /* Separação interna para destacar a borda */
 }
+
+/* ========================================= */
+/* FIX: ESCUDO DO INPUT DE TEXTO NO MOBILE   */
+/* ========================================= */
+#chat-input-container {
+    align-items: flex-end !important;
+}
+#message-input {
+    min-height: 24px !important;
+    line-height: 24px !important;
+    margin-bottom: 4px !important;
+}
+#chat-input-container .icon-btn {
+    margin-bottom: 2px !important;
+}
