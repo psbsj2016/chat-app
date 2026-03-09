@@ -215,6 +215,7 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
+
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
 // ==============================================================
@@ -301,7 +302,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E RETOMA INJETADO)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -309,8 +310,10 @@ let isRecordingCancelled = false;
 let showPreviewAfterStop = false; 
 let previewAudioObj = null;
 
-let recordingInterval = null;
-let recordingSeconds = 0;
+let audioContext = null;
+let audioAnalyzer = null;
+let audioDataArray = null;
+let visualizerAnimationId = null;
 
 const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
@@ -320,7 +323,7 @@ window.handleDynamicAction = function() {
     if (dynamicActionIcon.innerText === 'mic') { 
         startRecording(); 
     } else { 
-        if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
+        if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
             stopAndSendRecording(); 
         } else { 
             sendMessage(); 
@@ -366,7 +369,6 @@ if (msgInputEl) {
     }); 
 }
 
-// 🟢 1. INICIAR GRAVAÇÃO
 async function startRecording() { 
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
@@ -380,11 +382,21 @@ async function startRecording() {
         audioChunks = []; 
         isRecordingCancelled = false; 
         showPreviewAfterStop = false;
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(audioStream);
+        audioAnalyzer = audioContext.createAnalyser();
+        audioAnalyzer.fftSize = 128; 
+        source.connect(audioAnalyzer);
+        audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
 
         hideElement('chat-input-container'); 
+        hideElement('btn-attach-wrapper');
         showElement('recording-ui'); 
         showElement('recording-active-state'); 
         hideElement('recording-preview-state'); 
+        showElement('btn-pause-record'); 
         
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
@@ -395,6 +407,8 @@ async function startRecording() {
         globalMediaRecorder.onstop = () => { 
             clearInterval(recordingInterval); 
             audioStream.getTracks().forEach(track => track.stop()); 
+            if(audioContext && audioContext.state !== 'closed') audioContext.close();
+            cancelAnimationFrame(visualizerAnimationId);
 
             if (isRecordingCancelled) { pendingAudioFile = null; resetAudioUI(); return; } 
             
@@ -405,92 +419,102 @@ async function startRecording() {
         }; 
         
         recordingSeconds = 0; 
-        document.getElementById('recording-timer').innerText = "0:00"; 
+        document.getElementById('recording-timer').innerText = "00:00"; 
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60); 
+            const m = Math.floor(recordingSeconds / 60).toString().padStart(2, '0'); 
             const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
             document.getElementById('recording-timer').innerText = `${m}:${s}`; 
         }, 1000); 
         
         globalMediaRecorder.start(); 
         emitTypingStatus('recording'); 
+        drawAudioVisualizer(); 
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
 }
 
-// 🟢 2. PAUSAR GRAVAÇÃO (Vai para a Preview)
+function drawAudioVisualizer() { 
+    const canvas = document.getElementById('audio-visualizer'); 
+    if(!canvas) return; 
+    
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if(canvas.width !== rect.width * dpr) {
+        canvas.width = rect.width * dpr; 
+        canvas.height = rect.height * dpr;
+    }
+    
+    const ctx = canvas.getContext('2d'); 
+    ctx.scale(dpr, dpr);
+    
+    const draw = () => { 
+        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
+        visualizerAnimationId = requestAnimationFrame(draw); 
+        
+        audioAnalyzer.getByteFrequencyData(audioDataArray);
+        ctx.clearRect(0, 0, rect.width, rect.height); 
+        
+        const barWidth = 3.5; 
+        const gap = 2.5; 
+        const totalBars = Math.floor(rect.width / (barWidth + gap)); 
+        const centerY = rect.height / 2;
+
+        for(let i = 0; i < totalBars; i++) { 
+            const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
+            const value = audioDataArray[dataIndex];
+            
+            const percent = value / 255;
+            let h = Math.max(3, percent * (rect.height - 4)); 
+            
+            const gradient = ctx.createLinearGradient(0, centerY - h/2, 0, centerY + h/2);
+            gradient.addColorStop(0, '#EC4899');
+            gradient.addColorStop(0.5, '#8B5CF6');
+            gradient.addColorStop(1, '#3B82F6');
+            
+            ctx.fillStyle = gradient; 
+            
+            ctx.beginPath();
+            ctx.roundRect(i * (barWidth + gap), centerY - (h / 2), barWidth, h, 2);
+            ctx.fill();
+        } 
+    }; 
+    draw(); 
+}
+
 window.stopRecordingForPreview = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        globalMediaRecorder.pause(); // Pausa nativa
-        clearInterval(recordingInterval);
-        
-        dynamicActionBtn.classList.remove('recording-pulse');
-        
-        // Esconde ativa, mostra preview
-        hideElement('recording-active-state');
-        showElement('recording-preview-state');
-        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { showPreviewAfterStop = true; globalMediaRecorder.stop(); } 
 }
 
-// 🟢 3. RETOMAR GRAVAÇÃO
-window.resumeRecording = function() {
-    if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
-        globalMediaRecorder.resume();
-        hideElement('recording-preview-state');
-        showElement('recording-active-state');
-        dynamicActionBtn.classList.add('recording-pulse');
-        
-        recordingInterval = setInterval(() => { 
-            recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60); 
-            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
-            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
-        }, 1000);
-    }
-}
-
-// 🟢 4. ENVIAR
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
-        showPreviewAfterStop = false; 
-        globalMediaRecorder.stop(); // O stop dispara o onstop que cria e envia
-    } else if (pendingAudioFile) { 
-        sendMessage(); 
-        resetAudioUI(); 
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { showPreviewAfterStop = false; globalMediaRecorder.stop(); } 
 }
 
-// 🟢 5. CANCELAR / LIXEIRA
 window.cancelRecording = function() { 
-    if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
-        isRecordingCancelled = true; 
-        globalMediaRecorder.stop(); 
-    } else if (pendingAudioFile) { 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
+        isRecordingCancelled = true; globalMediaRecorder.stop(); 
+    } else if (pendingAudioFile && showPreviewAfterStop) { 
         pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); 
-    } else {
-        resetAudioUI();
-    }
+    } 
 }
 
 function resetAudioUI() { 
     hideElement('recording-ui'); 
     showElement('chat-input-container'); 
+    showElement('btn-attach-wrapper'); 
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
     dynamicActionBtn.classList.remove('recording-pulse');
-    
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
 }
 
 function setupPreviewUI(blob) { 
-    // Só é chamada se a gravação parar totalmente e pedir preview
     hideElement('recording-active-state'); 
+    hideElement('btn-pause-record'); 
     showElement('recording-preview-state'); 
-    dynamicActionBtn.classList.remove('recording-pulse');
+    dynamicActionBtn.classList.remove('recording-pulse'); 
 
     const audioUrl = URL.createObjectURL(blob); 
     previewAudioObj = new Audio(audioUrl); 
@@ -500,27 +524,29 @@ function setupPreviewUI(blob) {
     previewAudioObj.ontimeupdate = () => { 
         const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
         progressBar.style.width = `${progress}%`; 
+        const curr = Math.floor(previewAudioObj.currentTime); 
+        const m = Math.floor(curr / 60).toString().padStart(2, '0'); 
+        const s = (curr % 60).toString().padStart(2, '0'); 
+        document.getElementById('preview-timer').innerText = `${m}:${s}`; 
     }; 
     
     previewAudioObj.onended = () => { 
         playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
         progressBar.style.width = '0%'; 
+        document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText;  
     }; 
     
-    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
+    document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText; 
 }
 
 window.togglePreviewAudio = function() { 
-    if(previewAudioObj) {
-        const playBtn = document.getElementById('preview-play-btn'); 
-        if(previewAudioObj.paused) { 
-            previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
-        } else { 
-            previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
-        } 
-    } else {
-        alert("O áudio está em pausa. Finalize ou retome a gravação para ouvi-lo.");
-    }
+    if(!previewAudioObj) return; 
+    const playBtn = document.getElementById('preview-play-btn'); 
+    if(previewAudioObj.paused) { 
+        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
+    } else { 
+        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
+    } 
 }
 
 // ==============================================================
