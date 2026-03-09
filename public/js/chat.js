@@ -1291,3 +1291,102 @@ window.uploadNewGroupPhoto = async function(input) {
         alert("Erro ao enviar foto para a nuvem.");
     }
 };
+
+// ==============================================================
+// 🎙️ LÓGICA WHATSAPP: PRESSIONAR PARA FALAR (HOLD TO TALK)
+// ==============================================================
+
+// Vamos buscar o teu botão principal
+const actionBtnWa = document.getElementById('dynamic-action-btn');
+
+// Variáveis para controlar o estado do toque
+let holdTimer;
+let startX = 0;
+let isRecordingNow = false;
+
+// 1. Quando o utilizador PRESSIONA o botão
+function onHoldStart(e) {
+    const icon = document.getElementById('dynamic-action-icon').innerText;
+    
+    // Se for a seta de enviar (porque há texto), não fazemos nada no "segurar"
+    if (icon === 'send') return; 
+    
+    // Evita que o telemóvel faça zoom ou selecione coisas sem querer
+    if (e.cancelable) e.preventDefault(); 
+    
+    // Guarda a posição inicial do dedo/rato (eixo X)
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    
+    // Espera 300 milissegundos para ter a certeza que não foi um toque acidental
+    holdTimer = setTimeout(() => {
+        isRecordingNow = true;
+        
+        // Faz o telemóvel vibrar suavemente para indicar que começou a gravar
+        if (navigator.vibrate) navigator.vibrate(50); 
+        
+        // Chama a tua função que já inicia a gravação!
+        startRecording(); 
+    }, 300);
+}
+
+// 2. Quando o utilizador MOVE o dedo/rato (Para cancelar)
+function onHoldMove(e) {
+    if (!isRecordingNow) return; // Só interessa se estiver a gravar
+    
+    // Verifica a posição atual do dedo
+    const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+    const diferencaX = startX - currentX;
+
+    // Se deslizou mais de 50 pixels para a ESQUERDA
+    if (diferencaX > 50) {
+        isRecordingNow = false;
+        
+        // Chama a tua função que cancela a gravação
+        cancelRecording(); 
+        
+        // Vibra duas vezes rápido para confirmar que cancelou
+        if (navigator.vibrate) navigator.vibrate([50, 50, 50]); 
+    }
+}
+
+// 3. Quando o utilizador SOLTA o botão
+function onHoldEnd(e) {
+    clearTimeout(holdTimer); // Cancela o temporizador se foi um toque muito rápido
+    
+    const icon = document.getElementById('dynamic-action-icon').innerText;
+    
+    // Se o ícone for a seta, é para enviar a mensagem de texto
+    if (icon === 'send') {
+        sendMessage();
+        resetDynamicButton();
+        return;
+    }
+
+    // Se estava efetivamente a gravar áudio, então para e envia!
+    if (isRecordingNow) {
+        isRecordingNow = false;
+        // Chama a tua função que para e prepara o envio
+        stopAndSendRecording(); 
+    }
+}
+
+// Ativar os eventos no botão apenas se ele existir no ecrã
+if (actionBtnWa) {
+    // Primeiro, removemos o "onclick" do HTML para que o nosso novo sistema assuma o controlo
+    actionBtnWa.removeAttribute('onclick');
+    
+    // Eventos para Telemóveis (Ecrã Tátil)
+    actionBtnWa.addEventListener('touchstart', onHoldStart, { passive: false });
+    actionBtnWa.addEventListener('touchmove', onHoldMove, { passive: false });
+    actionBtnWa.addEventListener('touchend', onHoldEnd);
+    
+    // Eventos para Computadores (Rato)
+    actionBtnWa.addEventListener('mousedown', onHoldStart);
+    actionBtnWa.addEventListener('mousemove', onHoldMove);
+    actionBtnWa.addEventListener('mouseup', onHoldEnd);
+    
+    // Prevenção: Se o rato sair de cima do botão enquanto clica, assumimos que soltou
+    actionBtnWa.addEventListener('mouseleave', () => {
+        if (isRecordingNow) onHoldEnd(); 
+    });
+}

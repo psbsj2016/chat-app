@@ -1121,3 +1121,55 @@ body.bubble-cyber {
 #chat-input-container .icon-btn {
     margin-bottom: 2px !important;
 }
+
+/* =========================================
+   ESTILO WHATSAPP - BARRA INFERIOR
+========================================= */
+.chat-footer-wa {
+    display: flex;
+    align-items: flex-end; /* Alinha por baixo caso o texto tenha várias linhas */
+    padding: 10px;
+    background-color: transparent;
+    gap: 8px;
+    width: 100%;
+}
+
+.input-wrapper-wa {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background-color: #ffffff;
+    border-radius: 24px;
+    padding: 8px 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    gap: 10px;
+}
+
+.input-wrapper-wa input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    background: transparent;
+    padding: 5px 0;
+}
+
+.action-btn-wa {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #00A884; /* Verde WhatsApp */
+    color: white;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0;
+}
+
+.action-btn-wa:active {
+    transform: scale(0.9); /* Efeito de clique */
+}
