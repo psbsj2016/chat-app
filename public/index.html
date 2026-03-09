@@ -11,8 +11,6 @@
 
     <link rel="icon" href="favicon.png" type="image/png">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
@@ -30,75 +28,36 @@
     </script>
     
     <style>
-        /* 🟢 BOLHAS DE MENSAGEM WHATSAPP STYLE */
+        .contact-list { padding: 0 !important; display: flex; flex-direction: column; overflow-x: hidden; }
+        .user-item { display: flex; align-items: center; padding: 0 15px; cursor: pointer; transition: background-color 0.2s; height: 72px; border: none !important; background: transparent; }
+        .user-item:hover, .user-item:active { background-color: rgba(255, 255, 255, 0.05); }
+        .user-avatar-container { position: relative; margin-right: 15px; flex-shrink: 0; }
+        .user-avatar-container img { width: 48px !important; height: 48px !important; border-radius: 50% !important; object-fit: cover; }
+        .user-item-info { display: flex; flex-direction: column; justify-content: center; flex: 1; height: 100%; border-bottom: 1px solid rgba(255, 255, 255, 0.05); min-width: 0; padding-right: 5px; }
+        .user-item:last-child .user-item-info { border-bottom: none; }
+        .user-item-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+        .user-item-name { font-size: 16.5px; font-weight: 600; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-item-time { font-size: 12px; color: var(--secondary-text); margin-left: 10px; flex-shrink: 0; }
+        .user-item-bottom { display: flex; justify-content: space-between; align-items: center; }
+        .user-item-msg { font-size: 14px; color: var(--secondary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+        .unread-count-badge { background-color: var(--brand-primary); color: white; font-size: 12px; font-weight: 800; border-radius: 12px; padding: 2px 6px; min-width: 20px; text-align: center; flex-shrink: 0; margin-left: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
         #chat-box { padding: 10px 3% !important; display: flex; flex-direction: column; gap: 4px !important; }
         .message { position: relative; max-width: 85%; width: fit-content; padding: 6px 10px 8px 10px; border-radius: 12px; font-size: 15.5px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
-        
         .my-msg { align-self: flex-end; background-color: var(--brand-primary); border-top-right-radius: 0px; color: #ffffff; }
         .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid var(--brand-primary); border-bottom: 10px solid transparent; }
-        
         .other-msg { align-self: flex-start; background-color: var(--card-bg); border-top-left-radius: 0px; border: 1px solid rgba(255,255,255,0.05); color: var(--text-color); }
         .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid var(--card-bg); border-bottom: 10px solid transparent; }
         
-        .chat-date-divider { text-align: center; margin: 10px 0; }
-        .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 5px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        #emoji-drawer { height: 0px; overflow: hidden !important; transition: height 0.25s; background: #0B0F19; width: 100%; position: relative !important; z-index: 100 !important; }
+        emoji-picker { width: 100% !important; height: 300px !important; display: block !important; --background: #0B0F19; --border-color: rgba(255,255,255,0.05); --indicator-color: #00A884; --input-font-color: #E9EDEF; }
 
-        /* 🟢 GAVETA NATIVA DE EMOJIS (ESCUDO ANTI-FLUTUAÇÃO) */
-        #emoji-drawer {
-            height: 0px; 
-            min-height: 0 !important;
-            overflow: hidden !important; 
-            transition: height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); 
-            background: #0B0F19; 
-            width: 100%;
-            position: relative !important; 
-            z-index: 100 !important;
-        }
-
-        emoji-picker {
-            width: 100% !important;
-            height: 300px !important;
-            display: block !important;
-            position: relative !important; 
-            bottom: auto !important; left: auto !important; right: auto !important; top: auto !important; margin: 0 !important;
-            --background: #0B0F19; 
-            --border-color: rgba(255,255,255,0.05);
-            --indicator-color: #00A884;
-            --input-border-color: rgba(255,255,255,0.1);
-            --input-font-color: #E9EDEF;
-            --search-icon-color: #8696A0;
-            --category-icon-color: #8696A0;
-            --num-columns: 8;
-            --emoji-size: 1.8rem;
-        }
-
-        emoji-picker::part(emoji) { border-radius: 8px; transition: background-color 0.15s ease; }
-        emoji-picker::part(emoji):hover { background-color: rgba(255, 255, 255, 0.1); cursor: pointer; }
-        emoji-picker::part(category-title) { background-color: #0B0F19; color: #8696A0; font-size: 13px; padding: 10px 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        emoji-picker::part(search-input) { background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; color: white; }
-
-        /* 🔥 CHAT BOTÕES UI E ÁUDIO PREMIUM 🔥 */
-        .circular-primary-btn { 
-            background: #00A884; 
-            box-shadow: 0 2px 10px rgba(0, 168, 132, 0.4); 
-            border: none; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-bottom: 2px; 
-        }
-        .circular-primary-btn:active { transform: scale(0.95); }
-        .circular-primary-btn.recording-pulse { 
-            background: #EF4444; 
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); 
-            animation: recordPulse 1.5s infinite; 
-        }
+        .circular-primary-btn { background: #00A884; box-shadow: 0 2px 10px rgba(0, 168, 132, 0.4); border: none; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-bottom: 2px; }
+        .circular-primary-btn.recording-pulse { background: #EF4444; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); animation: recordPulse 1.5s infinite; }
         @keyframes recordPulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         
         .premium-record-ui { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 46px; box-sizing: border-box; margin-bottom: 2px;}
-        .record-action-btn { background: var(--card-bg); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
-        .record-action-btn:active { transform: scale(0.9); }
-        .attach-menu-item { padding: 12px 20px; font-size: 14.5px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; color: var(--text-color); }
-        .attach-menu-item:hover { background: rgba(255,255,255,0.05); }
-        .attach-menu-item:last-child { border-bottom: none; }
-        
         .icon-btn { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
         .icon-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
     </style>
@@ -112,28 +71,19 @@
             <form id="auth-form" onsubmit="event.preventDefault(); handleAuth()">
                 <input type="email" id="auth-email" placeholder="E-mail" required autocomplete="username" class="chic-input">
                 <input type="password" id="auth-pass" placeholder="Senha" required autocomplete="current-password" class="chic-input">
-                <input type="text" id="auth-name" placeholder="Seu Nome de Exibição" class="chic-input hidden">
                 <button id="auth-btn" class="chic-btn">Acessar Chat</button>
             </form>
             <div id="auth-toggle-text" class="link" onclick="toggleAuthMode()">Não tem conta? Crie uma</div>
-            <div id="forgot-pass-text" class="link" onclick="openForgotPasswordModal()" style="font-size: 13.5px; color: #888; display: block;">Esqueci minha senha</div>
         </div>
     </div>
-    <div id="welcome-screen" class="app-screen hidden"><div class="welcome-content"><img src="favicon.png" class="welcome-logo"><h1>ChatPTT</h1><p>Conectando o seu mundo.</p><div style="margin-top: 30px; display: flex; justify-content: center;"><div style="width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div></div></div></div>
-    <div id="permissions-screen" class="app-screen hidden" style="background: var(--bg-color); align-items: center; justify-content: center; padding: 20px;"><div style="background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center;"><span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">settings_suggest</span><h2 style="color: var(--text-color); margin-bottom: 15px;">Configuração Rápida</h2><p style="color: var(--secondary-text); font-size: 15px; margin-bottom: 20px; line-height: 1.5;">Para a experiência completa, precisamos de algumas permissões:</p><button onclick="grantAppPermissions()" class="chic-btn">Entrar na Comunidade</button></div></div>
 
     <div id="main-screen" class="app-screen hidden">
-        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            <button class="icon-btn" onclick="clearContactSelection()"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
-            <span id="selected-contact-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
-            <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptCustomDeleteChat()">delete</span>
-        </div>    
         <div class="material-header">
             <img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" onclick="toggleDrawer()" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg);">
             <div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div>
             <button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button>
         </div>
-        <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
+        
         <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>       
         
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1;"></div>
@@ -171,36 +121,10 @@
             </div>
         </div>
 
-        <div id="in-chat-search-bar" class="hidden" style="display: flex; align-items: center; padding: 10px 15px; background: var(--input-bg); border-bottom: 1px solid var(--border-color); gap: 10px; z-index: 9;">
-            <input type="text" id="in-chat-search-input" placeholder="Buscar na conversa..." class="chic-input" style="margin: 0; flex: 1; padding: 8px 15px; background: var(--card-bg);" oninput="handleInChatSearch(this.value)">
-            <span id="in-chat-search-counter" style="font-size: 13px; color: var(--secondary-text); font-weight: 800; min-width: 35px; text-align: center;">0/0</span>
-            <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_up</span></button>
-            <button class="icon-btn" onclick="navigateChatSearch(1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_down</span></button>
-            <button class="icon-btn" onclick="closeChatSearch()" style="color: #EF4444; padding: 5px; margin-left: 5px;"><span class="material-icons-round">close</span></button>
-        </div>
-
         <div id="chat-box" style="flex: 1; overflow-y: auto; overflow-x: hidden; background-image: var(--chat-bg-image); background-size: cover; background-position: center; width: 100%; box-sizing: border-box;"></div>
-
-        <div id="typing-indicator" class="hidden" style="padding: 2px 15px 5px 15px; font-size: 12px; color: var(--brand-primary); font-style: italic; font-weight: bold; background: transparent; z-index: 5;"></div>        
-
-        <div id="reply-preview" class="hidden" style="background: var(--card-bg); border-left: 4px solid var(--brand-primary); padding: 8px 12px; margin: 0 10px 5px 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); z-index: 5;">
-            <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;">
-                <b id="reply-preview-name" style="color: var(--brand-primary); font-size: 13.5px;">Nome</b><br>
-                <span id="reply-preview-text" style="color: var(--secondary-text); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; display: block;">Texto...</span>
-            </div>
-            <span class="material-icons-round" style="color: var(--secondary-text); cursor: pointer; padding: 5px; font-size: 20px; flex-shrink: 0;" onclick="cancelReply()">close</span>
-        </div>
 
         <div style="background: transparent; z-index: 10; width: 100%; display: flex; flex-direction: column; position: relative; flex-shrink: 0; padding-bottom: calc(5px + env(safe-area-inset-bottom));">
             
-            <div id="attach-menu" class="hidden" style="position: absolute; bottom: calc(100% + 5px); right: 65px; min-width: 200px; padding: 8px 0; z-index: 10000; border-radius: 16px; background: var(--card-bg); box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); display: flex; flex-direction: column;">
-                <input type="file" id="file-input" hidden onchange="handleFileUpload(this)">
-                <div class="attach-menu-item" onclick="triggerUpload('image/*')"><span class="material-icons-round" style="color: var(--brand-secondary); font-size: 22px;">image</span> <span style="font-weight: 600;">Câmera / Galeria</span></div>
-                <div class="attach-menu-item" onclick="triggerUpload('video/*')"><span class="material-icons-round" style="color: #8B5CF6; font-size: 22px;">videocam</span> <span style="font-weight: 600;">Vídeo</span></div>
-                <div class="attach-menu-item" onclick="triggerUpload('application/pdf')"><span class="material-icons-round" style="color: #EF4444; font-size: 22px;">insert_drive_file</span> <span style="font-weight: 600;">Documento</span></div>
-                <div class="attach-menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981; font-size: 22px;">headphones</span> <span style="font-weight: 600;">Áudio</span></div>
-            </div>
-
             <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
                 
                 <div id="chat-input-container" style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 24px; padding: 4px 10px; min-height: 46px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
@@ -224,7 +148,6 @@
 
                     <div id="recording-preview-state" class="hidden" style="display:flex; align-items:center; justify-content:space-between; width:100%; height: 100%;">
                         <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                        
                         <div style="flex:1; display:flex; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden;">
                             <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
                             <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;">
@@ -232,7 +155,6 @@
                             </div>
                             <div style="font-size:12px; color:var(--text-muted); font-family:monospace;" id="preview-timer-total">0:00</div>
                         </div>
-
                         <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
@@ -248,114 +170,12 @@
         </div>
     </div>
 
-    <div id="screen-explorar" class="app-screen hidden"><div class="explore-header"><div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;"><h2 style="font-size: 28px; font-weight: 800; color: var(--text-color); letter-spacing: -1px;">Explorar</h2><img src="favicon.png" style="width:36px; border-radius:12px;" onerror="this.style.display='none'"></div><div class="explore-magic-search"><span class="material-icons-round search-icon">travel_explore</span><input type="text" placeholder="Descubra pessoas, IAs e jogos..."><div class="search-filter-btn" onclick="alert('Filtros em breve!')"><span class="material-icons-round">tune</span></div></div></div><div class="explore-content"><div class="explore-section"><h3 class="explore-section-title">🌐 Conexões & Fóruns</h3><div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1)); border: 1px solid #10B981; margin-bottom: 15px; cursor: pointer;" onclick="hideAllTabs(); showElement('screen-communities');"><div style="display: flex; align-items: center; gap: 15px;"><div style="background: #10B981; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);"><span class="material-icons-round" style="font-size: 28px; color: white;">groups</span></div><div style="text-align: left; flex: 1;"><h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Minhas Comunidades</h4><p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Grupos, Fóruns e Canais de Voz PTT</p></div><span class="material-icons-round" style="color: #10B981;">chevron_right</span></div></div></div><div class="explore-section"><h3 class="explore-section-title" style="margin-bottom: 5px;">🛒 Loja PTT <span class="badge-tech">Store</span></h3><p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 15px;">Use seu XP para desbloquear benefícios.</p><h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🎨 Visual & Perfil</h4><div class="explore-hscroll" style="margin-bottom: 20px;"><div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#10B981;">terminal</span><h4>Tema Matrix</h4><button class="chic-btn store-btn" id="btn-theme_matrix" onclick="buyItem('theme_matrix', 100)">100 XP</button></div><div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#06B6D4;">chat_bubble</span><h4>Balão Cyber</h4><button class="chic-btn store-btn" id="btn-bubble_cyber" onclick="buyItem('bubble_cyber', 150)">150 XP</button></div><div class="explore-card store-card"><span class="material-icons-round" style="font-size:32px; color:#F59E0B;">workspace_premium</span><h4>Selo VIP</h4><button class="chic-btn store-btn" id="btn-badge_vip" onclick="buyItem('badge_vip', 300)">300 XP</button></div></div><h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">🕹️ Expansões do Hub</h4><div class="explore-hscroll" style="margin-bottom: 20px;"><div class="explore-card store-card" style="border: 1px solid rgba(239, 68, 68, 0.3);"><span class="material-icons-round" style="font-size:32px; color:#EF4444;">sports_motorsports</span><h4>Neon Racer</h4><button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível na próxima atualização!')">500 XP</button></div></div><h4 style="font-size: 13px; color: var(--text-color); margin: 0 0 10px 5px; text-transform: uppercase;">📚 Benefícios Inglês</h4><div class="explore-hscroll"><div class="explore-card store-card" style="border: 1px solid rgba(59, 130, 246, 0.3);"><span class="material-icons-round" style="font-size:32px; color:#3B82F6;">lightbulb</span><h4>Dicas Premium IA</h4><button class="chic-btn store-btn" style="background: var(--input-bg); color: var(--secondary-text);" onclick="alert('Disponível em breve!')">300 XP</button></div></div></div><div class="explore-section"><h3 class="explore-section-title">🚀 Produtividade & Skills</h3><div class="explore-card action-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid #3B82F6; margin-bottom: 15px; cursor: pointer;" onclick="openImmersiveGame('english-app/index.html', 'INGLÊS PTT')"><div style="display: flex; align-items: center; gap: 15px;"><div style="background: #3B82F6; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);"><span class="material-icons-round" style="font-size: 28px; color: white;">record_voice_over</span></div><div style="text-align: left; flex: 1;"><h4 style="margin: 0 0 5px 0; font-size: 18px; color: var(--text-color); font-weight: 800;">Inglês PTT</h4><p style="margin: 0; font-size: 12px; color: var(--secondary-text);">Listening • Speaking • Reading • Writing</p></div><span class="material-icons-round" style="color: #3B82F6;">chevron_right</span></div></div><div class="explore-card focus-card" id="focus-card-idle"><div style="flex:1;"><h4 style="font-size:16px; font-weight:700;">Modo Foco (25 min)</h4><p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;">Concentre-se sem distrações e ganhe +50 XP!</p><button class="chic-btn mini-btn" onclick="startFocusMode()" style="background: #EF4444; color: white; width: auto; padding: 6px 15px; font-size:13px;">Iniciar Foco</button></div><span class="material-icons-round" style="font-size:40px; color:#EF4444; opacity:0.8;">timer</span></div><div class="explore-card focus-card hidden" id="focus-card-active" style="text-align: center; justify-content: center; flex-direction: column;"><h4 style="font-size:16px; font-weight:800; color: #EF4444; margin-bottom: 5px; text-transform: uppercase;">Em Foco 🤫</h4><p style="font-size: 12px; color: var(--secondary-text); margin-bottom: 10px;">Não feche o aplicativo!</p><div id="focus-timer-display" style="font-size: 42px; font-weight: 900; letter-spacing: 2px; color: var(--text-color); margin-bottom: 15px; font-variant-numeric: tabular-nums;">25:00</div><button class="chic-btn mini-btn" onclick="cancelFocusMode()" style="background: transparent; border: 2px solid #FECACA; color: #EF4444; width: 100%; max-width: 200px; margin: 0 auto;">Desistir</button></div></div><div style="padding: 10px 0 40px 0; text-align:center;"><button class="surprise-btn" onclick="openSurprise()"><span class="material-icons-round">redeem</span> <span>Abrir Caixa Surpresa Diária</span></button><p style="font-size: 11px; color: var(--secondary-text); margin-top: 10px;">Volte todos os dias para acumular XP para a Loja PTT.</p></div></div></div>
-    <div id="screen-anotacoes" class="app-screen hidden"><div class="material-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:22px; margin-left: 5px; font-weight:800; color: var(--text-color);">Anotações</span><div style="flex:1"></div><button class="icon-btn" onclick="openNoteModal()"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 28px;">add_circle</span></button></div><div id="notes-list" style="padding: 15px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; gap: 12px;"></div></div>
-    <div id="screen-jogos" class="app-screen hidden" style="background: #09090b; color: white;"><canvas id="hub-3d-bg" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 0; pointer-events: none; opacity: 0.6;"></canvas><div class="material-header" style="background: rgba(9, 9, 11, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 2;"><span class="header-title" style="font-size:22px; margin-left: 10px; font-weight:900; background: linear-gradient(90deg, #06B6D4, #8B5CF6); -webkit-background-clip: text; color: transparent;">Arcade CPTT</span></div><div class="games-hub-content" style="padding: 20px; overflow-y: auto; height: 100%; padding-bottom: 120px; position: relative; z-index: 1;"><h3 class="hub-section-title">Mais Jogados</h3><div class="hub-grid"><div class="hub-card" onclick="openImmersiveGame('games/color-bounce/index.html', 'Color Bounce Rush')" style="border-color: #EC4899; box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);"><div class="card-img" style="background: linear-gradient(135deg, #3B82F6, #EC4899);"><span class="material-icons-round" style="font-size: 50px; color: white;">speed</span><div style="position:absolute; top:10px; right:10px; background:#000; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold; color:#0FF;">PvP ONLINE</div></div><div class="card-details"><h4>Color <span style="color:#EC4899;">RUSH</span></h4><span class="card-category">Corrida de Reflexos</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/defender/index.html', 'Neon Defender')"><div class="card-img" style="background: linear-gradient(135deg, #06B6D4, #3B82F6);"><span class="material-icons-round" style="font-size: 50px; color: white;">rocket_launch</span></div><div class="card-details"><h4>Neon <span style="color:#06B6D4;">DEFENDER</span></h4><span class="card-category">Ação / Shooter</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/bounce-arena/index.html', 'Neon Bounce Arena PvP')" style="border-color: var(--brand-accent); box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);"><div class="card-img" style="background: linear-gradient(135deg, #FF007A, #7928CA);"><span class="material-icons-round" style="font-size: 50px; color: white;">sports_kabaddi</span><div style="position:absolute; top:10px; right:10px; background:#000; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold; color:#0FF;">PvP ONLINE</div></div><div class="card-details"><h4>Neon Bounce <span style="color:#FF007A;">ARENA</span></h4><span class="card-category">Multiplayer / Sobrevivência</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/vortex/index.html', 'Neon Vortex: Cyber Blast')"><div class="card-img" style="background: linear-gradient(135deg, #8B5CF6, #06B6D4);"><span class="material-icons-round" style="font-size: 50px; color: white;">track_changes</span></div><div class="card-details"><h4>Neon Vortex</h4><span class="card-category">Ação / Shooter</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/tictactoe/index.html', 'Jogo da Velha')"><div class="card-img" style="background: linear-gradient(135deg, #EF4444, #F59E0B);"><span class="material-icons-round" style="font-size: 50px; color: white;">grid_3x3</span></div><div class="card-details"><h4>Tic-Tac-Toe</h4><span class="card-category">Multiplayer Local</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/snake/index.html', 'Predator 4D')"><div class="card-img" style="background: linear-gradient(135deg, #22c55e, #14532d);"><span class="material-icons-round" style="font-size: 50px; color: white;">pest_control</span></div><div class="card-details"><h4>Predator 4D</h4><span class="card-category">Simulação / Caça</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/bounce/index.html', 'Neon Bounce')"><div class="card-img" style="background: linear-gradient(135deg, #F43F5E, #F59E0B);"><span class="material-icons-round" style="font-size: 50px; color: white;">sports_volleyball</span></div><div class="card-details"><h4>Neon Bounce</h4><span class="card-category">Física / Arcade</span></div></div></div><h3 class="hub-section-title" style="margin-top: 25px;">Estratégia e Tabuleiro</h3><div class="hub-grid"><div class="hub-card" onclick="openImmersiveGame('games/chess/index.html', 'Xadrez vs IA')"><div class="card-img" style="background: linear-gradient(135deg, #1E293B, #0F172A);"><span class="material-icons-round" style="font-size: 50px; color: white;">chess</span></div><div class="card-details"><h4>Chess AI</h4><span class="card-category">Estratégia</span></div></div><div class="hub-card" onclick="openImmersiveGame('games/battleship/index.html', 'Batalha Naval')"><div class="card-img" style="background: linear-gradient(135deg, #0284C7, #1E3A8A);"><span class="material-icons-round" style="font-size: 50px; color: white;">directions_boat</span></div><div class="card-details"><h4>Batalha Naval</h4><span class="card-category">Lógica e Sorte</span></div></div></div></div></div>
-
-    <div id="profile-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Perfil</span><div style="width: 40px;"></div></div><div class="settings-content"><div class="settings-card" style="flex-direction: column; text-align: center; padding: 30px 15px;"><div style="position: relative; display:inline-block; margin-bottom: 15px; width: 100px; height: 100px;"><div id="profile-photo-spinner" class="hidden" style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border: 4px solid transparent; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite; z-index: 5;"></div><img id="config-avatar" src="" onclick="viewMyProfilePhoto()" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--brand-primary); position: relative; z-index: 2; cursor: pointer; transition: 0.2s;"><span class="material-icons-round" onclick="triggerProfileUpload()" style="position: absolute; bottom: -5px; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 8px; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; z-index: 10; transition: 0.2s;">edit</span><input type="file" id="profile-file-input" hidden onchange="uploadProfilePhoto(this)"></div><h3 id="config-name" style="font-size: 24px; margin-bottom: 5px;">Nome</h3><span class="edit-btn" onclick="editName()" style="font-weight:600; color: var(--brand-primary); cursor: pointer;">Editar Nome</span><div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;"><div style="background: var(--input-bg); padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 800; color: var(--brand-secondary);">Nível <span id="config-level">1</span></div><div style="background: var(--input-bg); padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #F59E0B;"><span id="config-xp">0</span> XP</div></div></div><div class="settings-group"><div class="group-title">Informações</div><div class="setting-item" onclick="editBio()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13px; color:var(--secondary-text); text-transform:uppercase; font-weight:700;">Bio</span><span id="config-bio" style="font-size: 16px; color:var(--text-color); font-weight:500;">Carregando...</span></div><span class="material-icons-round" style="color:var(--brand-primary);">edit</span></div><div class="setting-item" onclick="editPhone()"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-size: 13px; color:var(--secondary-text); text-transform:uppercase; font-weight:700;">Telefone</span><span id="config-phone" style="font-size: 16px; color:var(--text-color); font-weight:500;">Carregando...</span></div><span class="material-icons-round" style="color:var(--brand-primary);">edit</span></div></div></div></div>
-    
-    <div id="settings-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Configurações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px;"><div class="settings-group"><div class="settings-menu-btn" onclick="openAppearanceSettings()"><div style="display:flex; align-items:center; gap:15px;"><span class="material-icons-round" style="color:var(--brand-primary);">palette</span> Aparência</div><span class="material-icons-round" style="color:var(--secondary-text);">chevron_right</span></div><div class="settings-menu-btn" onclick="openNotificationsSettings()"><div style="display:flex; align-items:center; gap:15px;"><span class="material-icons-round" style="color:var(--brand-secondary);">notifications</span> Notificações</div><span class="material-icons-round" style="color:var(--secondary-text);">chevron_right</span></div><div class="settings-menu-btn" onclick="openClassificationsSettings()"><div style="display:flex; align-items:center; gap:15px;"><span class="material-icons-round" style="color:#10B981;">category</span> Classificações</div><span class="material-icons-round" style="color:var(--secondary-text);">chevron_right</span></div><div class="settings-menu-btn" onclick="openAccountSettings()"><div style="display:flex; align-items:center; gap:15px;"><span class="material-icons-round" style="color:#F59E0B;">manage_accounts</span> Conta</div><span class="material-icons-round" style="color:var(--secondary-text);">chevron_right</span></div></div></div></div>
-    <div id="appearance-screen" class="app-screen hidden" style="position: relative;"><div class="main-header"><button class="icon-btn" onclick="cancelAppearanceSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Aparência</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;"><div class="settings-group"><div class="setting-item"><span style="font-weight:600;">Modo Escuro</span><label class="switch"><input type="checkbox" id="theme-switch"><span class="slider round"></span></label></div><div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13.5px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Tamanho da Fonte</span><select id="font-size-select" class="chic-input" style="margin:0; padding:10px; font-weight:600;"><option value="small">Pequeno</option><option value="medium">Médio (Ideal)</option><option value="large">Grande</option></select></div></div><div style="display: flex; align-items: center; gap: 8px; margin: 25px 0 10px 5px;"><span class="material-icons-round" style="color: var(--brand-primary);">checkroom</span><h3 style="font-size: 14px; color: var(--secondary-text); text-transform: uppercase; margin: 0; font-weight: 800;">Meu Inventário Neon</h3></div><div class="settings-group" id="inventory-list" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);"></div></div><div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);"><button class="chic-btn" onclick="cancelAppearanceSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button><button class="chic-btn" onclick="saveAppearanceSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button></div></div>
-    <div id="notifications-screen" class="app-screen hidden" style="position: relative;"><div class="main-header"><button class="icon-btn" onclick="cancelNotificationSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Notificações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;"><div class="settings-group"><div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Som de Mensagem</span><select id="notification-sound-select" class="chic-input" style="margin:0; padding:10px;"><option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino</option><option value="none">Silencioso</option></select></div></div></div><div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);"><button class="chic-btn" onclick="cancelNotificationSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button><button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button></div></div>
-    <div id="classifications-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Classificações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px;"><button class="chic-btn" style="background: var(--brand-secondary); margin-bottom: 20px;" onclick="createNewClassification()">+ Criar Nova Classificação</button><div id="classifications-list"></div></div></div>
-    <div id="account-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Conta</span><div style="width: 40px;"></div></div><div class="settings-content"><div class="settings-group"><div class="setting-item"><span style="font-weight:500;">E-mail</span><span id="config-email" style="color:var(--secondary-text);">...</span></div><div class="setting-item" onclick="openChangePasswordModal()"><span style="font-weight:600; color:var(--brand-primary);">Alterar Senha</span></div><div class="setting-item" onclick="deleteAccount()"><span style="color:#EF4444; font-weight:600;"><span class="material-icons-round" style="font-size:18px; vertical-align:middle; color:#EF4444;">delete_forever</span> Excluir Minha Conta</span></div></div></div></div>
-
-    <div id="screen-communities" class="app-screen hidden">
-        <div class="community-servers-bar">
-            <div class="c-icon" onclick="backToMain()"><span class="material-icons-round">chat</span></div>
-            <div style="width: 30px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 5px 0;"></div>
-            <img src="https://cdn-icons-png.flaticon.com/512/844/844004.png" class="c-icon active">
-            <div class="c-icon action-btn" onclick="openCreateCommunityModal()"><span class="material-icons-round">add</span></div>
-            <div class="c-icon action-btn" style="color: #06B6D4;" onclick="openExploreCommunities()"><span class="material-icons-round">explore</span></div>
-        </div>
-        <div class="community-channels-bar">
-            <div class="comm-header" id="active-comm-name">Selecione um Servidor</div>
-            <div id="community-channels-list" style="flex: 1; overflow-y: auto;"><div style="padding: 20px; text-align: center; color: #64748B; font-size: 13px;">Nenhuma comunidade selecionada.</div></div>
-            <div style="height: 60px; background: #0B0F19; display: flex; align-items: center; padding: 0 15px; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 32px; border-radius: 50%;" id="comm-mini-avatar">
-                <div style="flex: 1;"><div style="color: white; font-size: 13px; font-weight: 700;" id="comm-mini-name">Você</div><div style="color: #22C55E; font-size: 11px;">Online</div></div>
-                <span class="material-icons-round" style="font-size: 20px; color: #94A3B8; cursor: pointer;">settings</span>
-            </div>
-        </div>
-        <div class="community-chat-area">
-            <div id="voice-lounge-container" style="display: none;" class="glass-panel">
-                <div class="voice-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);"><h3 style="margin: 0; color: #4ade80;">🔊 <span id="voice-channel-name">Lounge de Voz</span></h3><div class="voice-controls"><button id="btn-join-voice" style="background: #22c55e; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold;">Conectar Rádio</button><button id="btn-leave-voice" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; display: none;">Desconectar</button></div></div>
-                <div id="voice-participants-grid" style="display: flex; gap: 15px; padding: 15px; overflow-x: auto; min-height: 80px;"></div>
-                <div id="remote-audios-container" style="display: none;"></div>
-            </div>
-            <div class="channel-top-bar">
-                <span class="material-icons-round mobile-back-btn" onclick="closeMobileCommunityChat()">menu</span>
-                <span class="material-icons-round" style="color: #94A3B8; font-size: 24px;">tag</span> 
-                <span id="active-channel-name" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">selecione-um-canal</span>
-                <span class="material-icons-round" style="color: #94A3B8; cursor: pointer; margin-left: auto;" onclick="toggleCommunityMembers()" title="Ver Membros">people</span>
-            </div>
-            <div style="display: flex; flex: 1; overflow: hidden; position: relative;">
-                <div style="flex: 1; display: flex; flex-direction: column;">
-                    <div id="community-chat-box" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px;">
-                        <div style="text-align: center; color: #64748B; margin-top: 50px;"><span class="material-icons-round" style="font-size: 50px; opacity: 0.5; margin-bottom: 10px;">forum</span><h2>Bem-vindo à sua Comunidade</h2><p>Selecione um servidor na barra à esquerda para começar.</p></div>
-                    </div>
-                    <div style="padding: 15px 20px;">
-                        <div style="background: #334155; border-radius: 8px; display: flex; align-items: center; padding: 0 15px;">
-                            <span class="material-icons-round" style="color: #94A3B8; cursor: pointer;" onclick="document.getElementById('community-file-input').click()">add_circle</span>
-                            <input type="file" id="community-file-input" hidden onchange="uploadCommunityFile(this)">
-                            <input type="text" id="community-message-input" placeholder="Conversar no canal..." style="flex: 1; background: transparent; border: none; padding: 15px; color: white; outline: none; font-size: 15px;" onkeydown="if(event.key==='Enter') sendCommunityMessage()">
-                            <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer;" onclick="sendCommunityMessage()">send</span>
-                        </div>
-                    </div>
-                </div>
-                <div id="community-members-bar" style="width: 240px; background: #0B0F19; border-left: 1px solid rgba(255,255,255,0.05); overflow-y: auto; display: none; flex-direction: column;">
-                    <div style="padding: 15px; font-size: 12px; font-weight: 800; color: #94A3B8; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05);">Roster da Tropa</div>
-                    <div id="community-members-list" style="flex: 1; padding: 0 10px;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 11000; background: var(--bg-color);">
-        <div style="display: flex; flex-direction: column; height: 100%; width: 100%; position: relative;">
-            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); position: absolute; top:0; width:100%; z-index: 2;">
-                <button class="icon-btn" onclick="hideElement('create-status-modal')"><span class="material-icons-round" style="color: white;">close</span></button>
-                <button class="chic-btn mini-btn" onclick="publishStatus()" style="margin:0; background: var(--brand-primary);">Publicar</button>
-            </div>
-            <div id="status-preview-area" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden;">
-                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative;"></textarea>
-                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1;">
-            </div>
-            <div style="padding: 20px; display: flex; justify-content: space-around; background: var(--hud-bg); position: absolute; bottom:0; width:100%; z-index: 2;">
-                <button class="icon-btn" onclick="changeStatusColor()"><span class="material-icons-round" style="color: white; font-size: 32px;">palette</span></button>
-                <label for="status-image-upload" class="icon-btn" style="cursor: pointer;">
-                    <span class="material-icons-round" style="color: white; font-size: 32px;">image</span>
-                </label>
-                <input type="file" id="status-image-upload" accept="image/*" class="hidden" onchange="previewStatusImage(event)">
-            </div>
-        </div>
-    </div>
-    
-    <div id="story-viewer-modal" class="modal-overlay hidden" style="z-index: 12000; background: #000;">
-        <div style="position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 5px; z-index: 10;" id="story-progress-container"></div>
-        <div style="position: absolute; top: 30px; left: 15px; display: flex; align-items: center; gap: 10px; z-index: 10; width: 100%;">
-            <img id="story-author-photo" src="" style="width: 40px; height: 40px; border-radius: 50%;">
-            <div>
-                <div id="story-author-name" style="color: white; font-weight: 800; font-size: 15px;">Nome</div>
-                <div id="story-time" style="color: rgba(255,255,255,0.8); font-size: 11px;">Agora mesmo</div>
-            </div>
-            <button class="icon-btn" onclick="closeStoryViewer()" style="margin-left: auto; margin-right: 20px;"><span class="material-icons-round" style="color: white;">close</span></button>
-        </div>
-        <div id="story-content-area" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative;">
-            <div id="story-text-display" style="color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; z-index: 2;"></div>
-            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 1;">
-        </div>
-        <div onclick="prevStory()" style="position: absolute; top:0; left:0; width:30%; height:100%; z-index: 5;"></div>
-        <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
-    </div>
-
     <div id="add-contact-screen" class="app-screen hidden">
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
         <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
             <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
                 <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div>
                 <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
-                <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p>
                 <div style="position: relative; margin-bottom: 20px;">
                     <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span>
                     <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
@@ -366,46 +186,12 @@
         </div>
     </div>
     
-    <div id="custom-delete-chat-modal" class="modal-overlay hidden" style="z-index: 10000;"><div class="modal-content" style="max-width: 320px; text-align: center;"><div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto;"><span class="material-icons-round" style="font-size: 32px; color: #EF4444;">delete_forever</span></div><h3 style="color: var(--text-color); margin-bottom: 10px; font-weight: 800;">Apagar Conversa?</h3><p style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">Tudo será apagado e <b id="delete-target-name" style="color: var(--brand-primary);">o contato</b> não será mais exibido na sua área de conversas.<br><br>Para voltar a conversar com essa pessoa, você terá que fazer uma busca e enviar uma nova mensagem.</p><div style="display: flex; gap: 10px; width: 100%;"><button onclick="hideElement('custom-delete-chat-modal')" class="chic-btn" style="flex: 1; background: transparent; border: 1px solid var(--input-bg); color: var(--secondary-text); margin: 0;">Cancelar</button><button onclick="executeCustomDeleteChat()" class="chic-btn" style="flex: 1; margin: 0; background: #EF4444;">Apagar Tudo</button></div></div></div>
-    <div id="start-chat-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content profile-view-card" style="text-align: center;"><img id="start-chat-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; border: 3px solid var(--brand-primary); object-fit: cover;"><h3 id="start-chat-name" style="margin-bottom: 5px; font-size: 22px; font-weight: 800;">Nome</h3><p id="start-chat-info" style="color: var(--secondary-text); font-size: 14px; margin-bottom: 20px;">info@email.com</p><div style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('start-chat-modal')" class="chic-btn" style="background:transparent; color:var(--secondary-text); border: 1px solid var(--input-bg);">Cancelar</button><button id="btn-confirm-start-chat" class="chic-btn">Enviar Mensagem</button></div></div></div>
-    <div id="note-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 600px; width: 90%; height: 75vh; display: flex; flex-direction: column; padding: 0; border-radius: 16px; overflow: hidden; background: var(--bg-color);"><div style="background: var(--card-bg); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);"><h3 style="color:var(--brand-primary); margin: 0; font-size: 18px; font-weight: 800;">📝 Bloco de Notas</h3><button class="icon-btn" onclick="hideElement('note-modal')" style="padding: 5px;"><span class="material-icons-round">close</span></button></div><div style="padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto;"><input type="text" id="note-title" placeholder="Título da Anotação" style="font-size: 24px; font-weight: 800; border: none; background: transparent; outline: none; color: var(--text-color); margin-bottom: 15px; width: 100%;"><div style="display: flex; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 8px; border-radius: 8px;"><button class="icon-btn" onclick="formatNote('bold')" title="Negrito" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_bold</span></button><button class="icon-btn" onclick="formatNote('italic')" title="Itálico" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_italic</span></button><button class="icon-btn" onclick="formatNote('insertUnorderedList')" title="Lista" style="background: var(--card-bg); border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); width: 35px; height: 35px;"><span class="material-icons-round" style="font-size: 18px; color: var(--text-color);">format_list_bulleted</span></button></div><div id="note-content" contenteditable="true" placeholder="Comece a digitar sua ideia aqui..." style="flex: 1; outline: none; font-size: 16px; line-height: 1.6; color: var(--text-color); overflow-y: auto;"></div></div><div style="padding: 15px 20px; background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; justify-content: flex-end;"><button onclick="saveNote()" class="chic-btn" style="margin: 0; padding: 10px 25px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent)); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);">Salvar Anotação</button></div></div></div>
-    <div id="ai-game-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="width: 100%; max-width: 100%; height: 100%; border-radius: 0; padding: 0; display: flex; flex-direction: column;"><div style="background: var(--card-bg); padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--input-bg);"><h3 style="margin: 0; font-size: 16px; color: var(--brand-primary);">Jogo Gerado por IA</h3><button class="icon-btn" onclick="closeAIGame()"><span class="material-icons-round">close</span></button></div><iframe id="ai-game-frame" style="flex: 1; border: none; background: #fff;" sandbox="allow-scripts allow-same-origin"></iframe></div></div>
-    <div id="game-immersive-modal" class="modal-overlay hidden" style="z-index: 99999; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;"><div style="width: 100%; height: 60px; min-height: 60px; background: #09090b; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.08);"><button class="icon-btn" onclick="closeImmersiveGame()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="color: white;">arrow_back</span></button><span id="immersive-game-title" style="color: var(--brand-secondary); font-weight: 900; font-size: 16px; letter-spacing: 1px; text-transform: uppercase;">JOGO</span><div style="width:40px;"></div></div><iframe id="immersive-game-frame" src="" style="width: 100%; flex: 1; border: none; background: #000;"></iframe></div>
-    <div id="photo-viewer-modal" class="modal-overlay hidden" onclick="hideElement('photo-viewer-modal')" style="z-index: 9999; background: rgba(0,0,0,0.85);"><div style="position: relative; width: 90%; max-width: 350px; display: flex; justify-content: center; align-items: center; flex-direction: column;"><img id="viewer-photo" src="" style="width: 100%; height: auto; max-height: 60vh; object-fit: contain; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);"><button class="icon-btn" onclick="hideElement('photo-viewer-modal')" style="position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.2);"><span class="material-icons-round" style="color: white;">close</span></button></div></div>
-    <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
-    <div id="side-drawer" class="side-drawer"><div class="drawer-header"><img id="drawer-avatar" src="" onclick="openProfile()"><div class="drawer-user-info" onclick="openProfile()"><h3 id="drawer-name">Nome</h3><span id="drawer-email">email@cptt.com</span><div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;"><span class="badge-tech" style="background: var(--brand-secondary); color: white;">Nível <span id="drawer-level">1</span></span><span style="font-size: 12.5px; font-weight: 800; color: var(--brand-primary);"><span id="drawer-xp">0</span> XP</span></div></div></div><div class="drawer-content"><div class="drawer-section-title">Ferramentas</div><div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div><div class="drawer-item" onclick="openScheduledList(); toggleDrawer()"><span class="material-icons-round" style="color: var(--brand-secondary);">event_note</span> Meus Agendamentos</div><div class="drawer-item" onclick="document.getElementById('admin-modal').classList.remove('hidden'); toggleDrawer()"><span class="material-icons-round" style="color:#F59E0B">campaign</span> Aviso Geral</div><div class="drawer-section-title">Conta</div><div class="drawer-item" onclick="openProfile(); toggleDrawer()"><span class="material-icons-round">person</span> Meu Perfil</div><div class="drawer-item" onclick="openSettings(); toggleDrawer()"><span class="material-icons-round">settings</span> Configurações</div><div class="drawer-separator"></div><div class="drawer-item" style="color: #EF4444;" onclick="logout()"><span class="material-icons-round" style="color: #EF4444;">logout</span> Sair da Conta</div></div></div>
-    <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-reply-msg" class="menu-item" onclick="initReply()" style="padding: 12px 20px;"><span class="material-icons-round" style="color:var(--brand-primary)">reply</span> Responder</div><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons-round">shortcut</span> Encaminhar</div></div>
-    <div id="schedule-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px; font-size:22px; font-weight:800;">Agendar Mensagem</h3><select id="schedule-target" class="chic-input" style="padding:12px; margin-bottom:15px;"></select><input type="datetime-local" id="schedule-datetime" class="chic-input" style="padding:12px; margin-bottom:15px;"><textarea id="schedule-text" placeholder="Escreva a mensagem futura..." class="chic-input" style="resize:none; height:80px; padding:12px; margin-bottom:20px;"></textarea><div class="modal-actions" style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('schedule-modal')" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="saveScheduledMessage()" class="chic-btn" style="flex:1; margin:0;">Agendar</button></div></div></div>
-    <div id="scheduled-list-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; padding: 20px;"><h3 style="color:var(--brand-secondary); margin-bottom:15px; font-size:20px; font-weight:800;"><span class="material-icons-round" style="vertical-align: middle;">event_note</span> Radar de Disparos</h3><div id="scheduled-messages-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding-right: 5px;"></div><button onclick="hideElement('scheduled-list-modal')" class="chic-btn" style="background:transparent; border:1px solid var(--input-bg); color:var(--secondary-text); margin: 0;">Recolher Radar</button></div></div>
-    <div id="create-group-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;"><div style="position: relative; flex-shrink: 0;"><img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('new-group-file').click()"><span class="material-icons-round" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 14px;">camera_alt</span><input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)"></div><div style="flex: 1;"><h3 style="margin: 0 0 5px 0; font-size: 18px;">Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" class="chic-input" style="margin:0; padding:10px;"></div></div><div style="position: relative; margin-bottom: 15px; width: 100%;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span><input type="text" id="group-search-input" placeholder="Buscar membros..." class="chic-input" style="padding-left: 45px; margin: 0; font-weight: 600;" onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; display: flex; flex-direction: column; gap: 5px;"></div><div class="modal-actions" style="display: flex; gap: 10px; width: 100%; margin-top:15px;"><button onclick="closeCreateGroup()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="submitCreateGroup()" class="chic-btn" style="flex:1; margin:0;">Criar</button></div></div></div>
-    
     <nav id="bottom-navigation" class="bottom-nav hidden">
         <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
         <div class="nav-item" onclick="switchTab('explorar', this)"><div class="nav-icon"><span class="material-icons-round">explore</span></div><span>Explorar</span></div>
         <div class="nav-item" onclick="switchTab('anotacoes', this)"><div class="nav-icon"><span class="material-icons-round">note_alt</span></div><span>Notas</span></div>
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                reg.update(); 
-                reg.onupdatefound = () => {
-                    const installingWorker = reg.installing;
-                    installingWorker.onstatechange = () => {
-                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log("Atualização detectada! Reiniciando...");
-                            window.location.reload();
-                        }
-                    };
-                };
-            });
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) { window.location.reload(); refreshing = true; }
-            });
-        }
-    </script>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/core.js"></script>
