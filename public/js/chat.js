@@ -145,7 +145,7 @@ window.executeBulkDeleteChat = async function() {
                 await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); 
                 messageCache[contact.id] = []; 
                 const safeHidden = window.hiddenChats || [];
-                if(!safeHidden.includes(contact.id)) safeHidden.push(contact.id); 
+                if(!safeHidden.includes(contact.id)) safeHidden.push(contact.id);
                 window.hiddenChats = safeHidden;
             }
         } catch(e) {}
@@ -217,10 +217,6 @@ window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) 
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
-
-// ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
-// ==============================================================
 window.toggleEmojiPicker = function(e) { 
     if (e) e.stopPropagation(); 
     
@@ -304,7 +300,7 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ NOVO MOTOR DE ÁUDIO PREMIUM (PAUSA E PLAY)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (COM PLAY NO PAUSE)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -369,7 +365,6 @@ if (msgInputEl) {
     }); 
 }
 
-// 🟢 1. INICIAR GRAVAÇÃO
 async function startRecording() { 
     const attachMenu = document.getElementById('attach-menu');
     if(attachMenu) attachMenu.classList.add('hidden');
@@ -393,7 +388,9 @@ async function startRecording() {
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
         dynamicActionBtn.classList.add('recording-pulse');
 
-        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
+        globalMediaRecorder.ondataavailable = e => { 
+            if (e.data.size > 0) audioChunks.push(e.data); 
+        }; 
         
         globalMediaRecorder.onstop = () => { 
             clearInterval(recordingInterval); 
@@ -404,7 +401,14 @@ async function startRecording() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
             pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            if (showPreviewAfterStop) { setupPreviewUI(audioBlob); } else { sendMessage(); resetAudioUI(); } 
+            if (showPreviewAfterStop) { 
+                // Fluxo se foi uma paragem definitiva para ouvir antes de enviar
+                setupPreviewUI(audioBlob); 
+            } else { 
+                // Fluxo de envio imediato
+                sendMessage(); 
+                resetAudioUI(); 
+            } 
         }; 
         
         recordingSeconds = 0; 
@@ -421,22 +425,25 @@ async function startRecording() {
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
 }
 
-// 🟢 2. PAUSAR GRAVAÇÃO (Vai para a Preview com Botão Play)
+// 🔥 A NOVA LÓGICA DE PAUSA (QUE GERA O ÁUDIO PARA PLAYBACK IMEDIATO) 🔥
 window.stopRecordingForPreview = function() { 
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
         globalMediaRecorder.pause(); 
         clearInterval(recordingInterval);
         
-        // Força a inserção dos dados gravados até agora no array audioChunks
+        // Pede os pacotes gravados até ao momento para construir a pré-visualização
         globalMediaRecorder.requestData();
 
         dynamicActionBtn.classList.remove('recording-pulse');
-        
-        // Dá um tempo curto para o chunk ser processado e cria o Blob temporário para Preview
+        hideElement('recording-active-state');
+        showElement('recording-preview-state');
+        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
+
+        // Aguarda os pacotes entrarem na array e cria o objeto de áudio para o Play
         setTimeout(() => {
             const tempBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const tempUrl = URL.createObjectURL(tempBlob);
-            if(previewAudioObj) { previewAudioObj.pause(); }
+            if (previewAudioObj) { previewAudioObj.pause(); }
             previewAudioObj = new Audio(tempUrl);
             
             previewAudioObj.ontimeupdate = () => { 
@@ -447,15 +454,11 @@ window.stopRecordingForPreview = function() {
                 document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
                 document.getElementById('preview-progress').style.width = '0%'; 
             }; 
-        }, 150);
-
-        hideElement('recording-active-state');
-        showElement('recording-preview-state');
-        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;
+        }, 200);
     } 
 }
 
-// 🟢 3. RETOMAR GRAVAÇÃO
+// RETOMAR A GRAVAÇÃO (O MICROFONE VERMELHO)
 window.resumeRecording = function() {
     if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
         globalMediaRecorder.resume();
@@ -463,6 +466,14 @@ window.resumeRecording = function() {
         showElement('recording-active-state');
         dynamicActionBtn.classList.add('recording-pulse');
         
+        // Interrompe o áudio se estivesse a tocar
+        if(previewAudioObj) {
+            previewAudioObj.pause();
+            previewAudioObj.currentTime = 0;
+            document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>';
+            document.getElementById('preview-progress').style.width = '0%'; 
+        }
+
         recordingInterval = setInterval(() => { 
             recordingSeconds++; 
             const m = Math.floor(recordingSeconds / 60); 
@@ -472,18 +483,16 @@ window.resumeRecording = function() {
     }
 }
 
-// 🟢 4. ENVIAR GRAVAÇÃO
 window.stopAndSendRecording = function() { 
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         showPreviewAfterStop = false; 
-        globalMediaRecorder.stop(); // O stop dispara onstop que cria o Blob final e envia
+        globalMediaRecorder.stop(); 
     } else if (pendingAudioFile) { 
         sendMessage(); 
         resetAudioUI(); 
     } 
 }
 
-// 🟢 5. CANCELAR / LIXEIRA
 window.cancelRecording = function() { 
     if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
         isRecordingCancelled = true; 
@@ -504,35 +513,12 @@ function resetAudioUI() {
     dynamicActionBtn.classList.remove('recording-pulse');
     
     const input = document.getElementById('message-input'); 
-    if (input) { input.innerHTML = ''; } // Limpeza segura
-    resetDynamicButton();
+    if (input) { input.innerHTML = ''; } 
+    resetDynamicButton(); 
     emitStopTypingStatus(); 
 }
 
-function setupPreviewUI(blob) { 
-    hideElement('recording-active-state'); 
-    showElement('recording-preview-state'); 
-    dynamicActionBtn.classList.remove('recording-pulse');
-
-    const audioUrl = URL.createObjectURL(blob); 
-    previewAudioObj = new Audio(audioUrl); 
-    const playBtn = document.getElementById('preview-play-btn'); 
-    const progressBar = document.getElementById('preview-progress'); 
-    
-    previewAudioObj.ontimeupdate = () => { 
-        const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
-        progressBar.style.width = `${progress}%`; 
-    }; 
-    
-    previewAudioObj.onended = () => { 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
-        progressBar.style.width = '0%'; 
-    }; 
-    
-    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
-}
-
-// PLAY NO PREVIEW DURANTE PAUSA
+// PLAY NO PREVIEW DURANTE A PAUSA
 window.togglePreviewAudio = function() { 
     if(previewAudioObj) {
         const playBtn = document.getElementById('preview-play-btn'); 
@@ -542,20 +528,20 @@ window.togglePreviewAudio = function() {
             previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
         } 
     } else {
-        alert("Processando áudio...");
+        alert("O áudio está a ser processado. Tente novamente em um segundo.");
     }
 }
 
 // ==============================================================
-// 🔌 SOCKETS E SINCRONIZAÇÃO (Cores e Status Online Corrigido)
+// 🔌 SOCKETS E SINCRONIZAÇÃO DA LISTA
 // ==============================================================
 if(socket) {
     socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
     socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
     socket.on('connect', () => { if (myId) { socket.emit('join_room', myId); const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups.forEach(g => socket.emit('join_group', g._id)); } });
     
+    // 🔥 CORREÇÃO DAS CORES DO ONLINE/OFFLINE 🔥
     socket.on('online_users', (list) => { 
-        // Converte a lista recebida para String para garantir a precisão no '.includes()'
         const stringList = list.map(id => String(id));
         window.onlineUsersList = stringList; 
 
@@ -572,7 +558,7 @@ if(socket) {
             if (headerDot) headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
             if (headerText) {
                 headerText.innerText = isOnline ? 'Online' : 'Offline'; 
-                headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
+                headerText.style.color = isOnline ? '#10B981' : '#EF4444'; // Verde ou Vermelho
             }
         } 
     });
@@ -693,7 +679,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { if(socket) socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🟢 RENDERIZAÇÃO BLINDADA DOS CONTATOS (COM ROBÔ IA)
+// 🟢 RENDERIZAÇÃO BLINDADA DOS CONTATOS E ROBÔ
 window.loadContacts = async function() { 
     if(!myId) return; 
     let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
@@ -736,7 +722,6 @@ window.renderContactsList = function(groups, users) {
     const visibleUsers = (users || []).filter(user => !safeHidden.includes(user._id));
     const safeUnread = window.unreadCounts || {};
     
-    // 🤖 ROBÔ IA OFICIAL INJETADO NO TOPO
     const botItem = document.createElement('div');
     botItem.className = 'user-item';
     botItem.style.background = 'rgba(59, 130, 246, 0.08)';
@@ -784,7 +769,7 @@ window.renderContactsList = function(groups, users) {
         let timeText = isUnreadG ? 'Agora' : '';
 
         div.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
+            <div class="user-avatar-container">
                 <img src="${photo}" class="avatar-small" onerror="this.src='https://cdn-icons-png.flaticon.com/512/166/166258.png'">
             </div>
             <div class="user-item-info">
@@ -931,7 +916,7 @@ window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgDat
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
-// 🟢 FUNÇÕES DO MENU DE 3 PONTOS (APAGAR, DENUNCIAR, BLOQUEAR) 
+// 🟢 FUNÇÕES DO MENU (APAGAR, DENUNCIAR, BLOQUEAR) 
 // ==============================================================
 window.deleteCurrentChat = async function() {
     if(!currentChatId) return;
