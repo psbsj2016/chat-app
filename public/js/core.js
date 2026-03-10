@@ -1,5 +1,5 @@
 // ==============================================================
-// 🧠 CÉREBRO CENTRAL (BLINDADO CONTRA FALHAS E COM AUTO-LOGIN)
+// 🧠 CÉREBRO CENTRAL (BLINDADO CONTRA FALHAS E COM AUTO-LOGIN OTIMIZADO)
 // ==============================================================
 var isRegistering = false; 
 var socket = null;
@@ -40,7 +40,28 @@ if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.
 function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
 async function registerServiceWorkerAndSubscribe() { if ('serviceWorker' in navigator && 'PushManager' in window && myId) { try { const registration = await navigator.serviceWorker.register('/sw.js'); const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY'; const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicVapidKey) }); await fetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, subscription }) }); } catch (error) {} } }
 function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { if(typeof hideAllTabs === 'function') hideAllTabs(); if(typeof hideElement === 'function') { hideElement('auth-screen'); hideElement('welcome-screen'); } if(typeof showElement === 'function') showElement('permissions-screen'); } else { if(typeof showMainScreen === 'function') showMainScreen(); } }
-function grantAppPermissions() { localStorage.setItem('permissionsAsked', 'true'); if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); if ("Notification" in window) { Notification.requestPermission().then(permission => { if (permission === 'granted') registerServiceWorkerAndSubscribe(); if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); }); } else { if(typeof hideElement === 'function') hideElement('permissions-screen'); if(typeof showMainScreen === 'function') showMainScreen(); } }
+
+function grantAppPermissions() { 
+    localStorage.setItem('permissionsAsked', 'true'); 
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+    if(audioCtx.state === 'suspended') audioCtx.resume(); 
+    const osc = audioCtx.createOscillator(); 
+    const gain = audioCtx.createGain(); gain.gain.value = 0; 
+    osc.connect(gain); gain.connect(audioCtx.destination); 
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1); 
+    
+    if ("Notification" in window) { 
+        Notification.requestPermission().then(permission => { 
+            if (permission === 'granted') registerServiceWorkerAndSubscribe(); 
+            if(typeof hideElement === 'function') hideElement('permissions-screen'); 
+            if(typeof showMainScreen === 'function') showMainScreen(); 
+        }); 
+    } else { 
+        if(typeof hideElement === 'function') hideElement('permissions-screen'); 
+        if(typeof showMainScreen === 'function') showMainScreen(); 
+    } 
+}
+
 function showWelcomeScreen() { if(typeof hideElement === 'function') hideElement('auth-screen'); if(typeof showElement === 'function') showElement('welcome-screen'); setTimeout(() => { checkAndShowPermissions(); }, 1200); }
 
 // ==============================================================
@@ -93,9 +114,9 @@ async function handleAuth() {
 }
 
 // ==============================================================
-// ⚡ INICIALIZAÇÃO MASTER (O GATILHO DO AUTO-LOGIN)
+// ⚡ INICIALIZAÇÃO MASTER (OFFLINE-FIRST)
 // ==============================================================
-async function initApp() { 
+function initApp() { 
     myId = localStorage.getItem('myId');
     token = localStorage.getItem('token');
     
@@ -107,29 +128,34 @@ async function initApp() {
     const authScreen = document.getElementById('auth-screen');
 
     if(token && myId) { 
-        // 🚀 MÁGICA DO AUTO-LOGIN: Esconde a tela de imediato
+        // 🚀 Oculta a tela de Login INSTANTANEAMENTE e força a exibição do chat!
         if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
         
-        checkAndShowPermissions(); 
+        // Pula o pedido de permissões para quem já está logado, mostrando logo a Main Screen.
+        if (typeof showMainScreen === 'function') showMainScreen();
 
+        // 🟢 Aplica os dados visuais do Cache imediatamente!
         const headerAvatar = document.getElementById('header-my-avatar'); 
         if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
         if(cachedMe && cachedMe.chatWallpaper) document.body.style.setProperty('--chat-bg-image', `url('${cachedMe.chatWallpaper}')`);
         
-        try { 
-            if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
-            const res = await fetch(`/user/${myId}`); 
-            if(res.ok) { 
-                const me = await res.json(); cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); currentSectors = me.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
-                const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
-                const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
-                const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
-                if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
-                if(typeof applyUnlockedItems === 'function') applyUnlockedItems();
-            } 
-        } catch(e){} 
+        const elName = document.getElementById('config-name'); if(elName) elName.innerText = cachedMe.displayName || cachedMe.email || localStorage.getItem('displayName'); 
+        const elBio = document.getElementById('config-bio'); if(elBio && elBio.innerText==='Carregando...') elBio.innerText = cachedMe.bio || 'Adicionar recado'; 
+        const elPhone = document.getElementById('config-phone'); if(elPhone && elPhone.innerText==='Carregando...') elPhone.innerText = cachedMe.phone || 'Adicionar telefone'; 
+        
+        if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
+
+        // 🔄 Atualização em Pano de Fundo (Silenciosa): Confere se o perfil atualizou noutro telemóvel
+        fetch(`/user/${myId}`).then(res => res.json()).then(me => {
+            cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); 
+            currentSectors = me.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
+            if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+            if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
+            if(typeof applyUnlockedItems === 'function') applyUnlockedItems();
+        }).catch(e => { console.log('Conexão em espera - App offline a usar Cache Local.'); });
+
     } else { 
-        // SE NÃO ESTIVER LOGADO, MOSTRA A TELA DE LOGIN
+        // 🔒 SE NÃO ESTIVER LOGADO, MOSTRA A TELA DE LOGIN
         if (authScreen) { authScreen.classList.remove('hidden'); authScreen.style.display = 'flex'; }
     } 
 }
@@ -140,12 +166,10 @@ async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try
 // 💣 O VIGIA DE ARRANQUE: Fica monitorando a cada 50ms até as funções visuais estarem prontas!
 let bootAttempts = 0;
 const bootInterval = setInterval(() => {
-    // Só inicia quando o ui.js e o chat.js foram 100% lidos pelo navegador
     if (typeof showMainScreen === 'function' && typeof loadContacts === 'function') {
         clearInterval(bootInterval);
         initApp();
     }
-    // Evita loop infinito se houver falha grave
     bootAttempts++;
     if (bootAttempts > 100) clearInterval(bootInterval);
 }, 50);
