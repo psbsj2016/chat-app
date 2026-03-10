@@ -119,6 +119,14 @@
         
         .icon-btn { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
         .icon-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+        /* GARANTE QUE A CAIXA DE TEXTO NÃO DEFORME QUANDO VAZIA */
+        #message-input:empty::before {
+            content: attr(data-placeholder);
+            color: #94A3B8;
+            pointer-events: none;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -219,10 +227,21 @@
             <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
                 
                 <div id="chat-input-container" style="flex: 1; display: flex; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box;">
-                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none; margin-bottom: 2px;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
-                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 4px 8px; margin-bottom: 4px; word-break: break-word; min-width: 0;"></div>
-                    <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none; transform: rotate(-45deg); margin-bottom: 2px;"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
-                    <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 4px; flex-shrink: 0; background:transparent; border:none; margin-bottom: 2px;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
+                    
+                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;">
+                        <span class="material-icons-round" style="font-size: 26px;">mood</span>
+                    </button>
+                    
+                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; min-width: 0;"></div>
+                    
+                    <div id="btn-attach-wrapper" style="display: flex; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
+                        <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg);">
+                            <span class="material-icons-round" style="font-size: 24px;">attach_file</span>
+                        </button>
+                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none;">
+                            <span class="material-icons-round" style="font-size: 24px;">camera_alt</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="recording-ui" class="hidden premium-record-ui">
@@ -401,11 +420,15 @@
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/core.js"></script>
-    <script src="/js/ui.js"></script>
-    <script src="/js/chat.js"></script>
-    <script src="/js/webrtc.js"></script>
-    <script src="/js/features.js"></script>
+    <script>
+        const scriptVer = new URLSearchParams(window.location.search).get('v') || localStorage.getItem('appVersion') || Date.now();
+        
+        document.write('<script src="/socket.io/socket.io.js"><\\/script>');
+        document.write('<script src="/js/core.js?v=' + scriptVer + '"><\\/script>');
+        document.write('<script src="/js/ui.js?v=' + scriptVer + '"><\\/script>');
+        document.write('<script src="/js/chat.js?v=' + scriptVer + '"><\\/script>');
+        document.write('<script src="/js/webrtc.js?v=' + scriptVer + '"><\\/script>');
+        document.write('<script src="/js/features.js?v=' + scriptVer + '"><\\/script>');
+    </script>
 </body>
 </html>
