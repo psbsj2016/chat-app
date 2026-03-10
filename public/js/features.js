@@ -175,36 +175,260 @@ window.viewNote = function(id) { const note = currentNotes.find(n => n._id === i
 window.saveNote = async function() { const title = document.getElementById('note-title').value.trim(); const contentHTML = document.getElementById('note-content').innerHTML.trim(); const tempDiv = document.createElement('div'); tempDiv.innerHTML = contentHTML; if(!tempDiv.textContent.trim() && !contentHTML.includes('<img')) return alert('Vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); const originalText = btn.innerText; btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content: contentHTML }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content: contentHTML }) }); } hideElement('note-modal'); loadNotes(); } catch(e) {} finally { btn.innerText = originalText; } }
 window.deleteNote = async function(id) { if(!confirm("Apagar?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) {} }
 
-// CARREGAR NOTAS AUTOMATICAMENTE AO ABRIR O APP
 document.addEventListener("DOMContentLoaded", () => { setTimeout(loadNotes, 2500); });
 
 // ==============================================================
-// 👁️ STORIES E VIEWS
+// 📸 MOTOR DE STATUS E STORIES (IMERSÃO ESTILO INSTAGRAM)
 // ==============================================================
-let allStatuses = []; let groupedStatuses = {}; let currentStoryQueue = []; let currentStoryIndex = 0; let storyTimer; let storyProgressInterval; const STORY_DURATION = 5000; const statusColors = ['#8B5CF6', '#EF4444', '#F59E0B', '#10B981', '#06B6D4', '#EC4899', '#0F172A']; let currentStatusColorIndex = 0; let statusBase64Image = null; let tempQuickPhotoFile = null; let tempQuickPhotoBase64 = null;
 
-setTimeout(() => { const myImg = document.getElementById('my-status-tray-avatar'); if (myImg) myImg.src = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; fetchStatuses(); }, 2000);
-window.fetchStatuses = async function() { try { const res = await fetch('/api/statuses'); allStatuses = await res.json(); renderStatusTray(); } catch(e) {} }
+// Injeta o CSS avançado dos Status nativamente
+document.head.insertAdjacentHTML("beforeend", `<style>
+    .status-ring { padding: 3px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: transparent; transition: transform 0.2s; }
+    .status-ring:active { transform: scale(0.9); }
+    .status-ring-unread { background: linear-gradient(45deg, #F59E0B, #EC4899, #8B5CF6); }
+    .status-ring-read { background: rgba(255,255,255,0.15); }
+    .status-ring img { width: 54px; height: 54px; border-radius: 50%; border: 3px solid var(--bg-color); object-fit: cover; display: block; }
+    .status-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 75px; margin-right: 5px; }
+    .status-name { font-size: 11.5px; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; font-weight: 600; }
+</style>`);
+
+let allStatuses = [];
+let groupedStatuses = [];
+let currentStoryUserIndex = -1;
+let currentStoryItemIndex = -1;
+let storyProgressInterval = null;
+let storyCurrentTime = 0;
+const STORY_DURATION = 5000; // 5 Segundos por Story
+const statusColors = ['#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#0F172A'];
+let currentStatusColorIndex = 0;
+let statusBase64Image = null;
+let tempQuickPhotoFile = null;
+let tempQuickPhotoBase64 = null;
+
+setTimeout(() => { window.fetchStatuses(); }, 2000);
+
+window.fetchStatuses = async function() {
+    try {
+        const res = await fetch('/api/statuses');
+        allStatuses = await res.json();
+        
+        const groups = {};
+        allStatuses.forEach(s => {
+            const sId = s.senderId._id || s.senderId;
+            if (!groups[sId]) groups[sId] = { user: s.senderId, items: [] };
+            groups[sId].items.push(s);
+        });
+
+        let myGroup = null;
+        if (groups[myId]) {
+            myGroup = groups[myId];
+            delete groups[myId];
+        }
+
+        groupedStatuses = Object.values(groups);
+        if (myGroup) groupedStatuses.unshift(myGroup);
+
+        renderStatusTray();
+    } catch (e) {
+        console.error("Erro ao carregar radar de status:", e);
+    }
+};
+
+window.loadStatuses = window.fetchStatuses;
+
 if(typeof socket !== 'undefined') {
-    socket.on('new_status_published', (newStatus) => { allStatuses.push(newStatus); renderStatusTray(); playNotificationSound('pop'); });
-    socket.on('status_view_updated', (data) => { if(data.senderId === myId) fetchStatuses(); });
+    socket.on('new_status_published', (newStatus) => { window.fetchStatuses(); playNotificationSound('pop'); });
+    socket.on('status_view_updated', (data) => { if(data.senderId === myId) window.fetchStatuses(); });
 }
 
-window.renderStatusTray = function() { 
-    const container = document.getElementById('dynamic-statuses'); if(!container) return; 
-    container.innerHTML = ''; groupedStatuses = {}; 
-    allStatuses.forEach(s => { if(!groupedStatuses[s.senderId]) groupedStatuses[s.senderId] = []; groupedStatuses[s.senderId].push(s); }); 
-    const allUsersWithStatus = Object.keys(groupedStatuses); 
-    allUsersWithStatus.sort((a, b) => { if (a === myId) return -1; if (b === myId) return 1; return 0; }); 
-    allUsersWithStatus.forEach(userId => { 
-        const userStatuses = groupedStatuses[userId]; 
-        const lastStatus = userStatuses[userStatuses.length - 1]; 
-        const isMe = userId === myId; 
-        const displayName = isMe ? 'Você' : lastStatus.senderName.split(' ')[0]; 
-        const nameStyle = isMe ? 'color: var(--brand-primary); font-weight: 800;' : ''; 
-        container.innerHTML += `<div class="status-item" onclick="openStoryViewer('${userId}')"><div class="status-avatar-wrapper"><img src="${lastStatus.senderPhoto}" class="status-avatar"></div><span class="status-name" style="${nameStyle}">${displayName}</span></div>`; 
-    }); 
-}
+window.renderStatusTray = function() {
+    const tray = document.getElementById('dynamic-statuses');
+    if (!tray) return;
+    tray.innerHTML = '';
+    
+    groupedStatuses.forEach((group, index) => {
+        const user = group.user;
+        const isMe = (user._id || user) === myId;
+        
+        const hasUnviewed = !isMe && group.items.some(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
+        
+        const ringClass = hasUnviewed ? 'status-ring-unread' : 'status-ring-read';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        const name = isMe ? 'Meu Status' : (user.displayName || 'Contato').split(' ')[0];
+
+        tray.innerHTML += `
+            <div class="status-item" onclick="openStoryViewer(${index})">
+                <div class="status-ring ${ringClass}">
+                    <img src="${photo}">
+                </div>
+                <span class="status-name" style="${hasUnviewed ? 'font-weight: 800; color: white;' : ''}">${name}</span>
+            </div>
+        `;
+    });
+};
+
+window.openStoryViewer = function(userIndex) {
+    if (typeof hideAllTabs === 'function') hideAllTabs();
+    document.querySelectorAll('.app-screen').forEach(el => el.style.display = 'none');
+    
+    const modal = document.getElementById('story-viewer-modal');
+    if(modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    }
+    
+    currentStoryUserIndex = userIndex;
+    currentStoryItemIndex = 0;
+    
+    const group = groupedStatuses[userIndex];
+    const isMe = (group.user._id || group.user) === myId;
+    
+    if (!isMe) {
+        const firstUnread = group.items.findIndex(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
+        if (firstUnread !== -1) currentStoryItemIndex = firstUnread;
+    }
+
+    renderCurrentStory();
+};
+
+window.renderCurrentStory = function() {
+    clearInterval(storyProgressInterval);
+    
+    if (currentStoryUserIndex < 0 || currentStoryUserIndex >= groupedStatuses.length) {
+        closeStoryViewer();
+        return;
+    }
+
+    const group = groupedStatuses[currentStoryUserIndex];
+    
+    if (currentStoryItemIndex < 0) {
+        currentStoryUserIndex--;
+        if (currentStoryUserIndex < 0) { closeStoryViewer(); return; }
+        currentStoryItemIndex = groupedStatuses[currentStoryUserIndex].items.length - 1;
+        renderCurrentStory();
+        return;
+    }
+    if (currentStoryItemIndex >= group.items.length) {
+        currentStoryUserIndex++;
+        if (currentStoryUserIndex >= groupedStatuses.length) { closeStoryViewer(); return; }
+        currentStoryItemIndex = 0;
+        renderCurrentStory();
+        return;
+    }
+
+    const story = group.items[currentStoryItemIndex];
+    const user = group.user;
+
+    document.getElementById('story-author-photo').src = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    document.getElementById('story-author-name').innerText = user.displayName || 'Contato';
+    
+    const timeDiff = Date.now() - new Date(story.createdAt).getTime();
+    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+    const mins = Math.floor(timeDiff / (1000 * 60));
+    document.getElementById('story-time').innerText = hours > 0 ? `Há ${hours} h` : (mins > 0 ? `Há ${mins} min` : 'Agora mesmo');
+
+    const textDisplay = document.getElementById('story-text-display');
+    const imgDisplay = document.getElementById('story-image-display');
+    const contentArea = document.getElementById('story-content-area');
+
+    if (story.type === 'image') {
+        textDisplay.style.display = 'none';
+        imgDisplay.src = story.mediaUrl;
+        imgDisplay.style.display = 'block';
+        imgDisplay.classList.remove('hidden');
+        contentArea.style.background = '#000';
+    } else {
+        imgDisplay.style.display = 'none';
+        textDisplay.innerText = story.content;
+        textDisplay.style.display = 'block';
+        contentArea.style.background = story.color || '#8B5CF6';
+    }
+
+    renderStoryViews(story);
+
+    if ((user._id || user) !== myId) {
+        fetch('/api/status/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ statusId: story._id, viewerId: myId })
+        }).then(() => {
+            if(!story.views) story.views = [];
+            story.views.push({viewerId: {_id: myId}});
+            renderStatusTray(); 
+        });
+    }
+
+    setupProgressBars(group.items.length, currentStoryItemIndex);
+    startStoryTimer();
+};
+
+window.setupProgressBars = function(total, currentIndex) {
+    const container = document.getElementById('story-progress-container');
+    container.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden;';
+        
+        const fill = document.createElement('div');
+        fill.id = `story-progress-${i}`;
+        fill.style.cssText = 'height: 100%; background: #FFF; width: 0%;';
+        
+        if (i < currentIndex) fill.style.width = '100%';
+        if (i > currentIndex) fill.style.width = '0%';
+        
+        wrap.appendChild(fill);
+        container.appendChild(wrap);
+    }
+};
+
+window.startStoryTimer = function() {
+    storyCurrentTime = 0;
+    const fill = document.getElementById(`story-progress-${currentStoryItemIndex}`);
+    
+    storyProgressInterval = setInterval(() => {
+        storyCurrentTime += 50; 
+        const percentage = (storyCurrentTime / STORY_DURATION) * 100;
+        if (fill) fill.style.width = `${percentage}%`;
+        
+        if (storyCurrentTime >= STORY_DURATION) {
+            clearInterval(storyProgressInterval);
+            nextStory();
+        }
+    }, 50);
+};
+
+window.pauseStory = function() { clearInterval(storyProgressInterval); };
+window.resumeStory = function() {
+    const fill = document.getElementById(`story-progress-${currentStoryItemIndex}`);
+    storyProgressInterval = setInterval(() => {
+        storyCurrentTime += 50;
+        const percentage = (storyCurrentTime / STORY_DURATION) * 100;
+        if (fill) fill.style.width = `${percentage}%`;
+        if (storyCurrentTime >= STORY_DURATION) { clearInterval(storyProgressInterval); nextStory(); }
+    }, 50);
+};
+
+setTimeout(() => {
+    const contentArea = document.getElementById('story-content-area');
+    if(contentArea) {
+        contentArea.addEventListener('touchstart', window.pauseStory, {passive: true});
+        contentArea.addEventListener('touchend', window.resumeStory, {passive: true});
+        contentArea.addEventListener('mousedown', window.pauseStory);
+        contentArea.addEventListener('mouseup', window.resumeStory);
+    }
+}, 1000);
+
+window.nextStory = function() { currentStoryItemIndex++; renderCurrentStory(); };
+window.prevStory = function() { currentStoryItemIndex--; renderCurrentStory(); };
+
+window.closeStoryViewer = function() {
+    clearInterval(storyProgressInterval);
+    const modal = document.getElementById('story-viewer-modal');
+    if(modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+    const viewContainer = document.getElementById('story-view-count-container');
+    if(viewContainer) viewContainer.style.display = 'none';
+    if (typeof showMainScreen === 'function') showMainScreen();
+};
 
 window.openCreateStatusModal = function() { showElement('create-status-modal'); statusBase64Image = null; document.getElementById('status-image-preview').classList.add('hidden'); document.getElementById('status-text-input').classList.remove('hidden'); document.getElementById('status-text-input').value = ''; changeStatusColor(0); }
 window.changeStatusColor = function(forceIndex = null) { currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; }
@@ -227,6 +451,8 @@ window.publishStatus = async function() {
 
     try {
         let finalContent = text;
+        let type = 'text';
+        let mediaUrl = null;
 
         if (hasImage) {
             let fileToUpload = null;
@@ -243,9 +469,11 @@ window.publishStatus = async function() {
                 const uploadData = await uploadRes.json();
                 
                 if (!uploadRes.ok) throw new Error(uploadData.error || 'Falha na base de dados.');
-                finalContent = uploadData.url; 
+                mediaUrl = uploadData.url; 
+                type = 'image';
             } else if (statusBase64Image) {
-                finalContent = statusBase64Image; 
+                mediaUrl = statusBase64Image; 
+                type = 'image';
             }
         }
 
@@ -253,15 +481,16 @@ window.publishStatus = async function() {
             senderId: myId, 
             senderName: localStorage.getItem('displayName'), 
             senderPhoto: localStorage.getItem('photoUrl'), 
-            type: hasImage ? 'image' : 'text', 
+            type: type, 
             content: finalContent, 
-            bgColor: bgColor, 
+            mediaUrl: mediaUrl,
+            color: bgColor, 
             timestamp: new Date().toISOString() 
         };
 
         const res = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStatus) });
         if (res.ok) {
-            hideElement('create-status-modal');
+            if (typeof hideElement === 'function') hideElement('create-status-modal');
             if (textEl) textEl.value = '';
             if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
             if (fileInput) fileInput.value = '';
@@ -269,7 +498,7 @@ window.publishStatus = async function() {
             tempQuickPhotoFile = null;
             tempQuickPhotoBase64 = null;
             if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
-            fetchStatuses();
+            window.fetchStatuses();
         } else { 
             alert('Falha no servidor ao publicar.'); 
         }
@@ -291,7 +520,7 @@ window.renderStoryViews = function(storyObj) {
     
     const viewList = storyObj.views || [];
     
-    if (storyObj.senderId === myId) {
+    if (storyObj.senderId === myId || (storyObj.senderId && storyObj.senderId._id === myId)) {
         viewContainer.innerHTML = `<span class="material-icons-round" style="font-size: 18px;">visibility</span> ${viewList.length} Visualizações`;
         viewContainer.style.display = 'flex';
         
@@ -311,45 +540,7 @@ window.renderStoryViews = function(storyObj) {
         };
     } else {
         viewContainer.style.display = 'none';
-        fetch('/api/status/view', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ statusId: storyObj._id, viewerId: myId })
-        }).catch(err => console.log("Erro ao registrar view"));
     }
-}
-
-window.openStoryViewer = function(userId) { currentStoryQueue = groupedStatuses[userId]; if(!currentStoryQueue || currentStoryQueue.length === 0) return; currentStoryIndex = 0; showElement('story-viewer-modal'); renderStoryBars(); playStory(currentStoryIndex); }
-window.renderStoryBars = function() { const container = document.getElementById('story-progress-container'); container.innerHTML = ''; currentStoryQueue.forEach((_, i) => { container.innerHTML += `<div class="story-progress-bar"><div class="story-progress-fill" id="story-fill-${i}"></div></div>`; }); }
-
-window.playStory = function(index) { 
-    clearTimeout(storyTimer); clearInterval(storyProgressInterval); 
-    currentStoryQueue.forEach((_, i) => { const fill = document.getElementById(`story-fill-${i}`); fill.style.width = i < index ? '100%' : '0%'; }); 
-    const story = currentStoryQueue[index]; 
-    document.getElementById('story-author-name').innerText = story.senderName; 
-    document.getElementById('story-author-photo').src = story.senderPhoto; 
-    const diffMins = Math.floor((Date.now() - new Date(story.createdAt || story.timestamp).getTime()) / 60000); 
-    document.getElementById('story-time').innerText = diffMins < 60 ? `Há ${diffMins} min` : `Há ${Math.floor(diffMins/60)} h`; 
-    
-    const contentArea = document.getElementById('story-content-area'); 
-    const txtDisplay = document.getElementById('story-text-display'); 
-    const imgDisplay = document.getElementById('story-image-display'); 
-    if(story.type === 'text') { contentArea.style.background = story.bgColor; txtDisplay.innerText = story.content; txtDisplay.classList.remove('hidden'); imgDisplay.classList.add('hidden'); } 
-    else { contentArea.style.background = '#000'; imgDisplay.src = story.content || story.imageUrl; imgDisplay.classList.remove('hidden'); txtDisplay.classList.add('hidden'); } 
-    
-    renderStoryViews(story);
-
-    let startTime = Date.now(); const currentFill = document.getElementById(`story-fill-${index}`); 
-    storyProgressInterval = setInterval(() => { let percentage = ((Date.now() - startTime) / STORY_DURATION) * 100; if(percentage <= 100) currentFill.style.width = percentage + '%'; }, 50); 
-    storyTimer = setTimeout(nextStory, STORY_DURATION); 
-}
-
-window.nextStory = function() { currentStoryIndex < currentStoryQueue.length - 1 ? playStory(++currentStoryIndex) : closeStoryViewer(); }
-window.prevStory = function() { currentStoryIndex > 0 ? playStory(--currentStoryIndex) : playStory(0); }
-window.closeStoryViewer = function() { 
-    clearTimeout(storyTimer); clearInterval(storyProgressInterval); hideElement('story-viewer-modal'); 
-    const viewContainer = document.getElementById('story-view-count-container');
-    if(viewContainer) viewContainer.style.display = 'none';
 }
 
 window.handleQuickCamera = function(input) { const file = input.files[0]; if (!file) return; tempQuickPhotoFile = file; const reader = new FileReader(); reader.onload = function(e) { tempQuickPhotoBase64 = e.target.result; document.getElementById('quick-photo-preview').src = tempQuickPhotoBase64; showElement('quick-photo-dest-modal'); input.value = ''; }; reader.readAsDataURL(file); }
@@ -388,7 +579,7 @@ window.uploadProfilePhoto = async function(input) {
     try { 
         const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); 
         avatarImg.src = data.url; saveProfile({ photoUrl: data.url }); 
-        setTimeout(() => { if (typeof fetchStatuses === 'function') fetchStatuses(); }, 1500);
+        setTimeout(() => { if (typeof window.fetchStatuses === 'function') window.fetchStatuses(); }, 1500);
     } catch (e) {} finally { if(spinner) spinner.classList.add('hidden'); input.value = ''; } 
 }
 
