@@ -1,5 +1,5 @@
 // ==============================================================
-// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (RESTAURADO E COMPLETO)
+// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (100% COMPLETO E BLINDADO)
 // ==============================================================
 let searchTimeout = null;
 let pressTimer = null;
@@ -12,7 +12,9 @@ window.editingMsgId = null;
 window.isMsgSelectionMode = false;
 window.selectedMessages = [];
 
-// LÓGICA DA BARRA DE SELEÇÃO MÚLTIPLA DE CONTATOS
+// ==============================================================
+// 🛠️ LÓGICA DA BARRA DE SELEÇÃO MÚLTIPLA DE CONTATOS
+// ==============================================================
 window.toggleContactSelection = function(id, name, isGroup) {
     const idx = selectedActionContacts.findIndex(c => c.id === id);
     const item = document.getElementById(`contact-${id}`);
@@ -151,14 +153,13 @@ window.executeBulkSchedule = async function() {
 window.closeScheduleModal = function() {
     if (typeof hideElement === 'function') { hideElement('schedule-modal'); } 
     else { document.getElementById('schedule-modal').classList.add('hidden'); }
-    
     document.getElementById('schedule-target').disabled = false;
     const btn = document.querySelector('#schedule-modal .chic-btn');
     if(btn) btn.setAttribute('onclick', 'saveScheduledMessage()');
 };
 
 // ==============================================================
-// 🔎 PESQUISA E LÓGICA DE SELEÇÃO DE MENSAGENS
+// 🔎 PESQUISA E LÓGICA DE SELEÇÃO DE MENSAGENS DENTRO DO CHAT
 // ==============================================================
 let chatSearchMatches = []; let currentSearchIndex = -1;
 window.openChatSearch = function() { showElement('in-chat-search-bar'); document.getElementById('in-chat-search-input').focus(); document.getElementById('in-chat-search-input').value = ''; document.getElementById('in-chat-search-counter').innerText = '0/0'; clearChatSearchHighlights(); };
@@ -557,7 +558,6 @@ socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const t
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
-// Escutar as edições e deleções!
 socket.on('message_edited', (data) => {
     const el = document.getElementById(`msg-${data.msgId}`);
     if (el) {
@@ -625,7 +625,6 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     const input = document.getElementById('message-input'); 
     let content = textOverride || input.innerText.trim(); 
     
-    // 🚀 LÓGICA DE EDIÇÃO (Salva no Backend e avisa o outro user)
     if (window.editingMsgId && !fileUrl) {
         fetch(`/message/${window.editingMsgId}`, {
             method: 'PUT',
@@ -664,7 +663,6 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     if(!fileUrl) input.innerHTML = ''; 
 }
 
-// FIXAÇÃO DE MENSAGENS NO TOPO
 window.pinMessage = function(msgObj) {
     const chatKey = isGroupChat ? `pinned_${currentChatId}` : `pinned_${[myId, currentChatId].sort().join('_')}`;
     localStorage.setItem(chatKey, JSON.stringify(msgObj));
@@ -715,7 +713,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     
     closeChatSearch(); lastRenderedDate = null; 
     
-    // Mostra Mensagem Fixada
     const chatKey = isGroupChat ? `pinned_${id}` : `pinned_${[myId, id].sort().join('_')}`;
     const pinnedData = localStorage.getItem(chatKey);
     if(pinnedData) { showPinnedMessage(JSON.parse(pinnedData)); } 
@@ -773,7 +770,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🚀 REPOSIÇÃO TOTAL DA CARGA DE CONTACTOS
 window.loadContacts = async function() { 
     if(!myId) return; 
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
@@ -782,7 +778,7 @@ window.loadContacts = async function() {
     if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
         cachedGroups.forEach(g => socket.emit('join_group', g._id)); 
         renderContactsList(cachedGroups, cachedUsers); 
-        updateAppBadge(); 
+        if(typeof updateAppBadge === 'function') updateAppBadge(); 
     } 
     
     try { 
@@ -802,7 +798,7 @@ window.loadContacts = async function() {
         
         groups.forEach(g => socket.emit('join_group', g._id)); 
         renderContactsList(groups, users); 
-        updateAppBadge(); 
+        if(typeof updateAppBadge === 'function') updateAppBadge(); 
     } catch(e) {} 
 }
 
@@ -850,7 +846,6 @@ async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
-// MODO SELEÇÃO DE MENSAGENS DENTRO DO CHAT
 window.toggleMessageSelection = function(msgEl, msgObj) {
     const idx = selectedMessages.findIndex(m => m._id === msgObj._id);
     if (idx > -1) {
@@ -925,7 +920,6 @@ function displayMessage(msg) {
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); 
     div.id = `msg-${msg._id}`; 
     
-    // Suporte ao clique de Seleção e Menu
     div.onclick = (e) => {
         if (window.isMsgSelectionMode) {
             e.stopPropagation();
@@ -1000,9 +994,6 @@ function displayMessage(msg) {
 window.initReply = function() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); closeMessageMenu(); document.getElementById('message-input').focus(); }
 window.cancelReply = function() { messageToReply = null; hideElement('reply-preview'); }
 
-// ==============================================================
-// 🔥 NOVO MENU DE MENSAGENS (ESTILO iOS / WHATSAPP)
-// ==============================================================
 window.showMessageMenu = function(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
     window.closeMessageMenu();
@@ -1147,9 +1138,269 @@ window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgDat
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
-// 👤 EXIBIÇÃO DE PERFIL E RESTO DO CÓDIGO
+// ➕ SISTEMA FAB E PESQUISA AO VIVO (NOVO CONTATO)
 // ==============================================================
+window.toggleFab = function() {
+    const options = document.getElementById('fab-options');
+    const mainBtn = document.getElementById('main-fab-btn');
+    if (!options) return;
+    
+    if (options.style.display === 'flex') {
+        options.style.opacity = '0';
+        options.style.transform = 'translateY(10px)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
+        setTimeout(() => { options.style.display = 'none'; }, 200);
+    } else {
+        options.style.display = 'flex';
+        options.style.flexDirection = 'column';
+        options.style.gap = '10px';
+        options.style.position = 'absolute';
+        options.style.bottom = '80px';
+        options.style.right = '0';
+        options.style.transition = 'all 0.2s';
+        void options.offsetWidth; 
+        options.style.opacity = '1';
+        options.style.transform = 'translateY(0)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
+    }
+};
 
+window.openAddContactScreen = function() {
+    if (typeof hideAllTabs === 'function') {
+        hideAllTabs();
+    } else {
+        document.querySelectorAll('.app-screen').forEach(el => {
+            el.classList.add('hidden'); el.style.display = 'none';
+        });
+    }
+    
+    const screen = document.getElementById('add-contact-screen');
+    if (screen) { screen.classList.remove('hidden'); screen.style.display = ''; }
+    
+    const input = document.getElementById('exact-search-input');
+    if (input) input.value = '';
+    const res = document.getElementById('exact-search-result');
+    if (res) res.innerHTML = '';
+};
+
+let globalSearchTimeout = null;
+window.handleLiveSearch = function(value) {
+    clearTimeout(globalSearchTimeout);
+    const resDiv = document.getElementById('exact-search-result');
+    const term = value.trim().toLowerCase();
+
+    if (term.length < 2) {
+        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
+        return;
+    }
+
+    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
+
+    globalSearchTimeout = setTimeout(() => {
+        executeExactSearch(term);
+    }, 500);
+};
+
+window.executeExactSearch = async function(searchTerm) {
+    const term = typeof searchTerm === 'string' ? searchTerm : document.getElementById('exact-search-input').value.trim().toLowerCase();
+    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
+    
+    const resDiv = document.getElementById('exact-search-result');
+    
+    try {
+        let foundUsers = [];
+        let res = await fetch('/search?query=' + encodeURIComponent(term) + '&myId=' + myId);
+        if(res.ok) {
+            const data = await res.json();
+            foundUsers = data.users || [];
+        }
+
+        foundUsers = foundUsers.filter(u => u._id !== myId);
+
+        if(foundUsers.length > 0) {
+            resDiv.innerHTML = '';
+            foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
+        } else {
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum contato encontrado com estes dados na Base.</div>';
+        }
+    } catch(e) {
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o servidor.</div>';
+    }
+};
+
+window.renderExactSearchResult = function(u, resDiv, clear = true) {
+    if(clear) resDiv.innerHTML = '';
+    const name = u.displayName || u.email.split('@')[0];
+    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const phoneHtml = u.phone ? `<div style="font-size: 11px; color: var(--brand-secondary); margin-top: 2px;"><span class="material-icons-round" style="font-size:10px; vertical-align:middle;">phone</span> ${u.phone}</div>` : '';
+    
+    const html = `
+        <div style="background: var(--input-bg); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 10px;">
+            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            <div style="flex: 1; text-align: left; overflow: hidden;">
+                <div style="font-weight: 800; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${name}</div>
+                <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.email}</div>
+                ${phoneHtml}
+            </div>
+            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px; flex-shrink:0;">
+                <span class="material-icons-round" style="font-size: 24px;">chat</span>
+            </button>
+        </div>
+    `;
+    if(clear) resDiv.innerHTML = html;
+    else resDiv.insertAdjacentHTML('beforeend', html);
+};
+
+window.startChatWithNewUser = function(id, name, photo, email) {
+    document.getElementById('add-contact-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    openChat(id, name, photo, email, 'user');
+    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
+};
+
+// ==============================================================
+// 🟢 SISTEMA DE CRIAÇÃO DE GRUPO
+// ==============================================================
+window.openCreateGroupModal = async function(preselectedIds = []) {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); }
+    
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-search-input').value = '';
+    
+    const imgEl = document.getElementById('new-group-photo');
+    if (imgEl) {
+        imgEl.src = 'https://cdn-icons-png.flaticon.com/512/166/166258.png';
+        imgEl.removeAttribute('data-cloudurl');
+    }
+
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
+    
+    try {
+        const res = await fetch(`/users/${myId}`);
+        if (res.ok) {
+            const users = await res.json();
+            window.groupCandidates = users;
+            renderGroupCandidates(users, preselectedIds);
+        }
+    } catch(e) { list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>'; }
+};
+
+window.renderGroupCandidates = function(users, preselectedIds = []) {
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '';
+    if(users.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível no seu chat.</div>'; return; }
+    
+    users.forEach(u => {
+        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
+        const name = u.displayName || u.email.split('@')[0];
+        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        list.innerHTML += `
+            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
+                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
+                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
+            </label>
+        `;
+    });
+};
+
+window.filterGroupContacts = function(query) {
+    const term = query.toLowerCase();
+    const items = document.querySelectorAll('.group-candidate-item');
+    items.forEach(item => {
+        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
+        if(name.includes(term)) item.style.display = 'flex';
+        else item.style.display = 'none';
+    });
+};
+
+window.closeCreateGroup = function() {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300); }
+};
+
+window.submitCreateGroup = async function() {
+    const name = document.getElementById('group-name-input').value.trim();
+    if(!name) return alert("Dê um nome para a Tropa.");
+    
+    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
+    const members = Array.from(checkboxes).map(cb => cb.value);
+    if(members.length === 0) return alert("Recrute pelo menos um membro.");
+    
+    members.push(myId); 
+
+    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
+
+    try {
+        const imgEl = document.getElementById('new-group-photo');
+        let photoUrl = imgEl.getAttribute('data-cloudurl') || imgEl.src;
+        
+        if (photoUrl.startsWith('blob:')) {
+            alert("Aguarde um segundo, a foto ainda está a ser enviada para a nuvem...");
+            btn.innerText = originalText;
+            return;
+        }
+        
+        if(photoUrl.includes('166258.png')) photoUrl = ''; 
+
+        const res = await fetch('/groups', { 
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, members, adminId: myId, photoUrl }) 
+        });
+        
+        let data;
+        if(res.status === 404) {
+            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, adminId: myId, photoUrl }) });
+            data = await res2.json();
+        } else {
+            data = await res.json();
+        }
+
+        if(data.success || data._id || data.group) {
+            closeCreateGroup();
+            socket.emit('group_updated');
+            loadContacts();
+            
+            const gId = data.group ? data.group._id : data._id;
+            const gName = data.group ? data.group.name : data.name;
+            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
+            
+            openChat(gId, gName, gPhoto, 'Grupo', 'group');
+        } else {
+            alert(data.error || "Falha na criação da base de dados.");
+        }
+    } catch(e) {
+        alert("Erro de comunicação com o QG.");
+    } finally {
+        btn.innerText = originalText;
+    }
+};
+
+window.uploadNewGroupPhoto = async function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    
+    document.getElementById('new-group-photo').src = URL.createObjectURL(file);
+    
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/upload', {method:'POST', body:fd});
+        const data = await res.json();
+        document.getElementById('new-group-photo').setAttribute('data-cloudurl', data.url);
+    } catch(e) { 
+        alert("Erro ao enviar foto para a nuvem."); 
+    }
+};
+
+// ==============================================================
+// 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
+// ==============================================================
 window.viewContactProfile = function(id, name, photo, isGroup) { const tempId = currentChatId; const tempIsGroup = isGroupChat; currentChatId = id; isGroupChat = isGroup; window.showCurrentChatProfile(); setTimeout(() => { currentChatId = tempId; isGroupChat = tempIsGroup; }, 500); };
 window.showCurrentChatProfile = async function() { if (!currentChatId) return; if (isGroupChat) { try { const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); if (!group) return alert("Grupo não encontrado."); let modal = document.getElementById('dynamic-group-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-group-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } const isAdmin = group.admin === myId; let members = group.members || []; members.sort((a, b) => { if (a._id === group.admin) return -1; if (b._id === group.admin) return 1; return 0; }); let membersHtml = members.map(m => { const isGroupAdmin = m._id === group.admin; const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]); return ` <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="display:flex; align-items:center; gap:12px;"> <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};"> <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span> </div> ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''} </div> `; }).join(''); const descText = group.description || 'Nenhuma descrição adicionada ao grupo.'; const descHtml = isAdmin ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);"> <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p> <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span> </div>` : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`; const addMemberBtnHtml = isAdmin ? ` <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;"> <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR </button> ` : ''; modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;"> <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;"> <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''} </div> <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2> ${descHtml} <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"> <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span> ${addMemberBtnHtml} </div> <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;"> ${membersHtml} </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch(e) { console.error(e); alert("Erro ao carregar dados do grupo."); } return; } try { const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const user = cachedUsers.find(u => u._id === currentChatId); if (!user) return alert("❌ Dados do perfil não encontrados no radar."); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email || 'Não informado'; const phone = user.phone || 'Não informado'; const xp = user.xp || 0; const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip'); let modal = document.getElementById('dynamic-profile-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-profile-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);"> <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2> <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div> <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div> <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div> </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch (e) { console.error("Falha ao abrir perfil: ", e); alert("Erro ao carregar os dados do perfil."); } };
 
