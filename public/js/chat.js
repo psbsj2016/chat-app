@@ -523,7 +523,7 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 🔌 SOCKETS E SINCRONIZAÇÃO
+// 🔌 SOCKETS (SINCRONIZAÇÃO EM TEMPO REAL)
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
@@ -558,17 +558,50 @@ socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const t
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
+// 🚀 RECEBER ATUALIZAÇÃO DE MENSAGEM EDITADA
 socket.on('message_edited', (data) => {
     const el = document.getElementById(`msg-${data.msgId}`);
     if (el) {
         const textSpan = el.querySelector('.msg-text-content');
-        if (textSpan) textSpan.innerText = data.newContent + ' (editado)';
+        if (textSpan) textSpan.innerHTML = escapeHTML(data.newContent) + ' <span style="font-size:10.5px; opacity:0.7; margin-left: 5px;">(editado)</span>';
+    }
+    // Atualiza no cache do telemóvel para não voltar a ficar antigo se fechar o chat
+    if (messageCache[currentChatId]) {
+        const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
+        if (cMsg) cMsg.content = data.newContent + ' (editado)';
     }
 });
 
+// 🚀 RECEBER ATUALIZAÇÃO DE MENSAGEM APAGADA ESTILO WHATSAPP
 socket.on('message_deleted', (data) => {
     const el = document.getElementById(`msg-${data.msgId}`);
-    if (el) el.remove();
+    if (el) {
+        // Remove imagens/áudios se existirem
+        const midia = el.querySelector('.chat-image, .chat-video, .chat-audio, .chat-pdf');
+        if(midia) midia.remove();
+        
+        // Transforma o texto na notificação clássica "apagada"
+        const textSpan = el.querySelector('.msg-text-content');
+        const apagadaHtml = `<span style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`;
+        if (textSpan) {
+            textSpan.innerHTML = apagadaHtml;
+        } else {
+            // Se era só media, cria o span agora
+            const infoDiv = el.querySelector('div[style*="font-size:12.5px"]'); // nome do remetente
+            const statusDiv = el.querySelector('div[style*="position: absolute"]');
+            el.innerHTML = (infoDiv ? infoDiv.outerHTML : '') + apagadaHtml + (statusDiv ? statusDiv.outerHTML : '');
+        }
+    }
+    
+    // Sincroniza o cache para manter "apagada"
+    if (messageCache[currentChatId]) {
+        const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
+        if (cMsg) { 
+            cMsg.content = '🚫 Esta mensagem foi apagada'; 
+            cMsg.fileUrl = null; 
+            cMsg.fileType = 'text'; 
+        }
+    }
 });
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
@@ -625,6 +658,7 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     const input = document.getElementById('message-input'); 
     let content = textOverride || input.innerText.trim(); 
     
+    // 🚀 ENVIA EDIÇÃO
     if (window.editingMsgId && !fileUrl) {
         fetch(`/message/${window.editingMsgId}`, {
             method: 'PUT',
@@ -681,6 +715,8 @@ window.showPinnedMessage = function(msgObj) {
     }
     
     let text = msgObj.content || 'Arquivo Mídia';
+    if(text.includes('🚫 Esta mensagem foi apagada')) text = '🚫 Esta mensagem foi apagada';
+
     banner.innerHTML = `
         <span class="material-icons-round" style="color:var(--brand-primary);">push_pin</span>
         <div style="flex:1; overflow:hidden;">
@@ -951,7 +987,12 @@ function displayMessage(msg) {
     }
     
     let msgBody = '';
-    if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
+    
+    // 🚫 TRATAMENTO VISUAL DA MENSAGEM APAGADA
+    if (displayContent && displayContent.includes('🚫 Esta mensagem foi apagada')) {
+        msgBody = `<span class="msg-text-content" style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`;
+    } 
+    else if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
     else if (msg.fileType === 'video') msgBody = `<video controls src="${msg.fileUrl}" class="chat-video" style="border-radius:8px; max-width:100%;"></video>`; 
     else if (msg.fileType === 'audio') msgBody = `<audio controls src="${msg.fileUrl}" class="chat-audio" style="height:40px; margin-bottom:5px;"></audio>`; 
     else if (msg.fileType === 'pdf') msgBody = `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf" style="display:flex; align-items:center; gap:5px;"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
@@ -1001,6 +1042,9 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     currentSelectedMsgElement = msgElement; 
     selectedMsgData = msgObj; 
     
+    // Verifica se a mensagem já foi apagada para esconder as opções
+    const isDeleted = msgObj.content && msgObj.content.includes('🚫 Esta mensagem foi apagada');
+    
     let overlay = document.getElementById('msg-actions-overlay');
     if(!overlay) {
         overlay = document.createElement('div');
@@ -1022,56 +1066,64 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     reactionBar.id = 'dynamic-reaction-bar';
     reactionBar.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:30px; padding:10px 15px; display:flex; align-items:center; justify-content: space-around; width: 260px; box-shadow:0 4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);`;
     
-    const emojis = ['❤️', '👍', '👎', '😂', '😮', '😢'];
-    emojis.forEach(emoji => {
-        const span = document.createElement('span');
-        span.innerText = emoji;
-        span.style.cssText = 'font-size:26px; cursor:pointer; transition:transform 0.2s; line-height: 1;';
-        span.onmouseover = () => span.style.transform = 'scale(1.3)';
-        span.onmouseout = () => span.style.transform = 'scale(1)';
-        span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); window.closeMessageMenu(); };
-        reactionBar.appendChild(span);
-    });
-    
-    const moreBtn = document.createElement('div');
-    moreBtn.innerHTML = '<span class="material-icons-round" style="font-size:20px; color:var(--secondary-text);">more_horiz</span>';
-    moreBtn.style.cssText = 'background:rgba(255,255,255,0.1); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:5px; transition:0.2s; flex-shrink: 0;';
-    moreBtn.onclick = (event) => { 
-        event.stopPropagation(); 
-        window.isReactingToMsgId = msgObj._id; 
-        document.getElementById('emoji-drawer').style.height = '300px';
-        window.closeMessageMenu(); 
-    };
-    reactionBar.appendChild(moreBtn);
+    if (!isDeleted) {
+        const emojis = ['❤️', '👍', '👎', '😂', '😮', '😢'];
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.innerText = emoji;
+            span.style.cssText = 'font-size:26px; cursor:pointer; transition:transform 0.2s; line-height: 1;';
+            span.onmouseover = () => span.style.transform = 'scale(1.3)';
+            span.onmouseout = () => span.style.transform = 'scale(1)';
+            span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); window.closeMessageMenu(); };
+            reactionBar.appendChild(span);
+        });
+        
+        const moreBtn = document.createElement('div');
+        moreBtn.innerHTML = '<span class="material-icons-round" style="font-size:20px; color:var(--secondary-text);">more_horiz</span>';
+        moreBtn.style.cssText = 'background:rgba(255,255,255,0.1); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:5px; transition:0.2s; flex-shrink: 0;';
+        moreBtn.onclick = (event) => { 
+            event.stopPropagation(); 
+            window.isReactingToMsgId = msgObj._id; 
+            document.getElementById('emoji-drawer').style.height = '300px';
+            window.closeMessageMenu(); 
+        };
+        reactionBar.appendChild(moreBtn);
+        document.body.appendChild(reactionBar);
+    }
     
     const menuList = document.createElement('div');
     menuList.id = 'dynamic-action-list';
     menuList.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:16px; padding:8px 0; box-shadow:0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); width: 230px; display:flex; flex-direction:column; overflow:hidden;`;
     
-    const menuItems = [
-        { icon: 'reply', text: 'Responder', action: () => { window.initReply(); window.closeMessageMenu(); } },
-        { icon: 'edit', text: 'Editar', action: () => { 
-            if (!isMe) return alert('Só pode editar as suas próprias mensagens.'); 
-            if (msgObj.fileUrl && msgObj.fileType !== 'text') return alert('Não é possível editar mídia.'); 
-            window.editingMsgId = msgObj._id;
-            const input = document.getElementById('message-input');
-            input.innerText = msgObj.content;
-            const icon = document.getElementById('dynamic-action-icon');
-            icon.innerText = 'check'; icon.style.color = '#10B981';
-            window.closeMessageMenu();
-            input.focus();
-        } },
-        { icon: 'shortcut', text: 'Encaminhar', action: () => { window.openForwardModal(); window.closeMessageMenu(); } },
-        { icon: 'content_copy', text: 'Copiar', action: () => { window.copySelectedMessage(); window.closeMessageMenu(); } },
-        { icon: 'check_circle_outline', text: 'Selecionar', action: () => { window.isMsgSelectionMode = true; window.toggleMessageSelection(msgElement, msgObj); window.closeMessageMenu(); } },
-        { icon: 'info_outline', text: 'Info', action: () => { alert('Enviada em: ' + new Date(msgObj.timestamp).toLocaleString()); window.closeMessageMenu(); } },
-        { icon: 'push_pin', text: 'Fixar', action: () => { window.pinMessage(msgObj); window.closeMessageMenu(); } },
-        { icon: 'delete_outline', text: 'Apagar', color: '#EF4444', action: () => { 
-            if (isMe) window.deleteMessageForEveryone(msgObj._id);
-            else window.deleteSingleMessage(msgObj._id);
-            window.closeMessageMenu(); 
-        } }
-    ];
+    let menuItems = [];
+    
+    if (!isDeleted) {
+        menuItems = [
+            { icon: 'reply', text: 'Responder', action: () => { window.initReply(); window.closeMessageMenu(); } },
+            { icon: 'edit', text: 'Editar', action: () => { 
+                if (!isMe) return alert('Só pode editar as suas próprias mensagens.'); 
+                if (msgObj.fileUrl && msgObj.fileType !== 'text') return alert('Não é possível editar mídia.'); 
+                window.editingMsgId = msgObj._id;
+                const input = document.getElementById('message-input');
+                input.innerText = msgObj.content.replace(' (editado)', '');
+                const icon = document.getElementById('dynamic-action-icon');
+                icon.innerText = 'check'; icon.style.color = '#10B981';
+                window.closeMessageMenu();
+                input.focus();
+            } },
+            { icon: 'shortcut', text: 'Encaminhar', action: () => { window.openForwardModal(); window.closeMessageMenu(); } },
+            { icon: 'content_copy', text: 'Copiar', action: () => { window.copySelectedMessage(); window.closeMessageMenu(); } },
+            { icon: 'check_circle_outline', text: 'Selecionar', action: () => { window.isMsgSelectionMode = true; window.toggleMessageSelection(msgElement, msgObj); window.closeMessageMenu(); } },
+            { icon: 'push_pin', text: 'Fixar', action: () => { window.pinMessage(msgObj); window.closeMessageMenu(); } },
+        ];
+    }
+    
+    // Apagar continua disponível para remover do ecrã local
+    menuItems.push({ icon: 'delete_outline', text: isDeleted ? 'Apagar da minha tela' : 'Apagar', color: '#EF4444', action: () => { 
+        if (isMe && !isDeleted) window.deleteMessageForEveryone(msgObj._id);
+        else window.deleteSingleMessage(msgObj._id);
+        window.closeMessageMenu(); 
+    }});
     
     menuItems.forEach(item => {
         if(item.text === 'Copiar' && msgObj.fileUrl && msgObj.fileType !== 'text') return; 
@@ -1086,13 +1138,13 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
         menuList.appendChild(div);
     });
 
-    document.body.appendChild(reactionBar);
     document.body.appendChild(menuList);
     
     let rbTop = rect.top - 65; 
     if (rbTop < 60) rbTop = rect.bottom + 10; 
     
     let mlTop = rbTop === rect.bottom + 10 ? rbTop + 65 : rect.bottom + 10; 
+    if (isDeleted) mlTop = rbTop; // Se não tem reaction bar, sobe o menu
     
     if (mlTop + 400 > window.innerHeight) {
         mlTop = rect.top - 400; 
@@ -1127,6 +1179,7 @@ window.deleteSingleMessage = function(msgId) {
     }
 }
 
+// 🚀 APAGA A MENSAGEM NO SERVIDOR PARA TODOS
 window.deleteMessageForEveryone = async function(msgId) {
     if(confirm("Apagar mensagem para todos?")) {
         await fetch(`/message/${msgId}`, { method: 'DELETE' });

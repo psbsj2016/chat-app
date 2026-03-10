@@ -108,14 +108,17 @@ app.get('/search', async (req, res) => { const { query, myId } = req.query; if (
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
 // ==========================================
-// 🔥 ROTAS PARA O MENU iOS DO CHAT (EDIÇÃO E EXCLUSÃO)
+// 🔥 ROTAS DE EDIÇÃO E EXCLUSÃO PARA TODOS (ESTILO WHATSAPP)
 // ==========================================
 app.put('/message/:msgId', async (req, res) => {
     try {
         const { newContent } = req.body;
-        const msg = await Message.findByIdAndUpdate(req.params.msgId, { content: newContent }, { new: true });
-        if (!msg) return res.status(404).json({ error: 'Not found' });
-        
+        const msg = await Message.findById(req.params.msgId);
+        if (!msg || msg.content.includes('🚫 Esta mensagem foi apagada')) return res.status(400).json({ error: 'Ação inválida.' });
+
+        msg.content = newContent;
+        await msg.save();
+
         // Emite a atualização via Sockets para a sala correta
         if (msg.groupId) io.to(msg.groupId.toString()).emit('message_edited', { msgId: msg._id, newContent });
         else {
@@ -130,9 +133,13 @@ app.delete('/message/:msgId', async (req, res) => {
     try {
         const msg = await Message.findById(req.params.msgId);
         if (!msg) return res.status(404).json({ error: 'Not found' });
-        await Message.findByIdAndDelete(req.params.msgId);
         
-        // Remove a mensagem nos dispositivos de quem está conectado
+        // Em vez de deletar fisicamente, mudamos para texto de mensagem apagada
+        msg.content = '🚫 Esta mensagem foi apagada';
+        msg.fileUrl = null;
+        msg.fileType = 'text';
+        await msg.save();
+        
         if (msg.groupId) io.to(msg.groupId.toString()).emit('message_deleted', { msgId: msg._id });
         else {
             io.to(msg.sender.toString()).emit('message_deleted', { msgId: msg._id });
@@ -142,6 +149,9 @@ app.delete('/message/:msgId', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao apagar mensagem' }); }
 });
 
+// ==========================================
+// 🚀 ROTA DE UPLOAD
+// ==========================================
 app.post('/upload', (req, res) => { 
     upload.single('file')(req, res, async function (err) { 
         if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'Arquivo excede 15MB.' }); } else if (err) { return res.status(500).json({ error: 'Erro ao processar arquivo.' }); } 
