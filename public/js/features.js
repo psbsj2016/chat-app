@@ -178,10 +178,9 @@ window.deleteNote = async function(id) { if(!confirm("Apagar?")) return; try { a
 document.addEventListener("DOMContentLoaded", () => { setTimeout(loadNotes, 2500); });
 
 // ==============================================================
-// 📸 MOTOR DE STATUS E STORIES (IMERSÃO ESTILO INSTAGRAM)
+// 📸 MOTOR DE STATUS E STORIES (O BUG DO NOME FOI CORRIGIDO)
 // ==============================================================
 
-// Injeta o CSS avançado dos Status nativamente
 document.head.insertAdjacentHTML("beforeend", `<style>
     .status-ring { padding: 3px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: transparent; transition: transform 0.2s; }
     .status-ring:active { transform: scale(0.9); }
@@ -198,7 +197,7 @@ let currentStoryUserIndex = -1;
 let currentStoryItemIndex = -1;
 let storyProgressInterval = null;
 let storyCurrentTime = 0;
-const STORY_DURATION = 5000; // 5 Segundos por Story
+const STORY_DURATION = 5000; 
 const statusColors = ['#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#0F172A'];
 let currentStatusColorIndex = 0;
 let statusBase64Image = null;
@@ -215,7 +214,14 @@ window.fetchStatuses = async function() {
         const groups = {};
         allStatuses.forEach(s => {
             const sId = s.senderId._id || s.senderId;
-            if (!groups[sId]) groups[sId] = { user: s.senderId, items: [] };
+            if (!groups[sId]) {
+                groups[sId] = { 
+                    userId: sId, 
+                    userName: s.senderName || 'Usuário', 
+                    userPhoto: s.senderPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', 
+                    items: [] 
+                };
+            }
             groups[sId].items.push(s);
         });
 
@@ -229,9 +235,7 @@ window.fetchStatuses = async function() {
         if (myGroup) groupedStatuses.unshift(myGroup);
 
         renderStatusTray();
-    } catch (e) {
-        console.error("Erro ao carregar radar de status:", e);
-    }
+    } catch (e) { console.error("Erro ao carregar radar de status:", e); }
 };
 
 window.loadStatuses = window.fetchStatuses;
@@ -247,19 +251,16 @@ window.renderStatusTray = function() {
     tray.innerHTML = '';
     
     groupedStatuses.forEach((group, index) => {
-        const user = group.user;
-        const isMe = (user._id || user) === myId;
-        
+        const isMe = group.userId === myId;
         const hasUnviewed = !isMe && group.items.some(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
         
         const ringClass = hasUnviewed ? 'status-ring-unread' : 'status-ring-read';
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        const name = isMe ? 'Meu Status' : (user.displayName || 'Contato').split(' ')[0];
+        const name = isMe ? 'Meu Status' : group.userName.split(' ')[0];
 
         tray.innerHTML += `
             <div class="status-item" onclick="openStoryViewer(${index})">
                 <div class="status-ring ${ringClass}">
-                    <img src="${photo}">
+                    <img src="${group.userPhoto}">
                 </div>
                 <span class="status-name" style="${hasUnviewed ? 'font-weight: 800; color: white;' : ''}">${name}</span>
             </div>
@@ -272,16 +273,13 @@ window.openStoryViewer = function(userIndex) {
     document.querySelectorAll('.app-screen').forEach(el => el.style.display = 'none');
     
     const modal = document.getElementById('story-viewer-modal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    }
+    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
     
     currentStoryUserIndex = userIndex;
     currentStoryItemIndex = 0;
     
     const group = groupedStatuses[userIndex];
-    const isMe = (group.user._id || group.user) === myId;
+    const isMe = group.userId === myId;
     
     if (!isMe) {
         const firstUnread = group.items.findIndex(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
@@ -317,10 +315,9 @@ window.renderCurrentStory = function() {
     }
 
     const story = group.items[currentStoryItemIndex];
-    const user = group.user;
 
-    document.getElementById('story-author-photo').src = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    document.getElementById('story-author-name').innerText = user.displayName || 'Contato';
+    document.getElementById('story-author-photo').src = group.userPhoto;
+    document.getElementById('story-author-name').innerText = group.userName;
     
     const timeDiff = Date.now() - new Date(story.createdAt).getTime();
     const hours = Math.floor(timeDiff / (1000 * 60 * 60));
@@ -330,23 +327,33 @@ window.renderCurrentStory = function() {
     const textDisplay = document.getElementById('story-text-display');
     const imgDisplay = document.getElementById('story-image-display');
     const contentArea = document.getElementById('story-content-area');
+    const captionDisplay = document.getElementById('story-caption-display');
 
     if (story.type === 'image') {
         textDisplay.style.display = 'none';
-        imgDisplay.src = story.mediaUrl;
+        imgDisplay.src = story.mediaUrl || story.content; // Compatibilidade com a base antiga
         imgDisplay.style.display = 'block';
         imgDisplay.classList.remove('hidden');
         contentArea.style.background = '#000';
+        
+        // MOSTRA A LEGENDA SE HOUVER
+        if (story.caption) {
+            captionDisplay.querySelector('span').innerText = story.caption;
+            captionDisplay.classList.remove('hidden');
+        } else {
+            captionDisplay.classList.add('hidden');
+        }
     } else {
         imgDisplay.style.display = 'none';
         textDisplay.innerText = story.content;
         textDisplay.style.display = 'block';
-        contentArea.style.background = story.color || '#8B5CF6';
+        contentArea.style.background = story.bgColor || '#8B5CF6';
+        captionDisplay.classList.add('hidden'); // Esconde legenda em status de texto puro
     }
 
     renderStoryViews(story);
 
-    if ((user._id || user) !== myId) {
+    if (group.userId !== myId) {
         fetch('/api/status/view', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -430,27 +437,66 @@ window.closeStoryViewer = function() {
     if (typeof showMainScreen === 'function') showMainScreen();
 };
 
-window.openCreateStatusModal = function() { showElement('create-status-modal'); statusBase64Image = null; document.getElementById('status-image-preview').classList.add('hidden'); document.getElementById('status-text-input').classList.remove('hidden'); document.getElementById('status-text-input').value = ''; changeStatusColor(0); }
-window.changeStatusColor = function(forceIndex = null) { currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; }
-window.previewStatusImage = function(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { statusBase64Image = e.target.result; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').classList.add('hidden'); }; reader.readAsDataURL(file); }
+window.openCreateStatusModal = function() { 
+    const modal = document.getElementById('create-status-modal');
+    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+    
+    statusBase64Image = null; 
+    document.getElementById('status-image-preview').classList.add('hidden'); 
+    document.getElementById('status-text-input').style.display = 'block'; 
+    document.getElementById('status-text-input').value = ''; 
+    document.getElementById('status-caption-container').classList.add('hidden');
+    document.getElementById('status-caption-input').value = '';
+    
+    changeStatusColor(0); 
+};
+
+window.closeCreateStatus = function() {
+    const modal = document.getElementById('create-status-modal');
+    if(modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+};
+
+window.changeStatusColor = function(forceIndex = null) { 
+    currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; 
+    document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; 
+};
+
+window.previewStatusImage = function(event) { 
+    const file = event.target.files[0]; 
+    if(!file) return; 
+    const reader = new FileReader(); 
+    reader.onload = function(e) { 
+        statusBase64Image = e.target.result; 
+        document.getElementById('status-image-preview').src = statusBase64Image; 
+        document.getElementById('status-image-preview').classList.remove('hidden'); 
+        document.getElementById('status-text-input').style.display = 'none'; 
+        
+        // Mostra o campo de legenda se houver foto!
+        document.getElementById('status-caption-container').classList.remove('hidden');
+    }; 
+    reader.readAsDataURL(file); 
+};
 
 window.publishStatus = async function() {
     const textEl = document.getElementById('status-text-input');
     const imgEl = document.getElementById('status-image-preview');
     const bgEl = document.getElementById('status-preview-area');
     const fileInput = document.getElementById('status-image-upload');
+    const captionEl = document.getElementById('status-caption-input');
 
-    const text = textEl ? textEl.value.trim() : '';
+    const text = textEl && textEl.style.display !== 'none' ? textEl.value.trim() : '';
     const hasImage = imgEl && !imgEl.classList.contains('hidden');
+    const caption = captionEl && !captionEl.parentElement.classList.contains('hidden') ? captionEl.value.trim() : '';
     const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
 
     if (!text && !hasImage) { alert('Escreva algo ou adicione uma imagem para publicar!'); return; }
 
-    const btnElements = document.querySelectorAll('button[onclick="publishStatus()"]');
-    btnElements.forEach(btn => { btn.innerText = 'Processando...'; btn.disabled = true; btn.style.opacity = '0.7'; });
+    const btn = document.getElementById('btn-publish-status');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span>';
+    btn.disabled = true;
 
     try {
-        let finalContent = text;
         let type = 'text';
         let mediaUrl = null;
 
@@ -479,20 +525,19 @@ window.publishStatus = async function() {
 
         const newStatus = { 
             senderId: myId, 
-            senderName: localStorage.getItem('displayName'), 
-            senderPhoto: localStorage.getItem('photoUrl'), 
+            senderName: localStorage.getItem('displayName') || 'Usuário', 
+            senderPhoto: localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', 
             type: type, 
-            content: finalContent, 
-            mediaUrl: mediaUrl,
-            color: bgColor, 
+            content: text, // O texto principal
+            mediaUrl: mediaUrl, // A foto
+            caption: caption, // A legenda
+            bgColor: bgColor, 
             timestamp: new Date().toISOString() 
         };
 
         const res = await fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStatus) });
         if (res.ok) {
-            if (typeof hideElement === 'function') hideElement('create-status-modal');
-            if (textEl) textEl.value = '';
-            if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
+            closeCreateStatus();
             if (fileInput) fileInput.value = '';
             statusBase64Image = null;
             tempQuickPhotoFile = null;
@@ -505,7 +550,8 @@ window.publishStatus = async function() {
     } catch(e) { 
         alert('Erro: ' + e.message); 
     } finally {
-        btnElements.forEach(btn => { btn.innerText = 'Publicar'; btn.disabled = false; btn.style.opacity = '1'; });
+        btn.innerText = 'Publicar'; 
+        btn.disabled = false; 
     }
 };
 
@@ -543,8 +589,9 @@ window.renderStoryViews = function(storyObj) {
     }
 }
 
+// RESTANTE DAS FUNÇÕES
 window.handleQuickCamera = function(input) { const file = input.files[0]; if (!file) return; tempQuickPhotoFile = file; const reader = new FileReader(); reader.onload = function(e) { tempQuickPhotoBase64 = e.target.result; document.getElementById('quick-photo-preview').src = tempQuickPhotoBase64; showElement('quick-photo-dest-modal'); input.value = ''; }; reader.readAsDataURL(file); }
-window.postQuickPhotoToStatus = function() { hideElement('quick-photo-dest-modal'); openCreateStatusModal(); statusBase64Image = tempQuickPhotoBase64; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').classList.add('hidden'); }
+window.postQuickPhotoToStatus = function() { hideElement('quick-photo-dest-modal'); openCreateStatusModal(); statusBase64Image = tempQuickPhotoBase64; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').style.display = 'none'; document.getElementById('status-caption-container').classList.remove('hidden'); }
 window.openQuickPhotoChatSelector = function() { hideElement('quick-photo-dest-modal'); showElement('quick-photo-chat-modal'); const list = document.getElementById('quick-photo-contacts-list'); const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; list.innerHTML = ''; if(cachedGroups.length > 0) { const gTitle = document.createElement('div'); gTitle.innerHTML = '<b>Grupos</b>'; list.appendChild(gTitle); cachedGroups.forEach(g => { const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer;'; div.innerHTML = `<img src="${g.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" class="avatar-small"> <span class="contact-name">${g.name}</span>`; div.onclick = () => sendQuickPhotoToTarget(g._id, true); list.appendChild(div); }); } if(cachedUsers.length > 0) { const uTitle = document.createElement('div'); uTitle.innerHTML = '<b>Contatos</b>'; list.appendChild(uTitle); cachedUsers.filter(u => !hiddenChats.includes(u._id)).forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer;'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => sendQuickPhotoToTarget(user._id, false); list.appendChild(div); }); } }
 window.sendQuickPhotoToTarget = async function(targetId, isGroup) { hideElement('quick-photo-chat-modal'); const btnIcon = document.getElementById('main-fab-btn'); if(btnIcon) btnIcon.innerHTML = '<span class="material-icons-round" style="animation: spin 1s linear infinite;">sync</span>'; const formData = new FormData(); formData.append('file', tempQuickPhotoFile); try { const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json(); const msgData = { senderId: myId, receiverId: isGroup ? null : targetId, groupId: isGroup ? targetId : null, content: '📷 Foto rápida enviada.', fileUrl: data.url, fileType: 'image' }; socket.emit('private_message', msgData); tempQuickPhotoFile = null; tempQuickPhotoBase64 = null; alert("✅ Foto enviada!"); } catch (e) {} finally { if(btnIcon) btnIcon.innerHTML = '<span class="material-icons-round" style="font-size: 32px;">add</span>'; } }
 

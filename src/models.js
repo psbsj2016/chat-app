@@ -18,7 +18,6 @@ const UserSchema = new mongoose.Schema({
     pushSubscriptions: { type: Array, default: [] },
     xp: { type: Number, default: 0 },
     level: { type: Number, default: 1 },
-    // --- NOVOS CAMPOS: MACRO DOMÍNIO INGLÊS PTT ---
     englishMacroSom: { type: Number, default: 0 },
     englishMacroLogica: { type: Number, default: 0 },
     englishMacroContexto: { type: Number, default: 0 },
@@ -33,7 +32,7 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 
 // ==========================================
-// 👁️ ESQUEMA DE STATUS ATUALIZADO COM VIEWS
+// 👁️ ESQUEMA DE STATUS (AGORA ACEITA FOTOS E LEGENDAS)
 // ==========================================
 const statusSchema = new mongoose.Schema({
     senderId: String, 
@@ -41,6 +40,8 @@ const statusSchema = new mongoose.Schema({
     senderPhoto: String,
     type: { type: String, default: 'text' }, 
     content: String, 
+    mediaUrl: String, 
+    caption: String, 
     bgColor: { type: String, default: '#3B82F6' },
     views: [{
         viewerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

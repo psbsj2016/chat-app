@@ -1,11 +1,12 @@
 // ==============================================================
-// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ EM TEMPO REAL
+// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ NAS COMUNIDADES
 // ==============================================================
 let localAudioStream = null;
 let peerConnections = {}; 
 let currentVoiceChannelId = null;
 
-const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+// Servidores públicos da Google para contornar Firewalls e NATs
+const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
 const btnJoinVoice = document.getElementById('btn-join-voice');
 const btnLeaveVoice = document.getElementById('btn-leave-voice');
@@ -26,7 +27,7 @@ async function joinVoiceChannel(channelId) {
 
         socket.emit('join_voice_channel', { channelId: currentVoiceChannelId, userProfile: { name: myName, photoUrl: myPhoto } });
     } catch (error) {
-        alert("Permissão de microfone negada! Verifique as permissões do seu navegador/telemóvel.");
+        alert("Permissão de microfone negada! Verifique as configurações do seu telemóvel/navegador.");
     }
 }
 
@@ -44,6 +45,7 @@ function leaveVoiceChannel() {
 if(btnJoinVoice) btnJoinVoice.onclick = () => joinVoiceChannel(currentVoiceChannelId || currentChannelId);
 if(btnLeaveVoice) btnLeaveVoice.onclick = () => leaveVoiceChannel();
 
+// Quando alguém entra na sala, nós (que já lá estamos) criamos uma Oferta P2P para ele
 socket.on('user_joined_voice', async (data) => {
     const peerSocketId = data.socketId;
     if(peerConnections[peerSocketId]) return; 
@@ -58,7 +60,12 @@ socket.on('webrtc_signal', async (data) => {
     const peerSocketId = data.from;
     const signal = data.signal;
     let pc = peerConnections[peerSocketId];
-    if (!pc) { pc = createPeerConnection(peerSocketId, data.userProfile); addParticipantToUI(peerSocketId, data.userProfile); }
+    
+    if (!pc) { 
+        pc = createPeerConnection(peerSocketId, data.userProfile); 
+        addParticipantToUI(peerSocketId, data.userProfile); 
+    }
+    
     if (signal.type === 'offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
         const answer = await pc.createAnswer();
@@ -80,15 +87,18 @@ function createPeerConnection(socketId, userProfile) {
     const pc = new RTCPeerConnection(rtcConfig);
     peerConnections[socketId] = pc;
     if(localAudioStream) { localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream)); }
+    
     pc.onicecandidate = (event) => { if (event.candidate) { socket.emit('webrtc_signal', { to: socketId, signal: { candidate: event.candidate } }); } };
     pc.ontrack = (event) => {
         let audioElement = document.getElementById(`audio-${socketId}`);
         if (!audioElement) {
-            audioElement = document.createElement('audio'); audioElement.id = `audio-${socketId}`; audioElement.autoplay = true; audioElement.setAttribute('playsinline', 'true');
+            audioElement = document.createElement('audio'); 
+            audioElement.id = `audio-${socketId}`; 
+            audioElement.autoplay = true; 
+            audioElement.setAttribute('playsinline', 'true');
             if(remoteAudiosContainer) remoteAudiosContainer.appendChild(audioElement);
         }
         audioElement.srcObject = event.streams[0];
-        audioElement.play().catch(e => console.log("Áudio bloqueado."));
     };
     return pc;
 }
@@ -97,93 +107,204 @@ function addParticipantToUI(id, profile) {
     if (!participantsGrid || document.getElementById(`participant-${id}`)) return;
     const div = document.createElement('div'); div.id = `participant-${id}`;
     div.style = "display: flex; flex-direction: column; align-items: center; width: 70px; animation: fadeIn 0.3s;";
-    div.innerHTML = `<div style="position: relative;"><img src="${profile.photoUrl}" style="width: 50px; height: 50px; border-radius: 50%; border: 3px solid #4ade80; object-fit: cover;"><div style="position: absolute; bottom: 0; right: 0; background: #22c55e; width: 15px; height: 15px; border-radius: 50%; border: 2px solid #111;"></div></div><span style="font-size: 11px; color: white; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; margin-top: 5px;">${profile.name}</span>`;
+    div.innerHTML = `<div style="position: relative;"><img src="${profile.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 50px; height: 50px; border-radius: 50%; border: 3px solid #4ade80; object-fit: cover;"><div style="position: absolute; bottom: 0; right: 0; background: #22c55e; width: 15px; height: 15px; border-radius: 50%; border: 2px solid #111;"></div></div><span style="font-size: 11px; color: white; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; margin-top: 5px;">${profile.name || 'User'}</span>`;
     participantsGrid.appendChild(div);
 }
 function removeParticipantFromUI(id) { const p = document.getElementById(`participant-${id}`); if (p) p.remove(); const a = document.getElementById(`audio-${id}`); if (a) a.remove(); }
 
 // ==============================================================
-// 📹 MOTOR DE VIDEOCHAMADAS (P2P)
+// 📹 MOTOR DE CHAMADAS P2P (CHATS PRIVADOS)
 // ==============================================================
 let videoStream = null;
 let videoPC = null;
 let currentCallTarget = null;
 let incomingCallData = null;
 let currentFacingMode = 'user'; 
+let isVideoCallActive = true; 
+let callRingInterval = null;
 
-const videoRtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-async function initVideoCall(targetId) {
+// Recebe a instrução do chat.js (se o user clicou no ícone de vídeo ou telefone)
+window.initVideoCall = async function(targetId, isVideo = true) {
     if (!targetId) return;
-    if (isGroupChat) return alert("As videochamadas só estão disponíveis para conversas privadas (1 a 1).");
+    if (isGroupChat) return alert("As chamadas só estão disponíveis para conversas privadas (1 a 1).");
+    
+    isVideoCallActive = isVideo;
+    
     try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: isVideo, audio: true });
+        
         document.getElementById('local-video').srcObject = videoStream;
+        document.getElementById('local-video').style.display = isVideo ? 'block' : 'none';
+        document.getElementById('btn-flip-cam').style.display = isVideo ? 'flex' : 'none';
+        document.getElementById('btn-toggle-cam').style.display = isVideo ? 'flex' : 'none';
+        document.getElementById('call-status-text').innerText = "A ligar...";
+        
         currentCallTarget = targetId;
-        showElement('video-call-screen');
-        const myName = localStorage.getItem('displayName') || 'Contato'; const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        socket.emit('call_user', { targetId: targetId, callerId: myId, callerName: myName, callerPhoto: myPhoto });
-    } catch (e) { alert("Permissão de câmera/microfone negada ou dispositivo indisponível!"); }
-}
+        if(typeof showElement === 'function') showElement('video-call-screen');
+        
+        const myName = localStorage.getItem('displayName') || 'Contato'; 
+        const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        
+        socket.emit('call_user', { targetId: targetId, callerId: myId, callerName: myName, callerPhoto: myPhoto, isVideo: isVideo });
+    } catch (e) { 
+        alert("Permissão de câmera/microfone negada ou dispositivo indisponível!"); 
+    }
+};
 
 socket.on('incoming_call', (data) => {
     incomingCallData = data;
-    document.getElementById('caller-name').innerText = data.callerName; document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    showElement('incoming-call-modal');
-    playNotificationSound('bell');
+    isVideoCallActive = data.isVideo;
+    
+    document.getElementById('caller-name').innerText = data.callerName; 
+    document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    document.getElementById('caller-type').innerText = data.isVideo ? "Chamada de Vídeo..." : "Chamada de Voz...";
+    
+    if(typeof showElement === 'function') showElement('incoming-call-modal');
+    
+    // Toca o som de campainha repetidamente
+    if(typeof playNotificationSound === 'function') playNotificationSound('bell');
+    callRingInterval = setInterval(() => { if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 3000);
 });
 
-async function acceptCall() {
-    hideElement('incoming-call-modal'); currentCallTarget = incomingCallData.callerId;
+window.acceptCall = async function() {
+    clearInterval(callRingInterval);
+    if(typeof hideElement === 'function') hideElement('incoming-call-modal'); 
+    currentCallTarget = incomingCallData.callerId;
+    
     try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        document.getElementById('local-video').srcObject = videoStream; showElement('video-call-screen');
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: isVideoCallActive, audio: true });
+        
+        document.getElementById('local-video').srcObject = videoStream; 
+        document.getElementById('local-video').style.display = isVideoCallActive ? 'block' : 'none';
+        document.getElementById('btn-flip-cam').style.display = isVideoCallActive ? 'flex' : 'none';
+        document.getElementById('btn-toggle-cam').style.display = isVideoCallActive ? 'flex' : 'none';
+        document.getElementById('call-status-text').innerText = "Conectado";
+        
+        if(typeof showElement === 'function') showElement('video-call-screen');
+        
         socket.emit('accept_call', { targetId: currentCallTarget, callerId: currentCallTarget, answererId: myId });
         createVideoPeerConnection(currentCallTarget);
-    } catch (e) { alert("Erro ao aceder à câmera."); rejectCall(); }
-}
+    } catch (e) { 
+        alert("Erro ao aceder aos dispositivos. Chamada recusada."); 
+        window.rejectCall(); 
+    }
+};
 
-function rejectCall() { hideElement('incoming-call-modal'); if (incomingCallData) { socket.emit('reject_call', { callerId: incomingCallData.callerId }); incomingCallData = null; } stopVideoMedia(); }
-socket.on('call_rejected', () => { alert("O contato recusou a chamada ou está indisponível."); endVideoCall(false); });
+window.rejectCall = function() { 
+    clearInterval(callRingInterval);
+    if(typeof hideElement === 'function') hideElement('incoming-call-modal'); 
+    if (incomingCallData) { socket.emit('reject_call', { callerId: incomingCallData.callerId }); incomingCallData = null; } 
+    stopVideoMedia(); 
+};
 
-socket.on('call_accepted', async (data) => { createVideoPeerConnection(currentCallTarget); const offer = await videoPC.createOffer(); await videoPC.setLocalDescription(offer); socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: offer }); });
+socket.on('call_rejected', () => { 
+    document.getElementById('call-status-text').innerText = "Chamada Recusada";
+    setTimeout(() => window.endVideoCall(false), 2000); 
+});
+
+socket.on('call_accepted', async (data) => { 
+    document.getElementById('call-status-text').innerText = "Conectado";
+    createVideoPeerConnection(currentCallTarget); 
+    const offer = await videoPC.createOffer(); 
+    await videoPC.setLocalDescription(offer); 
+    socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: offer }); 
+});
 
 socket.on('video_signal', async (data) => {
     if (!videoPC) createVideoPeerConnection(currentCallTarget);
-    if (data.signal.type === 'offer') { await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); const answer = await videoPC.createAnswer(); await videoPC.setLocalDescription(answer); socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: answer }); }
-    else if (data.signal.type === 'answer') { await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); }
-    else if (data.signal.candidate) { await videoPC.addIceCandidate(new RTCIceCandidate(data.signal)); }
+    
+    if (data.signal.type === 'offer') { 
+        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
+        const answer = await videoPC.createAnswer(); 
+        await videoPC.setLocalDescription(answer); 
+        socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: answer }); 
+    }
+    else if (data.signal.type === 'answer') { 
+        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
+    }
+    else if (data.signal.candidate) { 
+        await videoPC.addIceCandidate(new RTCIceCandidate(data.signal)); 
+    }
 });
 
 function createVideoPeerConnection(target) {
-    videoPC = new RTCPeerConnection(videoRtcConfig);
-    videoStream.getTracks().forEach(track => videoPC.addTrack(track, videoStream));
-    videoPC.onicecandidate = (event) => { if (event.candidate) { socket.emit('video_signal', { targetId: target, from: myId, signal: event.candidate }); } };
-    videoPC.ontrack = (event) => { document.getElementById('remote-video').srcObject = event.streams[0]; };
+    videoPC = new RTCPeerConnection(rtcConfig);
+    if(videoStream) {
+        videoStream.getTracks().forEach(track => videoPC.addTrack(track, videoStream));
+    }
+    
+    videoPC.onicecandidate = (event) => { 
+        if (event.candidate) { socket.emit('video_signal', { targetId: target, from: myId, signal: event.candidate }); } 
+    };
+    
+    videoPC.ontrack = (event) => { 
+        const remoteVid = document.getElementById('remote-video');
+        remoteVid.srcObject = event.streams[0]; 
+        // Se for só áudio, escondemos o vídeo remoto visualmente
+        if(!isVideoCallActive) remoteVid.style.opacity = '0';
+        else remoteVid.style.opacity = '1';
+    };
 }
 
-function endVideoCall(emitSignal = true) {
+window.endVideoCall = function(emitSignal = true) {
+    clearInterval(callRingInterval);
     if (emitSignal && currentCallTarget) socket.emit('end_call', { targetId: currentCallTarget });
-    if (videoPC) { videoPC.close(); videoPC = null; } stopVideoMedia(); hideElement('video-call-screen'); currentCallTarget = null; incomingCallData = null;
+    if (videoPC) { videoPC.close(); videoPC = null; } 
+    stopVideoMedia(); 
+    if(typeof hideElement === 'function') hideElement('video-call-screen'); 
+    currentCallTarget = null; 
+    incomingCallData = null;
+};
+
+socket.on('call_ended', () => { 
+    document.getElementById('call-status-text').innerText = "Chamada Terminada";
+    setTimeout(() => window.endVideoCall(false), 1500); 
+});
+
+function stopVideoMedia() { 
+    if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
+    document.getElementById('local-video').srcObject = null; 
+    document.getElementById('remote-video').srcObject = null; 
 }
-socket.on('call_ended', () => { endVideoCall(false); });
 
-function stopVideoMedia() { if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } document.getElementById('local-video').srcObject = null; document.getElementById('remote-video').srcObject = null; }
+window.toggleVideoMic = function() { 
+    if (!videoStream) return; 
+    const audioTrack = videoStream.getAudioTracks()[0]; 
+    if(!audioTrack) return;
+    audioTrack.enabled = !audioTrack.enabled; 
+    const btn = document.getElementById('btn-toggle-mic'); 
+    btn.style.background = audioTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; 
+    btn.innerHTML = audioTrack.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">mic_off</span>'; 
+};
 
-function toggleVideoMic() { if (!videoStream) return; const audioTrack = videoStream.getAudioTracks()[0]; audioTrack.enabled = !audioTrack.enabled; const btn = document.getElementById('btn-toggle-mic'); btn.style.background = audioTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = audioTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">mic</span>' : '<span class="material-icons-round" style="font-size: 28px;">mic_off</span>'; }
-function toggleVideoCam() { if (!videoStream) return; const videoTrack = videoStream.getVideoTracks()[0]; videoTrack.enabled = !videoTrack.enabled; const btn = document.getElementById('btn-toggle-cam'); btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = videoTrack.enabled ? '<span class="material-icons-round" style="font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="font-size: 28px;">videocam_off</span>'; }
+window.toggleVideoCam = function() { 
+    if (!videoStream) return; 
+    const videoTrack = videoStream.getVideoTracks()[0]; 
+    if(!videoTrack) return;
+    videoTrack.enabled = !videoTrack.enabled; 
+    const btn = document.getElementById('btn-toggle-cam'); 
+    btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; 
+    btn.innerHTML = videoTrack.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam_off</span>'; 
+};
 
-async function flipCamera() {
+window.flipCamera = async function() {
     if (!videoStream || !videoPC) return;
     currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
     try {
-        const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: currentFacingMode } } });
+        const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: currentFacingMode } }, audio: true });
         const newVideoTrack = newStream.getVideoTracks()[0];
+        
+        // Substitui a track para quem está a ver
         const sender = videoPC.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender) sender.replaceTrack(newVideoTrack);
+        
+        // Pára a câmera antiga e atualiza o ecrã local
         const oldVideoTrack = videoStream.getVideoTracks()[0];
         if (oldVideoTrack) { oldVideoTrack.stop(); videoStream.removeTrack(oldVideoTrack); }
         videoStream.addTrack(newVideoTrack);
         document.getElementById('local-video').srcObject = videoStream;
-    } catch (e) { alert("Não foi possível alternar."); currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; }
-}
+    } catch (e) { 
+        alert("Não foi possível alternar a câmera."); 
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; 
+    }
+};

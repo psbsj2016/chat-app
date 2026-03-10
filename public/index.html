@@ -326,21 +326,30 @@
     
     <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 11000; background: var(--bg-color);">
         <div style="display: flex; flex-direction: column; height: 100%; width: 100%; position: relative;">
-            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); position: absolute; top:0; width:100%; z-index: 2;">
-                <button class="icon-btn" onclick="hideElement('create-status-modal')"><span class="material-icons-round" style="color: white;">close</span></button>
-                <button class="chic-btn mini-btn" onclick="publishStatus()" style="margin:0; background: var(--brand-primary);">Publicar</button>
+            
+            <div style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(15px); position: absolute; top: 0; width: 100%; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <button class="icon-btn" onclick="closeCreateStatus()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="color: white; font-size: 20px;">close</span></button>
+                <div style="color: white; font-weight: 800; font-size: 16px; letter-spacing: 0.5px;">Novo Status</div>
+                <button class="chic-btn mini-btn" id="btn-publish-status" onclick="publishStatus()" style="margin: 0; background: var(--brand-primary); font-weight: 800; padding: 6px 16px; border-radius: 20px; font-size: 13px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">Publicar</button>
             </div>
-            <div id="status-preview-area" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden;">
-                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative;"></textarea>
-                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1;">
+            
+            <div id="status-preview-area" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden; padding-top: 60px; padding-bottom: 80px;">
+                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative; font-family: 'Inter', sans-serif; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></textarea>
+                
+                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;">
+                
+                <div id="status-caption-container" class="hidden" style="position: absolute; bottom: 100px; width: 90%; z-index: 3;">
+                    <input type="text" id="status-caption-input" placeholder="Adicionar legenda..." style="width: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 15px 20px; border-radius: 30px; color: white; font-size: 15px; font-weight: 500; outline: none; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                </div>
             </div>
-            <div style="padding: 20px; display: flex; justify-content: space-around; background: var(--hud-bg); position: absolute; bottom:0; width:100%; z-index: 2;">
-                <button class="icon-btn" onclick="changeStatusColor()"><span class="material-icons-round" style="color: white; font-size: 32px;">palette</span></button>
-                <label for="status-image-upload" class="icon-btn" style="cursor: pointer;">
-                    <span class="material-icons-round" style="color: white; font-size: 32px;">image</span>
+            
+            <div style="padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 25, 0.95); position: absolute; bottom: 0; width: 100%; z-index: 10; border-top: 1px solid rgba(255,255,255,0.05); padding-bottom: calc(15px + env(safe-area-inset-bottom));">
+                <button class="icon-btn" id="btn-status-color" onclick="changeStatusColor()" style="background: rgba(255,255,255,0.1); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s;"><span class="material-icons-round" style="color: white; font-size: 24px;">palette</span></button>
+                <label for="status-image-upload" class="icon-btn" style="background: var(--brand-secondary); width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4); transition: transform 0.2s;">
+                    <span class="material-icons-round" style="color: white; font-size: 28px;">image</span>
                 </label>
                 <input type="file" id="status-image-upload" accept="image/*" class="hidden" onchange="previewStatusImage(event)">
-            </div>
+                <div style="width: 46px;"></div> </div>
         </div>
     </div>
     
@@ -349,15 +358,21 @@
         <div style="position: absolute; top: 30px; left: 15px; display: flex; align-items: center; gap: 10px; z-index: 10; width: 100%;">
             <img id="story-author-photo" src="" style="width: 40px; height: 40px; border-radius: 50%;">
             <div>
-                <div id="story-author-name" style="color: white; font-weight: 800; font-size: 15px;">Nome</div>
-                <div id="story-time" style="color: rgba(255,255,255,0.8); font-size: 11px;">Agora mesmo</div>
+                <div id="story-author-name" style="color: white; font-weight: 800; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Nome</div>
+                <div id="story-time" style="color: rgba(255,255,255,0.9); font-size: 11px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Agora mesmo</div>
             </div>
-            <button class="icon-btn" onclick="closeStoryViewer()" style="margin-left: auto; margin-right: 20px;"><span class="material-icons-round" style="color: white;">close</span></button>
+            <button class="icon-btn" onclick="closeStoryViewer()" style="margin-left: auto; margin-right: 20px;"><span class="material-icons-round" style="color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">close</span></button>
         </div>
+        
         <div id="story-content-area" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative;">
-            <div id="story-text-display" style="color: white; font-size: 28px; font-weight: 800; text-align: center; width: 90%; z-index: 2;"></div>
+            <div id="story-text-display" style="color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; z-index: 2; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></div>
             <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 1;">
+            
+            <div id="story-caption-display" class="hidden" style="position: absolute; bottom: 80px; width: 100%; text-align: center; z-index: 3; padding: 0 20px;">
+                <span style="background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; color: white; font-size: 15px; font-weight: 600; display: inline-block; backdrop-filter: blur(10px); max-width: 90%; word-wrap: break-word;"></span>
+            </div>
         </div>
+        
         <div onclick="prevStory()" style="position: absolute; top:0; left:0; width:30%; height:100%; z-index: 5;"></div>
         <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
     </div>
@@ -416,6 +431,47 @@
     <div id="create-group-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;"><div style="position: relative; flex-shrink: 0;"><img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('new-group-file').click()"><span class="material-icons-round" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 14px;">camera_alt</span><input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)"></div><div style="flex: 1;"><h3 style="margin: 0 0 5px 0; font-size: 18px;">Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" class="chic-input" style="margin:0; padding:10px;"></div></div><div style="position: relative; margin-bottom: 15px; width: 100%;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span><input type="text" id="group-search-input" placeholder="Buscar membros..." class="chic-input" style="padding-left: 45px; margin: 0; font-weight: 600;" onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; display: flex; flex-direction: column; gap: 5px;"></div><div class="modal-actions" style="display: flex; gap: 10px; width: 100%; margin-top:15px;"><button onclick="closeCreateGroup()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="submitCreateGroup()" class="chic-btn" style="flex:1; margin:0;">Criar</button></div></div></div>
     
     <nav id="bottom-navigation" class="bottom-nav hidden">
+     
+         <div id="video-call-screen" class="app-screen hidden" style="z-index: 100000; background: #0B0F19; flex-direction: column; height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0;">
+        <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>
+        
+        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 110px; height: 160px; object-fit: cover; border-radius: 16px; border: 2px solid var(--brand-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2; background: #1E293B;"></video>
+        
+        <div id="call-status-text" style="position: absolute; top: 40px; left: 20px; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 2;">A Ligar...</div>
+
+        <div style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 25px; z-index: 3;">
+            <button id="btn-toggle-mic" class="icon-btn" onclick="toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+                <span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>
+            </button>
+            <button class="icon-btn" onclick="endVideoCall(true)" style="background: #EF4444; width: 70px; height: 70px; border-radius: 50%; box-shadow: 0 4px 20px rgba(239,68,68,0.6);">
+                <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
+            </button>
+            <button id="btn-toggle-cam" class="icon-btn" onclick="toggleVideoCam()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+                <span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>
+            </button>
+            <button id="btn-flip-cam" class="icon-btn" onclick="flipCamera()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+                <span class="material-icons-round" style="color: white; font-size: 28px;">cameraswitch</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="incoming-call-modal" class="modal-overlay hidden" style="z-index: 100001; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(15px);">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
+            <img id="caller-photo" src="" style="width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--brand-primary); margin-bottom: 20px; object-fit: cover; box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); animation: pulseRed 1.5s infinite;">
+            <h2 id="caller-name" style="color: white; font-size: 32px; margin-bottom: 5px; font-weight: 900; letter-spacing: -1px;">Nome</h2>
+            <div id="caller-type" style="color: var(--brand-secondary); font-size: 16px; margin-bottom: 50px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Chamada de Vídeo...</div>
+            
+            <div style="display: flex; gap: 50px;">
+                <button class="icon-btn" onclick="rejectCall()" style="background: #EF4444; width: 75px; height: 75px; border-radius: 50%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;">
+                    <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
+                </button>
+                <button class="icon-btn" onclick="acceptCall()" style="background: #10B981; width: 75px; height: 75px; border-radius: 50%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(16,185,129,0.5); animation: bounce 2s infinite;">
+                    <span class="material-icons-round" style="color: white; font-size: 36px;">call</span>
+                </button>
+            </div>
+        </div>
+    </div>    
+     
         <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
         <div class="nav-item" onclick="switchTab('explorar', this)"><div class="nav-icon"><span class="material-icons-round">explore</span></div><span>Explorar</span></div>
         <div class="nav-item" onclick="switchTab('anotacoes', this)"><div class="nav-icon"><span class="material-icons-round">note_alt</span></div><span>Notas</span></div>
