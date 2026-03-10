@@ -198,7 +198,64 @@ window.acceptCommunityInvite = async function() {
 };
 
 let chatSearchMatches = []; let currentSearchIndex = -1;
-window.openChatSearch = function() { showElement('in-chat-search-bar'); document.getElementById('in-chat-search-input').focus(); document.getElementById('in-chat-search-input').value = ''; document.getElementById('in-chat-search-counter').innerText = '0/0'; clearChatSearchHighlights(); };
+window.openChat = function(id, name, photo, email, type = 'user') { 
+    currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
+    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+    updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
+    closeChatSearch(); lastRenderedDate = null; 
+    
+    const emojiDrawer = document.getElementById('emoji-drawer');
+    if (emojiDrawer) emojiDrawer.style.height = '0px';
+
+    const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
+    if (dropMenu) {
+        const items = dropMenu.querySelectorAll('div, span, a, button');
+        items.forEach(item => {
+            if (item.innerText.includes('Exibir Perfil') || item.innerText.includes('Exibir Grupo')) {
+                item.innerHTML = item.innerHTML.replace(/Exibir Perfil|Exibir Grupo/g, isGroupChat ? 'Exibir Grupo' : 'Exibir Perfil');
+            }
+        });
+    }
+
+    document.getElementById('chat-title').innerText = name; 
+    document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
+    document.getElementById('chat-box').innerHTML = ''; 
+    
+    const contactDiv = document.getElementById(`contact-${id}`); 
+    if (contactDiv) { 
+        contactDiv.classList.remove('has-unread'); 
+        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); 
+        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
+        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
+    } 
+    
+    if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
+    
+    const headerDot = document.getElementById('chat-header-status'); 
+    const headerText = document.getElementById('chat-header-status-text');
+    
+    // 🚀 CORREÇÃO DO BUG ONLINE/OFFLINE AQUI!
+    if (isGroupChat) { 
+        if (headerDot) headerDot.style.display = 'none'; 
+        if (headerText) {
+            headerText.innerText = 'Toque para ver membros'; 
+            headerText.style.color = 'var(--secondary-text)';
+        }
+    } else { 
+        const isOnline = onlineUsersList.includes(id); 
+        if (headerDot) {
+            headerDot.style.display = 'block'; 
+            headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+        }
+        if (headerText) {
+            headerText.innerText = isOnline ? 'Online' : 'Offline'; 
+            headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
+        }
+    } 
+    
+    if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
+}
 window.closeChatSearch = function() { hideElement('in-chat-search-bar'); clearChatSearchHighlights(); };
 window.handleInChatSearch = function(query) {
     clearChatSearchHighlights();
