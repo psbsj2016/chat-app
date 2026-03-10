@@ -9,81 +9,7 @@ let lastRenderedDate = null;
 
 window.selectedActionContacts = []; 
 
-function initMultiSelectUI() {
-    if(document.getElementById('contact-action-bar')) return; 
-
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .selected-for-action { background: rgba(59, 130, 246, 0.15) !important; border-left: 4px solid var(--brand-primary) !important; }
-        #contact-action-bar { position: fixed; top: 0; left: 0; width: 100%; height: 65px; background: var(--card-bg); border-bottom: 2px solid var(--brand-primary); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.15); color: var(--text-color); }
-        .bulk-menu-item { padding: 15px 20px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--text-color); }
-        .bulk-menu-item:hover { background: rgba(128, 128, 128, 0.1); }
-    `;
-    document.head.appendChild(style);
-
-    const actionBar = document.createElement('div');
-    actionBar.id = 'contact-action-bar';
-    actionBar.className = 'hidden';
-    actionBar.innerHTML = `
-        <div style="display:flex; align-items:center; gap:15px;">
-            <span class="material-icons-round" style="cursor:pointer; font-size:28px;" onclick="clearContactSelection()">arrow_back</span>
-            <span id="action-bar-count" style="font-weight:900; font-size: 18px;">1 selecionado</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:20px; position:relative;">
-            <span class="material-icons-round" style="cursor:pointer; color: #EF4444; font-size:26px;" onclick="promptBulkDeleteChat()">delete</span>
-            <span class="material-icons-round" style="cursor:pointer; font-size:26px;" onclick="toggleBulkMenu(event)">more_vert</span>
-            
-            <div id="bulk-action-menu" class="hidden" style="position:absolute; right:0; top:45px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; width:280px; box-shadow:0 15px 50px rgba(0,0,0,0.3); overflow: hidden; z-index:10001; backdrop-filter: blur(10px);">
-                <div class="bulk-menu-item" onclick="openBulkCreateGroupModal(); closeBulkMenu();">
-                    <span class="material-icons-round" style="font-size: 22px; color: #10B981;">group_add</span> Criar Grupo
-                </div>
-                <div class="bulk-menu-item" onclick="openBulkCommunityInviteModal(); closeBulkMenu();" style="border:none;">
-                    <span class="material-icons-round" style="font-size: 22px; color: var(--brand-primary);">explore</span> Convidar p/ Comunidade
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(actionBar);
-
-    const inviteModal = document.createElement('div');
-    inviteModal.id = 'bulk-invite-modal';
-    inviteModal.className = 'hidden';
-    inviteModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
-    inviteModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
-            <button onclick="hideElement('bulk-invite-modal')" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer;">&times;</button>
-            <span class="material-icons-round" style="font-size: 50px; color: var(--brand-primary); margin-bottom: 10px;">radar</span>
-            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px;">Qual Comunidade?</h2>
-            <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
-            <div id="bulk-invite-comm-list" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
-        </div>
-    `;
-    document.body.appendChild(inviteModal);
-
-    const acceptModal = document.createElement('div');
-    acceptModal.id = 'invite-confirm-modal';
-    acceptModal.className = 'hidden';
-    acceptModal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(5px);";
-    acceptModal.innerHTML = `
-        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
-            <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
-            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
-            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
-            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
-            <div style="display:flex; gap:12px;">
-                <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
-                <button onclick="acceptCommunityInvite()" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Entrar</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(acceptModal);
-}
-document.addEventListener("DOMContentLoaded", initMultiSelectUI);
-
-window.toggleBulkMenu = function(e) { e.stopPropagation(); const menu = document.getElementById('bulk-action-menu'); if (menu) menu.classList.toggle('hidden'); };
-window.closeBulkMenu = function() { const menu = document.getElementById('bulk-action-menu'); if (menu) menu.classList.add('hidden'); };
-document.addEventListener('click', (e) => { const menu = document.getElementById('bulk-action-menu'); if (menu && !menu.classList.contains('hidden') && !e.target.closest('#bulk-action-menu')) { menu.classList.add('hidden'); } });
-
+// LÓGICA DA BARRA DE SELEÇÃO MÚLTIPLA
 window.toggleContactSelection = function(id, name, isGroup) {
     const idx = selectedActionContacts.findIndex(c => c.id === id);
     const item = document.getElementById(`contact-${id}`);
@@ -99,15 +25,17 @@ window.toggleContactSelection = function(id, name, isGroup) {
     const bar = document.getElementById('contact-action-bar');
     if (selectedActionContacts.length > 0) {
         bar.classList.remove('hidden');
-        document.getElementById('action-bar-count').innerText = `${selectedActionContacts.length} selecionado(s)`;
-    } else { clearContactSelection(); }
+        document.getElementById('action-bar-count').innerText = `${selectedActionContacts.length} Selecionado(s)`;
+    } else { 
+        clearContactSelection(); 
+    }
 };
 
 window.clearContactSelection = function() {
     selectedActionContacts = [];
     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('selected-for-action'));
     const bar = document.getElementById('contact-action-bar');
-    if(bar) { bar.classList.add('hidden'); closeBulkMenu(); }
+    if(bar) { bar.classList.add('hidden'); }
 };
 
 function setupLongPress(element, id, name, isGroup, photo, email) {
@@ -124,9 +52,13 @@ function setupLongPress(element, id, name, isGroup, photo, email) {
     };
 }
 
+// ==============================================================
+// 🛠️ FUNÇÕES DOS BOTÕES DA BARRA DE SELEÇÃO MÚLTIPLA
+// ==============================================================
+
 window.promptBulkDeleteChat = function() {
     if(selectedActionContacts.length === 0) return;
-    if(confirm(`⚠️ ATENÇÃO!\nApagar / Sair de TODAS as ${selectedActionContacts.length} conversa(s) e grupo(s) selecionado(s)?`)) { 
+    if(confirm(`⚠️ ATENÇÃO!\nApagar e sair de todas as ${selectedActionContacts.length} conversa(s) selecionada(s)?`)) { 
         executeBulkDeleteChat(); 
     }
 };
@@ -153,109 +85,84 @@ window.executeBulkDeleteChat = async function() {
     loadContacts();
 };
 
-window.openBulkCommunityInviteModal = async function() {
-    const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
-    if(usersOnly.length === 0) return alert("Selecione contatos válidos.");
-    showElement('bulk-invite-modal'); const list = document.getElementById('bulk-invite-comm-list');
-    list.innerHTML = '<div style="padding:20px; text-align:center;"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando base...</div>';
+window.openBulkCreateGroupModal = function() {
+    const usersOnly = selectedActionContacts.filter(c => !c.isGroup).map(c => c.id);
+    if (usersOnly.length === 0) {
+        alert("Selecione pelo menos um contato para criar um grupo.");
+        return;
+    }
+    clearContactSelection();
+    openCreateGroupModal(usersOnly);
+};
+
+window.openBulkScheduleModal = function() {
+    const validContacts = selectedActionContacts;
+    if(validContacts.length === 0) return;
+    
+    window.bulkSchedulingContacts = [...validContacts];
+    
+    if (typeof showElement === 'function') { showElement('schedule-modal'); } 
+    else { document.getElementById('schedule-modal').classList.remove('hidden'); }
+    
+    const selectEl = document.getElementById('schedule-target');
+    selectEl.innerHTML = `<option value="bulk">Envio em Massa (${validContacts.length} contatos)</option>`;
+    selectEl.value = 'bulk';
+    selectEl.disabled = true; 
+    
+    document.getElementById('schedule-datetime').value = '';
+    document.getElementById('schedule-text').value = '';
+    
+    const saveBtn = document.querySelector('#schedule-modal .chic-btn');
+    saveBtn.setAttribute('onclick', 'executeBulkSchedule()');
+};
+
+window.executeBulkSchedule = async function() {
+    const dt = document.getElementById('schedule-datetime').value;
+    const txt = document.getElementById('schedule-text').value.trim();
+    
+    if(!dt || !txt) return alert("Preencha a data e a mensagem!");
+    
+    const btn = document.querySelector('#schedule-modal .chic-btn');
+    btn.innerHTML = 'Agendando...';
     
     try {
-        const res = await fetch(`/communities/user/${myId}`);
-        const allComms = await res.json();
-        const ownedComms = allComms.filter(c => c && c.ownerId === myId);
-        
-        if(ownedComms.length === 0) { list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Você não é General de nenhuma Comunidade.</div>'; return; }
-        
-        list.innerHTML = '';
-        ownedComms.forEach(comm => {
-            list.innerHTML += `
-                <div style="display:flex; align-items:center; gap:15px; padding:15px; background:var(--input-bg); border-radius:12px; margin-bottom:10px; cursor:pointer; border:1px solid transparent; transition:0.2s;" onmouseover="this.style.borderColor='var(--brand-primary)'" onmouseout="this.style.borderColor='transparent'" onclick="sendBulkInvite('${comm._id}', '${comm.name.replace(/'/g, "\\'")}')">
-                    <img src="${comm.photoUrl || 'https://cdn-icons-png.flaticon.com/512/844/844004.png'}" style="width:50px; height:50px; border-radius:12px; object-fit:cover;">
-                    <span style="font-weight:900; font-size:15px; color:var(--text-color);">${comm.name}</span>
-                </div>
-            `;
-        });
+        for(let contact of window.bulkSchedulingContacts) {
+            await fetch('/schedule-message', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    senderId: myId,
+                    targetId: contact.id,
+                    isGroup: contact.isGroup,
+                    content: txt,
+                    scheduledTime: new Date(dt).toISOString()
+                })
+            });
+        }
+        alert(`Mensagem programada para ${window.bulkSchedulingContacts.length} contato(s) com sucesso!`);
+        closeScheduleModal();
+        clearContactSelection();
     } catch(e) {
-        list.innerHTML = '<div style="padding:20px; color:#EF4444; text-align:center;">Erro ao conectar ao QG. Tente novamente.</div>';
+        alert("Erro ao agendar as mensagens.");
+    } finally {
+        btn.innerHTML = 'Agendar';
     }
 };
 
-window.sendBulkInvite = function(commId, commName) {
-    const usersOnly = selectedActionContacts.filter(c => !c.isGroup);
-    usersOnly.forEach(user => { const msgData = { senderId: myId, receiverId: user.id, groupId: null, content: JSON.stringify({ commId, commName }), fileUrl: null, fileType: 'invite' }; socket.emit('private_message', msgData); });
-    alert(`🎯 Ordem de recrutamento enviada para ${usersOnly.length} contato(s)!`); hideElement('bulk-invite-modal'); clearContactSelection();
+window.closeScheduleModal = function() {
+    if (typeof hideElement === 'function') { hideElement('schedule-modal'); } 
+    else { document.getElementById('schedule-modal').classList.add('hidden'); }
+    
+    document.getElementById('schedule-target').disabled = false;
+    const btn = document.querySelector('#schedule-modal .chic-btn');
+    if(btn) btn.setAttribute('onclick', 'saveScheduledMessage()');
 };
 
-window.previewCommunityInvite = function(commId, commName) { window.pendingInviteCommId = commId; document.getElementById('invite-confirm-comm-name').innerText = commName; showElement('invite-confirm-modal'); };
-
-window.acceptCommunityInvite = async function() {
-    if(!window.pendingInviteCommId) return;
-    try {
-        const res = await fetch('/communities/join', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: myId, communityId: window.pendingInviteCommId }) });
-        const data = await res.json();
-        if(data.success) { hideElement('invite-confirm-modal'); alert("Acesso Concedido! Bem-vindo à base."); await loadCommunities(); openCommunity(window.pendingInviteCommId, document.getElementById('invite-confirm-comm-name').innerText); }
-    } catch(e) {}
-};
-
+// ==============================================================
+// 🔎 PESQUISA NO CHAT
+// ==============================================================
 let chatSearchMatches = []; let currentSearchIndex = -1;
-window.openChat = function(id, name, photo, email, type = 'user') { 
-    currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
-    updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
-    closeChatSearch(); lastRenderedDate = null; 
-    
-    const emojiDrawer = document.getElementById('emoji-drawer');
-    if (emojiDrawer) emojiDrawer.style.height = '0px';
-
-    const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
-    if (dropMenu) {
-        const items = dropMenu.querySelectorAll('div, span, a, button');
-        items.forEach(item => {
-            if (item.innerText.includes('Exibir Perfil') || item.innerText.includes('Exibir Grupo')) {
-                item.innerHTML = item.innerHTML.replace(/Exibir Perfil|Exibir Grupo/g, isGroupChat ? 'Exibir Grupo' : 'Exibir Perfil');
-            }
-        });
-    }
-
-    document.getElementById('chat-title').innerText = name; 
-    document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
-    document.getElementById('chat-box').innerHTML = ''; 
-    
-    const contactDiv = document.getElementById(`contact-${id}`); 
-    if (contactDiv) { 
-        contactDiv.classList.remove('has-unread'); 
-        const badge = contactDiv.querySelector('.unread-count-badge'); if(badge) badge.remove(); 
-        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
-        if(msgArea && isGroupChat) { msgArea.innerHTML = 'Grupo'; msgArea.style = 'color:var(--brand-primary)'; } 
-        if(msgArea && !isGroupChat) { msgArea.innerHTML = 'Toque para conversar'; msgArea.style = ''; } 
-    } 
-    
-    if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
-    
-    const headerDot = document.getElementById('chat-header-status'); 
-    const headerText = document.getElementById('chat-header-status-text');
-    
-    // 🚀 CORREÇÃO DO BUG ONLINE/OFFLINE AQUI!
-    if (isGroupChat) { 
-        if (headerDot) headerDot.style.display = 'none'; 
-        if (headerText) {
-            headerText.innerText = 'Toque para ver membros'; 
-            headerText.style.color = 'var(--secondary-text)';
-        }
-    } else { 
-        const isOnline = onlineUsersList.includes(id); 
-        if (headerDot) {
-            headerDot.style.display = 'block'; 
-            headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
-        }
-        if (headerText) {
-            headerText.innerText = isOnline ? 'Online' : 'Offline'; 
-            headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
-        }
-    } 
-    
-    if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
-}
+window.openChatSearch = function() { showElement('in-chat-search-bar'); document.getElementById('in-chat-search-input').focus(); document.getElementById('in-chat-search-input').value = ''; document.getElementById('in-chat-search-counter').innerText = '0/0'; clearChatSearchHighlights(); };
 window.closeChatSearch = function() { hideElement('in-chat-search-bar'); clearChatSearchHighlights(); };
 window.handleInChatSearch = function(query) {
     clearChatSearchHighlights();
@@ -271,7 +178,6 @@ window.handleInChatSearch = function(query) {
 window.navigateChatSearch = function(dir) { if (chatSearchMatches.length === 0) return; currentSearchIndex += dir; if (currentSearchIndex >= chatSearchMatches.length) currentSearchIndex = 0; if (currentSearchIndex < 0) currentSearchIndex = chatSearchMatches.length - 1; updateSearchHighlight(); };
 function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.remove('active')); const target = chatSearchMatches[currentSearchIndex]; target.classList.add('active'); target.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('in-chat-search-counter').innerText = `${currentSearchIndex + 1}/${chatSearchMatches.length}`; }
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
-
 
 // ==============================================================
 // 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
@@ -321,10 +227,6 @@ setTimeout(() => {
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
             msgInput.innerText += event.detail.unicode; 
-            
-            // 🚀 MÁGICA DOS EMOJIS: Removido o msgInput.focus() daqui! 
-            // Agora, o teclado nativo do telemóvel não sobe mais e a gaveta 
-            // fica aberta para escolhermos quantos emojis quisermos.
 
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
@@ -443,13 +345,15 @@ async function startRecording() {
         source.connect(audioAnalyzer);
         audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
 
-        hideElement('chat-input-container'); 
-        hideElement('btn-attach-wrapper');
-        showElement('recording-ui'); 
-        showElement('recording-active-state'); 
-        hideElement('recording-preview-state'); 
-        showElement('btn-pause-record'); 
-        
+        if (typeof hideElement === 'function') {
+            hideElement('chat-input-container'); 
+            hideElement('btn-attach-wrapper');
+            showElement('recording-ui'); 
+            showElement('recording-active-state'); 
+            hideElement('recording-preview-state'); 
+            showElement('btn-pause-record'); 
+        }
+
         dynamicActionIcon.innerText = 'send'; 
         dynamicActionIcon.style.animation = 'popIn 0.2s ease';
         dynamicActionBtn.classList.add('recording-pulse');
@@ -550,9 +454,11 @@ window.cancelRecording = function() {
 }
 
 function resetAudioUI() { 
-    hideElement('recording-ui'); 
-    showElement('chat-input-container'); 
-    showElement('btn-attach-wrapper'); 
+    if (typeof hideElement === 'function') {
+        hideElement('recording-ui'); 
+        showElement('chat-input-container'); 
+        showElement('btn-attach-wrapper'); 
+    }
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
@@ -563,9 +469,11 @@ function resetAudioUI() {
 }
 
 function setupPreviewUI(blob) { 
-    hideElement('recording-active-state'); 
-    hideElement('btn-pause-record'); 
-    showElement('recording-preview-state'); 
+    if (typeof hideElement === 'function') {
+        hideElement('recording-active-state'); 
+        hideElement('btn-pause-record'); 
+        showElement('recording-preview-state'); 
+    }
     dynamicActionBtn.classList.remove('recording-pulse'); 
 
     const audioUrl = URL.createObjectURL(blob); 
@@ -607,6 +515,7 @@ window.togglePreviewAudio = function() {
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
 socket.on('connect', () => { if (myId) { socket.emit('join_room', myId); const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; cachedGroups.forEach(g => socket.emit('join_group', g._id)); } });
+
 socket.on('online_users', (list) => { 
     onlineUsersList = list; 
     document.querySelectorAll('.contact-status-dot').forEach(dot => { 
@@ -628,8 +537,8 @@ socket.on('online_users', (list) => {
 function emitTypingStatus(action) { if (!currentChatId) return; const myName = localStorage.getItem('displayName') || 'Alguém'; const payload = { senderId: myId, senderName: myName, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, action: action }; socket.emit('typing', payload); clearTimeout(typingTimeout); if (action === 'typing') { typingTimeout = setTimeout(() => { socket.emit('stop_typing', payload); }, 2000); } }
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
-socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
-socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) hideElement('typing-indicator'); const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
+socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; if (typeof showElement === 'function') showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
+socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) { if (typeof hideElement === 'function') hideElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
@@ -648,9 +557,7 @@ socket.on('receive_message', (msg) => {
 // ==============================================================
 window.toggleAttachMenu = function() {
     const menu = document.getElementById('attach-menu');
-    if (menu) { 
-        menu.classList.toggle('hidden'); 
-    }
+    if (menu) { menu.classList.toggle('hidden'); }
 };
 
 window.triggerUpload = function(type) { 
@@ -707,14 +614,17 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     clearTimeout(typingTimeout); 
     emitStopTypingStatus(); 
     
-    // 🚀 BLINDAGEM DA CAIXA DE TEXTO: Evita o piscar/deformar dos botões (innerHTML em vez de innerText)
     if(!fileUrl) input.innerHTML = ''; 
 }
 
 window.openChat = function(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
-    updateAppBadge(); cancelReply(); hideAllTabs(); showElement('chat-screen'); hideElement('typing-indicator'); 
+    updateAppBadge(); cancelReply(); 
+    
+    if (typeof hideAllTabs === 'function') hideAllTabs(); 
+    if (typeof showElement === 'function') { showElement('chat-screen'); hideElement('typing-indicator'); }
+    
     closeChatSearch(); lastRenderedDate = null; 
     
     const emojiDrawer = document.getElementById('emoji-drawer');
@@ -747,19 +657,25 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     
     const headerDot = document.getElementById('chat-header-status'); 
     const headerText = document.getElementById('chat-header-status-text');
-    if (headerDot && headerText) { 
-        if (isGroupChat) { 
-            headerDot.style.display = 'none'; 
+    
+    if (isGroupChat) { 
+        if (headerDot) headerDot.style.display = 'none'; 
+        if (headerText) {
             headerText.innerText = 'Toque para ver membros'; 
             headerText.style.color = 'var(--secondary-text)';
-        } else { 
+        }
+    } else { 
+        const isOnline = onlineUsersList.includes(id); 
+        if (headerDot) {
             headerDot.style.display = 'block'; 
-            const isOnline = onlineUsersList.includes(id); 
             headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+        }
+        if (headerText) {
             headerText.innerText = isOnline ? 'Online' : 'Offline'; 
             headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
-        } 
+        }
     } 
+    
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
@@ -783,7 +699,7 @@ function renderContactsList(groups, users) {
         let timeText = isUnreadG ? 'Agora' : '';
 
         clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
+            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
                 <img src="${photo}" class="avatar-small">
             </div>
             <div class="user-item-info">
@@ -819,7 +735,7 @@ function renderContactsList(groups, users) {
         let timeText = isUnreadU ? 'Agora' : '';
 
         clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
+            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
                 <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
                 ${sectorLabel}
                 <img src="${photo}" class="avatar-small">
@@ -924,52 +840,33 @@ function displayMessage(msg) {
 window.initReply = function() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
 window.cancelReply = function() { messageToReply = null; hideElement('reply-preview'); }
 
-function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const oldBar = document.querySelector('.reaction-bar'); if(oldBar) oldBar.remove(); const reactionBar = document.createElement('div'); reactionBar.className = 'reaction-bar'; const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍']; emojis.forEach(emoji => { const span = document.createElement('span'); span.className = 'reaction-emoji'; span.innerText = emoji; span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); reactionBar.remove(); hideElement('msg-context-menu'); }; reactionBar.appendChild(span); }); msgElement.appendChild(reactionBar); const menu = document.getElementById('msg-context-menu'); menu.innerHTML = `<div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div><div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()"><span class="material-icons-round">shortcut</span> Encaminhar</div><div class="menu-item" style="color: #EF4444;" onclick="deleteCurrentChat()"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>`; const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
+function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const oldBar = document.querySelector('.reaction-bar'); if(oldBar) oldBar.remove(); const reactionBar = document.createElement('div'); reactionBar.className = 'reaction-bar'; const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍']; emojis.forEach(emoji => { const span = document.createElement('span'); span.className = 'reaction-emoji'; span.innerText = emoji; span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); reactionBar.remove(); hideElement('msg-context-menu'); }; reactionBar.appendChild(span); }); msgElement.appendChild(reactionBar); const menu = document.getElementById('msg-context-menu'); menu.innerHTML = `<div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div><div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons-round">shortcut</span> Encaminhar</div>`; const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
 
 window.sendReaction = function(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); hideElement('msg-context-menu'); }
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
-// 🟢 FUNÇÕES RESTAURADAS DO MENU (APAGAR, DENUNCIAR, BLOQUEAR) 🟢
-window.deleteCurrentChat = async function() {
-    if(!currentChatId) return;
-    if(confirm("Tem certeza que deseja apagar todo o histórico desta conversa?")) {
-        try {
-            if(isGroupChat) {
-                await fetch(`/groups/${currentChatId}/${myId}`, { method: 'DELETE' });
-            } else {
-                await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' });
-                messageCache[currentChatId] = [];
-            }
-            document.getElementById('chat-box').innerHTML = '';
-            alert("Chat apagado com sucesso.");
-            backToMain();
-            loadContacts();
-        } catch(e) { alert("Erro ao apagar chat."); }
-    }
-};
-
-window.reportContact = function(id) {
-    if(!id) return;
-    if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) {
-        alert("Contato denunciado com sucesso. A nossa equipa irá analisar e tomar medidas.");
-    }
-};
-
-window.blockContact = function(id) {
-    if(!id) return;
-    if(confirm("Tem certeza que deseja bloquear este contato? Não receberá mais notificações dele.")) {
-        alert("Contato bloqueado.");
-        if(!hiddenChats.includes(id)) hiddenChats.push(id);
-        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
-        backToMain();
-        loadContacts();
-    }
-};
-
 // ==============================================================
 // 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
 // ==============================================================
+
+// NOVO: Função de segurança para poder abrir os perfis a partir do ecrã inicial
+window.viewContactProfile = function(id, name, photo, isGroup) {
+    const tempId = currentChatId;
+    const tempIsGroup = isGroupChat;
+    
+    currentChatId = id;
+    isGroupChat = isGroup;
+    
+    window.showCurrentChatProfile();
+    
+    // Restaura o estado para não quebrar o chat
+    setTimeout(() => {
+        currentChatId = tempId;
+        isGroupChat = tempIsGroup;
+    }, 500);
+};
+
 window.showCurrentChatProfile = async function() {
     if (!currentChatId) return;
 
@@ -1107,302 +1004,6 @@ window.showCurrentChatProfile = async function() {
     } catch (e) {
         console.error("Falha ao abrir perfil: ", e);
         alert("Erro ao carregar os dados do perfil.");
-    }
-};
-
-// ==============================================================
-// ➕ SISTEMA FAB: NOVO CONTATO E GRUPOS (BLINDADO)
-// ==============================================================
-window.toggleFab = function() {
-    const options = document.getElementById('fab-options');
-    const mainBtn = document.getElementById('main-fab-btn');
-    if (!options) return;
-    
-    if (options.style.display === 'flex') {
-        options.style.opacity = '0';
-        options.style.transform = 'translateY(10px)';
-        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
-        setTimeout(() => { options.style.display = 'none'; }, 200);
-    } else {
-        options.style.display = 'flex';
-        options.style.flexDirection = 'column';
-        options.style.gap = '10px';
-        options.style.position = 'absolute';
-        options.style.bottom = '80px';
-        options.style.right = '0';
-        options.style.transition = 'all 0.2s';
-        
-        void options.offsetWidth; // Força a renderização
-        
-        options.style.opacity = '1';
-        options.style.transform = 'translateY(0)';
-        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
-    }
-};
-
-// 🟢 NOVO CONTATO: BUSCA GLOBAL AO VIVO (LIVE SEARCH)
-let globalSearchTimeout = null;
-
-window.openAddContactScreen = function() {
-    // 1. Usa a função nativa do seu UI.js para esconder as outras telas
-    if (typeof hideAllTabs === 'function') {
-        hideAllTabs();
-    } else {
-        document.querySelectorAll('.app-screen').forEach(el => {
-            el.classList.add('hidden');
-            el.style.display = 'none';
-        });
-    }
-    
-    // 2. Usa a função nativa para mostrar a tela nova removendo o display: none
-    if (typeof showElement === 'function') {
-        showElement('add-contact-screen');
-    } else {
-        const screen = document.getElementById('add-contact-screen');
-        if (screen) {
-            screen.classList.remove('hidden');
-            screen.style.display = '';
-        }
-    }
-    
-    // 3. Limpa os campos de pesquisa
-    const input = document.getElementById('exact-search-input');
-    if (input) input.value = '';
-    const res = document.getElementById('exact-search-result');
-    if (res) res.innerHTML = '';
-};
-
-// Ativado ao digitar
-window.handleLiveSearch = function(value) {
-    clearTimeout(globalSearchTimeout);
-    const resDiv = document.getElementById('exact-search-result');
-    const term = value.trim().toLowerCase();
-
-    if (term.length < 2) {
-        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
-        return;
-    }
-
-    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
-
-    globalSearchTimeout = setTimeout(() => {
-        executeExactSearch(term);
-    }, 500);
-};
-
-// A Busca Real Unificada
-window.executeExactSearch = async function(searchTerm) {
-    const term = typeof searchTerm === 'string' ? searchTerm : document.getElementById('exact-search-input').value.trim().toLowerCase();
-    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
-    
-    const resDiv = document.getElementById('exact-search-result');
-    if (typeof searchTerm !== 'string') {
-        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando no radar global...</div>';
-    }
-    
-    try {
-        let foundUsers = [];
-        
-        let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); 
-        
-        if(res.ok) {
-            const allUsers = await res.json();
-            foundUsers = allUsers.filter(u => 
-                (u.email && u.email.toLowerCase().includes(term)) || 
-                (u.displayName && u.displayName.toLowerCase().includes(term)) || 
-                (u.phone && u.phone.includes(term))
-            );
-        } else {
-            const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
-            if(searchRes.ok) {
-                const data = await searchRes.json();
-                foundUsers = data.users || data || [];
-            }
-        }
-
-        foundUsers = foundUsers.filter(u => u._id !== myId);
-
-        if(foundUsers.length > 0) {
-            resDiv.innerHTML = '';
-            foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
-        } else {
-            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum recruta encontrado com estes dados na Base PTT.</div>';
-        }
-    } catch(e) {
-        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o QG Central.</div>';
-    }
-};
-
-window.renderExactSearchResult = function(u, resDiv, clear = true) {
-    if(clear) resDiv.innerHTML = '';
-    const name = u.displayName || u.email.split('@')[0];
-    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    const phoneHtml = u.phone ? `<div style="font-size: 11px; color: var(--brand-secondary); margin-top: 2px;"><span class="material-icons-round" style="font-size:10px; vertical-align:middle;">phone</span> ${u.phone}</div>` : '';
-    
-    const html = `
-        <div style="background: var(--input-bg); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 10px;">
-            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-            <div style="flex: 1; text-align: left; overflow: hidden;">
-                <div style="font-weight: 800; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${name}</div>
-                <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.email}</div>
-                ${phoneHtml}
-            </div>
-            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px; flex-shrink:0;">
-                <span class="material-icons-round" style="font-size: 24px;">chat</span>
-            </button>
-        </div>
-    `;
-    if(clear) resDiv.innerHTML = html;
-    else resDiv.insertAdjacentHTML('beforeend', html);
-};
-
-window.startChatWithNewUser = function(id, name, photo, email) {
-    document.getElementById('add-contact-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('hidden');
-    openChat(id, name, photo, email, 'user');
-    
-    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
-};
-
-// 🟢 CRIAR GRUPO: BLINDADO
-window.openCreateGroupModal = async function(preselectedIds = []) {
-    const modal = document.getElementById('create-group-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-        setTimeout(() => modal.style.opacity = '1', 10);
-    }
-    
-    document.getElementById('group-name-input').value = '';
-    document.getElementById('group-search-input').value = '';
-    const list = document.getElementById('group-candidates-list');
-    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
-    
-    try {
-        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-        if (cachedUsers.length > 0) {
-            window.groupCandidates = cachedUsers;
-            renderGroupCandidates(cachedUsers, preselectedIds);
-        }
-        
-        const res = await fetch(`/users/${myId}`);
-        if (res.ok) {
-            const users = await res.json();
-            window.groupCandidates = users;
-            renderGroupCandidates(users, preselectedIds);
-        }
-    } catch(e) {
-        if(list.innerHTML.includes('Carregando')) {
-            list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>';
-        }
-    }
-};
-
-window.renderGroupCandidates = function(users, preselectedIds = []) {
-    const list = document.getElementById('group-candidates-list');
-    list.innerHTML = '';
-    if(users.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível no seu chat.</div>';
-        return;
-    }
-    
-    users.forEach(u => {
-        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
-        const name = u.displayName || u.email.split('@')[0];
-        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        list.innerHTML += `
-            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
-                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
-                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
-                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
-            </label>
-        `;
-    });
-};
-
-window.filterGroupContacts = function(query) {
-    const term = query.toLowerCase();
-    const items = document.querySelectorAll('.group-candidate-item');
-    items.forEach(item => {
-        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
-        if(name.includes(term)) item.style.display = 'flex';
-        else item.style.display = 'none';
-    });
-};
-
-window.closeCreateGroup = function() {
-    const modal = document.getElementById('create-group-modal');
-    if (modal) {
-        modal.style.opacity = '0';
-        setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300);
-    }
-};
-
-window.submitCreateGroup = async function() {
-    const name = document.getElementById('group-name-input').value.trim();
-    if(!name) return alert("Dê um nome para a Tropa.");
-    
-    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
-    const members = Array.from(checkboxes).map(cb => cb.value);
-    if(members.length === 0) return alert("Recrute pelo menos um membro.");
-    
-    members.push(myId); 
-
-    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
-    const originalText = btn.innerText;
-    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
-
-    try {
-        const imgEl = document.getElementById('new-group-photo');
-        let photoUrl = imgEl.src;
-        if(photoUrl.includes('166258.png')) photoUrl = ''; 
-
-        const res = await fetch('/groups', { 
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, members, admin: myId, photoUrl })
-        });
-        
-        let data;
-        if(res.status === 404) {
-            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, admin: myId, photoUrl }) });
-            data = await res2.json();
-        } else {
-            data = await res.json();
-        }
-
-        if(data.success || data._id) {
-            closeCreateGroup();
-            socket.emit('group_updated');
-            loadContacts();
-            
-            const gId = data.group ? data.group._id : data._id;
-            const gName = data.group ? data.group.name : data.name;
-            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
-            
-            openChat(gId, gName, gPhoto, 'Grupo', 'group');
-        } else {
-            alert(data.error || "Falha na criação da base de dados.");
-        }
-    } catch(e) {
-        alert("Erro de comunicação com o QG.");
-    } finally {
-        btn.innerText = originalText;
-    }
-};
-
-window.uploadNewGroupPhoto = async function(input) {
-    const file = input.files[0];
-    if(!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-        const res = await fetch('/upload', {method:'POST', body:fd});
-        const data = await res.json();
-        document.getElementById('new-group-photo').src = data.url;
-    } catch(e) {
-        alert("Erro ao enviar foto para a nuvem.");
     }
 };
 

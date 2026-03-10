@@ -34,6 +34,8 @@
         .user-item { display: flex; align-items: center; padding: 0 15px; cursor: pointer; transition: background-color 0.2s; height: 76px; border: none !important; background: transparent; }
         .user-item:hover, .user-item:active { background-color: rgba(255, 255, 255, 0.05); }
         
+        .selected-for-action { background: rgba(59, 130, 246, 0.15) !important; border-left: 4px solid var(--brand-primary) !important; }
+
         .user-avatar-container { position: relative; margin-right: 15px; flex-shrink: 0; }
         .user-avatar-container img { width: 50px !important; height: 50px !important; border-radius: 50% !important; object-fit: cover; }
         
@@ -42,9 +44,6 @@
         
         .user-item-top { display: flex; justify-content: space-between; align-items: baseline; }
         
-        /* =========================================
-           FONTES NATIVAS MAIORES E MAIS LEGÍVEIS
-        ========================================= */
         .user-item-name { font-size: 18px; font-weight: 600; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-item-time { font-size: 13.5px; color: var(--secondary-text); margin-left: 10px; flex-shrink: 0; }
         
@@ -52,47 +51,13 @@
         .user-item-msg { font-size: 15.5px; color: var(--secondary-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
         .unread-count-badge { background-color: var(--brand-primary); color: white; font-size: 13px; font-weight: 800; border-radius: 12px; padding: 3px 8px; min-width: 22px; text-align: center; flex-shrink: 0; margin-left: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-        /* =========================================
-           ESTILO WHATSAPP - BALÕES DE MENSAGEM
-        ========================================= */
         #chat-box { padding: 15px 3% !important; display: flex; flex-direction: column; gap: 6px !important; }
         
-        .message { 
-            position: relative; 
-            max-width: 82%; 
-            width: fit-content; 
-            padding: 8px 12px 22px 12px; 
-            border-radius: 14px; 
-            font-size: 17px; 
-            line-height: 1.45; 
-            box-shadow: 0 1px 1px rgba(0,0,0,0.15); 
-            word-wrap: break-word; 
-        }
-        
-        .my-msg { 
-            align-self: flex-end; 
-            background-color: #005C4B; 
-            border-top-right-radius: 0px; 
-            color: #E9EDEF; 
-        }
-        .my-msg::before { 
-            content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; 
-            border-left: 10px solid #005C4B; 
-            border-bottom: 10px solid transparent; 
-        }
-        
-        .other-msg { 
-            align-self: flex-start; 
-            background-color: #202C33; 
-            border-top-left-radius: 0px; 
-            border: none; 
-            color: #E9EDEF; 
-        }
-        .other-msg::before { 
-            content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; 
-            border-right: 10px solid #202C33; 
-            border-bottom: 10px solid transparent; 
-        }
+        .message { position: relative; max-width: 82%; width: fit-content; padding: 8px 12px 22px 12px; border-radius: 14px; font-size: 17px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
+        .my-msg { align-self: flex-end; background-color: #005C4B; border-top-right-radius: 0px; color: #E9EDEF; }
+        .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #005C4B; border-bottom: 10px solid transparent; }
+        .other-msg { align-self: flex-start; background-color: #202C33; border-top-left-radius: 0px; border: none; color: #E9EDEF; }
+        .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid #202C33; border-bottom: 10px solid transparent; }
         
         .chat-date-divider { text-align: center; margin: 10px 0; }
         .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 6px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -120,13 +85,11 @@
         .icon-btn { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
         .icon-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
 
-        /* GARANTE QUE A CAIXA DE TEXTO NÃO DEFORME QUANDO VAZIA */
-        #message-input:empty::before {
-            content: attr(data-placeholder);
-            color: #94A3B8;
-            pointer-events: none;
-            display: block;
-        }
+        #message-input:empty::before { content: attr(data-placeholder); color: #94A3B8; pointer-events: none; display: block; }
+        
+        /* Cores extra para bolinha de Status */
+        .status-online { background-color: #10B981 !important; }
+        .status-offline { background-color: #EF4444 !important; }
     </style>
 </head>
 <body>
@@ -152,9 +115,14 @@
     <div id="main-screen" class="app-screen hidden">
         <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
             <button class="icon-btn" onclick="clearContactSelection()"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
-            <span id="selected-contact-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
-            <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptCustomDeleteChat()">delete</span>
+            <span id="action-bar-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkScheduleModal()" title="Agendar Mensagem">schedule_send</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkCreateGroupModal()" title="Criar Grupo">group_add</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptBulkDeleteChat()" title="Apagar Selecionados">delete</span>
+            </div>
         </div>   
+
         <div class="material-header"><img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" onclick="toggleDrawer()" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg);"><div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div><button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button></div>
         <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
         <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>       
@@ -167,22 +135,28 @@
     <div id="chat-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden;">
         
         <div class="header" style="display: flex; align-items: center; padding: max(10px, env(safe-area-inset-top)) 5px 10px 5px; background: var(--card-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 10; width: 100%; box-sizing: border-box;">
-            <div style="display: flex; align-items: center; cursor: pointer; padding: 5px; border-radius: 20px; transition: 0.2s;" onclick="backToMain()">
-                <span class="material-icons-round" style="color: var(--text-color); font-size: 24px;">arrow_back</span>
-                <img id="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: block; margin-left: 2px;">
+            
+            <div style="display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s;" onclick="backToMain()">
+                <span class="material-icons-round" style="color: var(--text-color); font-size: 26px;">arrow_back</span>
             </div>
             
-            <div style="display: flex; flex-direction: column; flex: 1; margin-left: 8px; cursor: pointer; min-width: 0;" onclick="viewContactProfile(currentChatId, document.getElementById('chat-title').innerText, document.getElementById('chat-avatar').src, isGroupChat)">
-                <h3 id="chat-title" style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nome</h3>
-                <span id="chat-header-status-text" style="font-size: 12.5px; font-weight: 600; color: #EF4444; margin-top: 1px;">Offline</span>
+            <div style="display: flex; align-items: center; flex: 1; margin-left: 5px; cursor: pointer; min-width: 0; padding: 4px; border-radius: 12px; transition: background-color 0.2s;" onclick="showCurrentChatProfile()" onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'" onmouseout="this.style.backgroundColor='transparent'">
+                <img id="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block; margin-right: 12px;">
+                <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
+                    <h3 id="chat-title" style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nome</h3>
+                    <div style="display: flex; align-items: center; margin-top: 1px;">
+                        <div id="chat-header-status" class="status-dot" style="display: none; margin-right: 5px; width: 8px; height: 8px; border-radius: 50%;"></div>
+                        <span id="chat-header-status-text" style="font-size: 13px; font-weight: 600; color: #EF4444;">Offline</span>
+                    </div>
+                </div>
             </div>
 
-            <div style="display: flex; gap: 18px; color: var(--text-color); flex-shrink: 0; padding-right: 10px; position: relative; align-items: center;">
-                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, true)">videocam</span>
-                <span class="material-icons-round" style="cursor: pointer; font-size: 22px;" onclick="initVideoCall(currentChatId, false)">call</span>
-                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
+            <div style="display: flex; gap: 15px; color: var(--text-color); flex-shrink: 0; padding-right: 10px; position: relative; align-items: center;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="initVideoCall(currentChatId, true)">videocam</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, false)">call</span>
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
                 
-                <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="top: 35px; right: 0;">
+                <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="top: 40px; right: 0;">
                     <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round">search</span> Buscar</div>
                     <div class="menu-item" onclick="showCurrentChatProfile(); toggleMenu('chat-options-menu')"><span class="material-icons-round">person</span> Exibir Perfil</div>
                     <div class="menu-separator"></div>
@@ -383,7 +357,30 @@
         <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
     </div>
 
- <div id="add-contact-screen" class="app-screen hidden">
+    <div id="bulk-invite-modal" class="modal-overlay hidden" style="z-index:9999; display:none; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
+        <div style="background: var(--card-bg); border: 1px solid var(--brand-primary); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+            <button onclick="hideElement('bulk-invite-modal')" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer;">&times;</button>
+            <span class="material-icons-round" style="font-size: 50px; color: var(--brand-primary); margin-bottom: 10px;">radar</span>
+            <h2 style="font-weight:900; margin-bottom:5px; font-size:22px;">Qual Comunidade?</h2>
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Selecione o QG de destino para enviar aos recrutas:</p>
+            <div id="bulk-invite-comm-list" style="max-height: 300px; overflow-y: auto; text-align:left;"></div>
+        </div>
+    </div>
+    
+    <div id="invite-confirm-modal" class="modal-overlay hidden" style="z-index:9999; display:none; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
+        <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
+            <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
+            <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
+            <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
+            <div style="display:flex; gap:12px;">
+                <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
+                <button onclick="acceptCommunityInvite()" class="chic-btn" style="flex:1; margin:0; background:var(--brand-primary); color:white; font-weight:900;">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-contact-screen" class="app-screen hidden">
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
         <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
             <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
@@ -408,7 +405,9 @@
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer"><div class="drawer-header"><img id="drawer-avatar" src="" onclick="openProfile()"><div class="drawer-user-info" onclick="openProfile()"><h3 id="drawer-name">Nome</h3><span id="drawer-email">email@cptt.com</span><div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;"><span class="badge-tech" style="background: var(--brand-secondary); color: white;">Nível <span id="drawer-level">1</span></span><span style="font-size: 12.5px; font-weight: 800; color: var(--brand-primary);"><span id="drawer-xp">0</span> XP</span></div></div></div><div class="drawer-content"><div class="drawer-section-title">Ferramentas</div><div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div><div class="drawer-item" onclick="openScheduledList(); toggleDrawer()"><span class="material-icons-round" style="color: var(--brand-secondary);">event_note</span> Meus Agendamentos</div><div class="drawer-item" onclick="document.getElementById('admin-modal').classList.remove('hidden'); toggleDrawer()"><span class="material-icons-round" style="color:#F59E0B">campaign</span> Aviso Geral</div><div class="drawer-section-title">Conta</div><div class="drawer-item" onclick="openProfile(); toggleDrawer()"><span class="material-icons-round">person</span> Meu Perfil</div><div class="drawer-item" onclick="openSettings(); toggleDrawer()"><span class="material-icons-round">settings</span> Configurações</div><div class="drawer-separator"></div><div class="drawer-item" style="color: #EF4444;" onclick="logout()"><span class="material-icons-round" style="color: #EF4444;">logout</span> Sair da Conta</div></div></div>
     <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-reply-msg" class="menu-item" onclick="initReply()" style="padding: 12px 20px;"><span class="material-icons-round" style="color:var(--brand-primary)">reply</span> Responder</div><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons-round">shortcut</span> Encaminhar</div></div>
-    <div id="schedule-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px; font-size:22px; font-weight:800;">Agendar Mensagem</h3><select id="schedule-target" class="chic-input" style="padding:12px; margin-bottom:15px;"></select><input type="datetime-local" id="schedule-datetime" class="chic-input" style="padding:12px; margin-bottom:15px;"><textarea id="schedule-text" placeholder="Escreva a mensagem futura..." class="chic-input" style="resize:none; height:80px; padding:12px; margin-bottom:20px;"></textarea><div class="modal-actions" style="display:flex; gap:10px; width:100%;"><button onclick="hideElement('schedule-modal')" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="saveScheduledMessage()" class="chic-btn" style="flex:1; margin:0;">Agendar</button></div></div></div>
+    
+    <div id="schedule-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px; font-size:22px; font-weight:800;">Agendar Mensagem</h3><select id="schedule-target" class="chic-input" style="padding:12px; margin-bottom:15px;"></select><input type="datetime-local" id="schedule-datetime" class="chic-input" style="padding:12px; margin-bottom:15px;"><textarea id="schedule-text" placeholder="Escreva a mensagem futura..." class="chic-input" style="resize:none; height:80px; padding:12px; margin-bottom:20px;"></textarea><div class="modal-actions" style="display:flex; gap:10px; width:100%;"><button onclick="closeScheduleModal()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="saveScheduledMessage()" class="chic-btn" style="flex:1; margin:0;">Agendar</button></div></div></div>
+    
     <div id="scheduled-list-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 380px; max-height: 80vh; display: flex; flex-direction: column; padding: 20px;"><h3 style="color:var(--brand-secondary); margin-bottom:15px; font-size:20px; font-weight:800;"><span class="material-icons-round" style="vertical-align: middle;">event_note</span> Radar de Disparos</h3><div id="scheduled-messages-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding-right: 5px;"></div><button onclick="hideElement('scheduled-list-modal')" class="chic-btn" style="background:transparent; border:1px solid var(--input-bg); color:var(--secondary-text); margin: 0;">Recolher Radar</button></div></div>
     <div id="create-group-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;"><div style="position: relative; flex-shrink: 0;"><img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('new-group-file').click()"><span class="material-icons-round" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 14px;">camera_alt</span><input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)"></div><div style="flex: 1;"><h3 style="margin: 0 0 5px 0; font-size: 18px;">Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" class="chic-input" style="margin:0; padding:10px;"></div></div><div style="position: relative; margin-bottom: 15px; width: 100%;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span><input type="text" id="group-search-input" placeholder="Buscar membros..." class="chic-input" style="padding-left: 45px; margin: 0; font-weight: 600;" onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; display: flex; flex-direction: column; gap: 5px;"></div><div class="modal-actions" style="display: flex; gap: 10px; width: 100%; margin-top:15px;"><button onclick="closeCreateGroup()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="submitCreateGroup()" class="chic-btn" style="flex:1; margin:0;">Criar</button></div></div></div>
     
@@ -420,10 +419,10 @@
     </nav>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/core.js?v=2.0"></script>
-    <script src="/js/ui.js?v=2.0"></script>
-    <script src="/js/chat.js?v=2.0"></script>
-    <script src="/js/webrtc.js?v=2.0"></script>
-    <script src="/js/features.js?v=2.0"></script>
+    <script src="/js/core.js?v=3.0"></script>
+    <script src="/js/ui.js?v=3.0"></script>
+    <script src="/js/chat.js?v=3.0"></script>
+    <script src="/js/webrtc.js?v=3.0"></script>
+    <script src="/js/features.js?v=3.0"></script>
 </body>
 </html>
