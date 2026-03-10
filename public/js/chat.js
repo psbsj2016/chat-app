@@ -1144,10 +1144,28 @@ window.toggleFab = function() {
 let globalSearchTimeout = null;
 
 window.openAddContactScreen = function() {
-    document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
-    const screen = document.getElementById('add-contact-screen');
-    if (screen) screen.classList.remove('hidden');
+    // 1. Usa a função nativa do seu UI.js para esconder as outras telas
+    if (typeof hideAllTabs === 'function') {
+        hideAllTabs();
+    } else {
+        document.querySelectorAll('.app-screen').forEach(el => {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        });
+    }
     
+    // 2. Usa a função nativa para mostrar a tela nova removendo o display: none
+    if (typeof showElement === 'function') {
+        showElement('add-contact-screen');
+    } else {
+        const screen = document.getElementById('add-contact-screen');
+        if (screen) {
+            screen.classList.remove('hidden');
+            screen.style.display = '';
+        }
+    }
+    
+    // 3. Limpa os campos de pesquisa
     const input = document.getElementById('exact-search-input');
     if (input) input.value = '';
     const res = document.getElementById('exact-search-result');
