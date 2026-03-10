@@ -102,9 +102,6 @@ app.post('/report-user', async (req, res) => { try { const report = new Report(r
 app.get('/user/:id', async (req, res) => { try { const u = await User.findById(req.params.id).select('-password'); res.json(u || {}); } catch (e) { res.status(500).json({error:'Erro'}); } });
 app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(models.getBotUserId()).select('-password')); } catch(e){ res.status(500).json({}); } }); 
 app.get('/leaderboard', async (req, res) => { try { const topUsers = await User.find({ xp: { $gt: 0 }, isVerified: true }).sort({ xp: -1 }).limit(4).select('displayName photoUrl xp level'); res.json(topUsers); } catch (e) { res.status(500).json([]); } });
-app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
-app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
-app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
 // ==============================================================
 // 👥 ROTA: BUSCAR APENAS CONTATOS COM CONVERSAS ATIVAS
@@ -139,6 +136,37 @@ app.get('/users/:myId', async (req, res) => {
     } catch (e) {
         console.error("Erro ao carregar contatos ativos:", e);
         res.status(500).json([]);
+    }
+});
+
+app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
+app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
+app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
+
+// ==========================================
+// 🔥 ROTAS PARA O MENU iOS DO CHAT
+// ==========================================
+
+// Rota Placeholder para Editar Mensagem (A implementar futuramente)
+app.put('/message/:msgId', async (req, res) => {
+    try {
+        const { newContent } = req.body;
+        // const msg = await Message.findByIdAndUpdate(req.params.msgId, { content: newContent });
+        // Se usar Sockets para avisar as outras pessoas, fazemos aqui!
+        res.json({ success: true, message: "Mensagem editada." });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro ao editar mensagem' });
+    }
+});
+
+// Rota Placeholder para Apagar Mensagem de Todos (A implementar futuramente)
+app.delete('/message/:msgId', async (req, res) => {
+    try {
+        // await Message.findByIdAndDelete(req.params.msgId);
+        // Se usar Sockets para avisar as outras pessoas, fazemos aqui!
+        res.json({ success: true, message: "Mensagem excluída para todos." });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro ao apagar mensagem' });
     }
 });
 

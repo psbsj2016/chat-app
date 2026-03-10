@@ -54,6 +54,14 @@
         #chat-box { padding: 15px 3% !important; display: flex; flex-direction: column; gap: 6px !important; }
         
         .message { position: relative; max-width: 82%; width: fit-content; padding: 8px 12px 22px 12px; border-radius: 14px; font-size: 17px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
+        
+        /* 🔥 EFEITO DA MENSAGEM SELECIONADA NO CHAT */
+        .selected-msg-active {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4) !important;
+            transform: scale(1.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
         .my-msg { align-self: flex-end; background-color: #005C4B; border-top-right-radius: 0px; color: #E9EDEF; }
         .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #005C4B; border-bottom: 10px solid transparent; }
         .other-msg { align-self: flex-start; background-color: #202C33; border-top-left-radius: 0px; border: none; color: #E9EDEF; }
@@ -87,7 +95,6 @@
 
         #message-input:empty::before { content: attr(data-placeholder); color: #94A3B8; pointer-events: none; display: block; }
         
-        /* Cores extra para bolinha de Status */
         .status-online { background-color: #10B981 !important; }
         .status-offline { background-color: #EF4444 !important; }
     </style>
@@ -116,6 +123,7 @@
         <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
             <button class="icon-btn" onclick="clearContactSelection()"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
             <span id="action-bar-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
+            
             <div style="display: flex; align-items: center; gap: 15px;">
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkScheduleModal()" title="Agendar Mensagem">schedule_send</span>
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkCreateGroupModal()" title="Criar Grupo">group_add</span>
@@ -404,7 +412,6 @@
     <div id="photo-viewer-modal" class="modal-overlay hidden" onclick="hideElement('photo-viewer-modal')" style="z-index: 9999; background: rgba(0,0,0,0.85);"><div style="position: relative; width: 90%; max-width: 350px; display: flex; justify-content: center; align-items: center; flex-direction: column;"><img id="viewer-photo" src="" style="width: 100%; height: auto; max-height: 60vh; object-fit: contain; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);"><button class="icon-btn" onclick="hideElement('photo-viewer-modal')" style="position: absolute; top: -60px; right: 0; background: rgba(255,255,255,0.2);"><span class="material-icons-round" style="color: white;">close</span></button></div></div>
     <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer()"></div>
     <div id="side-drawer" class="side-drawer"><div class="drawer-header"><img id="drawer-avatar" src="" onclick="openProfile()"><div class="drawer-user-info" onclick="openProfile()"><h3 id="drawer-name">Nome</h3><span id="drawer-email">email@cptt.com</span><div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;"><span class="badge-tech" style="background: var(--brand-secondary); color: white;">Nível <span id="drawer-level">1</span></span><span style="font-size: 12.5px; font-weight: 800; color: var(--brand-primary);"><span id="drawer-xp">0</span> XP</span></div></div></div><div class="drawer-content"><div class="drawer-section-title">Ferramentas</div><div class="drawer-item" onclick="openScheduleModal(); toggleDrawer()"><span class="material-icons-round">schedule_send</span> Agendar Mensagem</div><div class="drawer-item" onclick="openScheduledList(); toggleDrawer()"><span class="material-icons-round" style="color: var(--brand-secondary);">event_note</span> Meus Agendamentos</div><div class="drawer-item" onclick="document.getElementById('admin-modal').classList.remove('hidden'); toggleDrawer()"><span class="material-icons-round" style="color:#F59E0B">campaign</span> Aviso Geral</div><div class="drawer-section-title">Conta</div><div class="drawer-item" onclick="openProfile(); toggleDrawer()"><span class="material-icons-round">person</span> Meu Perfil</div><div class="drawer-item" onclick="openSettings(); toggleDrawer()"><span class="material-icons-round">settings</span> Configurações</div><div class="drawer-separator"></div><div class="drawer-item" style="color: #EF4444;" onclick="logout()"><span class="material-icons-round" style="color: #EF4444;">logout</span> Sair da Conta</div></div></div>
-    <div id="msg-context-menu" class="dropdown-menu hidden" style="position: fixed; z-index: 9999; width: 180px; padding: 5px 0;"><div id="btn-reply-msg" class="menu-item" onclick="initReply()" style="padding: 12px 20px;"><span class="material-icons-round" style="color:var(--brand-primary)">reply</span> Responder</div><div id="btn-copy-msg" class="menu-item" onclick="copySelectedMessage()" style="padding: 12px 20px;"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons-round">shortcut</span> Encaminhar</div></div>
     
     <div id="schedule-modal" class="modal-overlay hidden"><div class="modal-content"><h3 style="color:var(--brand-primary); margin-bottom:15px; font-size:22px; font-weight:800;">Agendar Mensagem</h3><select id="schedule-target" class="chic-input" style="padding:12px; margin-bottom:15px;"></select><input type="datetime-local" id="schedule-datetime" class="chic-input" style="padding:12px; margin-bottom:15px;"><textarea id="schedule-text" placeholder="Escreva a mensagem futura..." class="chic-input" style="resize:none; height:80px; padding:12px; margin-bottom:20px;"></textarea><div class="modal-actions" style="display:flex; gap:10px; width:100%;"><button onclick="closeScheduleModal()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="saveScheduledMessage()" class="chic-btn" style="flex:1; margin:0;">Agendar</button></div></div></div>
     
@@ -419,10 +426,10 @@
     </nav>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/core.js?v=3.0"></script>
-    <script src="/js/ui.js?v=3.0"></script>
-    <script src="/js/chat.js?v=3.0"></script>
-    <script src="/js/webrtc.js?v=3.0"></script>
-    <script src="/js/features.js?v=3.0"></script>
+    <script src="/js/core.js?v=4.0"></script>
+    <script src="/js/ui.js?v=4.0"></script>
+    <script src="/js/chat.js?v=4.0"></script>
+    <script src="/js/webrtc.js?v=4.0"></script>
+    <script src="/js/features.js?v=4.0"></script>
 </body>
 </html>

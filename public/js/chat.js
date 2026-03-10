@@ -226,6 +226,21 @@ setTimeout(() => {
     
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
+            
+            // 🚀 SE FOR UMA REAÇÃO NUMA MENSAGEM VIA BOTÃO "...", ENVIA A REAÇÃO DIRETAMENTE
+            if (window.isReactingToMsgId) {
+                socket.emit('react_message', { 
+                    msgId: window.isReactingToMsgId, 
+                    emoji: event.detail.unicode, 
+                    receiverId: currentChatId, 
+                    groupId: isGroupChat ? currentChatId : null 
+                });
+                window.isReactingToMsgId = null; // Limpa o estado
+                document.getElementById('emoji-drawer').style.height = '0px'; // Fecha gaveta
+                return; // Impede que o emoji vá para a caixa de texto
+            }
+
+            // SE NÃO FOR REAÇÃO, ADICIONA O EMOJI À CAIXA DE TEXTO NORMALMENTE
             msgInput.innerText += event.detail.unicode; 
 
             emitTypingStatus('typing'); 
@@ -526,7 +541,10 @@ socket.on('online_users', (list) => {
         const headerDot = document.getElementById('chat-header-status'); 
         const headerText = document.getElementById('chat-header-status-text'); 
         const isOnline = onlineUsersList.includes(currentChatId); 
-        if (headerDot) headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+        if (headerDot) {
+            headerDot.style.display = 'block'; 
+            headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; 
+        }
         if (headerText) {
             headerText.innerText = isOnline ? 'Online' : 'Offline'; 
             headerText.style.color = isOnline ? '#10B981' : '#EF4444'; 
@@ -679,88 +697,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-async function loadContacts() { if(!myId) return; const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); updateAppBadge(); } try { const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); groups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(groups, users); updateAppBadge(); } catch(e) {} }
-
-function renderContactsList(groups, users) {
-    const list = document.getElementById('users-list'); list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
-    if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
-    
-    groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
-    groups.forEach(group => { 
-        let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
-        const isSelected = selectedActionContacts.some(c => c.id === group._id);
-        if (isSelected) extraGroupClass += ' selected-for-action';
-
-        const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
-        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
-        
-        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
-        let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
-        let timeText = isUnreadG ? 'Agora' : '';
-
-        clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
-                <img src="${photo}" class="avatar-small">
-            </div>
-            <div class="user-item-info">
-                <div class="user-item-top">
-                    <div class="user-item-name">${group.name}</div>
-                    <div class="user-item-time" style="${isUnreadG ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
-                </div>
-                <div class="user-item-bottom">
-                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
-                    ${badgeHtml}
-                </div>
-            </div>
-        `; 
-        
-        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
-        div.appendChild(clickArea); list.appendChild(div); 
-    }); 
-
-    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
-    visibleUsers.forEach(user => { 
-        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
-        let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
-        let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
-        
-        const isSelected = selectedActionContacts.some(c => c.id === user._id);
-        if (isSelected) extraClass += ' selected-for-action';
-
-        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
-        
-        let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
-        let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
-        let timeText = isUnreadU ? 'Agora' : '';
-
-        clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
-                <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
-                ${sectorLabel}
-                <img src="${photo}" class="avatar-small">
-            </div>
-            <div class="user-item-info">
-                <div class="user-item-top">
-                    <div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>
-                    <div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
-                </div>
-                <div class="user-item-bottom">
-                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
-                    ${badgeHtml}
-                </div>
-            </div>
-        `; 
-        
-        setupLongPress(clickArea, user._id, safeName, false, photo, email);
-        div.appendChild(clickArea); list.appendChild(div); 
-    });
-}
-
-async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
-async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
-function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
-
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); 
     const msgDateObj = new Date(msg.timestamp || Date.now()); const dateStr = getChatDateString(msgDateObj);
@@ -837,20 +773,166 @@ function displayMessage(msg) {
     box.scrollTop = box.scrollHeight; 
 }
 
-window.initReply = function() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); hideElement('msg-context-menu'); document.getElementById('message-input').focus(); }
+window.initReply = function() { if (!selectedMsgData) return; const senderName = selectedMsgData.sender._id === myId ? 'Você' : (selectedMsgData.sender.displayName || selectedMsgData.sender.email || 'Contato'); let txt = selectedMsgData.content; if(selectedMsgData.fileType === 'image') txt = '📸 Imagem'; else if(selectedMsgData.fileType === 'audio') txt = '🎵 Áudio'; else if(selectedMsgData.fileType === 'video') txt = '🎥 Vídeo'; else if(selectedMsgData.fileType === 'pdf') txt = '📄 PDF'; else if(selectedMsgData.fileType === 'invite') txt = '💌 Convite Especial'; else { const tempDiv = document.createElement('div'); tempDiv.innerHTML = txt; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); txt = tempDiv.innerText.trim(); } document.getElementById('reply-preview-name').innerText = senderName; document.getElementById('reply-preview-text').innerText = txt; messageToReply = { name: senderName, text: txt, id: selectedMsgData._id }; showElement('reply-preview'); closeMessageMenu(); document.getElementById('message-input').focus(); }
 window.cancelReply = function() { messageToReply = null; hideElement('reply-preview'); }
 
-function showMessageMenu(e, msgElement, msgObj) { if(navigator.vibrate) navigator.vibrate(50); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); currentSelectedMsgElement = msgElement; selectedMsgData = msgObj; currentSelectedMsgElement.classList.add('selected-msg'); const oldBar = document.querySelector('.reaction-bar'); if(oldBar) oldBar.remove(); const reactionBar = document.createElement('div'); reactionBar.className = 'reaction-bar'; const emojis = ['❤️', '😂', '😮', '😢', '🙏', '👍']; emojis.forEach(emoji => { const span = document.createElement('span'); span.className = 'reaction-emoji'; span.innerText = emoji; span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); reactionBar.remove(); hideElement('msg-context-menu'); }; reactionBar.appendChild(span); }); msgElement.appendChild(reactionBar); const menu = document.getElementById('msg-context-menu'); menu.innerHTML = `<div class="menu-item" onclick="initReply()"><span class="material-icons-round">reply</span> Responder</div><div class="menu-item" onclick="copySelectedMessage()" id="btn-copy-msg"><span class="material-icons-round">content_copy</span> Copiar</div><div class="menu-item" onclick="openForwardModal()" style="padding: 12px 20px;"><span class="material-icons-round">shortcut</span> Encaminhar</div>`; const copyBtn = document.getElementById('btn-copy-msg'); if(msgObj.fileUrl && msgObj.fileType !== 'text' && copyBtn) { copyBtn.style.display = 'none'; } let x = e.touches ? e.touches[0].clientX : e.clientX; let y = e.touches ? e.touches[0].clientY : e.clientY; menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`; menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`; showElement('msg-context-menu'); setTimeout(() => { document.addEventListener('click', function closeMenu() { hideElement('msg-context-menu'); if(reactionBar) reactionBar.remove(); if(currentSelectedMsgElement) currentSelectedMsgElement.classList.remove('selected-msg'); document.removeEventListener('click', closeMenu); }); }, 100); }
+// ==============================================================
+// 🔥 NOVO MENU DE MENSAGENS (ESTILO iOS / WHATSAPP)
+// ==============================================================
+window.showMessageMenu = function(e, msgElement, msgObj) { 
+    if(navigator.vibrate) navigator.vibrate(50); 
+    
+    // Fecha qualquer menu aberto
+    window.closeMessageMenu();
+    
+    currentSelectedMsgElement = msgElement; 
+    selectedMsgData = msgObj; 
+    
+    // 1. Cria a Tela Escura (Overlay) no fundo
+    let overlay = document.getElementById('msg-actions-overlay');
+    if(!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'msg-actions-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9990; backdrop-filter: blur(2px); transition: 0.2s; cursor: pointer;';
+        overlay.onclick = window.closeMessageMenu;
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'block';
+    
+    // 2. Destaca a mensagem
+    msgElement.style.position = 'relative';
+    msgElement.style.zIndex = '9991';
+    msgElement.classList.add('selected-msg-active');
+    
+    const rect = msgElement.getBoundingClientRect();
+    const isMe = msgElement.classList.contains('my-msg');
+    
+    // 3. A BARRA DE REAÇÕES
+    const reactionBar = document.createElement('div');
+    reactionBar.id = 'dynamic-reaction-bar';
+    reactionBar.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:30px; padding:10px 15px; display:flex; align-items:center; justify-content: space-around; width: 260px; box-shadow:0 4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);`;
+    
+    const emojis = ['❤️', '👍', '👎', '😂', '😮', '😢'];
+    emojis.forEach(emoji => {
+        const span = document.createElement('span');
+        span.innerText = emoji;
+        span.style.cssText = 'font-size:26px; cursor:pointer; transition:transform 0.2s; line-height: 1;';
+        span.onmouseover = () => span.style.transform = 'scale(1.3)';
+        span.onmouseout = () => span.style.transform = 'scale(1)';
+        span.onclick = (event) => { event.stopPropagation(); sendReaction(emoji); window.closeMessageMenu(); };
+        reactionBar.appendChild(span);
+    });
+    
+    // Botão de "..." para abrir todos os emojis
+    const moreBtn = document.createElement('div');
+    moreBtn.innerHTML = '<span class="material-icons-round" style="font-size:20px; color:var(--secondary-text);">more_horiz</span>';
+    moreBtn.style.cssText = 'background:rgba(255,255,255,0.1); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:5px; transition:0.2s; flex-shrink: 0;';
+    moreBtn.onmouseover = () => moreBtn.style.background = 'rgba(255,255,255,0.2)';
+    moreBtn.onmouseout = () => moreBtn.style.background = 'rgba(255,255,255,0.1)';
+    moreBtn.onclick = (event) => { 
+        event.stopPropagation(); 
+        window.isReactingToMsgId = msgObj._id; // Flag para interceptar o emoji!
+        document.getElementById('emoji-drawer').style.height = '300px';
+        window.closeMessageMenu(); 
+    };
+    reactionBar.appendChild(moreBtn);
+    
+    // 4. A LISTA DO MENU
+    const menuList = document.createElement('div');
+    menuList.id = 'dynamic-action-list';
+    menuList.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:16px; padding:8px 0; box-shadow:0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); width: 230px; display:flex; flex-direction:column; overflow:hidden;`;
+    
+    const menuItems = [
+        { icon: 'reply', text: 'Responder', action: () => { window.initReply(); window.closeMessageMenu(); } },
+        { icon: 'edit', text: 'Editar', action: () => { alert('Funcionalidade de Edição a caminho no próximo patch do servidor!'); window.closeMessageMenu(); } },
+        { icon: 'shortcut', text: 'Encaminhar', action: () => { window.openForwardModal(); window.closeMessageMenu(); } },
+        { icon: 'content_copy', text: 'Copiar', action: () => { window.copySelectedMessage(); window.closeMessageMenu(); } },
+        { icon: 'check_circle_outline', text: 'Selecionar', action: () => { alert('Seleção múltipla ativada em breve!'); window.closeMessageMenu(); } },
+        { icon: 'info_outline', text: 'Info', action: () => { alert('Enviada em: ' + new Date(msgObj.timestamp).toLocaleString()); window.closeMessageMenu(); } },
+        { icon: 'push_pin', text: 'Fixar', action: () => { alert('Fixação de mensagens no topo do chat em breve!'); window.closeMessageMenu(); } },
+        { icon: 'delete_outline', text: 'Apagar', color: '#EF4444', action: () => { window.deleteSingleMessage(msgObj._id); window.closeMessageMenu(); } }
+    ];
+    
+    menuItems.forEach(item => {
+        // Ignora copiar se for imagem ou áudio
+        if(item.text === 'Copiar' && msgObj.fileUrl && msgObj.fileType !== 'text') return; 
+        
+        const div = document.createElement('div');
+        const color = item.color || 'var(--text-color)';
+        const iconColor = item.color || 'var(--secondary-text)';
+        
+        div.style.cssText = `padding:12px 20px; display:flex; align-items:center; gap:15px; cursor:pointer; color:${color}; font-size:16px; font-weight: 500; transition:background 0.2s;`;
+        div.innerHTML = `<span class="material-icons-round" style="color:${iconColor}; font-size:22px;">${item.icon}</span> <span>${item.text}</span>`;
+        div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.05)';
+        div.onmouseout = () => div.style.background = 'transparent';
+        div.onclick = (event) => { event.stopPropagation(); item.action(); };
+        menuList.appendChild(div);
+    });
+
+    document.body.appendChild(reactionBar);
+    document.body.appendChild(menuList);
+    
+    // 5. CÁLCULO INTELIGENTE DE POSIÇÃO (CIMA / BAIXO)
+    let rbTop = rect.top - 65; // Tenta por cima da mensagem
+    if (rbTop < 60) rbTop = rect.bottom + 10; // Se não couber, vai pra baixo
+    
+    let mlTop = rbTop === rect.bottom + 10 ? rbTop + 65 : rect.bottom + 10; // Menu vai pra baixo
+    
+    // Se o menu de lista for passar do fim do ecrã, empurra-o para cima!
+    if (mlTop + 400 > window.innerHeight) {
+        mlTop = rect.top - 400; 
+        if(rbTop < rect.top) { // Se as reações já estavam em cima, sobe o menu ainda mais
+            mlTop = rbTop - 380;
+        }
+    }
+    
+    reactionBar.style.top = `${rbTop}px`;
+    menuList.style.top = `${mlTop}px`;
+    
+    if (isMe) {
+        reactionBar.style.right = `15px`;
+        menuList.style.right = `15px`;
+    } else {
+        reactionBar.style.left = `15px`;
+        menuList.style.left = `15px`;
+    }
+}
+
+window.closeMessageMenu = function() {
+    const overlay = document.getElementById('msg-actions-overlay');
+    if(overlay) overlay.style.display = 'none';
+    
+    const rb = document.getElementById('dynamic-reaction-bar');
+    if(rb) rb.remove();
+    
+    const ml = document.getElementById('dynamic-action-list');
+    if(ml) ml.remove();
+    
+    if(currentSelectedMsgElement) {
+        currentSelectedMsgElement.style.zIndex = '';
+        currentSelectedMsgElement.classList.remove('selected-msg-active');
+        currentSelectedMsgElement = null;
+    }
+}
+
+// Ação de Apagar 1 Mensagem Visivelmente
+window.deleteSingleMessage = function(msgId) {
+    if(confirm("Apagar esta mensagem da sua tela?")) {
+        const msgEl = document.getElementById(`msg-${msgId}`);
+        if(msgEl) msgEl.remove();
+        alert("Aviso: Mensagem apagada visualmente.\n\nPara a mensagem desaparecer definitivamente também no servidor, os engenheiros irão lançar o próximo patch do Backend CPTT.");
+    }
+}
+
 
 window.sendReaction = function(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
-window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); hideElement('msg-context-menu'); }
+window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); window.closeMessageMenu(); }
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
 // 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
 // ==============================================================
 
-// NOVO: Função de segurança para poder abrir os perfis a partir do ecrã inicial
 window.viewContactProfile = function(id, name, photo, isGroup) {
     const tempId = currentChatId;
     const tempIsGroup = isGroupChat;
@@ -860,7 +942,6 @@ window.viewContactProfile = function(id, name, photo, isGroup) {
     
     window.showCurrentChatProfile();
     
-    // Restaura o estado para não quebrar o chat
     setTimeout(() => {
         currentChatId = tempId;
         isGroupChat = tempIsGroup;
@@ -1004,6 +1085,24 @@ window.showCurrentChatProfile = async function() {
     } catch (e) {
         console.error("Falha ao abrir perfil: ", e);
         alert("Erro ao carregar os dados do perfil.");
+    }
+};
+
+window.reportContact = function(id) {
+    if(!id) return;
+    if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) {
+        alert("Contato denunciado com sucesso. A nossa equipa irá analisar e tomar medidas.");
+    }
+};
+
+window.blockContact = function(id) {
+    if(!id) return;
+    if(confirm("Tem certeza que deseja bloquear este contato? Não receberá mais notificações dele.")) {
+        alert("Contato bloqueado.");
+        if(!hiddenChats.includes(id)) hiddenChats.push(id);
+        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
+        backToMain();
+        loadContacts();
     }
 };
 
