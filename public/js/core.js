@@ -30,14 +30,6 @@ var hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || [];
 var audioCtx = null;
 var deferredPrompt;
 
-// 🔥 FECHA O LOGIN INSTANTANEAMENTE SE JÁ HOUVER TOKEN (SEM ESPERAR PELO SERVIDOR)
-if (token && myId) {
-    document.addEventListener("DOMContentLoaded", () => {
-        const authScreen = document.getElementById('auth-screen');
-        if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
-    });
-}
-
 // ==============================================================
 // 📱 MOTOR PWA E PERMISSÕES
 // ==============================================================
@@ -110,7 +102,7 @@ async function handleAuth() {
             
             if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
             
-            if (isRegistering) { localStorage.setItem('isFirstLogin', 'true'); showWelcomeScreen(); } else { checkAndShowPermissions(); } 
+            if (isRegistering) { localStorage.setItem('isFirstLogin', 'true'); showWelcomeScreen(); } else { window.location.reload(); } 
         } else { 
             alert(data.error || 'Erro na autenticação.'); 
         } 
@@ -122,23 +114,17 @@ async function handleAuth() {
 }
 
 // ==============================================================
-// ⚡ INICIALIZAÇÃO MASTER (OFFLINE-FIRST)
+// ⚡ INICIALIZAÇÃO MASTER (NATIVA SEM ESPERAS)
 // ==============================================================
 function initApp() { 
     myId = localStorage.getItem('myId');
     token = localStorage.getItem('token');
-    
-    const localFont = localStorage.getItem('fontSize') || 'medium'; 
-    document.body.classList.add(`font-${localFont}`); 
     
     if (!socket && typeof io !== 'undefined') { try { socket = io(); } catch(e){} }
     
     const authScreen = document.getElementById('auth-screen');
 
     if(token && myId) { 
-        // Esconde imediatamente a tela
-        if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
-        
         if (typeof showMainScreen === 'function') showMainScreen();
 
         const headerAvatar = document.getElementById('header-my-avatar'); 
@@ -167,18 +153,8 @@ function initApp() {
 function logout() { if (confirm("Sair?")) { localStorage.clear(); window.location.reload(); } }
 async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try { await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); logout(); } catch (e) {} } }
 
-// 💣 O VIGIA DE ARRANQUE: Seguro contra falhas e quebras de código
-let bootAttempts = 0;
-const bootInterval = setInterval(() => {
-    if (typeof showMainScreen === 'function' && typeof loadContacts === 'function') {
-        clearInterval(bootInterval);
-        initApp();
-    } else {
-        // Se as funções demorarem muito a carregar (erro no chat.js), força o arranque mesmo assim
-        if (bootAttempts > 20) {
-            clearInterval(bootInterval);
-            initApp();
-        }
-    }
-    bootAttempts++;
-}, 100);
+// BOOT IMEDIATO QUANDO OS FICHEIROS ACABAM DE CARREGAR
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+    if (typeof loadContacts === 'function') loadContacts();
+});

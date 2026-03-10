@@ -8,15 +8,27 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="favicon.png">
-
     <link rel="icon" href="favicon.png" type="image/png">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     
+    <script>
+        (function() {
+            var token = localStorage.getItem('token');
+            var myId = localStorage.getItem('myId');
+            if (token && myId) {
+                // Se já tem login, injeta CSS para esconder o Login ANTES de ele ser desenhado na tela!
+                document.write('<style>#auth-screen { display: none !important; } #main-screen { display: block !important; }</style>');
+                
+                // Aplica Fonte e Tema Escuro em milissegundos
+                var font = localStorage.getItem('fontSize') || 'medium';
+                document.documentElement.classList.add('font-' + font);
+                if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -55,19 +67,13 @@
         
         .message { position: relative; max-width: 82%; width: fit-content; padding: 8px 12px 22px 12px; border-radius: 14px; font-size: 17px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0,0,0,0.15); word-wrap: break-word; }
         
-        /* 🔥 EFEITO DA MENSAGEM SELECIONADA NO CHAT */
-        .selected-msg-active {
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4) !important;
-            transform: scale(1.02);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+        .selected-msg-active { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4) !important; transform: scale(1.02); transition: transform 0.2s, box-shadow 0.2s; }
 
         /* Balões Estilo ChatPTT (Azul e Slate) */
-.my-msg { align-self: flex-end; background-color: #3B82F6; border-top-right-radius: 0px; color: #FFFFFF; }
-.my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #3B82F6; border-bottom: 10px solid transparent; }
-
-.other-msg { align-self: flex-start; background-color: #1E293B; border-top-left-radius: 0px; border: none; color: #F8FAFC; }
-.other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid #1E293B; border-bottom: 10px solid transparent; }
+        .my-msg { align-self: flex-end; background-color: #3B82F6; border-top-right-radius: 0px; color: #FFFFFF; }
+        .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #3B82F6; border-bottom: 10px solid transparent; }
+        .other-msg { align-self: flex-start; background-color: #1E293B; border-top-left-radius: 0px; border: none; color: #F8FAFC; }
+        .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid #1E293B; border-bottom: 10px solid transparent; }
         
         .chat-date-divider { text-align: center; margin: 10px 0; }
         .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 6px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -123,18 +129,13 @@
 
     <div id="main-screen" class="app-screen hidden">
         <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-            
             <button class="icon-btn" onclick="clearContactSelection()" style="background: rgba(255,255,255,0.2); border-radius: 50%; padding: 6px; margin-right: 15px;">
                 <span class="material-icons-round" style="color: #FFFFFF; font-size: 24px;">close</span>
             </button>
-            
             <span id="action-bar-count" style="flex: 1; font-weight: 800; font-size: 18px; color: #FFFFFF; letter-spacing: 0.5px;">1 Selecionado</span>
-            
             <div style="display: flex; align-items: center; gap: 20px;">
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #FFFFFF !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="openBulkScheduleModal()" title="Agendar Mensagem">schedule_send</span>
-                
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #FFFFFF !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="openBulkCreateGroupModal()" title="Criar Grupo">group_add</span>
-                
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #ff4d4d !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="promptBulkDeleteChat()" title="Apagar Selecionados">delete</span>
             </div>
         </div>  
@@ -151,11 +152,7 @@
     <div id="chat-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden;">
         
         <div class="header" style="display: flex; align-items: center; padding: max(10px, env(safe-area-inset-top)) 5px 10px 5px; background: var(--card-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 10; width: 100%; box-sizing: border-box;">
-            
-            <div style="display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s;" onclick="backToMain()">
-                <span class="material-icons-round" style="color: var(--text-color); font-size: 26px;">arrow_back</span>
-            </div>
-            
+            <div style="display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s;" onclick="backToMain()"><span class="material-icons-round" style="color: var(--text-color); font-size: 26px;">arrow_back</span></div>
             <div style="display: flex; align-items: center; flex: 1; margin-left: 5px; cursor: pointer; min-width: 0; padding: 4px; border-radius: 12px; transition: background-color 0.2s;" onclick="showCurrentChatProfile()" onmouseover="this.style.backgroundColor='rgba(0,0,0,0.05)'" onmouseout="this.style.backgroundColor='transparent'">
                 <img id="chat-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block; margin-right: 12px;">
                 <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
@@ -166,12 +163,10 @@
                     </div>
                 </div>
             </div>
-
             <div style="display: flex; gap: 15px; color: var(--text-color); flex-shrink: 0; padding-right: 10px; position: relative; align-items: center;">
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="initVideoCall(currentChatId, true)">videocam</span>
                 <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, false)">call</span>
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
-                
                 <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="top: 40px; right: 0;">
                     <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round">search</span> Buscar</div>
                     <div class="menu-item" onclick="showCurrentChatProfile(); toggleMenu('chat-options-menu')"><span class="material-icons-round">person</span> Exibir Perfil</div>
@@ -186,13 +181,11 @@
 
         <div id="in-chat-search-bar" class="hidden" style="background: var(--card-bg); border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 9; box-shadow: 0 4px 15px rgba(0,0,0,0.2); padding: 10px;">
             <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                
                 <div style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 20px; padding: 4px 12px; border: 1px solid rgba(255,255,255,0.05); min-width: 0;">
                     <span class="material-icons-round" style="font-size: 18px; color: var(--secondary-text); margin-right: 6px; flex-shrink: 0;">search</span>
                     <input type="text" id="in-chat-search-input" placeholder="Buscar no chat..." style="background: transparent; border: none; outline: none; color: var(--text-color); width: 100%; font-size: 15px; font-weight: 500; min-width: 0;" oninput="handleInChatSearch(this.value)">
                     <span id="in-chat-search-counter" style="font-size: 12px; color: var(--brand-primary); font-weight: 800; margin-left: 6px; flex-shrink: 0; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 10px;">0/0</span>
                 </div>
-
                 <div style="display: flex; align-items: center; background: var(--input-bg); border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;">
                     <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.05); border-radius: 14px 0 0 14px; width: 32px; height: 32px;">
                         <span class="material-icons-round" style="font-size: 20px; color: var(--text-color);">keyboard_arrow_up</span>
@@ -201,11 +194,9 @@
                         <span class="material-icons-round" style="font-size: 20px; color: var(--text-color);">keyboard_arrow_down</span>
                     </button>
                 </div>
-
                 <button class="icon-btn" onclick="closeChatSearch()" style="padding: 6px; flex-shrink: 0; background: rgba(239, 68, 68, 0.1); border-radius: 50%; width: 32px; height: 32px;">
                     <span class="material-icons-round" style="font-size: 18px; color: #EF4444;">close</span>
                 </button>
-                
             </div>
         </div>
 
@@ -232,22 +223,12 @@
             </div>
 
             <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
-                
                 <div id="chat-input-container" style="flex: 1; display: flex; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box;">
-                    
-                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;">
-                        <span class="material-icons-round" style="font-size: 26px;">mood</span>
-                    </button>
-                    
+                    <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
                     <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; min-width: 0;"></div>
-                    
                     <div id="btn-attach-wrapper" style="display: flex; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
-                        <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg);">
-                            <span class="material-icons-round" style="font-size: 24px;">attach_file</span>
-                        </button>
-                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none;">
-                            <span class="material-icons-round" style="font-size: 24px;">camera_alt</span>
-                        </button>
+                        <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg);"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
+                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
                     </div>
                 </div>
 
@@ -262,25 +243,18 @@
                             <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
                         </div>
                     </div>
-
                     <div id="recording-preview-state" class="hidden" style="display:flex; align-items:center; justify-content:space-between; width:100%; height: 100%;">
                         <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                        
                         <div style="flex:1; display:flex; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden;">
                             <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
-                            <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;">
-                                <div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div>
-                            </div>
+                            <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;"><div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div></div>
                             <div style="font-size:12px; color:var(--text-muted); font-family:monospace;" id="preview-timer-total">0:00</div>
                         </div>
-
                         <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
 
-                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()">
-                    <span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span>
-                </button>
+                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
             </div>
 
             <div id="emoji-drawer">
@@ -450,11 +424,11 @@
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/core.js?v=4.0"></script>
-    <script src="/js/ui.js?v=4.0"></script>
-    <script src="/js/chat.js?v=4.0"></script>
-    <script src="/js/webrtc.js?v=4.0"></script>
-    <script src="/js/features.js?v=4.0"></script>
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script src="/js/core.js?v=5.0" defer></script>
+    <script src="/js/ui.js?v=5.0" defer></script>
+    <script src="/js/chat.js?v=5.0" defer></script>
+    <script src="/js/webrtc.js?v=5.0" defer></script>
+    <script src="/js/features.js?v=5.0" defer></script>
 </body>
 </html>
