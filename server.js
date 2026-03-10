@@ -11,7 +11,6 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
-// Importando os Módulos da Nova Arquitetura
 const { aegisMiddleware, rateLimiter } = require('./src/security');
 const { initSockets } = require('./src/websockets');
 const { startCronJobs } = require('./src/scheduler');
@@ -22,7 +21,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// Ligar Sockets e Cron
 initSockets(io);
 startCronJobs();
 
@@ -32,9 +30,6 @@ app.use(express.json());
 app.use('/api/english', require('./src/english/english.routes'));
 app.use(express.static('public', { etag: false, setHeaders: (res) => { res.setHeader('Cache-Control', 'no-store, no-cache'); } }));
 
-// ==============================================================
-// 🗄️ COFRE DE MÍDIAS NO MONGODB (ANTI-APAGÃO DO RAILWAY)
-// ==============================================================
 const dbFileSchema = new mongoose.Schema({
     data: Buffer,
     contentType: String,
@@ -42,21 +37,16 @@ const dbFileSchema = new mongoose.Schema({
 });
 const DbFile = mongoose.model('DbFile', dbFileSchema);
 
-// ==============================================================
-// 📎 MOTOR DE UPLOAD (NA NUVEM OU NA BASE DE DADOS)
-// ==============================================================
 let storage;
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
     cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
     storage = new CloudinaryStorage({ cloudinary: cloudinary, params: { folder: 'chatptt_media', resource_type: 'auto' } });
     console.log("☁️ Sistema de Arquivos: Cloudinary Ativado.");
 } else {
-    // Se não tiver Cloudinary, usa a Memória para injetar direto no MongoDB!
     storage = multer.memoryStorage();
     console.log("🛡️ Sistema de Arquivos: MongoDB File Vault Ativado.");
 }
 
-// Limite de 15MB para não explodir a base de dados
 const upload = multer({ storage: storage, limits: { fileSize: 15 * 1024 * 1024 } }); 
 
 mongoose.connect(process.env.MONGO_URI).then(() => {
@@ -64,10 +54,6 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     models.initializeAIBot(); 
     require('./src/english/english.service').seedEnglishCatalog();
 }).catch(err => console.error("Erro MongoDB:", err));
-
-// ==============================================================
-// 🌐 API GATEWAY (ROTAS HTTP REST)
-// ==============================================================
 
 app.post('/register', rateLimiter, async (req, res) => { 
     const { email, password, displayName } = req.body; 
@@ -103,40 +89,18 @@ app.get('/user/:id', async (req, res) => { try { const u = await User.findById(r
 app.get('/bot-info', async (req, res) => { try { res.json(await User.findById(models.getBotUserId()).select('-password')); } catch(e){ res.status(500).json({}); } }); 
 app.get('/leaderboard', async (req, res) => { try { const topUsers = await User.find({ xp: { $gt: 0 }, isVerified: true }).sort({ xp: -1 }).limit(4).select('displayName photoUrl xp level'); res.json(topUsers); } catch (e) { res.status(500).json([]); } });
 
-// ==============================================================
-// 👥 ROTA: BUSCAR APENAS CONTATOS COM CONVERSAS ATIVAS
-// ==============================================================
 app.get('/users/:myId', async (req, res) => {
     try {
         const myId = req.params.myId;
-        
-        // 1. Busca todas as mensagens onde o usuário atual enviou ou recebeu
-        const messages = await Message.find({
-            $or: [{ sender: myId }, { receiver: myId }]
-        });
-
-        // 2. Extrai apenas os IDs únicos das pessoas com quem ele conversou
+        const messages = await Message.find({ $or: [{ sender: myId }, { receiver: myId }] });
         const contactIds = new Set();
         messages.forEach(msg => {
-            if (msg.sender && msg.sender.toString() !== myId) {
-                contactIds.add(msg.sender.toString());
-            }
-            if (msg.receiver && msg.receiver.toString() !== myId) {
-                contactIds.add(msg.receiver.toString());
-            }
+            if (msg.sender && msg.sender.toString() !== myId) contactIds.add(msg.sender.toString());
+            if (msg.receiver && msg.receiver.toString() !== myId) contactIds.add(msg.receiver.toString());
         });
-
-        // 3. Procura na base de dados APENAS os usuários que estão na lista
-        const activeUsers = await User.find({ 
-            _id: { $in: Array.from(contactIds) }, 
-            isVerified: true 
-        }).select('-password -code');
-        
+        const activeUsers = await User.find({ _id: { $in: Array.from(contactIds) }, isVerified: true }).select('-password -code');
         res.json(activeUsers);
-    } catch (e) {
-        console.error("Erro ao carregar contatos ativos:", e);
-        res.status(500).json([]);
-    }
+    } catch (e) { res.status(500).json([]); }
 });
 
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
@@ -144,78 +108,54 @@ app.get('/search', async (req, res) => { const { query, myId } = req.query; if (
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
 // ==========================================
-// 🔥 ROTAS PARA O MENU iOS DO CHAT
+// 🔥 ROTAS PARA O MENU iOS DO CHAT (EDIÇÃO E EXCLUSÃO)
 // ==========================================
-
-// Rota Placeholder para Editar Mensagem (A implementar futuramente)
 app.put('/message/:msgId', async (req, res) => {
     try {
         const { newContent } = req.body;
-        // const msg = await Message.findByIdAndUpdate(req.params.msgId, { content: newContent });
-        // Se usar Sockets para avisar as outras pessoas, fazemos aqui!
+        const msg = await Message.findByIdAndUpdate(req.params.msgId, { content: newContent }, { new: true });
+        if (!msg) return res.status(404).json({ error: 'Not found' });
+        
+        // Emite a atualização via Sockets para a sala correta
+        if (msg.groupId) io.to(msg.groupId.toString()).emit('message_edited', { msgId: msg._id, newContent });
+        else {
+            io.to(msg.sender.toString()).emit('message_edited', { msgId: msg._id, newContent });
+            io.to(msg.receiver.toString()).emit('message_edited', { msgId: msg._id, newContent });
+        }
         res.json({ success: true, message: "Mensagem editada." });
-    } catch(e) {
-        res.status(500).json({ error: 'Erro ao editar mensagem' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro ao editar mensagem' }); }
 });
 
-// Rota Placeholder para Apagar Mensagem de Todos (A implementar futuramente)
 app.delete('/message/:msgId', async (req, res) => {
     try {
-        // await Message.findByIdAndDelete(req.params.msgId);
-        // Se usar Sockets para avisar as outras pessoas, fazemos aqui!
+        const msg = await Message.findById(req.params.msgId);
+        if (!msg) return res.status(404).json({ error: 'Not found' });
+        await Message.findByIdAndDelete(req.params.msgId);
+        
+        // Remove a mensagem nos dispositivos de quem está conectado
+        if (msg.groupId) io.to(msg.groupId.toString()).emit('message_deleted', { msgId: msg._id });
+        else {
+            io.to(msg.sender.toString()).emit('message_deleted', { msgId: msg._id });
+            io.to(msg.receiver.toString()).emit('message_deleted', { msgId: msg._id });
+        }
         res.json({ success: true, message: "Mensagem excluída para todos." });
-    } catch(e) {
-        res.status(500).json({ error: 'Erro ao apagar mensagem' });
-    }
+    } catch(e) { res.status(500).json({ error: 'Erro ao apagar mensagem' }); }
 });
 
-// ==========================================
-// 🚀 NOVA ROTA DE UPLOAD BLINDADA (MONGODB/CLOUD)
-// ==========================================
 app.post('/upload', (req, res) => { 
     upload.single('file')(req, res, async function (err) { 
-        if (err instanceof multer.MulterError) { 
-            return res.status(400).json({ error: 'Arquivo excede 15MB.' }); 
-        } else if (err) { 
-            return res.status(500).json({ error: 'Erro ao processar arquivo.' }); 
-        } 
+        if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'Arquivo excede 15MB.' }); } else if (err) { return res.status(500).json({ error: 'Erro ao processar arquivo.' }); } 
         if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro recebido.' }); 
-        
-        // Se tem Cloudinary, a URL já vem no path
-        if (process.env.CLOUDINARY_CLOUD_NAME) {
-            return res.json({ url: req.file.path, type: req.file.mimetype }); 
-        } 
-        
-        // Se NÃO tem Cloudinary, gravamos na Tabela DbFile do MongoDB
+        if (process.env.CLOUDINARY_CLOUD_NAME) { return res.json({ url: req.file.path, type: req.file.mimetype }); } 
         try {
-            const newFile = new DbFile({
-                data: req.file.buffer,
-                contentType: req.file.mimetype
-            });
+            const newFile = new DbFile({ data: req.file.buffer, contentType: req.file.mimetype });
             await newFile.save();
-            // Retorna o link mágico que o próprio servidor vai ler
             return res.json({ url: `/api/file/${newFile._id}`, type: req.file.mimetype });
-        } catch (dbErr) {
-            console.error(dbErr);
-            return res.status(500).json({ error: 'Falha ao salvar no Cofre DB.' });
-        }
+        } catch (dbErr) { return res.status(500).json({ error: 'Falha ao salvar no Cofre DB.' }); }
     }); 
 });
 
-// Rota Mágica que devolve as imagens gravadas no MongoDB para a tela
-app.get('/api/file/:id', async (req, res) => {
-    try {
-        const file = await DbFile.findById(req.params.id);
-        if (!file) return res.status(404).send('Arquivo não encontrado');
-        
-        res.set('Content-Type', file.contentType);
-        res.set('Cache-Control', 'public, max-age=31536000'); // Cache no navegador
-        res.send(file.data);
-    } catch(e) {
-        res.status(500).send('Erro na leitura da imagem.');
-    }
-});
+app.get('/api/file/:id', async (req, res) => { try { const file = await DbFile.findById(req.params.id); if (!file) return res.status(404).send('Arquivo não encontrado'); res.set('Content-Type', file.contentType); res.set('Cache-Control', 'public, max-age=31536000'); res.send(file.data); } catch(e) { res.status(500).send('Erro na leitura da imagem.'); } });
 
 app.put('/change-password', async (req, res) => { const { userId, currentPassword, newPassword } = req.body; try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Não encontrado' }); const isMatch = await bcrypt.compare(currentPassword, user.password); if (!isMatch) return res.status(400).json({ error: 'Incorreta!' }); user.password = await bcrypt.hash(newPassword, 10); await user.save(); res.json({ message: 'Ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.post('/forgot-password', async (req, res) => { const { email } = req.body; try { const user = await User.findOne({ email }); if (!user) return res.status(404).json({ error: 'Não encontrado.' }); const code = Math.floor(100000 + Math.random() * 900000).toString(); user.code = code; await user.save(); transporter.sendMail({ from: '"Chat PTT" <psbsj.2020@outlook.com>', to: email, subject: 'Recuperação', html: `<h1>${code}</h1>` }); res.json({ message: 'Enviado!' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
@@ -223,30 +163,9 @@ app.post('/reset-password', async (req, res) => { const { email, code, newPasswo
 app.delete('/delete-account/:userId', async (req, res) => { try { const uId = req.params.userId; await User.findByIdAndDelete(uId); await Message.deleteMany({ $or: [{ sender: uId }, { receiver: uId }] }); await Group.updateMany( { members: uId }, { $pull: { members: uId } } ); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 
-app.get('/api/statuses', async (req, res) => { 
-    try { 
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } }).populate('views.viewerId', 'displayName photoUrl').sort({ createdAt: 1 }); 
-        res.json(statuses); 
-    } catch(e) { res.status(500).json([]); } 
-});
+app.get('/api/statuses', async (req, res) => { try { const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000); const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } }).populate('views.viewerId', 'displayName photoUrl').sort({ createdAt: 1 }); res.json(statuses); } catch(e) { res.status(500).json([]); } });
 app.post('/api/status', async (req, res) => { try { const newStatus = new StatusMsg(req.body); await newStatus.save(); io.emit('new_status_published', newStatus); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
-app.post('/api/status/view', async (req, res) => {
-    try {
-        const { statusId, viewerId } = req.body;
-        const status = await StatusMsg.findById(statusId);
-        if (status && status.senderId.toString() !== viewerId) {
-            const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId);
-            if (!alreadyViewed) {
-                if(!status.views) status.views = [];
-                status.views.push({ viewerId: viewerId, viewedAt: new Date() });
-                await status.save();
-                io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId });
-            }
-        }
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ error: 'Erro' }); }
-});
+app.post('/api/status/view', async (req, res) => { try { const { statusId, viewerId } = req.body; const status = await StatusMsg.findById(statusId); if (status && status.senderId.toString() !== viewerId) { const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId); if (!alreadyViewed) { if(!status.views) status.views = []; status.views.push({ viewerId: viewerId, viewedAt: new Date() }); await status.save(); io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId }); } } res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) { res.status(500).json([]); } });

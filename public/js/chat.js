@@ -8,8 +8,11 @@ let selectedMsgData = null;
 let lastRenderedDate = null;
 
 window.selectedActionContacts = []; 
+window.editingMsgId = null;
+window.isMsgSelectionMode = false;
+window.selectedMessages = [];
 
-// LÓGICA DA BARRA DE SELEÇÃO MÚLTIPLA
+// LÓGICA DA BARRA DE SELEÇÃO MÚLTIPLA DE CONTATOS
 window.toggleContactSelection = function(id, name, isGroup) {
     const idx = selectedActionContacts.findIndex(c => c.id === id);
     const item = document.getElementById(`contact-${id}`);
@@ -155,7 +158,7 @@ window.closeScheduleModal = function() {
 };
 
 // ==============================================================
-// 🔎 PESQUISA NO CHAT
+// 🔎 PESQUISA E LÓGICA DE SELEÇÃO DE MENSAGENS
 // ==============================================================
 let chatSearchMatches = []; let currentSearchIndex = -1;
 window.openChatSearch = function() { showElement('in-chat-search-bar'); document.getElementById('in-chat-search-input').focus(); document.getElementById('in-chat-search-input').value = ''; document.getElementById('in-chat-search-counter').innerText = '0/0'; clearChatSearchHighlights(); };
@@ -176,11 +179,10 @@ function updateSearchHighlight() { chatSearchMatches.forEach(el => el.classList.
 function clearChatSearchHighlights() { const msgElements = document.querySelectorAll('#chat-box .msg-text-content'); msgElements.forEach(el => { if (el.hasAttribute('data-orig')) { el.innerHTML = el.getAttribute('data-orig'); el.removeAttribute('data-orig'); } }); chatSearchMatches = []; currentSearchIndex = -1; }
 
 // ==============================================================
-// 😊 GAVETA NATIVA DE EMOJIS (WHATSAPP STYLE)
+// 😊 GAVETA NATIVA DE EMOJIS
 // ==============================================================
 window.toggleEmojiPicker = function(e) { 
     if (e) e.stopPropagation(); 
-    
     const drawer = document.getElementById('emoji-drawer'); 
     if (drawer) {
         if (drawer.style.height === '300px') {
@@ -211,7 +213,6 @@ window.changeEmojiCategory = function(categoryName, element) {
             picker.activeCategory = categoryName;
         });
     }
-
     document.querySelectorAll('.category-icon').forEach(icon => icon.classList.remove('active'));
     if(element) element.classList.add('active');
 };
@@ -222,7 +223,6 @@ setTimeout(() => {
     
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
-            
             if (window.isReactingToMsgId) {
                 socket.emit('react_message', { 
                     msgId: window.isReactingToMsgId, 
@@ -239,7 +239,7 @@ setTimeout(() => {
 
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+            if(dynamicActionIcon && dynamicActionIcon.innerText !== 'send' && dynamicActionIcon.innerText !== 'check') { 
                 dynamicActionIcon.innerText = 'send'; 
             } 
         }); 
@@ -284,6 +284,8 @@ const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
 window.handleDynamicAction = function() { 
     if (dynamicActionIcon.innerText === 'mic') { 
+        window.editingMsgId = null; 
+        dynamicActionIcon.style.color = '';
         startRecording(); 
     } else { 
         if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
@@ -299,6 +301,7 @@ function resetDynamicButton() {
     if (dynamicActionIcon) { 
         dynamicActionIcon.innerText = 'mic'; 
         dynamicActionIcon.style.transform = 'scale(1)'; 
+        dynamicActionIcon.style.color = ''; 
     } 
 }
 
@@ -306,12 +309,12 @@ if (msgInputEl) {
     msgInputEl.addEventListener('input', () => { 
         const textLength = msgInputEl.innerText.trim().length; 
         if (textLength > 0) { 
-            if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send') { 
+            if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send' && dynamicActionIcon.innerText !== 'check') { 
                 dynamicActionIcon.innerText = 'send'; 
                 dynamicActionIcon.style.animation = 'popIn 0.2s ease'; 
             } 
         } else { 
-            resetDynamicButton(); 
+            if (!window.editingMsgId) resetDynamicButton(); 
         } 
         if (pendingAudioFile) { 
             pendingAudioFile = null; 
@@ -553,6 +556,21 @@ socket.on('typing', (data) => { if (data.senderId === myId) return; const target
 socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) { if (typeof hideElement === 'function') hideElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
+
+// Escutar as edições e deleções!
+socket.on('message_edited', (data) => {
+    const el = document.getElementById(`msg-${data.msgId}`);
+    if (el) {
+        const textSpan = el.querySelector('.msg-text-content');
+        if (textSpan) textSpan.innerText = data.newContent + ' (editado)';
+    }
+});
+
+socket.on('message_deleted', (data) => {
+    const el = document.getElementById(`msg-${data.msgId}`);
+    if (el) el.remove();
+});
+
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
 socket.on('receive_message', (msg) => {
@@ -605,6 +623,23 @@ async function executeUpload(file, type) {
 
 window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') { 
     const input = document.getElementById('message-input'); 
+    let content = textOverride || input.innerText.trim(); 
+    
+    // 🚀 LÓGICA DE EDIÇÃO (Salva no Backend e avisa o outro user)
+    if (window.editingMsgId && !fileUrl) {
+        fetch(`/message/${window.editingMsgId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ newContent: content })
+        });
+        window.editingMsgId = null;
+        input.innerHTML = ''; 
+        const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+        dynamicActionIcon.innerText = 'mic';
+        dynamicActionIcon.style.color = '';
+        return;
+    }
+    
     if (pendingAudioFile) { 
         const dataTransfer = new DataTransfer(); 
         dataTransfer.items.add(pendingAudioFile); 
@@ -614,7 +649,7 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
         handleFileUpload(document.getElementById('file-input')); 
         return; 
     } 
-    let content = textOverride || input.innerText.trim(); 
+    
     if(messageToReply && !fileUrl && !textOverride) { 
         content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; 
         cancelReply(); 
@@ -629,6 +664,47 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     if(!fileUrl) input.innerHTML = ''; 
 }
 
+// FIXAÇÃO DE MENSAGENS NO TOPO
+window.pinMessage = function(msgObj) {
+    const chatKey = isGroupChat ? `pinned_${currentChatId}` : `pinned_${[myId, currentChatId].sort().join('_')}`;
+    localStorage.setItem(chatKey, JSON.stringify(msgObj));
+    showPinnedMessage(msgObj);
+    socket.emit('react_message', { msgId: msgObj._id, emoji: '📌', receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null });
+}
+
+window.showPinnedMessage = function(msgObj) {
+    let banner = document.getElementById('pinned-msg-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'pinned-msg-banner';
+        banner.style.cssText = 'background:var(--card-bg); border-bottom:1px solid rgba(255,255,255,0.05); padding:10px 15px; display:flex; align-items:center; gap:10px; z-index:8; cursor:pointer;';
+        const chatBox = document.getElementById('chat-box');
+        chatBox.parentNode.insertBefore(banner, chatBox);
+    }
+    
+    let text = msgObj.content || 'Arquivo Mídia';
+    banner.innerHTML = `
+        <span class="material-icons-round" style="color:var(--brand-primary);">push_pin</span>
+        <div style="flex:1; overflow:hidden;">
+            <div style="font-size:12px; color:var(--brand-primary); font-weight:bold;">Mensagem Fixada</div>
+            <div style="font-size:13px; color:var(--text-color); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${text}</div>
+        </div>
+        <span class="material-icons-round" style="color:var(--secondary-text); padding:5px;" onclick="event.stopPropagation(); unpinMessage()">close</span>
+    `;
+    banner.onclick = () => {
+        const el = document.getElementById(`msg-${msgObj._id}`);
+        if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    };
+    banner.style.display = 'flex';
+}
+
+window.unpinMessage = function() {
+    const chatKey = isGroupChat ? `pinned_${currentChatId}` : `pinned_${[myId, currentChatId].sort().join('_')}`;
+    localStorage.removeItem(chatKey);
+    const banner = document.getElementById('pinned-msg-banner');
+    if(banner) banner.style.display = 'none';
+}
+
 window.openChat = function(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
     unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
@@ -638,6 +714,12 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (typeof showElement === 'function') { showElement('chat-screen'); hideElement('typing-indicator'); }
     
     closeChatSearch(); lastRenderedDate = null; 
+    
+    // Mostra Mensagem Fixada
+    const chatKey = isGroupChat ? `pinned_${id}` : `pinned_${[myId, id].sort().join('_')}`;
+    const pinnedData = localStorage.getItem(chatKey);
+    if(pinnedData) { showPinnedMessage(JSON.parse(pinnedData)); } 
+    else { const b = document.getElementById('pinned-msg-banner'); if(b) b.style.display = 'none'; }
     
     const emojiDrawer = document.getElementById('emoji-drawer');
     if (emojiDrawer) emojiDrawer.style.height = '0px';
@@ -691,7 +773,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🚀 REPOSIÇÃO TOTAL DA CARGA DE CONTACTOS E ECRÃ PRINCIPAL
+// 🚀 REPOSIÇÃO TOTAL DA CARGA DE CONTACTOS
 window.loadContacts = async function() { 
     if(!myId) return; 
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
@@ -721,52 +803,27 @@ window.loadContacts = async function() {
         groups.forEach(g => socket.emit('join_group', g._id)); 
         renderContactsList(groups, users); 
         updateAppBadge(); 
-    } catch(e) {
-        console.error("Falha ao atualizar contatos da nuvem", e);
-    } 
+    } catch(e) {} 
 }
 
 window.renderContactsList = function(groups, users) {
     const list = document.getElementById('users-list'); 
     if(!list) return;
-    
     list.innerHTML = ''; 
     const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
-    
-    if (groups.length === 0 && visibleUsers.length === 0) { 
-        list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; 
-        return; 
-    }
+    if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
     groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
     groups.forEach(group => { 
         let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
         const isSelected = selectedActionContacts.some(c => c.id === group._id);
         if (isSelected) extraGroupClass += ' selected-for-action';
-
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
-        
         let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
         let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadG ? 'Agora' : '';
-
-        clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
-                <img src="${photo}" class="avatar-small">
-            </div>
-            <div class="user-item-info">
-                <div class="user-item-top">
-                    <div class="user-item-name">${group.name}</div>
-                    <div class="user-item-time" style="${isUnreadG ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
-                </div>
-                <div class="user-item-bottom">
-                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
-                    ${badgeHtml}
-                </div>
-            </div>
-        `; 
-        
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${group._id}', '${safeName}', '${photo}', true)"><img src="${photo}" class="avatar-small"></div><div class="user-item-info"><div class="user-item-top"><div class="user-item-name">${group.name}</div><div class="user-item-time" style="${isUnreadG ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div></div><div class="user-item-bottom"><div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>${badgeHtml}</div></div>`; 
         setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
         div.appendChild(clickArea); list.appendChild(div); 
     }); 
@@ -777,34 +834,13 @@ window.renderContactsList = function(groups, users) {
         const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
         let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
-        
         const isSelected = selectedActionContacts.some(c => c.id === user._id);
         if (isSelected) extraClass += ' selected-for-action';
-
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
-        
         let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
         let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
         let timeText = isUnreadU ? 'Agora' : '';
-
-        clickArea.innerHTML = `
-            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
-                <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
-                ${sectorLabel}
-                <img src="${photo}" class="avatar-small">
-            </div>
-            <div class="user-item-info">
-                <div class="user-item-top">
-                    <div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>
-                    <div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
-                </div>
-                <div class="user-item-bottom">
-                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
-                    ${badgeHtml}
-                </div>
-            </div>
-        `; 
-        
+        clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small"></div><div class="user-item-info"><div class="user-item-top"><div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div><div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div></div><div class="user-item-bottom"><div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>${badgeHtml}</div></div>`; 
         setupLongPress(clickArea, user._id, safeName, false, photo, email);
         div.appendChild(clickArea); list.appendChild(div); 
     });
@@ -813,6 +849,69 @@ window.renderContactsList = function(groups, users) {
 async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
+
+// MODO SELEÇÃO DE MENSAGENS DENTRO DO CHAT
+window.toggleMessageSelection = function(msgEl, msgObj) {
+    const idx = selectedMessages.findIndex(m => m._id === msgObj._id);
+    if (idx > -1) {
+        selectedMessages.splice(idx, 1);
+        msgEl.style.boxShadow = '';
+    } else {
+        selectedMessages.push(msgObj);
+        msgEl.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.4)'; 
+    }
+    updateMsgSelectionBar();
+}
+
+window.updateMsgSelectionBar = function() {
+    let bar = document.getElementById('chat-msg-action-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'chat-msg-action-bar';
+        bar.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:60px; background:var(--brand-primary); z-index:10000; display:flex; align-items:center; padding:0 15px; color:white; transition:0.2s; box-shadow:0 4px 15px rgba(0,0,0,0.2);';
+        document.getElementById('chat-screen').appendChild(bar);
+    }
+    
+    if (selectedMessages.length > 0) {
+        bar.innerHTML = `
+            <button class="icon-btn" onclick="cancelMsgSelection()"><span class="material-icons-round" style="color:white; font-size:26px;">close</span></button>
+            <span style="flex:1; font-weight:700; font-size:18px; margin-left:15px;">${selectedMessages.length}</span>
+            <div style="display:flex; gap:15px;">
+                <span class="material-icons-round" style="cursor:pointer; font-size:24px;" onclick="forwardSelectedMsgs()">shortcut</span>
+                <span class="material-icons-round" style="cursor:pointer; font-size:24px;" onclick="deleteSelectedMsgs()">delete</span>
+            </div>
+        `;
+        bar.style.display = 'flex';
+    } else {
+        cancelMsgSelection();
+    }
+}
+
+window.cancelMsgSelection = function() {
+    window.isMsgSelectionMode = false;
+    window.selectedMessages = [];
+    document.querySelectorAll('.message').forEach(el => {
+        el.style.boxShadow = '';
+    });
+    const bar = document.getElementById('chat-msg-action-bar');
+    if(bar) bar.style.display = 'none';
+}
+
+window.deleteSelectedMsgs = function() {
+    if(confirm(`Apagar ${selectedMessages.length} mensagem(ns)?`)) {
+        selectedMessages.forEach(msg => {
+            if (msg.sender._id === myId || msg.sender === myId) window.deleteMessageForEveryone(msg._id);
+            else window.deleteSingleMessage(msg._id);
+        });
+        cancelMsgSelection();
+    }
+}
+
+window.forwardSelectedMsgs = function() {
+    window.selectedMsgData = selectedMessages[0]; 
+    openForwardModal();
+    cancelMsgSelection();
+}
 
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); 
@@ -826,11 +925,19 @@ function displayMessage(msg) {
     div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); 
     div.id = `msg-${msg._id}`; 
     
-    div.addEventListener('touchstart', (e) => { pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
+    // Suporte ao clique de Seleção e Menu
+    div.onclick = (e) => {
+        if (window.isMsgSelectionMode) {
+            e.stopPropagation();
+            window.toggleMessageSelection(div, msg);
+        }
+    };
+    
+    div.addEventListener('touchstart', (e) => { if(window.isMsgSelectionMode) return; pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
     div.addEventListener('touchend', () => clearTimeout(pressTimer)); 
     div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
-    div.addEventListener('contextmenu', (e) => { e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
-    div.addEventListener('dblclick', () => { selectedMsgData = msg; initReply(); });
+    div.addEventListener('contextmenu', (e) => { if(window.isMsgSelectionMode) return; e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
+    div.addEventListener('dblclick', () => { if(window.isMsgSelectionMode) return; selectedMsgData = msg; initReply(); });
     
     let displayContent = msg.content || ''; 
     let quotedHtml = ''; 
@@ -898,7 +1005,6 @@ window.cancelReply = function() { messageToReply = null; hideElement('reply-prev
 // ==============================================================
 window.showMessageMenu = function(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
-    
     window.closeMessageMenu();
     
     currentSelectedMsgElement = msgElement; 
@@ -939,8 +1045,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     const moreBtn = document.createElement('div');
     moreBtn.innerHTML = '<span class="material-icons-round" style="font-size:20px; color:var(--secondary-text);">more_horiz</span>';
     moreBtn.style.cssText = 'background:rgba(255,255,255,0.1); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:5px; transition:0.2s; flex-shrink: 0;';
-    moreBtn.onmouseover = () => moreBtn.style.background = 'rgba(255,255,255,0.2)';
-    moreBtn.onmouseout = () => moreBtn.style.background = 'rgba(255,255,255,0.1)';
     moreBtn.onclick = (event) => { 
         event.stopPropagation(); 
         window.isReactingToMsgId = msgObj._id; 
@@ -955,13 +1059,27 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     
     const menuItems = [
         { icon: 'reply', text: 'Responder', action: () => { window.initReply(); window.closeMessageMenu(); } },
-        { icon: 'edit', text: 'Editar', action: () => { alert('Funcionalidade de Edição a caminho no próximo patch do servidor!'); window.closeMessageMenu(); } },
+        { icon: 'edit', text: 'Editar', action: () => { 
+            if (!isMe) return alert('Só pode editar as suas próprias mensagens.'); 
+            if (msgObj.fileUrl && msgObj.fileType !== 'text') return alert('Não é possível editar mídia.'); 
+            window.editingMsgId = msgObj._id;
+            const input = document.getElementById('message-input');
+            input.innerText = msgObj.content;
+            const icon = document.getElementById('dynamic-action-icon');
+            icon.innerText = 'check'; icon.style.color = '#10B981';
+            window.closeMessageMenu();
+            input.focus();
+        } },
         { icon: 'shortcut', text: 'Encaminhar', action: () => { window.openForwardModal(); window.closeMessageMenu(); } },
         { icon: 'content_copy', text: 'Copiar', action: () => { window.copySelectedMessage(); window.closeMessageMenu(); } },
-        { icon: 'check_circle_outline', text: 'Selecionar', action: () => { alert('Seleção múltipla ativada em breve!'); window.closeMessageMenu(); } },
+        { icon: 'check_circle_outline', text: 'Selecionar', action: () => { window.isMsgSelectionMode = true; window.toggleMessageSelection(msgElement, msgObj); window.closeMessageMenu(); } },
         { icon: 'info_outline', text: 'Info', action: () => { alert('Enviada em: ' + new Date(msgObj.timestamp).toLocaleString()); window.closeMessageMenu(); } },
-        { icon: 'push_pin', text: 'Fixar', action: () => { alert('Fixação de mensagens no topo do chat em breve!'); window.closeMessageMenu(); } },
-        { icon: 'delete_outline', text: 'Apagar', color: '#EF4444', action: () => { window.deleteSingleMessage(msgObj._id); window.closeMessageMenu(); } }
+        { icon: 'push_pin', text: 'Fixar', action: () => { window.pinMessage(msgObj); window.closeMessageMenu(); } },
+        { icon: 'delete_outline', text: 'Apagar', color: '#EF4444', action: () => { 
+            if (isMe) window.deleteMessageForEveryone(msgObj._id);
+            else window.deleteSingleMessage(msgObj._id);
+            window.closeMessageMenu(); 
+        } }
     ];
     
     menuItems.forEach(item => {
@@ -973,8 +1091,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
         
         div.style.cssText = `padding:12px 20px; display:flex; align-items:center; gap:15px; cursor:pointer; color:${color}; font-size:16px; font-weight: 500; transition:background 0.2s;`;
         div.innerHTML = `<span class="material-icons-round" style="color:${iconColor}; font-size:22px;">${item.icon}</span> <span>${item.text}</span>`;
-        div.onmouseover = () => div.style.background = 'rgba(255,255,255,0.05)';
-        div.onmouseout = () => div.style.background = 'transparent';
         div.onclick = (event) => { event.stopPropagation(); item.action(); };
         menuList.appendChild(div);
     });
@@ -995,13 +1111,8 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     reactionBar.style.top = `${rbTop}px`;
     menuList.style.top = `${mlTop}px`;
     
-    if (isMe) {
-        reactionBar.style.right = `15px`;
-        menuList.style.right = `15px`;
-    } else {
-        reactionBar.style.left = `15px`;
-        menuList.style.left = `15px`;
-    }
+    if (isMe) { reactionBar.style.right = `15px`; menuList.style.right = `15px`; } 
+    else { reactionBar.style.left = `15px`; menuList.style.left = `15px`; }
 }
 
 window.closeMessageMenu = function() {
@@ -1019,10 +1130,15 @@ window.closeMessageMenu = function() {
 }
 
 window.deleteSingleMessage = function(msgId) {
-    if(confirm("Apagar esta mensagem da sua tela?")) {
+    if(confirm("Apagar esta mensagem apenas da sua tela?")) {
         const msgEl = document.getElementById(`msg-${msgId}`);
         if(msgEl) msgEl.remove();
-        alert("Aviso: Mensagem apagada visualmente.\n\nPara a mensagem desaparecer definitivamente também no servidor, os engenheiros irão lançar o próximo patch do Backend CPTT.");
+    }
+}
+
+window.deleteMessageForEveryone = async function(msgId) {
+    if(confirm("Apagar mensagem para todos?")) {
+        await fetch(`/message/${msgId}`, { method: 'DELETE' });
     }
 }
 
@@ -1031,496 +1147,17 @@ window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgDat
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
-// ➕ SISTEMA FAB: NOVO CONTATO E GRUPOS (RESTAURADO E BLINDADO)
+// 👤 EXIBIÇÃO DE PERFIL E RESTO DO CÓDIGO
 // ==============================================================
-window.toggleFab = function() {
-    const options = document.getElementById('fab-options');
-    const mainBtn = document.getElementById('main-fab-btn');
-    if (!options) return;
-    
-    if (options.style.display === 'flex') {
-        options.style.opacity = '0';
-        options.style.transform = 'translateY(10px)';
-        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
-        setTimeout(() => { options.style.display = 'none'; }, 200);
-    } else {
-        options.style.display = 'flex';
-        options.style.flexDirection = 'column';
-        options.style.gap = '10px';
-        options.style.position = 'absolute';
-        options.style.bottom = '80px';
-        options.style.right = '0';
-        options.style.transition = 'all 0.2s';
-        void options.offsetWidth; 
-        options.style.opacity = '1';
-        options.style.transform = 'translateY(0)';
-        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
-    }
-};
 
-window.openAddContactScreen = function() {
-    if (typeof hideAllTabs === 'function') {
-        hideAllTabs();
-    } else {
-        document.querySelectorAll('.app-screen').forEach(el => {
-            el.classList.add('hidden'); el.style.display = 'none';
-        });
-    }
-    
-    if (typeof showElement === 'function') {
-        showElement('add-contact-screen');
-    } else {
-        const screen = document.getElementById('add-contact-screen');
-        if (screen) { screen.classList.remove('hidden'); screen.style.display = ''; }
-    }
-    
-    const input = document.getElementById('exact-search-input');
-    if (input) input.value = '';
-    const res = document.getElementById('exact-search-result');
-    if (res) res.innerHTML = '';
-};
+window.viewContactProfile = function(id, name, photo, isGroup) { const tempId = currentChatId; const tempIsGroup = isGroupChat; currentChatId = id; isGroupChat = isGroup; window.showCurrentChatProfile(); setTimeout(() => { currentChatId = tempId; isGroupChat = tempIsGroup; }, 500); };
+window.showCurrentChatProfile = async function() { if (!currentChatId) return; if (isGroupChat) { try { const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); if (!group) return alert("Grupo não encontrado."); let modal = document.getElementById('dynamic-group-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-group-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } const isAdmin = group.admin === myId; let members = group.members || []; members.sort((a, b) => { if (a._id === group.admin) return -1; if (b._id === group.admin) return 1; return 0; }); let membersHtml = members.map(m => { const isGroupAdmin = m._id === group.admin; const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]); return ` <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="display:flex; align-items:center; gap:12px;"> <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};"> <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span> </div> ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''} </div> `; }).join(''); const descText = group.description || 'Nenhuma descrição adicionada ao grupo.'; const descHtml = isAdmin ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);"> <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p> <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span> </div>` : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`; const addMemberBtnHtml = isAdmin ? ` <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;"> <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR </button> ` : ''; modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;"> <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;"> <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''} </div> <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2> ${descHtml} <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"> <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span> ${addMemberBtnHtml} </div> <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;"> ${membersHtml} </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch(e) { console.error(e); alert("Erro ao carregar dados do grupo."); } return; } try { const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const user = cachedUsers.find(u => u._id === currentChatId); if (!user) return alert("❌ Dados do perfil não encontrados no radar."); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email || 'Não informado'; const phone = user.phone || 'Não informado'; const xp = user.xp || 0; const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip'); let modal = document.getElementById('dynamic-profile-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-profile-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);"> <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2> <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div> <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div> <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div> </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch (e) { console.error("Falha ao abrir perfil: ", e); alert("Erro ao carregar os dados do perfil."); } };
 
-// 🟢 PESQUISA AO VIVO (LIVE SEARCH)
-let globalSearchTimeout = null;
-window.handleLiveSearch = function(value) {
-    clearTimeout(globalSearchTimeout);
-    const resDiv = document.getElementById('exact-search-result');
-    const term = value.trim().toLowerCase();
+window.reportContact = function(id) { if(!id) return; if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) { alert("Contato denunciado com sucesso."); } };
+window.blockContact = function(id) { if(!id) return; if(confirm("Tem certeza que deseja bloquear este contato?")) { alert("Contato bloqueado."); if(!hiddenChats.includes(id)) hiddenChats.push(id); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); backToMain(); loadContacts(); } };
 
-    if (term.length < 2) {
-        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
-        return;
-    }
-
-    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
-
-    globalSearchTimeout = setTimeout(() => {
-        executeExactSearch(term);
-    }, 500);
-};
-
-window.executeExactSearch = async function(searchTerm) {
-    const term = typeof searchTerm === 'string' ? searchTerm : document.getElementById('exact-search-input').value.trim().toLowerCase();
-    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
-    
-    const resDiv = document.getElementById('exact-search-result');
-    
-    try {
-        let foundUsers = [];
-        let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); 
-        
-        if(res.ok) {
-            const allUsers = await res.json();
-            foundUsers = allUsers.filter(u => 
-                (u.email && u.email.toLowerCase().includes(term)) || 
-                (u.displayName && u.displayName.toLowerCase().includes(term)) || 
-                (u.phone && u.phone.includes(term))
-            );
-        } else {
-            const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
-            if(searchRes.ok) {
-                const data = await searchRes.json();
-                foundUsers = data.users || data || [];
-            }
-        }
-
-        foundUsers = foundUsers.filter(u => u._id !== myId);
-
-        if(foundUsers.length > 0) {
-            resDiv.innerHTML = '';
-            foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
-        } else {
-            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum contato encontrado com estes dados na Base.</div>';
-        }
-    } catch(e) {
-        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o servidor.</div>';
-    }
-};
-
-window.renderExactSearchResult = function(u, resDiv, clear = true) {
-    if(clear) resDiv.innerHTML = '';
-    const name = u.displayName || u.email.split('@')[0];
-    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    const phoneHtml = u.phone ? `<div style="font-size: 11px; color: var(--brand-secondary); margin-top: 2px;"><span class="material-icons-round" style="font-size:10px; vertical-align:middle;">phone</span> ${u.phone}</div>` : '';
-    
-    const html = `
-        <div style="background: var(--input-bg); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 10px;">
-            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-            <div style="flex: 1; text-align: left; overflow: hidden;">
-                <div style="font-weight: 800; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${name}</div>
-                <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.email}</div>
-                ${phoneHtml}
-            </div>
-            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px; flex-shrink:0;">
-                <span class="material-icons-round" style="font-size: 24px;">chat</span>
-            </button>
-        </div>
-    `;
-    if(clear) resDiv.innerHTML = html;
-    else resDiv.insertAdjacentHTML('beforeend', html);
-};
-
-window.startChatWithNewUser = function(id, name, photo, email) {
-    document.getElementById('add-contact-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('hidden');
-    openChat(id, name, photo, email, 'user');
-    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
-};
-
-// 🟢 CRIAR GRUPO
-window.openCreateGroupModal = async function(preselectedIds = []) {
-    const modal = document.getElementById('create-group-modal');
-    if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); }
-    
-    document.getElementById('group-name-input').value = '';
-    document.getElementById('group-search-input').value = '';
-    const list = document.getElementById('group-candidates-list');
-    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
-    
-    try {
-        const res = await fetch(`/users/${myId}`);
-        if (res.ok) {
-            const users = await res.json();
-            window.groupCandidates = users;
-            renderGroupCandidates(users, preselectedIds);
-        }
-    } catch(e) { list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>'; }
-};
-
-window.renderGroupCandidates = function(users, preselectedIds = []) {
-    const list = document.getElementById('group-candidates-list');
-    list.innerHTML = '';
-    if(users.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível no seu chat.</div>'; return; }
-    
-    users.forEach(u => {
-        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
-        const name = u.displayName || u.email.split('@')[0];
-        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        list.innerHTML += `
-            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
-                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
-                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
-                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
-            </label>
-        `;
-    });
-};
-
-window.filterGroupContacts = function(query) {
-    const term = query.toLowerCase();
-    const items = document.querySelectorAll('.group-candidate-item');
-    items.forEach(item => {
-        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
-        if(name.includes(term)) item.style.display = 'flex';
-        else item.style.display = 'none';
-    });
-};
-
-window.closeCreateGroup = function() {
-    const modal = document.getElementById('create-group-modal');
-    if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300); }
-};
-
-window.submitCreateGroup = async function() {
-    const name = document.getElementById('group-name-input').value.trim();
-    if(!name) return alert("Dê um nome para a Tropa.");
-    
-    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
-    const members = Array.from(checkboxes).map(cb => cb.value);
-    if(members.length === 0) return alert("Recrute pelo menos um membro.");
-    
-    members.push(myId); 
-
-    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
-    const originalText = btn.innerText;
-    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
-
-    try {
-        const imgEl = document.getElementById('new-group-photo');
-        let photoUrl = imgEl.src;
-        if(photoUrl.includes('166258.png')) photoUrl = ''; 
-
-        const res = await fetch('/groups', { 
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, members, admin: myId, photoUrl })
-        });
-        
-        let data;
-        if(res.status === 404) {
-            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, admin: myId, photoUrl }) });
-            data = await res2.json();
-        } else {
-            data = await res.json();
-        }
-
-        if(data.success || data._id) {
-            closeCreateGroup();
-            socket.emit('group_updated');
-            loadContacts();
-            
-            const gId = data.group ? data.group._id : data._id;
-            const gName = data.group ? data.group.name : data.name;
-            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
-            
-            openChat(gId, gName, gPhoto, 'Grupo', 'group');
-        } else {
-            alert(data.error || "Falha na criação.");
-        }
-    } catch(e) {
-        alert("Erro de comunicação com o QG.");
-    } finally {
-        btn.innerText = originalText;
-    }
-};
-
-window.uploadNewGroupPhoto = async function(input) {
-    const file = input.files[0];
-    if(!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-        const res = await fetch('/upload', {method:'POST', body:fd});
-        const data = await res.json();
-        document.getElementById('new-group-photo').src = data.url;
-    } catch(e) { alert("Erro ao enviar foto para a nuvem."); }
-};
-
-// ==============================================================
-// 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
-// ==============================================================
-window.viewContactProfile = function(id, name, photo, isGroup) {
-    const tempId = currentChatId;
-    const tempIsGroup = isGroupChat;
-    
-    currentChatId = id;
-    isGroupChat = isGroup;
-    
-    window.showCurrentChatProfile();
-    
-    setTimeout(() => {
-        currentChatId = tempId;
-        isGroupChat = tempIsGroup;
-    }, 500);
-};
-
-window.showCurrentChatProfile = async function() {
-    if (!currentChatId) return;
-
-    if (isGroupChat) {
-        try {
-            const res = await fetch(`/group/${currentChatId}`);
-            const group = await res.json();
-            if (!group) return alert("Grupo não encontrado.");
-            
-            let modal = document.getElementById('dynamic-group-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'dynamic-group-modal';
-                modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
-                document.body.appendChild(modal);
-            }
-
-            const isAdmin = group.admin === myId;
-            let members = group.members || [];
-            
-            members.sort((a, b) => {
-                if (a._id === group.admin) return -1;
-                if (b._id === group.admin) return 1;
-                return 0;
-            });
-
-            let membersHtml = members.map(m => {
-                const isGroupAdmin = m._id === group.admin;
-                const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-                const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]);
-                return `
-                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};">
-                            <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span>
-                        </div>
-                        ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''}
-                    </div>
-                `;
-            }).join('');
-
-            const descText = group.description || 'Nenhuma descrição adicionada ao grupo.';
-            
-            const descHtml = isAdmin 
-                ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);">
-                     <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p>
-                     <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span>
-                   </div>`
-                : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`;
-
-            const addMemberBtnHtml = isAdmin ? `
-                <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;">
-                    <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR
-                </button>
-            ` : '';
-
-            modal.innerHTML = `
-                <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;">
-                    
-                    <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
-                    
-                    <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;">
-                        <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
-                        ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''}
-                    </div>
-                    
-                    <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2>
-                    ${descHtml}
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span>
-                        ${addMemberBtnHtml}
-                    </div>
-
-                    <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;">
-                        ${membersHtml}
-                    </div>
-                </div>
-            `;
-            
-            const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
-            if (dropMenu) dropMenu.classList.add('hidden');
-
-            modal.style.display = 'flex';
-            setTimeout(() => modal.style.opacity = '1', 10);
-            
-        } catch(e) {
-            console.error(e);
-            alert("Erro ao carregar dados do grupo.");
-        }
-        return;
-    }
-
-    try {
-        const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || [];
-        const user = cachedUsers.find(u => u._id === currentChatId);
-
-        if (!user) return alert("❌ Dados do perfil não encontrados no radar.");
-
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-        const name = user.displayName || user.email.split('@')[0];
-        const email = user.email || 'Não informado';
-        const phone = user.phone || 'Não informado';
-        const xp = user.xp || 0;
-        const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip');
-
-        let modal = document.getElementById('dynamic-profile-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'dynamic-profile-modal';
-            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);";
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
-                <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
-                <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);">
-                <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2>
-                <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div>
-                <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));">
-                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div>
-                    <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div>
-                    <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div>
-                </div>
-            </div>
-        `;
-
-        const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); 
-        if (dropMenu) dropMenu.classList.add('hidden');
-
-        modal.style.display = 'flex';
-        setTimeout(() => modal.style.opacity = '1', 10);
-
-    } catch (e) {
-        console.error("Falha ao abrir perfil: ", e);
-        alert("Erro ao carregar os dados do perfil.");
-    }
-};
-
-window.reportContact = function(id) {
-    if(!id) return;
-    if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) {
-        alert("Contato denunciado com sucesso. A nossa equipa irá analisar e tomar medidas.");
-    }
-};
-
-window.blockContact = function(id) {
-    if(!id) return;
-    if(confirm("Tem certeza que deseja bloquear este contato? Não receberá mais notificações dele.")) {
-        alert("Contato bloqueado.");
-        if(!hiddenChats.includes(id)) hiddenChats.push(id);
-        localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats));
-        backToMain();
-        loadContacts();
-    }
-};
-
-// ==============================================================
-// 🎙️ LÓGICA WHATSAPP: PRESSIONAR PARA FALAR (HOLD TO TALK)
-// ==============================================================
-const actionBtnWa = document.getElementById('dynamic-action-btn');
-let holdTimer;
-let startX = 0;
-let isRecordingNow = false;
-
-function onHoldStart(e) {
-    const icon = document.getElementById('dynamic-action-icon').innerText;
-    if (icon === 'send') return; 
-    if (e.cancelable) e.preventDefault(); 
-    startX = e.touches ? e.touches[0].clientX : e.clientX;
-    
-    holdTimer = setTimeout(() => {
-        isRecordingNow = true;
-        if (navigator.vibrate) navigator.vibrate(50); 
-        startRecording(); 
-    }, 300);
-}
-
-function onHoldMove(e) {
-    if (!isRecordingNow) return; 
-    const currentX = e.touches ? e.touches[0].clientX : e.clientX;
-    const diferencaX = startX - currentX;
-
-    if (diferencaX > 50) {
-        isRecordingNow = false;
-        cancelRecording(); 
-        if (navigator.vibrate) navigator.vibrate([50, 50, 50]); 
-    }
-}
-
-function onHoldEnd(e) {
-    clearTimeout(holdTimer); 
-    const icon = document.getElementById('dynamic-action-icon').innerText;
-    
-    if (icon === 'send') {
-        sendMessage();
-        resetDynamicButton();
-        return;
-    }
-
-    if (isRecordingNow) {
-        isRecordingNow = false;
-        stopAndSendRecording(); 
-    }
-}
-
-if (actionBtnWa) {
-    actionBtnWa.removeAttribute('onclick');
-    actionBtnWa.addEventListener('touchstart', onHoldStart, { passive: false });
-    actionBtnWa.addEventListener('touchmove', onHoldMove, { passive: false });
-    actionBtnWa.addEventListener('touchend', onHoldEnd);
-    actionBtnWa.addEventListener('mousedown', onHoldStart);
-    actionBtnWa.addEventListener('mousemove', onHoldMove);
-    actionBtnWa.addEventListener('mouseup', onHoldEnd);
-    actionBtnWa.addEventListener('mouseleave', () => {
-        if (isRecordingNow) onHoldEnd(); 
-    });
-}
+const actionBtnWa = document.getElementById('dynamic-action-btn'); let holdTimer; let startX = 0; let isRecordingNow = false;
+function onHoldStart(e) { const icon = document.getElementById('dynamic-action-icon').innerText; if (icon === 'send' || icon === 'check') return; if (e.cancelable) e.preventDefault(); startX = e.touches ? e.touches[0].clientX : e.clientX; holdTimer = setTimeout(() => { isRecordingNow = true; if (navigator.vibrate) navigator.vibrate(50); startRecording(); }, 300); }
+function onHoldMove(e) { if (!isRecordingNow) return; const currentX = e.touches ? e.touches[0].clientX : e.clientX; const diferencaX = startX - currentX; if (diferencaX > 50) { isRecordingNow = false; cancelRecording(); if (navigator.vibrate) navigator.vibrate([50, 50, 50]); } }
+function onHoldEnd(e) { clearTimeout(holdTimer); const icon = document.getElementById('dynamic-action-icon').innerText; if (icon === 'send' || icon === 'check') { sendMessage(); resetDynamicButton(); return; } if (isRecordingNow) { isRecordingNow = false; stopAndSendRecording(); } }
+if (actionBtnWa) { actionBtnWa.removeAttribute('onclick'); actionBtnWa.addEventListener('touchstart', onHoldStart, { passive: false }); actionBtnWa.addEventListener('touchmove', onHoldMove, { passive: false }); actionBtnWa.addEventListener('touchend', onHoldEnd); actionBtnWa.addEventListener('mousedown', onHoldStart); actionBtnWa.addEventListener('mousemove', onHoldMove); actionBtnWa.addEventListener('mouseup', onHoldEnd); actionBtnWa.addEventListener('mouseleave', () => { if (isRecordingNow) onHoldEnd(); }); }
