@@ -1063,7 +1063,9 @@ window.toggleFab = function() {
     }
 };
 
-// 🟢 NOVO CONTATO: BUSCA GLOBAL POR NOME, EMAIL OU CELULAR
+// 🟢 NOVO CONTATO: BUSCA GLOBAL AO VIVO (LIVE SEARCH)
+let globalSearchTimeout = null;
+
 window.openAddContactScreen = function() {
     document.querySelectorAll('.app-screen').forEach(el => el.classList.add('hidden'));
     const screen = document.getElementById('add-contact-screen');
@@ -1075,19 +1077,39 @@ window.openAddContactScreen = function() {
     if (res) res.innerHTML = '';
 };
 
-window.executeExactSearch = async function() {
-    const term = document.getElementById('exact-search-input').value.trim().toLowerCase();
-    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
+// Esta função é chamada cada vez que você digita uma letra
+window.handleLiveSearch = function(value) {
+    // 1. Limpa o relógio se você continuar a digitar (Debounce)
+    clearTimeout(globalSearchTimeout);
     
     const resDiv = document.getElementById('exact-search-result');
-    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando no radar global...</div>';
+    const term = value.trim().toLowerCase();
+
+    // 2. Se apagar o texto ou tiver menos de 2 letras, limpa os resultados
+    if (term.length < 2) {
+        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
+        return;
+    }
+
+    // 3. Mostra que está à procura
+    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
+
+    // 4. Inicia um relógio: 500ms depois de parar de digitar, faz a busca real!
+    globalSearchTimeout = setTimeout(() => {
+        executeExactSearch(term);
+    }, 500);
+};
+
+// A busca real no servidor
+window.executeExactSearch = async function(searchTerm) {
+    const term = searchTerm;
+    const resDiv = document.getElementById('exact-search-result');
     
     try {
         let foundUsers = [];
         
-        // Tenta buscar TODOS os usuários globais da aplicação e filtra localmente
         let res = await fetch('/users');
-        if(!res.ok) res = await fetch('/api/users'); // Fallback comum em Node.js
+        if(!res.ok) res = await fetch('/api/users'); 
         
         if(res.ok) {
             const allUsers = await res.json();
@@ -1097,7 +1119,6 @@ window.executeExactSearch = async function() {
                 (u.phone && u.phone.includes(term))
             );
         } else {
-            // Fallback 2: Rota de busca específica do backend
             const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
             if(searchRes.ok) {
                 const data = await searchRes.json();
@@ -1105,17 +1126,17 @@ window.executeExactSearch = async function() {
             }
         }
 
-        // Tira o próprio usuário logado dos resultados
+        // Tira o próprio usuário logado da lista
         foundUsers = foundUsers.filter(u => u._id !== myId);
 
         if(foundUsers.length > 0) {
             resDiv.innerHTML = '';
             foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
         } else {
-            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum recruta encontrado com estes dados na Base PTT.</div>';
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum usuário encontrado com estes dados.</div>';
         }
     } catch(e) {
-        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o QG Central.</div>';
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o servidor.</div>';
     }
 };
 

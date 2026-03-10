@@ -383,18 +383,17 @@
         <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
     </div>
 
-    <div id="add-contact-screen" class="app-screen hidden">
+ <div id="add-contact-screen" class="app-screen hidden">
         <div class="main-header"><button class="icon-btn" onclick="backToMain()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Nova Conversa</span><div style="width: 40px;"></div></div>
         <div class="settings-content" style="padding: 20px; display: flex; flex-direction: column; align-items: center;">
             <div class="explore-card" style="width: 100%; max-width: 400px; padding: 30px 20px; text-align: center; border: 1px solid var(--brand-secondary); box-shadow: 0 10px 30px rgba(6, 182, 212, 0.1);">
                 <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(6, 182, 212, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px auto;"><span class="material-icons-round" style="font-size:36px; color:var(--brand-secondary);">person_search</span></div>
                 <h3 style="color:var(--text-color); margin-bottom: 10px; font-size: 22px; font-weight: 800;">Encontrar Alguém</h3>
-                <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">Digite o nome, e-mail ou número de telemóvel para encontrar contatos na rede PTT.</p>
-                <div style="position: relative; margin-bottom: 20px;">
+                <p style="color: var(--secondary-text); font-size: 13.5px; margin-bottom: 25px; line-height: 1.4;">A pesquisa inicia automaticamente ao digitar o nome, e-mail ou telemóvel.</p>
+                <div style="position: relative; margin-bottom: 10px;">
                     <span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span>
-                    <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;">
+                    <input type="text" id="exact-search-input" placeholder="Nome, E-mail ou Celular..." class="chic-input" style="padding-left: 45px; margin: 0; text-align: left; font-weight: 600;" oninput="handleLiveSearch(this.value)">
                 </div>
-                <button onclick="executeExactSearch()" class="chic-btn" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary)); width: 100%; margin: 0;"><span class="material-icons-round" style="font-size: 18px; margin-right: 8px; vertical-align: middle;">search</span> Buscar Contato</button>
             </div>
             <div id="exact-search-result" style="width: 100%; max-width: 400px; margin-top: 20px;"></div>
         </div>
@@ -420,15 +419,11 @@
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
 
-    <script>
-        const scriptVer = new URLSearchParams(window.location.search).get('v') || localStorage.getItem('appVersion') || Date.now();
-        
-        document.write('<script src="/socket.io/socket.io.js"><\\/script>');
-        document.write('<script src="/js/core.js?v=' + scriptVer + '"><\\/script>');
-        document.write('<script src="/js/ui.js?v=' + scriptVer + '"><\\/script>');
-        document.write('<script src="/js/chat.js?v=' + scriptVer + '"><\\/script>');
-        document.write('<script src="/js/webrtc.js?v=' + scriptVer + '"><\\/script>');
-        document.write('<script src="/js/features.js?v=' + scriptVer + '"><\\/script>');
-    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/core.js?v=2.0"></script>
+    <script src="/js/ui.js?v=2.0"></script>
+    <script src="/js/chat.js?v=2.0"></script>
+    <script src="/js/webrtc.js?v=2.0"></script>
+    <script src="/js/features.js?v=2.0"></script>
 </body>
 </html>
