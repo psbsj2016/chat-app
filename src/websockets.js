@@ -105,22 +105,9 @@ function initSockets(io) {
                 await msg.save(); 
                 
                 const populatedMsg = await Message.findById(msg._id).populate('sender', 'displayName photoUrl unlockedItems');
+                
+                // LÓGICA DE XP REMOVIDA DAQUI
                 const senderUser = await User.findById(data.senderId);
-
-                if (senderUser) {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    if (senderUser.lastActiveDate !== todayStr) { senderUser.dailyMessagesSent = 0; senderUser.dailyMissionCompleted = false; senderUser.lastActiveDate = todayStr; }
-                    if (!senderUser.dailyMissionCompleted) {
-                        senderUser.dailyMessagesSent += 1;
-                        if (senderUser.dailyMessagesSent >= 3) {
-                            senderUser.dailyMissionCompleted = true; senderUser.xp += 10; 
-                            const newLevel = Math.floor(senderUser.xp / 100) + 1; let levelUp = false;
-                            if (newLevel > (senderUser.level || 1)) { senderUser.level = newLevel; levelUp = true; }
-                            await senderUser.save();
-                            socket.emit('mission_update', { sent: senderUser.dailyMessagesSent, completed: true, xp: senderUser.xp, level: senderUser.level, levelUp: levelUp });
-                        } else { await senderUser.save(); socket.emit('mission_update', { sent: senderUser.dailyMessagesSent, completed: false }); }
-                    } else if (senderUser.lastActiveDate !== todayStr) { senderUser.lastActiveDate = todayStr; await senderUser.save(); }
-                }
 
                 if (data.groupId) { 
                     io.to(data.groupId).emit('receive_message', populatedMsg);
