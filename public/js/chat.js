@@ -264,15 +264,10 @@ setTimeout(() => {
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
             msgInput.innerText += event.detail.unicode; 
-            try {
-                msgInput.focus();
-                const range = document.createRange();
-                const sel = window.getSelection();
-                range.selectNodeContents(msgInput);
-                range.collapse(false); 
-                sel.removeAllRanges();
-                sel.addRange(range);
-            } catch(e){}
+            
+            // 🚀 MÁGICA DOS EMOJIS: Removido o msgInput.focus() daqui! 
+            // Agora, o teclado nativo do telemóvel não sobe mais e a gaveta 
+            // fica aberta para escolhermos quantos emojis quisermos.
 
             emitTypingStatus('typing'); 
             const dynamicActionIcon = document.getElementById('dynamic-action-icon');
@@ -632,7 +627,32 @@ async function executeUpload(file, type) {
     } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
 }
 
-window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') { const input = document.getElementById('message-input'); if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } let content = textOverride || input.innerText.trim(); if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } if((!content && !fileUrl) || !currentChatId) return; const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); if(!fileUrl) input.innerHTML = ''; }
+window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') { 
+    const input = document.getElementById('message-input'); 
+    if (pendingAudioFile) { 
+        const dataTransfer = new DataTransfer(); 
+        dataTransfer.items.add(pendingAudioFile); 
+        document.getElementById('file-input').files = dataTransfer.files; 
+        pendingAudioFile = null; 
+        input.setAttribute('data-placeholder', 'Sua mensagem'); 
+        handleFileUpload(document.getElementById('file-input')); 
+        return; 
+    } 
+    let content = textOverride || input.innerText.trim(); 
+    if(messageToReply && !fileUrl && !textOverride) { 
+        content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; 
+        cancelReply(); 
+    } 
+    if((!content && !fileUrl) || !currentChatId) return; 
+    
+    const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; 
+    socket.emit('private_message', msgData); 
+    clearTimeout(typingTimeout); 
+    emitStopTypingStatus(); 
+    
+    // 🚀 BLINDAGEM DA CAIXA DE TEXTO: Evita o piscar/deformar dos botões (innerHTML em vez de innerText)
+    if(!fileUrl) input.innerHTML = ''; 
+}
 
 window.openChat = function(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
@@ -1077,33 +1097,33 @@ window.openAddContactScreen = function() {
     if (res) res.innerHTML = '';
 };
 
-// Esta função é chamada cada vez que você digita uma letra
+// Ativado ao digitar
 window.handleLiveSearch = function(value) {
-    // 1. Limpa o relógio se você continuar a digitar (Debounce)
     clearTimeout(globalSearchTimeout);
-    
     const resDiv = document.getElementById('exact-search-result');
     const term = value.trim().toLowerCase();
 
-    // 2. Se apagar o texto ou tiver menos de 2 letras, limpa os resultados
     if (term.length < 2) {
         resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
         return;
     }
 
-    // 3. Mostra que está à procura
     resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
 
-    // 4. Inicia um relógio: 500ms depois de parar de digitar, faz a busca real!
     globalSearchTimeout = setTimeout(() => {
         executeExactSearch(term);
     }, 500);
 };
 
-// A busca real no servidor
+// A Busca Real Unificada
 window.executeExactSearch = async function(searchTerm) {
-    const term = searchTerm;
+    const term = typeof searchTerm === 'string' ? searchTerm : document.getElementById('exact-search-input').value.trim().toLowerCase();
+    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
+    
     const resDiv = document.getElementById('exact-search-result');
+    if (typeof searchTerm !== 'string') {
+        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Buscando no radar global...</div>';
+    }
     
     try {
         let foundUsers = [];
@@ -1126,17 +1146,16 @@ window.executeExactSearch = async function(searchTerm) {
             }
         }
 
-        // Tira o próprio usuário logado da lista
         foundUsers = foundUsers.filter(u => u._id !== myId);
 
         if(foundUsers.length > 0) {
             resDiv.innerHTML = '';
             foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
         } else {
-            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum usuário encontrado com estes dados.</div>';
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum recruta encontrado com estes dados na Base PTT.</div>';
         }
     } catch(e) {
-        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o servidor.</div>';
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o QG Central.</div>';
     }
 };
 
@@ -1168,7 +1187,6 @@ window.startChatWithNewUser = function(id, name, photo, email) {
     document.getElementById('main-screen').classList.remove('hidden');
     openChat(id, name, photo, email, 'user');
     
-    // Atira mensagem silenciosa pro backend registrar a sala e exibir na lista
     socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
 };
 
@@ -1316,97 +1334,60 @@ window.uploadNewGroupPhoto = async function(input) {
 // ==============================================================
 // 🎙️ LÓGICA WHATSAPP: PRESSIONAR PARA FALAR (HOLD TO TALK)
 // ==============================================================
-
-// Vamos buscar o teu botão principal
 const actionBtnWa = document.getElementById('dynamic-action-btn');
-
-// Variáveis para controlar o estado do toque
 let holdTimer;
 let startX = 0;
 let isRecordingNow = false;
 
-// 1. Quando o utilizador PRESSIONA o botão
 function onHoldStart(e) {
     const icon = document.getElementById('dynamic-action-icon').innerText;
-    
-    // Se for a seta de enviar (porque há texto), não fazemos nada no "segurar"
     if (icon === 'send') return; 
-    
-    // Evita que o telemóvel faça zoom ou selecione coisas sem querer
     if (e.cancelable) e.preventDefault(); 
-    
-    // Guarda a posição inicial do dedo/rato (eixo X)
     startX = e.touches ? e.touches[0].clientX : e.clientX;
     
-    // Espera 300 milissegundos para ter a certeza que não foi um toque acidental
     holdTimer = setTimeout(() => {
         isRecordingNow = true;
-        
-        // Faz o telemóvel vibrar suavemente para indicar que começou a gravar
         if (navigator.vibrate) navigator.vibrate(50); 
-        
-        // Chama a tua função que já inicia a gravação!
         startRecording(); 
     }, 300);
 }
 
-// 2. Quando o utilizador MOVE o dedo/rato (Para cancelar)
 function onHoldMove(e) {
-    if (!isRecordingNow) return; // Só interessa se estiver a gravar
-    
-    // Verifica a posição atual do dedo
+    if (!isRecordingNow) return; 
     const currentX = e.touches ? e.touches[0].clientX : e.clientX;
     const diferencaX = startX - currentX;
 
-    // Se deslizou mais de 50 pixels para a ESQUERDA
     if (diferencaX > 50) {
         isRecordingNow = false;
-        
-        // Chama a tua função que cancela a gravação
         cancelRecording(); 
-        
-        // Vibra duas vezes rápido para confirmar que cancelou
         if (navigator.vibrate) navigator.vibrate([50, 50, 50]); 
     }
 }
 
-// 3. Quando o utilizador SOLTA o botão
 function onHoldEnd(e) {
-    clearTimeout(holdTimer); // Cancela o temporizador se foi um toque muito rápido
-    
+    clearTimeout(holdTimer); 
     const icon = document.getElementById('dynamic-action-icon').innerText;
     
-    // Se o ícone for a seta, é para enviar a mensagem de texto
     if (icon === 'send') {
         sendMessage();
         resetDynamicButton();
         return;
     }
 
-    // Se estava efetivamente a gravar áudio, então para e envia!
     if (isRecordingNow) {
         isRecordingNow = false;
-        // Chama a tua função que para e prepara o envio
         stopAndSendRecording(); 
     }
 }
 
-// Ativar os eventos no botão apenas se ele existir no ecrã
 if (actionBtnWa) {
-    // Primeiro, removemos o "onclick" do HTML para que o nosso novo sistema assuma o controlo
     actionBtnWa.removeAttribute('onclick');
-    
-    // Eventos para Telemóveis (Ecrã Tátil)
     actionBtnWa.addEventListener('touchstart', onHoldStart, { passive: false });
     actionBtnWa.addEventListener('touchmove', onHoldMove, { passive: false });
     actionBtnWa.addEventListener('touchend', onHoldEnd);
-    
-    // Eventos para Computadores (Rato)
     actionBtnWa.addEventListener('mousedown', onHoldStart);
     actionBtnWa.addEventListener('mousemove', onHoldMove);
     actionBtnWa.addEventListener('mouseup', onHoldEnd);
-    
-    // Prevenção: Se o rato sair de cima do botão enquanto clica, assumimos que soltou
     actionBtnWa.addEventListener('mouseleave', () => {
         if (isRecordingNow) onHoldEnd(); 
     });
