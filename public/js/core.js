@@ -30,6 +30,14 @@ var hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || [];
 var audioCtx = null;
 var deferredPrompt;
 
+// 🔥 FECHA O LOGIN INSTANTANEAMENTE SE JÁ HOUVER TOKEN (SEM ESPERAR PELO SERVIDOR)
+if (token && myId) {
+    document.addEventListener("DOMContentLoaded", () => {
+        const authScreen = document.getElementById('auth-screen');
+        if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
+    });
+}
+
 // ==============================================================
 // 📱 MOTOR PWA E PERMISSÕES
 // ==============================================================
@@ -128,13 +136,11 @@ function initApp() {
     const authScreen = document.getElementById('auth-screen');
 
     if(token && myId) { 
-        // 🚀 Oculta a tela de Login INSTANTANEAMENTE e força a exibição do chat!
+        // Esconde imediatamente a tela
         if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
         
-        // Pula o pedido de permissões para quem já está logado, mostrando logo a Main Screen.
         if (typeof showMainScreen === 'function') showMainScreen();
 
-        // 🟢 Aplica os dados visuais do Cache imediatamente!
         const headerAvatar = document.getElementById('header-my-avatar'); 
         if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;
         if(cachedMe && cachedMe.chatWallpaper) document.body.style.setProperty('--chat-bg-image', `url('${cachedMe.chatWallpaper}')`);
@@ -145,17 +151,15 @@ function initApp() {
         
         if(typeof applyUnlockedItems === 'function') applyUnlockedItems(); 
 
-        // 🔄 Atualização em Pano de Fundo (Silenciosa): Confere se o perfil atualizou noutro telemóvel
         fetch(`/user/${myId}`).then(res => res.json()).then(me => {
             cachedMe = me; localStorage.setItem('cacheMe', JSON.stringify(me)); 
             currentSectors = me.sectors || []; localStorage.setItem('cacheSectors', JSON.stringify(currentSectors)); 
             if(headerAvatar) headerAvatar.src = cachedMe.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
             if(elName) elName.innerText = cachedMe.displayName || cachedMe.email; 
             if(typeof applyUnlockedItems === 'function') applyUnlockedItems();
-        }).catch(e => { console.log('Conexão em espera - App offline a usar Cache Local.'); });
+        }).catch(e => { console.log('App offline - A usar Cache Local.'); });
 
     } else { 
-        // 🔒 SE NÃO ESTIVER LOGADO, MOSTRA A TELA DE LOGIN
         if (authScreen) { authScreen.classList.remove('hidden'); authScreen.style.display = 'flex'; }
     } 
 }
@@ -163,13 +167,18 @@ function initApp() {
 function logout() { if (confirm("Sair?")) { localStorage.clear(); window.location.reload(); } }
 async function deleteAccount() { if(confirm("Excluir conta para sempre?")) { try { await fetch(`/delete-account/${myId}`, { method: 'DELETE' }); logout(); } catch (e) {} } }
 
-// 💣 O VIGIA DE ARRANQUE: Fica monitorando a cada 50ms até as funções visuais estarem prontas!
+// 💣 O VIGIA DE ARRANQUE: Seguro contra falhas e quebras de código
 let bootAttempts = 0;
 const bootInterval = setInterval(() => {
     if (typeof showMainScreen === 'function' && typeof loadContacts === 'function') {
         clearInterval(bootInterval);
         initApp();
+    } else {
+        // Se as funções demorarem muito a carregar (erro no chat.js), força o arranque mesmo assim
+        if (bootAttempts > 20) {
+            clearInterval(bootInterval);
+            initApp();
+        }
     }
     bootAttempts++;
-    if (bootAttempts > 100) clearInterval(bootInterval);
-}, 50);
+}, 100);

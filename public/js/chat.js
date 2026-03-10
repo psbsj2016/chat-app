@@ -1,5 +1,5 @@
 // ==============================================================
-// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS
+// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (RESTAURADO E COMPLETO)
 // ==============================================================
 let searchTimeout = null;
 let pressTimer = null;
@@ -51,10 +51,6 @@ function setupLongPress(element, id, name, isGroup, photo, email) {
         const cType = isGroup ? 'group' : 'user'; openChat(id, name, photo, email, cType); 
     };
 }
-
-// ==============================================================
-// 🛠️ FUNÇÕES DOS BOTÕES DA BARRA DE SELEÇÃO MÚLTIPLA
-// ==============================================================
 
 window.promptBulkDeleteChat = function() {
     if(selectedActionContacts.length === 0) return;
@@ -227,7 +223,6 @@ setTimeout(() => {
     if (picker && msgInput) { 
         picker.addEventListener('emoji-click', event => { 
             
-            // 🚀 SE FOR UMA REAÇÃO NUMA MENSAGEM VIA BOTÃO "...", ENVIA A REAÇÃO DIRETAMENTE
             if (window.isReactingToMsgId) {
                 socket.emit('react_message', { 
                     msgId: window.isReactingToMsgId, 
@@ -235,12 +230,11 @@ setTimeout(() => {
                     receiverId: currentChatId, 
                     groupId: isGroupChat ? currentChatId : null 
                 });
-                window.isReactingToMsgId = null; // Limpa o estado
-                document.getElementById('emoji-drawer').style.height = '0px'; // Fecha gaveta
-                return; // Impede que o emoji vá para a caixa de texto
+                window.isReactingToMsgId = null; 
+                document.getElementById('emoji-drawer').style.height = '0px'; 
+                return; 
             }
 
-            // SE NÃO FOR REAÇÃO, ADICIONA O EMOJI À CAIXA DE TEXTO NORMALMENTE
             msgInput.innerText += event.detail.unicode; 
 
             emitTypingStatus('typing'); 
@@ -697,6 +691,129 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
+// 🚀 REPOSIÇÃO TOTAL DA CARGA DE CONTACTOS E ECRÃ PRINCIPAL
+window.loadContacts = async function() { 
+    if(!myId) return; 
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; 
+    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; 
+    
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { 
+        cachedGroups.forEach(g => socket.emit('join_group', g._id)); 
+        renderContactsList(cachedGroups, cachedUsers); 
+        updateAppBadge(); 
+    } 
+    
+    try { 
+        const resUnread = await fetch(`/unread/${myId}`); 
+        const serverCounts = await resUnread.json(); 
+        cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); 
+        localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+        
+        const resGroups = await fetch(`/groups/${myId}`); 
+        const groups = await resGroups.json(); 
+        
+        const resUsers = await fetch(`/users/${myId}`); 
+        const users = await resUsers.json(); 
+        
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); 
+        localStorage.setItem('cacheUsers', JSON.stringify(users)); 
+        
+        groups.forEach(g => socket.emit('join_group', g._id)); 
+        renderContactsList(groups, users); 
+        updateAppBadge(); 
+    } catch(e) {
+        console.error("Falha ao atualizar contatos da nuvem", e);
+    } 
+}
+
+window.renderContactsList = function(groups, users) {
+    const list = document.getElementById('users-list'); 
+    if(!list) return;
+    
+    list.innerHTML = ''; 
+    const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
+    
+    if (groups.length === 0 && visibleUsers.length === 0) { 
+        list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; 
+        return; 
+    }
+    
+    groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
+    groups.forEach(group => { 
+        let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
+        const isSelected = selectedActionContacts.some(c => c.id === group._id);
+        if (isSelected) extraGroupClass += ' selected-for-action';
+
+        const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
+        const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
+        
+        let lastMsgText = isUnreadG ? 'Nova mensagem!' : 'Toque para abrir o grupo'; 
+        let lastMsgStyle = isUnreadG ? 'color: var(--text-color); font-weight: 600;' : '';
+        let timeText = isUnreadG ? 'Agora' : '';
+
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${group._id}', '${safeName}', '${photo}', true)">
+                <img src="${photo}" class="avatar-small">
+            </div>
+            <div class="user-item-info">
+                <div class="user-item-top">
+                    <div class="user-item-name">${group.name}</div>
+                    <div class="user-item-time" style="${isUnreadG ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
+                </div>
+                <div class="user-item-bottom">
+                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
+                    ${badgeHtml}
+                </div>
+            </div>
+        `; 
+        
+        setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo');
+        div.appendChild(clickArea); list.appendChild(div); 
+    }); 
+
+    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    visibleUsers.forEach(user => { 
+        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
+        let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
+        let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
+        
+        const isSelected = selectedActionContacts.some(c => c.id === user._id);
+        if (isSelected) extraClass += ' selected-for-action';
+
+        const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
+        
+        let lastMsgText = isUnreadU ? 'Nova mensagem recebida' : 'Toque para conversar'; 
+        let lastMsgStyle = isUnreadU ? 'color: var(--text-color); font-weight: 600;' : '';
+        let timeText = isUnreadU ? 'Agora' : '';
+
+        clickArea.innerHTML = `
+            <div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)">
+                <div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>
+                ${sectorLabel}
+                <img src="${photo}" class="avatar-small">
+            </div>
+            <div class="user-item-info">
+                <div class="user-item-top">
+                    <div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div>
+                    <div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div>
+                </div>
+                <div class="user-item-bottom">
+                    <div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>
+                    ${badgeHtml}
+                </div>
+            </div>
+        `; 
+        
+        setupLongPress(clickArea, user._id, safeName, false, photo, email);
+        div.appendChild(clickArea); list.appendChild(div); 
+    });
+}
+
+async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
+async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
+function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
+
 function displayMessage(msg) { 
     const box = document.getElementById('chat-box'); 
     const msgDateObj = new Date(msg.timestamp || Date.now()); const dateStr = getChatDateString(msgDateObj);
@@ -782,13 +899,11 @@ window.cancelReply = function() { messageToReply = null; hideElement('reply-prev
 window.showMessageMenu = function(e, msgElement, msgObj) { 
     if(navigator.vibrate) navigator.vibrate(50); 
     
-    // Fecha qualquer menu aberto
     window.closeMessageMenu();
     
     currentSelectedMsgElement = msgElement; 
     selectedMsgData = msgObj; 
     
-    // 1. Cria a Tela Escura (Overlay) no fundo
     let overlay = document.getElementById('msg-actions-overlay');
     if(!overlay) {
         overlay = document.createElement('div');
@@ -799,7 +914,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     }
     overlay.style.display = 'block';
     
-    // 2. Destaca a mensagem
     msgElement.style.position = 'relative';
     msgElement.style.zIndex = '9991';
     msgElement.classList.add('selected-msg-active');
@@ -807,7 +921,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     const rect = msgElement.getBoundingClientRect();
     const isMe = msgElement.classList.contains('my-msg');
     
-    // 3. A BARRA DE REAÇÕES
     const reactionBar = document.createElement('div');
     reactionBar.id = 'dynamic-reaction-bar';
     reactionBar.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:30px; padding:10px 15px; display:flex; align-items:center; justify-content: space-around; width: 260px; box-shadow:0 4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);`;
@@ -823,7 +936,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
         reactionBar.appendChild(span);
     });
     
-    // Botão de "..." para abrir todos os emojis
     const moreBtn = document.createElement('div');
     moreBtn.innerHTML = '<span class="material-icons-round" style="font-size:20px; color:var(--secondary-text);">more_horiz</span>';
     moreBtn.style.cssText = 'background:rgba(255,255,255,0.1); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:5px; transition:0.2s; flex-shrink: 0;';
@@ -831,13 +943,12 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     moreBtn.onmouseout = () => moreBtn.style.background = 'rgba(255,255,255,0.1)';
     moreBtn.onclick = (event) => { 
         event.stopPropagation(); 
-        window.isReactingToMsgId = msgObj._id; // Flag para interceptar o emoji!
+        window.isReactingToMsgId = msgObj._id; 
         document.getElementById('emoji-drawer').style.height = '300px';
         window.closeMessageMenu(); 
     };
     reactionBar.appendChild(moreBtn);
     
-    // 4. A LISTA DO MENU
     const menuList = document.createElement('div');
     menuList.id = 'dynamic-action-list';
     menuList.style.cssText = `position:fixed; z-index:9992; background:var(--card-bg); border-radius:16px; padding:8px 0; box-shadow:0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); width: 230px; display:flex; flex-direction:column; overflow:hidden;`;
@@ -854,7 +965,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     ];
     
     menuItems.forEach(item => {
-        // Ignora copiar se for imagem ou áudio
         if(item.text === 'Copiar' && msgObj.fileUrl && msgObj.fileType !== 'text') return; 
         
         const div = document.createElement('div');
@@ -872,18 +982,14 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     document.body.appendChild(reactionBar);
     document.body.appendChild(menuList);
     
-    // 5. CÁLCULO INTELIGENTE DE POSIÇÃO (CIMA / BAIXO)
-    let rbTop = rect.top - 65; // Tenta por cima da mensagem
-    if (rbTop < 60) rbTop = rect.bottom + 10; // Se não couber, vai pra baixo
+    let rbTop = rect.top - 65; 
+    if (rbTop < 60) rbTop = rect.bottom + 10; 
     
-    let mlTop = rbTop === rect.bottom + 10 ? rbTop + 65 : rect.bottom + 10; // Menu vai pra baixo
+    let mlTop = rbTop === rect.bottom + 10 ? rbTop + 65 : rect.bottom + 10; 
     
-    // Se o menu de lista for passar do fim do ecrã, empurra-o para cima!
     if (mlTop + 400 > window.innerHeight) {
         mlTop = rect.top - 400; 
-        if(rbTop < rect.top) { // Se as reações já estavam em cima, sobe o menu ainda mais
-            mlTop = rbTop - 380;
-        }
+        if(rbTop < rect.top) { mlTop = rbTop - 380; }
     }
     
     reactionBar.style.top = `${rbTop}px`;
@@ -901,13 +1007,10 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
 window.closeMessageMenu = function() {
     const overlay = document.getElementById('msg-actions-overlay');
     if(overlay) overlay.style.display = 'none';
-    
     const rb = document.getElementById('dynamic-reaction-bar');
     if(rb) rb.remove();
-    
     const ml = document.getElementById('dynamic-action-list');
     if(ml) ml.remove();
-    
     if(currentSelectedMsgElement) {
         currentSelectedMsgElement.style.zIndex = '';
         currentSelectedMsgElement.classList.remove('selected-msg-active');
@@ -915,7 +1018,6 @@ window.closeMessageMenu = function() {
     }
 }
 
-// Ação de Apagar 1 Mensagem Visivelmente
 window.deleteSingleMessage = function(msgId) {
     if(confirm("Apagar esta mensagem da sua tela?")) {
         const msgEl = document.getElementById(`msg-${msgId}`);
@@ -924,15 +1026,270 @@ window.deleteSingleMessage = function(msgId) {
     }
 }
 
-
 window.sendReaction = function(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); window.closeMessageMenu(); }
 window.openForwardModal = async function() { showElement('forward-modal'); const h3 = document.querySelector('#forward-modal h3'); if(h3) h3.innerText = "Encaminhar para..."; const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); const list = document.getElementById('forward-contacts-list'); list.innerHTML = ''; users.forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => { socket.emit('private_message', { senderId: myId, receiverId: user._id, groupId: null, content: selectedMsgData.content, fileUrl: selectedMsgData.fileUrl, fileType: selectedMsgData.fileType }); alert("Encaminhada!"); hideElement('forward-modal'); }; list.appendChild(div); }); }
 
 // ==============================================================
+// ➕ SISTEMA FAB: NOVO CONTATO E GRUPOS (RESTAURADO E BLINDADO)
+// ==============================================================
+window.toggleFab = function() {
+    const options = document.getElementById('fab-options');
+    const mainBtn = document.getElementById('main-fab-btn');
+    if (!options) return;
+    
+    if (options.style.display === 'flex') {
+        options.style.opacity = '0';
+        options.style.transform = 'translateY(10px)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(0deg)';
+        setTimeout(() => { options.style.display = 'none'; }, 200);
+    } else {
+        options.style.display = 'flex';
+        options.style.flexDirection = 'column';
+        options.style.gap = '10px';
+        options.style.position = 'absolute';
+        options.style.bottom = '80px';
+        options.style.right = '0';
+        options.style.transition = 'all 0.2s';
+        void options.offsetWidth; 
+        options.style.opacity = '1';
+        options.style.transform = 'translateY(0)';
+        if(mainBtn) mainBtn.querySelector('.material-icons-round').style.transform = 'rotate(45deg)';
+    }
+};
+
+window.openAddContactScreen = function() {
+    if (typeof hideAllTabs === 'function') {
+        hideAllTabs();
+    } else {
+        document.querySelectorAll('.app-screen').forEach(el => {
+            el.classList.add('hidden'); el.style.display = 'none';
+        });
+    }
+    
+    if (typeof showElement === 'function') {
+        showElement('add-contact-screen');
+    } else {
+        const screen = document.getElementById('add-contact-screen');
+        if (screen) { screen.classList.remove('hidden'); screen.style.display = ''; }
+    }
+    
+    const input = document.getElementById('exact-search-input');
+    if (input) input.value = '';
+    const res = document.getElementById('exact-search-result');
+    if (res) res.innerHTML = '';
+};
+
+// 🟢 PESQUISA AO VIVO (LIVE SEARCH)
+let globalSearchTimeout = null;
+window.handleLiveSearch = function(value) {
+    clearTimeout(globalSearchTimeout);
+    const resDiv = document.getElementById('exact-search-result');
+    const term = value.trim().toLowerCase();
+
+    if (term.length < 2) {
+        resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Continue a digitar para procurar...</div>';
+        return;
+    }
+
+    resDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--brand-primary);"><span class="material-icons-round" style="animation: spin 1s infinite; vertical-align: middle;">sync</span> Procurando na base de dados...</div>';
+
+    globalSearchTimeout = setTimeout(() => {
+        executeExactSearch(term);
+    }, 500);
+};
+
+window.executeExactSearch = async function(searchTerm) {
+    const term = typeof searchTerm === 'string' ? searchTerm : document.getElementById('exact-search-input').value.trim().toLowerCase();
+    if(!term) return alert("Digite o nome, e-mail ou celular do recruta.");
+    
+    const resDiv = document.getElementById('exact-search-result');
+    
+    try {
+        let foundUsers = [];
+        let res = await fetch('/users');
+        if(!res.ok) res = await fetch('/api/users'); 
+        
+        if(res.ok) {
+            const allUsers = await res.json();
+            foundUsers = allUsers.filter(u => 
+                (u.email && u.email.toLowerCase().includes(term)) || 
+                (u.displayName && u.displayName.toLowerCase().includes(term)) || 
+                (u.phone && u.phone.includes(term))
+            );
+        } else {
+            const searchRes = await fetch(`/users/search?term=${encodeURIComponent(term)}`);
+            if(searchRes.ok) {
+                const data = await searchRes.json();
+                foundUsers = data.users || data || [];
+            }
+        }
+
+        foundUsers = foundUsers.filter(u => u._id !== myId);
+
+        if(foundUsers.length > 0) {
+            resDiv.innerHTML = '';
+            foundUsers.forEach(u => renderExactSearchResult(u, resDiv, false));
+        } else {
+            resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px; border: 1px dashed rgba(239,68,68,0.3); border-radius: 12px;">Nenhum contato encontrado com estes dados na Base.</div>';
+        }
+    } catch(e) {
+        resDiv.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Falha de comunicação com o servidor.</div>';
+    }
+};
+
+window.renderExactSearchResult = function(u, resDiv, clear = true) {
+    if(clear) resDiv.innerHTML = '';
+    const name = u.displayName || u.email.split('@')[0];
+    const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    const phoneHtml = u.phone ? `<div style="font-size: 11px; color: var(--brand-secondary); margin-top: 2px;"><span class="material-icons-round" style="font-size:10px; vertical-align:middle;">phone</span> ${u.phone}</div>` : '';
+    
+    const html = `
+        <div style="background: var(--input-bg); border: 1px solid rgba(255,255,255,0.1); border-left: 4px solid var(--brand-primary); border-radius: 16px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 10px;">
+            <img src="${photo}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            <div style="flex: 1; text-align: left; overflow: hidden;">
+                <div style="font-weight: 800; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${name}</div>
+                <div style="font-size: 12px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.email}</div>
+                ${phoneHtml}
+            </div>
+            <button onclick="startChatWithNewUser('${u._id}', '${name.replace(/'/g, "\\'")}', '${photo}', '${u.email}')" class="circular-primary-btn" style="width:46px; height:46px; flex-shrink:0;">
+                <span class="material-icons-round" style="font-size: 24px;">chat</span>
+            </button>
+        </div>
+    `;
+    if(clear) resDiv.innerHTML = html;
+    else resDiv.insertAdjacentHTML('beforeend', html);
+};
+
+window.startChatWithNewUser = function(id, name, photo, email) {
+    document.getElementById('add-contact-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    openChat(id, name, photo, email, 'user');
+    socket.emit('private_message', { senderId: myId, receiverId: id, groupId: null, content: "Iniciou uma nova conexão", fileType: "system" });
+};
+
+// 🟢 CRIAR GRUPO
+window.openCreateGroupModal = async function(preselectedIds = []) {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); }
+    
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-search-input').value = '';
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Carregando contatos...</div>';
+    
+    try {
+        const res = await fetch(`/users/${myId}`);
+        if (res.ok) {
+            const users = await res.json();
+            window.groupCandidates = users;
+            renderGroupCandidates(users, preselectedIds);
+        }
+    } catch(e) { list.innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px;">Erro ao puxar radar de contatos.</div>'; }
+};
+
+window.renderGroupCandidates = function(users, preselectedIds = []) {
+    const list = document.getElementById('group-candidates-list');
+    list.innerHTML = '';
+    if(users.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Nenhum recruta disponível no seu chat.</div>'; return; }
+    
+    users.forEach(u => {
+        const isChecked = preselectedIds.includes(u._id) ? 'checked' : '';
+        const name = u.displayName || u.email.split('@')[0];
+        const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        list.innerHTML += `
+            <label class="group-candidate-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--input-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.05)); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:0.2s;">
+                <input type="checkbox" value="${u._id}" class="group-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);" ${isChecked}>
+                <img src="${photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                <span class="candidate-name-span" style="font-weight:700; color:var(--text-color); font-size: 15px;">${name}</span>
+            </label>
+        `;
+    });
+};
+
+window.filterGroupContacts = function(query) {
+    const term = query.toLowerCase();
+    const items = document.querySelectorAll('.group-candidate-item');
+    items.forEach(item => {
+        const name = item.querySelector('.candidate-name-span').innerText.toLowerCase();
+        if(name.includes(term)) item.style.display = 'flex';
+        else item.style.display = 'none';
+    });
+};
+
+window.closeCreateGroup = function() {
+    const modal = document.getElementById('create-group-modal');
+    if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.classList.add('hidden'); modal.style.display = 'none'; }, 300); }
+};
+
+window.submitCreateGroup = async function() {
+    const name = document.getElementById('group-name-input').value.trim();
+    if(!name) return alert("Dê um nome para a Tropa.");
+    
+    const checkboxes = document.querySelectorAll('.group-candidate-checkbox:checked');
+    const members = Array.from(checkboxes).map(cb => cb.value);
+    if(members.length === 0) return alert("Recrute pelo menos um membro.");
+    
+    members.push(myId); 
+
+    const btn = document.querySelector('#create-group-modal .chic-btn:last-child');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite; font-size:16px; vertical-align:middle;">sync</span>';
+
+    try {
+        const imgEl = document.getElementById('new-group-photo');
+        let photoUrl = imgEl.src;
+        if(photoUrl.includes('166258.png')) photoUrl = ''; 
+
+        const res = await fetch('/groups', { 
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, members, admin: myId, photoUrl })
+        });
+        
+        let data;
+        if(res.status === 404) {
+            const res2 = await fetch('/group/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, members, admin: myId, photoUrl }) });
+            data = await res2.json();
+        } else {
+            data = await res.json();
+        }
+
+        if(data.success || data._id) {
+            closeCreateGroup();
+            socket.emit('group_updated');
+            loadContacts();
+            
+            const gId = data.group ? data.group._id : data._id;
+            const gName = data.group ? data.group.name : data.name;
+            const gPhoto = data.group ? data.group.photoUrl : data.photoUrl;
+            
+            openChat(gId, gName, gPhoto, 'Grupo', 'group');
+        } else {
+            alert(data.error || "Falha na criação.");
+        }
+    } catch(e) {
+        alert("Erro de comunicação com o QG.");
+    } finally {
+        btn.innerText = originalText;
+    }
+};
+
+window.uploadNewGroupPhoto = async function(input) {
+    const file = input.files[0];
+    if(!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch('/upload', {method:'POST', body:fd});
+        const data = await res.json();
+        document.getElementById('new-group-photo').src = data.url;
+    } catch(e) { alert("Erro ao enviar foto para a nuvem."); }
+};
+
+// ==============================================================
 // 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
 // ==============================================================
-
 window.viewContactProfile = function(id, name, photo, isGroup) {
     const tempId = currentChatId;
     const tempIsGroup = isGroupChat;
