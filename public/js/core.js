@@ -114,7 +114,7 @@ async function handleAuth() {
 }
 
 // ==============================================================
-// ⚡ INICIALIZAÇÃO MASTER (NATIVA SEM ESPERAS)
+// ⚡ INICIALIZAÇÃO MASTER (NATIVA SEM ESPERAS E SEM SOBREPOSIÇÕES)
 // ==============================================================
 function initApp() { 
     myId = localStorage.getItem('myId');
@@ -125,7 +125,13 @@ function initApp() {
     const authScreen = document.getElementById('auth-screen');
 
     if(token && myId) { 
+        if (authScreen) { authScreen.classList.add('hidden'); authScreen.style.display = 'none'; }
+        
         if (typeof showMainScreen === 'function') showMainScreen();
+
+        // 🔥 REMOVE A "TRAVA" DO PRÉ-ARRANQUE PARA AS TELAS NÃO SOBREPOREM MAIS!
+        const fastBoot = document.getElementById('fast-boot-style');
+        if (fastBoot) fastBoot.remove();
 
         const headerAvatar = document.getElementById('header-my-avatar'); 
         if(headerAvatar && cachedMe.photoUrl) headerAvatar.src = cachedMe.photoUrl;

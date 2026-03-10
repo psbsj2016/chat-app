@@ -16,10 +16,9 @@
             var token = localStorage.getItem('token');
             var myId = localStorage.getItem('myId');
             if (token && myId) {
-                // Se já tem login, injeta CSS para esconder o Login ANTES de ele ser desenhado na tela!
-                document.write('<style>#auth-screen { display: none !important; } #main-screen { display: block !important; }</style>');
+                // Injeta o CSS temporário com ID para podermos removê-lo assim que o app ligar
+                document.write('<style id="fast-boot-style">.app-screen { display: none !important; } #main-screen { display: flex !important; flex-direction: column !important; }</style>');
                 
-                // Aplica Fonte e Tema Escuro em milissegundos
                 var font = localStorage.getItem('fontSize') || 'medium';
                 document.documentElement.classList.add('font-' + font);
                 if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-mode');
@@ -69,7 +68,6 @@
         
         .selected-msg-active { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4) !important; transform: scale(1.02); transition: transform 0.2s, box-shadow 0.2s; }
 
-        /* Balões Estilo ChatPTT (Azul e Slate) */
         .my-msg { align-self: flex-end; background-color: #3B82F6; border-top-right-radius: 0px; color: #FFFFFF; }
         .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #3B82F6; border-bottom: 10px solid transparent; }
         .other-msg { align-self: flex-start; background-color: #1E293B; border-top-left-radius: 0px; border: none; color: #F8FAFC; }
@@ -425,10 +423,10 @@
     </nav>
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=5.0" defer></script>
-    <script src="/js/ui.js?v=5.0" defer></script>
-    <script src="/js/chat.js?v=5.0" defer></script>
-    <script src="/js/webrtc.js?v=5.0" defer></script>
-    <script src="/js/features.js?v=5.0" defer></script>
+    <script src="/js/core.js?v=6.0" defer></script>
+    <script src="/js/ui.js?v=6.0" defer></script>
+    <script src="/js/chat.js?v=6.0" defer></script>
+    <script src="/js/webrtc.js?v=6.0" defer></script>
+    <script src="/js/features.js?v=6.0" defer></script>
 </body>
 </html>
