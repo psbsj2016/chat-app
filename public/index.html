@@ -62,10 +62,12 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .my-msg { align-self: flex-end; background-color: #005C4B; border-top-right-radius: 0px; color: #E9EDEF; }
-        .my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #005C4B; border-bottom: 10px solid transparent; }
-        .other-msg { align-self: flex-start; background-color: #202C33; border-top-left-radius: 0px; border: none; color: #E9EDEF; }
-        .other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid #202C33; border-bottom: 10px solid transparent; }
+        /* Balões Estilo ChatPTT (Azul e Slate) */
+.my-msg { align-self: flex-end; background-color: #3B82F6; border-top-right-radius: 0px; color: #FFFFFF; }
+.my-msg::before { content: ''; position: absolute; top: 0; right: -8px; width: 0; height: 0; border-left: 10px solid #3B82F6; border-bottom: 10px solid transparent; }
+
+.other-msg { align-self: flex-start; background-color: #1E293B; border-top-left-radius: 0px; border: none; color: #F8FAFC; }
+.other-msg::before { content: ''; position: absolute; top: 0; left: -8px; width: 0; height: 0; border-right: 10px solid #1E293B; border-bottom: 10px solid transparent; }
         
         .chat-date-divider { text-align: center; margin: 10px 0; }
         .chat-date-divider span { background-color: rgba(30, 41, 59, 0.85); color: rgba(255,255,255,0.85); padding: 6px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
@@ -120,16 +122,22 @@
     <div id="permissions-screen" class="app-screen hidden" style="background: var(--bg-color); align-items: center; justify-content: center; padding: 20px;"><div style="background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center;"><span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">settings_suggest</span><h2 style="color: var(--text-color); margin-bottom: 15px;">Configuração Rápida</h2><p style="color: var(--secondary-text); font-size: 15px; margin-bottom: 20px; line-height: 1.5;">Para a experiência completa, precisamos de algumas permissões:</p><button onclick="grantAppPermissions()" class="chic-btn">Entrar na Comunidade</button></div></div>
 
     <div id="main-screen" class="app-screen hidden">
-        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            <button class="icon-btn" onclick="clearContactSelection()"><span class="material-icons-round" style="color: white; font-size: 26px;">close</span></button>
-            <span id="action-bar-count" style="flex: 1; font-weight: 700; font-size: 18px; margin-left:15px;">1 Selecionado</span>
+        <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
             
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkScheduleModal()" title="Agendar Mensagem">schedule_send</span>
-                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="openBulkCreateGroupModal()" title="Criar Grupo">group_add</span>
-                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="promptBulkDeleteChat()" title="Apagar Selecionados">delete</span>
+            <button class="icon-btn" onclick="clearContactSelection()" style="background: rgba(255,255,255,0.2); border-radius: 50%; padding: 6px; margin-right: 15px;">
+                <span class="material-icons-round" style="color: #FFFFFF; font-size: 24px;">close</span>
+            </button>
+            
+            <span id="action-bar-count" style="flex: 1; font-weight: 800; font-size: 18px; color: #FFFFFF; letter-spacing: 0.5px;">1 Selecionado</span>
+            
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #FFFFFF !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="openBulkScheduleModal()" title="Agendar Mensagem">schedule_send</span>
+                
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #FFFFFF !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="openBulkCreateGroupModal()" title="Criar Grupo">group_add</span>
+                
+                <span class="material-icons-round" style="cursor: pointer; font-size: 26px; color: #ff4d4d !important; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.4); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="promptBulkDeleteChat()" title="Apagar Selecionados">delete</span>
             </div>
-        </div>   
+        </div>  
 
         <div class="material-header"><img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" onclick="toggleDrawer()" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg);"><div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div><button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button></div>
         <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
@@ -176,12 +184,29 @@
             </div>
         </div>
 
-        <div id="in-chat-search-bar" class="hidden" style="display: flex; align-items: center; padding: 10px 15px; background: var(--input-bg); border-bottom: 1px solid var(--border-color); gap: 10px; z-index: 9;">
-            <input type="text" id="in-chat-search-input" placeholder="Buscar na conversa..." class="chic-input" style="margin: 0; flex: 1; padding: 8px 15px; background: var(--card-bg);" oninput="handleInChatSearch(this.value)">
-            <span id="in-chat-search-counter" style="font-size: 13px; color: var(--secondary-text); font-weight: 800; min-width: 35px; text-align: center;">0/0</span>
-            <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_up</span></button>
-            <button class="icon-btn" onclick="navigateChatSearch(1)" style="padding: 5px;"><span class="material-icons-round">keyboard_arrow_down</span></button>
-            <button class="icon-btn" onclick="closeChatSearch()" style="color: #EF4444; padding: 5px; margin-left: 5px;"><span class="material-icons-round">close</span></button>
+        <div id="in-chat-search-bar" class="hidden" style="background: var(--card-bg); border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 9; box-shadow: 0 4px 15px rgba(0,0,0,0.2); padding: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                
+                <div style="flex: 1; display: flex; align-items: center; background: var(--input-bg); border-radius: 20px; padding: 4px 12px; border: 1px solid rgba(255,255,255,0.05); min-width: 0;">
+                    <span class="material-icons-round" style="font-size: 18px; color: var(--secondary-text); margin-right: 6px; flex-shrink: 0;">search</span>
+                    <input type="text" id="in-chat-search-input" placeholder="Buscar no chat..." style="background: transparent; border: none; outline: none; color: var(--text-color); width: 100%; font-size: 15px; font-weight: 500; min-width: 0;" oninput="handleInChatSearch(this.value)">
+                    <span id="in-chat-search-counter" style="font-size: 12px; color: var(--brand-primary); font-weight: 800; margin-left: 6px; flex-shrink: 0; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 10px;">0/0</span>
+                </div>
+
+                <div style="display: flex; align-items: center; background: var(--input-bg); border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;">
+                    <button class="icon-btn" onclick="navigateChatSearch(-1)" style="padding: 6px; border-right: 1px solid rgba(255,255,255,0.05); border-radius: 14px 0 0 14px; width: 32px; height: 32px;">
+                        <span class="material-icons-round" style="font-size: 20px; color: var(--text-color);">keyboard_arrow_up</span>
+                    </button>
+                    <button class="icon-btn" onclick="navigateChatSearch(1)" style="padding: 6px; border-radius: 0 14px 14px 0; width: 32px; height: 32px;">
+                        <span class="material-icons-round" style="font-size: 20px; color: var(--text-color);">keyboard_arrow_down</span>
+                    </button>
+                </div>
+
+                <button class="icon-btn" onclick="closeChatSearch()" style="padding: 6px; flex-shrink: 0; background: rgba(239, 68, 68, 0.1); border-radius: 50%; width: 32px; height: 32px;">
+                    <span class="material-icons-round" style="font-size: 18px; color: #EF4444;">close</span>
+                </button>
+                
+            </div>
         </div>
 
         <div id="chat-box" style="flex: 1; overflow-y: auto; overflow-x: hidden; background-image: var(--chat-bg-image); background-size: cover; background-position: center; width: 100%; box-sizing: border-box;"></div>
