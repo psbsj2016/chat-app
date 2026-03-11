@@ -178,7 +178,7 @@ window.deleteNote = async function(id) { if(!confirm("Apagar?")) return; try { a
 document.addEventListener("DOMContentLoaded", () => { setTimeout(loadNotes, 2500); });
 
 // ==============================================================
-// 📸 MOTOR DE STATUS E STORIES (O BUG DO NOME FOI CORRIGIDO)
+// 📸 MOTOR DE STATUS E STORIES (VELOCIDADE DA LUZ COM RAM)
 // ==============================================================
 
 document.head.insertAdjacentHTML("beforeend", `<style>
@@ -240,9 +240,45 @@ window.fetchStatuses = async function() {
 
 window.loadStatuses = window.fetchStatuses;
 
+// 🚀 RECEPTOR SOCKET (INJEÇÃO DIRETA EM MEMÓRIA = ZERO DELAY)
 if(typeof socket !== 'undefined') {
-    socket.on('new_status_published', (newStatus) => { window.fetchStatuses(); playNotificationSound('pop'); });
-    socket.on('status_view_updated', (data) => { if(data.senderId === myId) window.fetchStatuses(); });
+    socket.on('new_status_published', (newStatus) => { 
+        allStatuses.push(newStatus);
+        
+        const groups = {};
+        allStatuses.forEach(s => {
+            const sId = s.senderId._id || s.senderId;
+            if (!groups[sId]) {
+                groups[sId] = { 
+                    userId: sId, 
+                    userName: s.senderName || 'Usuário', 
+                    userPhoto: s.senderPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', 
+                    items: [] 
+                };
+            }
+            groups[sId].items.push(s);
+        });
+
+        let myGroup = null;
+        if (groups[myId]) {
+            myGroup = groups[myId];
+            delete groups[myId];
+        }
+
+        groupedStatuses = Object.values(groups);
+        if (myGroup) groupedStatuses.unshift(myGroup);
+
+        renderStatusTray(); 
+        
+        // Toca o som só se o status não for meu
+        if(newStatus.senderId !== myId && newStatus.senderId._id !== myId) {
+            playNotificationSound('pop');
+        }
+    });
+    
+    socket.on('status_view_updated', (data) => { 
+        if(data.senderId === myId) window.fetchStatuses(); 
+    });
 }
 
 window.renderStatusTray = function() {
@@ -539,11 +575,15 @@ window.publishStatus = async function() {
         if (res.ok) {
             closeCreateStatus();
             if (fileInput) fileInput.value = '';
+            if (textEl) textEl.value = '';
+            if (imgEl) { imgEl.classList.add('hidden'); imgEl.src = ''; }
+            if (captionEl) captionEl.value = '';
             statusBase64Image = null;
             tempQuickPhotoFile = null;
             tempQuickPhotoBase64 = null;
             if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
-            window.fetchStatuses();
+            
+            // 🔥 FOI RETIRADO O FETCH STATUS LENTO AQUI. A ATUALIZAÇÃO É INSTANTÂNEA PELO SOCKET AGORA!
         } else { 
             alert('Falha no servidor ao publicar.'); 
         }
@@ -589,7 +629,6 @@ window.renderStoryViews = function(storyObj) {
     }
 }
 
-// RESTANTE DAS FUNÇÕES
 window.handleQuickCamera = function(input) { const file = input.files[0]; if (!file) return; tempQuickPhotoFile = file; const reader = new FileReader(); reader.onload = function(e) { tempQuickPhotoBase64 = e.target.result; document.getElementById('quick-photo-preview').src = tempQuickPhotoBase64; showElement('quick-photo-dest-modal'); input.value = ''; }; reader.readAsDataURL(file); }
 window.postQuickPhotoToStatus = function() { hideElement('quick-photo-dest-modal'); openCreateStatusModal(); statusBase64Image = tempQuickPhotoBase64; document.getElementById('status-image-preview').src = statusBase64Image; document.getElementById('status-image-preview').classList.remove('hidden'); document.getElementById('status-text-input').style.display = 'none'; document.getElementById('status-caption-container').classList.remove('hidden'); }
 window.openQuickPhotoChatSelector = function() { hideElement('quick-photo-dest-modal'); showElement('quick-photo-chat-modal'); const list = document.getElementById('quick-photo-contacts-list'); const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; list.innerHTML = ''; if(cachedGroups.length > 0) { const gTitle = document.createElement('div'); gTitle.innerHTML = '<b>Grupos</b>'; list.appendChild(gTitle); cachedGroups.forEach(g => { const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer;'; div.innerHTML = `<img src="${g.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" class="avatar-small"> <span class="contact-name">${g.name}</span>`; div.onclick = () => sendQuickPhotoToTarget(g._id, true); list.appendChild(div); }); } if(cachedUsers.length > 0) { const uTitle = document.createElement('div'); uTitle.innerHTML = '<b>Contatos</b>'; list.appendChild(uTitle); cachedUsers.filter(u => !hiddenChats.includes(u._id)).forEach(user => { const div = document.createElement('div'); div.className = 'user-item'; div.style = 'cursor:pointer;'; div.innerHTML = `<img src="${user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-small"> <span class="contact-name">${user.displayName || user.email}</span>`; div.onclick = () => sendQuickPhotoToTarget(user._id, false); list.appendChild(div); }); } }
