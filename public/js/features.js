@@ -696,3 +696,123 @@ window.openScheduleModal = async function() { const targetSelect = document.getE
 window.saveScheduledMessage = async function() { const target = document.getElementById('schedule-target').value; const time = document.getElementById('schedule-datetime').value; const content = document.getElementById('schedule-text').value; if(!target || !time || !content) return alert("Preencha todos os campos!"); const localDate = new Date(time); const utcIsoString = localDate.toISOString(); const isGroup = target.startsWith('group_'); const targetId = target.replace('user_', '').replace('group_', ''); const btn = document.querySelector('#schedule-modal .chic-btn'); btn.innerText = "Agendando..."; btn.disabled = true; try { const res = await fetch('/schedule-message', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senderId: myId, targetId: targetId, isGroup: isGroup, content: content, scheduledTime: utcIsoString }) }); if(res.ok) { alert("Agendado!"); hideElement('schedule-modal'); document.getElementById('schedule-datetime').value = ''; document.getElementById('schedule-text').value = ''; } } catch(e) {} finally { btn.innerText = "Agendar"; btn.disabled = false; } }
 window.openScheduledList = async function() { showElement('scheduled-list-modal'); const container = document.getElementById('scheduled-messages-container'); container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Rastreando...</div>'; try { const res = await fetch(`/scheduled-messages/${myId}`); const msgs = await res.json(); container.innerHTML = ''; if (msgs.length === 0) { container.innerHTML = '<div style="text-align:center; margin-top: 20px;">Nenhuma mensagem.</div>'; return; } msgs.forEach(m => { const dateStr = new Date(m.scheduledTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); container.innerHTML += `<div style="background: var(--input-bg); padding: 12px; border-radius: 12px; margin-bottom: 10px;"><div style="font-size: 11px; font-weight: 800; margin-bottom: 5px;">⏰ ${dateStr}</div><div style="font-size: 14px; margin-bottom: 10px;">"${m.content}"</div><button onclick="cancelScheduledMessage('${m._id}')" class="chic-btn" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid #EF4444; margin: 0; padding: 6px 12px; width: auto; font-size: 12px;">Abortar</button></div>`; }); } catch(e) {} }
 window.cancelScheduledMessage = async function(id) { if(!confirm('Abortar este disparo?')) return; try { await fetch(`/schedule-message/${id}`, { method: 'DELETE' }); openScheduledList(); } catch(e) {} }
+
+// ==============================================================
+// 🎵 SINTETIZADOR DE ÁUDIO NATIVO (NOTIFICAÇÕES TECH)
+// ==============================================================
+let notificationAudioCtx = null;
+
+// Subscreve a função global de som de notificação para usar as nossas versões Sintetizadas
+window.playNotificationSound = function(type) {
+    if (type === 'none') return;
+    if (!type) type = localStorage.getItem('notificationSound') || 'modern';
+    if (type === 'none') return;
+
+    try {
+        if (!notificationAudioCtx) notificationAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (notificationAudioCtx.state === 'suspended') notificationAudioCtx.resume();
+
+        const t = notificationAudioCtx.currentTime;
+        const osc = notificationAudioCtx.createOscillator();
+        const gain = notificationAudioCtx.createGain();
+
+        osc.connect(gain);
+        gain.connect(notificationAudioCtx.destination);
+
+        if (type === 'modern') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, t);
+            osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            osc.start(t);
+            osc.stop(t + 0.3);
+        } 
+        else if (type === 'pop') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, t);
+            osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc.start(t);
+            osc.stop(t + 0.15);
+        }
+        else if (type === 'bell') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 1.5);
+            osc.start(t);
+            osc.stop(t + 1.5);
+        }
+        else if (type === 'cyber') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, t);
+            osc.frequency.exponentialRampToValueAtTime(100, t + 0.2);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.2, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            osc.start(t);
+            osc.stop(t + 0.2);
+        }
+        else if (type === 'hologram') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(900, t);
+            osc.frequency.setValueAtTime(1800, t + 0.1);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.2, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+            osc.start(t);
+            osc.stop(t + 0.4);
+        }
+        else if (type === 'sonar') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1500, t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+            
+            const osc2 = notificationAudioCtx.createOscillator();
+            const gain2 = notificationAudioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1500, t + 0.3);
+            osc2.connect(gain2); gain2.connect(notificationAudioCtx.destination);
+            gain2.gain.setValueAtTime(0, t + 0.3);
+            gain2.gain.linearRampToValueAtTime(0.1, t + 0.35);
+            gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+            
+            osc.start(t); osc.stop(t + 0.4);
+            osc2.start(t + 0.3); osc2.stop(t + 0.6);
+        }
+        else if (type === 'digital') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1000, t);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.1, t + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.start(t);
+            osc.stop(t + 0.1);
+        }
+        else if (type === 'arcade') {
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.1, t);
+            osc.frequency.setValueAtTime(440, t); // C
+            osc.frequency.setValueAtTime(554, t + 0.05); // E
+            osc.frequency.setValueAtTime(659, t + 0.1); // G
+            osc.frequency.setValueAtTime(880, t + 0.15); // C+
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            osc.start(t);
+            osc.stop(t + 0.3);
+        }
+
+    } catch(e) { console.log("Web Audio bloqueado no navegador."); }
+};
+
+// Dispara o som ao clicar no botão de Play do Menu
+window.testNotificationSound = function() {
+    const soundType = document.getElementById('notification-sound-select').value;
+    playNotificationSound(soundType);
+};
