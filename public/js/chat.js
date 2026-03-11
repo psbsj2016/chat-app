@@ -1,5 +1,5 @@
 // ==============================================================
-// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (100% COMPLETO E BLINDADO)
+// 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (ZERO DELAY IMPLEMENTADO)
 // ==============================================================
 let searchTimeout = null;
 let pressTimer = null;
@@ -77,6 +77,7 @@ window.executeBulkDeleteChat = async function() {
             } else {
                 await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); 
                 messageCache[contact.id] = []; 
+                localStorage.removeItem(`chat_cache_${contact.id}`); // Limpa cache
                 if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); 
             }
         } catch(e) {}
@@ -523,7 +524,7 @@ window.togglePreviewAudio = function() {
 }
 
 // ==============================================================
-// 🔌 SOCKETS (SINCRONIZAÇÃO EM TEMPO REAL)
+// 🔌 SOCKETS (SINCRONIZAÇÃO EM TEMPO REAL E CACHE LOCAL)
 // ==============================================================
 socket.on('user_profile_updated', (data) => { if (currentChatId === data.userId && !isGroupChat) { if (data.displayName) document.getElementById('chat-title').innerText = data.displayName; if (data.photoUrl) document.getElementById('chat-avatar').src = data.photoUrl; } if (myId) loadContacts(); if (typeof loadStatuses === 'function') loadStatuses(); });
 socket.on('force_reload_contacts', () => { if (myId) loadContacts(); });
@@ -558,42 +559,39 @@ socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const t
 socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
-// 🚀 RECEBER ATUALIZAÇÃO DE MENSAGEM EDITADA
 socket.on('message_edited', (data) => {
     const el = document.getElementById(`msg-${data.msgId}`);
     if (el) {
         const textSpan = el.querySelector('.msg-text-content');
         if (textSpan) textSpan.innerHTML = escapeHTML(data.newContent) + ' <span style="font-size:10.5px; opacity:0.7; margin-left: 5px;">(editado)</span>';
     }
-    // Atualiza no cache do telemóvel para não voltar a ficar antigo se fechar o chat
+    // Atualiza Cache Local
     if (messageCache[currentChatId]) {
         const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
         if (cMsg) cMsg.content = data.newContent + ' (editado)';
+        const cacheKey = isGroupChat ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50)));
     }
 });
 
-// 🚀 RECEBER ATUALIZAÇÃO DE MENSAGEM APAGADA ESTILO WHATSAPP
 socket.on('message_deleted', (data) => {
     const el = document.getElementById(`msg-${data.msgId}`);
     if (el) {
-        // Remove imagens/áudios se existirem
         const midia = el.querySelector('.chat-image, .chat-video, .chat-audio, .chat-pdf');
         if(midia) midia.remove();
         
-        // Transforma o texto na notificação clássica "apagada"
         const textSpan = el.querySelector('.msg-text-content');
         const apagadaHtml = `<span style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`;
         if (textSpan) {
             textSpan.innerHTML = apagadaHtml;
         } else {
-            // Se era só media, cria o span agora
-            const infoDiv = el.querySelector('div[style*="font-size:12.5px"]'); // nome do remetente
+            const infoDiv = el.querySelector('div[style*="font-size:12.5px"]'); 
             const statusDiv = el.querySelector('div[style*="position: absolute"]');
             el.innerHTML = (infoDiv ? infoDiv.outerHTML : '') + apagadaHtml + (statusDiv ? statusDiv.outerHTML : '');
         }
     }
     
-    // Sincroniza o cache para manter "apagada"
+    // Atualiza Cache Local
     if (messageCache[currentChatId]) {
         const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
         if (cMsg) { 
@@ -601,22 +599,45 @@ socket.on('message_deleted', (data) => {
             cMsg.fileUrl = null; 
             cMsg.fileType = 'text'; 
         }
+        const cacheKey = isGroupChat ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50)));
     }
 });
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
+// 🚀 RECEBIMENTO DE MENSAGENS COM CACHE INSTANTÂNEO
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId; const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender }; const senderId = senderObj._id;
     let targetId; if (isGroup) { targetId = msg.groupId; } else { const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver; targetId = (senderId === myId) ? receiverId : senderId; }
+    
     if (hiddenChats.includes(targetId) && senderId !== myId) { hiddenChats = hiddenChats.filter(id => id !== targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); }
-    if (currentChatId === targetId) { if (!document.getElementById(`msg-${msg._id}`)) { displayMessage(msg); if (!messageCache[currentChatId]) messageCache[currentChatId] = []; messageCache[currentChatId].push(msg); } if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId }); } else { if (senderId !== myId) { if (isGroup) { unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1; localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); } if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); playNotificationSound('modern'); } }
+    
+    if (currentChatId === targetId) { 
+        if (!document.getElementById(`msg-${msg._id}`)) { 
+            displayMessage(msg); 
+            if (!messageCache[currentChatId]) messageCache[currentChatId] = []; 
+            messageCache[currentChatId].push(msg); 
+            
+            // 🔥 GRAVA NO DISCO PARA ZERO DELAY NA PRÓXIMA VEZ
+            const cacheKey = isGroup ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`;
+            localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50)));
+        } 
+        if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId }); 
+    } else { 
+        if (senderId !== myId) { 
+            if (isGroup) { unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1; localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } 
+            else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); } 
+            if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); playNotificationSound('modern'); 
+        } 
+    }
+    
     if (!isGroup && senderObj.displayName && senderId !== myId) { let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const existingIndex = cachedUsers.findIndex(u => u._id === senderId); if (existingIndex === -1) { cachedUsers.unshift(senderObj); } else { const userToMove = cachedUsers.splice(existingIndex, 1)[0]; userToMove.displayName = senderObj.displayName; userToMove.photoUrl = senderObj.photoUrl; cachedUsers.unshift(userToMove); } localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); }
     loadContacts();
 });
 
 // ==============================================================
-// 💬 AÇÕES E RENDERIZAÇÃO DE CHAT
+// 💬 AÇÕES E RENDERIZAÇÃO DE CHAT COM CACHE
 // ==============================================================
 window.toggleAttachMenu = function() {
     const menu = document.getElementById('attach-menu');
@@ -658,7 +679,6 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     const input = document.getElementById('message-input'); 
     let content = textOverride || input.innerText.trim(); 
     
-    // 🚀 ENVIA EDIÇÃO
     if (window.editingMsgId && !fileUrl) {
         fetch(`/message/${window.editingMsgId}`, {
             method: 'PUT',
@@ -769,7 +789,8 @@ window.openChat = function(id, name, photo, email, type = 'user') {
 
     document.getElementById('chat-title').innerText = name; 
     document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
-    document.getElementById('chat-box').innerHTML = ''; 
+    
+    // Removemos o innerHTML='' daqui para que o ecrã não pisque antes do cache aparecer
     
     const contactDiv = document.getElementById(`contact-${id}`); 
     if (contactDiv) { 
@@ -804,6 +825,77 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     } 
     
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
+}
+
+// 🚀 CARREGAMENTO INSTANTÂNEO COM CACHE (OFFLINE-FIRST)
+window.loadMessages = async function(userId) { 
+    lastRenderedDate = null; 
+    const box = document.getElementById('chat-box');
+    
+    let cached = messageCache[userId];
+    if (!cached) {
+        const localData = localStorage.getItem(`chat_cache_${userId}`);
+        if (localData) {
+            cached = JSON.parse(localData);
+            messageCache[userId] = cached;
+        }
+    }
+
+    // Se tem cache, mostra na hora!
+    if (cached && cached.length > 0) {
+        box.innerHTML = '';
+        cached.forEach(displayMessage);
+    } else {
+        box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>';
+    }
+
+    try { 
+        const res = await fetch(`/messages/${myId}/${userId}`); 
+        const msgs = await res.json(); 
+        
+        // Só atualiza o HTML se a nuvem tiver algo novo (evita que a tela pisque à toa)
+        if (!cached || JSON.stringify(cached) !== JSON.stringify(msgs)) { 
+            messageCache[userId] = msgs; 
+            localStorage.setItem(`chat_cache_${userId}`, JSON.stringify(msgs.slice(-50)));
+            box.innerHTML = ''; 
+            lastRenderedDate = null; 
+            msgs.forEach(displayMessage); 
+        } 
+    } catch (e) {} 
+}
+
+window.loadGroupMessages = async function(groupId) { 
+    lastRenderedDate = null; 
+    const box = document.getElementById('chat-box');
+    
+    let cached = messageCache[groupId];
+    if (!cached) {
+        const localData = localStorage.getItem(`chat_cache_group_${groupId}`);
+        if (localData) {
+            cached = JSON.parse(localData);
+            messageCache[groupId] = cached;
+        }
+    }
+
+    if (cached && cached.length > 0) {
+        box.innerHTML = '';
+        cached.forEach(displayMessage);
+    } else {
+        box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>';
+    }
+
+    try { 
+        const res = await fetch(`/group-messages/${groupId}`); 
+        const msgs = await res.json(); 
+        
+        if (!cached || JSON.stringify(cached) !== JSON.stringify(msgs)) { 
+            messageCache[groupId] = msgs; 
+            localStorage.setItem(`chat_cache_group_${groupId}`, JSON.stringify(msgs.slice(-50)));
+            box.innerHTML = ''; 
+            lastRenderedDate = null; 
+            msgs.forEach(displayMessage); 
+        } 
+    } catch (e) {} 
 }
 
 window.loadContacts = async function() { 
@@ -878,8 +970,6 @@ window.renderContactsList = function(groups, users) {
     });
 }
 
-async function loadMessages(userId) { lastRenderedDate = null; if (messageCache[userId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[userId].forEach(displayMessage); } try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!messageCache[userId] || JSON.stringify(messageCache[userId]) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
-async function loadGroupMessages(groupId) { lastRenderedDate = null; if (messageCache[groupId]) { document.getElementById('chat-box').innerHTML = ''; messageCache[groupId].forEach(displayMessage); } try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!messageCache[groupId] || JSON.stringify(messageCache[groupId]) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; document.getElementById('chat-box').innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} }
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
 
 window.toggleMessageSelection = function(msgEl, msgObj) {
@@ -988,7 +1078,6 @@ function displayMessage(msg) {
     
     let msgBody = '';
     
-    // 🚫 TRATAMENTO VISUAL DA MENSAGEM APAGADA
     if (displayContent && displayContent.includes('🚫 Esta mensagem foi apagada')) {
         msgBody = `<span class="msg-text-content" style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`;
     } 
@@ -1042,7 +1131,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     currentSelectedMsgElement = msgElement; 
     selectedMsgData = msgObj; 
     
-    // Verifica se a mensagem já foi apagada para esconder as opções
     const isDeleted = msgObj.content && msgObj.content.includes('🚫 Esta mensagem foi apagada');
     
     let overlay = document.getElementById('msg-actions-overlay');
@@ -1118,7 +1206,6 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
         ];
     }
     
-    // Apagar continua disponível para remover do ecrã local
     menuItems.push({ icon: 'delete_outline', text: isDeleted ? 'Apagar da minha tela' : 'Apagar', color: '#EF4444', action: () => { 
         if (isMe && !isDeleted) window.deleteMessageForEveryone(msgObj._id);
         else window.deleteSingleMessage(msgObj._id);
@@ -1144,7 +1231,7 @@ window.showMessageMenu = function(e, msgElement, msgObj) {
     if (rbTop < 60) rbTop = rect.bottom + 10; 
     
     let mlTop = rbTop === rect.bottom + 10 ? rbTop + 65 : rect.bottom + 10; 
-    if (isDeleted) mlTop = rbTop; // Se não tem reaction bar, sobe o menu
+    if (isDeleted) mlTop = rbTop; 
     
     if (mlTop + 400 > window.innerHeight) {
         mlTop = rect.top - 400; 
@@ -1179,7 +1266,6 @@ window.deleteSingleMessage = function(msgId) {
     }
 }
 
-// 🚀 APAGA A MENSAGEM NO SERVIDOR PARA TODOS
 window.deleteMessageForEveryone = async function(msgId) {
     if(confirm("Apagar mensagem para todos?")) {
         await fetch(`/message/${msgId}`, { method: 'DELETE' });

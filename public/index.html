@@ -433,45 +433,49 @@
     
     <nav id="bottom-navigation" class="bottom-nav hidden">
      
-         <div id="video-call-screen" class="app-screen hidden" style="z-index: 100000; background: #0B0F19; flex-direction: column; height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0;">
+         <div id="video-call-screen" class="app-screen hidden" style="z-index: 100000; background: #0B0F19; flex-direction: column; height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
         
-        <div id="audio-call-avatar-container" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1;">
+        <button id="btn-minimize-call" class="icon-btn" onclick="event.stopPropagation(); toggleMinimizeCall()" style="position: absolute; top: max(20px, env(safe-area-inset-top)); left: 20px; z-index: 10; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            <span class="material-icons-round" style="color: white; font-size: 28px;">keyboard_arrow_down</span>
+        </button>
+
+        <div id="audio-call-avatar-container" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; pointer-events: none;">
             <img id="audio-call-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--brand-primary); object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.4); animation: pulseRed 2s infinite;">
         </div>
 
-        <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; background: transparent; position: relative; z-index: 2;"></video>
+        <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; background: transparent; position: relative; z-index: 2; pointer-events: none;"></video>
         
-        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 3; background: #1E293B;"></video>
+        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 3; background: #1E293B; transition: all 0.3s ease; pointer-events: none;"></video>
         
-        <div id="call-status-text" style="position: absolute; top: max(50px, env(safe-area-inset-top)); left: 0; width: 100%; text-align: center; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); z-index: 3; pointer-events: none;">A ligar...</div>
+        <div id="call-status-text" style="position: absolute; top: max(70px, env(safe-area-inset-top)); left: 0; width: 100%; text-align: center; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); z-index: 3; pointer-events: none;">A ligar...</div>
 
-        <div style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 4;">
-            <button id="btn-toggle-mic" class="icon-btn" onclick="toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+        <div id="call-controls" style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 4; transition: opacity 0.3s;">
+            <button id="btn-toggle-mic" class="icon-btn" onclick="event.stopPropagation(); toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
                 <span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>
             </button>
-            <button class="icon-btn" onclick="endVideoCall(true)" style="background: #EF4444; width: 70px; height: 70px; border-radius: 50%; box-shadow: 0 4px 20px rgba(239,68,68,0.6);">
+            <button class="icon-btn" onclick="event.stopPropagation(); endVideoCall(true)" style="background: #EF4444; width: 70px; height: 70px; border-radius: 50%; box-shadow: 0 4px 20px rgba(239,68,68,0.6);">
                 <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
             </button>
-            <button id="btn-toggle-cam" class="icon-btn" onclick="toggleVideoCam()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+            <button id="btn-toggle-cam" class="icon-btn" onclick="event.stopPropagation(); toggleVideoCam()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
                 <span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>
             </button>
-            <button id="btn-flip-cam" class="icon-btn" onclick="flipCamera()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
+            <button id="btn-flip-cam" class="icon-btn" onclick="event.stopPropagation(); flipCamera()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
                 <span class="material-icons-round" style="color: white; font-size: 28px;">cameraswitch</span>
             </button>
         </div>
     </div>
 
-    <div id="incoming-call-modal" class="modal-overlay hidden" style="z-index: 100001; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(15px);">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
-            <img id="caller-photo" src="" style="width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--brand-primary); margin-bottom: 20px; object-fit: cover; box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); animation: pulseRed 1.5s infinite;">
-            <h2 id="caller-name" style="color: white; font-size: 32px; margin-bottom: 5px; font-weight: 900; letter-spacing: -1px;">Nome</h2>
-            <div id="caller-type" style="color: var(--brand-secondary); font-size: 16px; margin-bottom: 50px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Chamada de Vídeo...</div>
+    <div id="incoming-call-modal" class="modal-overlay hidden" style="z-index: 100001; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(15px); position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; padding: 20px; box-sizing: border-box;">
+            <img id="caller-photo" src="" style="width: 140px; height: 140px; border-radius: 50%; border: 4px solid var(--brand-primary); margin-bottom: 25px; object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); animation: pulseRed 1.5s infinite;">
+            <h2 id="caller-name" style="color: white; font-size: 32px; margin-bottom: 5px; font-weight: 900; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nome</h2>
+            <div id="caller-type" style="color: var(--brand-secondary); font-size: 16px; margin-bottom: 60px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Chamada de Vídeo...</div>
             
-            <div style="display: flex; gap: 50px;">
-                <button class="icon-btn" onclick="rejectCall()" style="background: #EF4444; width: 75px; height: 75px; border-radius: 50%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;">
+            <div style="display: flex; gap: 40px; width: 100%; justify-content: center; max-width: 300px;">
+                <button class="icon-btn" onclick="rejectCall()" style="background: #EF4444; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;">
                     <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
                 </button>
-                <button class="icon-btn" onclick="acceptCall()" style="background: #10B981; width: 75px; height: 75px; border-radius: 50%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(16,185,129,0.5); animation: bounce 2s infinite;">
+                <button class="icon-btn" onclick="acceptCall()" style="background: #10B981; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(16,185,129,0.5); animation: bounce 2s infinite;">
                     <span class="material-icons-round" style="color: white; font-size: 36px;">call</span>
                 </button>
             </div>

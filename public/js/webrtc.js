@@ -1,6 +1,30 @@
 // ==============================================================
-// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ NAS COMUNIDADES
+// 🎙️ MOTOR WEBRTC: LOUNGE DE VOZ E CHAMADAS P2P AVANÇADAS
 // ==============================================================
+
+// INJETA O CSS DA CHAMADA MINIMIZADA (PICTURE-IN-PICTURE)
+document.head.insertAdjacentHTML("beforeend", `<style>
+    .minimized-call {
+        top: max(20px, env(safe-area-inset-top)) !important;
+        right: 20px !important;
+        left: auto !important;
+        bottom: auto !important;
+        width: 130px !important;
+        height: 190px !important;
+        border-radius: 20px !important;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.7) !important;
+        border: 2px solid var(--brand-primary) !important;
+        overflow: hidden;
+        cursor: pointer;
+        z-index: 1000000 !important;
+    }
+    .minimized-call #local-video { display: none !important; }
+    .minimized-call #call-controls { display: none !important; }
+    .minimized-call #call-status-text { display: none !important; }
+    .minimized-call #btn-minimize-call { display: none !important; }
+    .minimized-call:hover { transform: scale(1.05); }
+</style>`);
+
 let localAudioStream = null;
 let peerConnections = {}; 
 let currentVoiceChannelId = null;
@@ -111,7 +135,7 @@ function addParticipantToUI(id, profile) {
 function removeParticipantFromUI(id) { const p = document.getElementById(`participant-${id}`); if (p) p.remove(); const a = document.getElementById(`audio-${id}`); if (a) a.remove(); }
 
 // ==============================================================
-// 📹 MOTOR DE CHAMADAS P2P (CHATS PRIVADOS)
+// 📹 MOTOR DE CHAMADAS P2P (CHATS PRIVADOS) - COM MINIMIZAR E NOTIFICAÇÃO
 // ==============================================================
 let videoStream = null;
 let videoPC = null;
@@ -120,13 +144,12 @@ let incomingCallData = null;
 let currentFacingMode = 'user'; 
 let isVideoCallActive = true; 
 let callRingInterval = null;
+let isCallMinimized = false;
 
-// Recebe a instrução do chat.js
 window.initVideoCall = async function(targetId, isVideo = true) {
     if (!targetId) return;
     if (isGroupChat) return alert("As chamadas só estão disponíveis para conversas privadas (1 a 1).");
     
-    // 🔒 TRAVA DE SEGURANÇA: Evita "Múltiplas Ligações"
     if (currentCallTarget || incomingCallData) {
         return alert("Termine a chamada atual antes de iniciar uma nova.");
     }
@@ -162,15 +185,15 @@ window.initVideoCall = async function(targetId, isVideo = true) {
     }
 };
 
+// 🔔 SISTEMA DE RECEBIMENTO COM NOTIFICAÇÃO NATIVA
 socket.on('incoming_call', (data) => {
-    // 🔒 TRAVA DE SEGURANÇA: Rejeita automaticamente se você já estiver em ligação
     if (currentCallTarget || incomingCallData) {
         socket.emit('reject_call', { callerId: data.callerId });
         return;
     }
 
     incomingCallData = data;
-    isVideoCallActive = data.isVideo !== undefined ? data.isVideo : true; // Fallback de segurança
+    isVideoCallActive = data.isVideo !== undefined ? data.isVideo : true; 
     
     document.getElementById('caller-name').innerText = data.callerName; 
     document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -178,6 +201,20 @@ socket.on('incoming_call', (data) => {
     
     if(typeof showElement === 'function') showElement('incoming-call-modal');
     
+    // Se a app estiver em segundo plano, lança notificação do SO!
+    if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+        const notif = new Notification(`Chamada de ${data.callerName}`, {
+            body: isVideoCallActive ? 'Chamada de Vídeo' : 'Chamada de Voz',
+            icon: data.callerPhoto || 'favicon.png',
+            tag: 'incoming_call',
+            requireInteraction: true
+        });
+        notif.onclick = function() {
+            window.focus();
+            this.close();
+        };
+    }
+
     if(typeof playNotificationSound === 'function') playNotificationSound('bell');
     callRingInterval = setInterval(() => { if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 3000);
 });
@@ -263,7 +300,6 @@ function createVideoPeerConnection(target) {
         const remoteVid = document.getElementById('remote-video');
         remoteVid.srcObject = event.streams[0]; 
         
-        // Força a reprodução caso o telemóvel bloqueie
         remoteVid.play().catch(e => console.log("Auto-play preventivo contornado.", e));
         
         if(!isVideoCallActive) remoteVid.style.opacity = '0';
@@ -271,12 +307,42 @@ function createVideoPeerConnection(target) {
     };
 }
 
+// 🪟 LÓGICA DE MINIMIZAR A CHAMADA (PICTURE-IN-PICTURE NATIVO)
+window.toggleMinimizeCall = function() {
+    const callScreen = document.getElementById('video-call-screen');
+    if (!callScreen) return;
+
+    isCallMinimized = !isCallMinimized;
+    
+    if (isCallMinimized) {
+        callScreen.classList.add('minimized-call');
+        // Adiciona um clique à janela inteira para maximizar, a menos que seja um botão
+        callScreen.onclick = function(e) {
+            if (isCallMinimized && !e.target.closest('.icon-btn')) {
+                window.toggleMinimizeCall();
+            }
+        };
+    } else {
+        callScreen.classList.remove('minimized-call');
+        callScreen.onclick = null;
+    }
+};
+
 window.endVideoCall = function(emitSignal = true) {
     clearInterval(callRingInterval);
     if (emitSignal && currentCallTarget) socket.emit('end_call', { targetId: currentCallTarget });
     if (videoPC) { videoPC.close(); videoPC = null; } 
     stopVideoMedia(); 
-    if(typeof hideElement === 'function') hideElement('video-call-screen'); 
+    
+    const callScreen = document.getElementById('video-call-screen');
+    if(callScreen) {
+        callScreen.classList.remove('minimized-call');
+        callScreen.onclick = null;
+        isCallMinimized = false;
+        callScreen.classList.add('hidden');
+        callScreen.style.display = 'none';
+    }
+    
     currentCallTarget = null; 
     incomingCallData = null;
 };
