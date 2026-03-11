@@ -495,6 +495,101 @@
         <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
     </nav>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Regista o "Ecrã Inicial" na memória do telemóvel
+            history.replaceState({ appState: 'home' }, '', window.location.pathname);
+
+            // 2. O Observador Invisível (Vigia se abriu alguma tela nova)
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'class' || mutation.attributeName === 'style') {
+                        const target = mutation.target;
+                        const isVisible = !target.classList.contains('hidden') && target.style.display !== 'none';
+                        
+                        // Se abriu uma tela ou modal (que não seja a tela inicial)
+                        if (isVisible && target.id !== 'main-screen' && target.id !== 'auth-screen' && target.id !== 'bottom-navigation') {
+                            if (!history.state || history.state.openId !== target.id) {
+                                // Empurra um passo no histórico do telemóvel!
+                                history.pushState({ openId: target.id }, '', '#' + target.id);
+                            }
+                        }
+                    }
+                });
+            });
+
+            // 3. Aplica o vigia em todas as telas e modais
+            document.querySelectorAll('.app-screen, .modal-overlay').forEach(el => {
+                observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+            });
+
+            // 4. O GATILHO NATIVO: Quando o botão "Voltar" físico/gesto for acionado
+            window.addEventListener('popstate', (event) => {
+                
+                // PRIORIDADE 1: Fechar Gavetas de Emojis e Anexos (Sem sair do Chat)
+                const emojiDrawer = document.getElementById('emoji-drawer');
+                if (emojiDrawer && emojiDrawer.style.height === '300px') {
+                    emojiDrawer.style.height = '0px';
+                    history.pushState({ appState: 'chat' }, '', '#chat-screen'); 
+                    return;
+                }
+                const attachMenu = document.getElementById('attach-menu');
+                if (attachMenu && !attachMenu.classList.contains('hidden')) {
+                    attachMenu.classList.add('hidden');
+                    history.pushState({ appState: 'chat' }, '', '#chat-screen'); 
+                    return;
+                }
+
+                // PRIORIDADE 2: Rejeitar/Encerrar Chamadas 
+                const incomingModal = document.getElementById('incoming-call-modal');
+                if (incomingModal && !incomingModal.classList.contains('hidden')) {
+                    if (typeof rejectCall === 'function') rejectCall();
+                    return;
+                }
+                const callScreen = document.getElementById('video-call-screen');
+                if (callScreen && !callScreen.classList.contains('hidden')) {
+                    if (typeof endVideoCall === 'function') endVideoCall(true);
+                    return;
+                }
+
+                // PRIORIDADE 3: Fechar os Stories/Status
+                const storyViewer = document.getElementById('story-viewer-modal');
+                if (storyViewer && !storyViewer.classList.contains('hidden')) {
+                    if (typeof closeStoryViewer === 'function') closeStoryViewer();
+                    return;
+                }
+
+                // PRIORIDADE 4: Fechar Menus Pop-up (Qualquer Modal que esteja aberto)
+                const openModals = Array.from(document.querySelectorAll('.modal-overlay:not(.hidden)'));
+                if (openModals.length > 0) {
+                    const topModal = openModals[openModals.length - 1]; // Pega no último que abriu
+                    if (typeof hideElement === 'function') hideElement(topModal.id);
+                    else topModal.classList.add('hidden');
+                    return;
+                }
+
+                // PRIORIDADE 5: Sair de dentro do Chat e voltar à lista
+                const chatScreen = document.getElementById('chat-screen');
+                if (chatScreen && !chatScreen.classList.contains('hidden')) {
+                    if (typeof backToMain === 'function') backToMain();
+                    return;
+                }
+
+                // PRIORIDADE 6: Voltar de Telas Secundárias (Configurações, Explorar)
+                const profileScreen = document.getElementById('profile-screen');
+                const settingsScreen = document.getElementById('settings-screen');
+                const exploreScreen = document.getElementById('screen-explorar');
+                
+                if ((profileScreen && !profileScreen.classList.contains('hidden')) || 
+                    (settingsScreen && !settingsScreen.classList.contains('hidden')) ||
+                    (exploreScreen && !exploreScreen.classList.contains('hidden'))) {
+                    if (typeof backToMain === 'function') backToMain();
+                    return;
+                }
+            });
+        });
+    </script>
+
     <script src="/socket.io/socket.io.js" defer></script>
     <script src="/js/core.js?v=6.0" defer></script>
     <script src="/js/ui.js?v=6.0" defer></script>
