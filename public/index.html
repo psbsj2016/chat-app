@@ -170,7 +170,7 @@
                     <div class="menu-item" onclick="reportContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #F59E0B;">flag</span> Denunciar</div>
                     <div class="menu-item" onclick="blockContact(currentChatId); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">block</span> Bloquear</div>
                     <div class="menu-separator"></div>
-                    <div class="menu-item logout" onclick="deleteCurrentChat(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">delete_outline</span> Apagar Chat</div>
+                    <div class="menu-item logout" onclick="deleteCurrentChat(); toggleMenu('chat-options-menu')"><span class="material-icons-round" style="color: #EF4444;">delete_forever</span> Apagar Tudo</div>
                 </div>
             </div>
         </div>
@@ -218,39 +218,40 @@
                 <div class="attach-menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981; font-size: 22px;">headphones</span> <span style="font-weight: 600;">Áudio</span></div>
             </div>
 
-            <div style="padding: 0 10px; display: flex; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
-                <div id="chat-input-container" style="flex: 1; display: flex; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box;">
+            <div style="padding: 0 10px; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
+                
+                <div id="chat-input-container" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box; min-width: 0;">
                     <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
-                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; min-width: 0;"></div>
-                    <div id="btn-attach-wrapper" style="display: flex; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
-                        <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg);"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
-                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
+                    <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; white-space: pre-wrap; min-width: 0;"></div>
+                    <div id="btn-attach-wrapper" style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
+                        <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg); flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
+                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
                     </div>
                 </div>
 
-                <div id="recording-ui" class="hidden premium-record-ui">
-                    <div id="recording-active-state" class="hidden" style="display:flex; justify-content:space-between; align-items:center; width:100%; height: 100%;">
-                        <div style="display:flex; align-items:center; gap:6px; margin-left: 5px;">
+                <div id="recording-ui" class="hidden premium-record-ui" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px;">
+                    <div id="recording-active-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; justify-content:space-between; align-items:center; width:100%; height: 100%; min-width: 0;">
+                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:6px; margin-left: 5px; flex-shrink: 0;">
                             <div style="width:8px; height:8px; background:#EF4444; border-radius:50%; animation: pulseRed 1s infinite;"></div>
                             <div style="font-size:16px; color:var(--text-color); font-weight:600; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:15px; margin-right: 5px;">
-                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
+                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:10px; margin-right: 5px; flex-shrink: 0;">
+                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
                         </div>
                     </div>
-                    <div id="recording-preview-state" class="hidden" style="display:flex; align-items:center; justify-content:space-between; width:100%; height: 100%;">
-                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                        <div style="flex:1; display:flex; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden;">
-                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
+                    <div id="recording-preview-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; justify-content:space-between; width:100%; height: 100%; min-width: 0;">
+                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
+                        <div style="flex:1; display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden; min-width: 0;">
+                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
                             <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;"><div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div></div>
-                            <div style="font-size:12px; color:var(--text-muted); font-family:monospace;" id="preview-timer-total">0:00</div>
+                            <div style="font-size:12px; color:var(--text-muted); font-family:monospace; flex-shrink: 0;" id="preview-timer-total">0:00</div>
                         </div>
-                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
+                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
 
-                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
+                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()" style="flex-shrink: 0;"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
             </div>
 
             <div id="emoji-drawer">

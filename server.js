@@ -174,39 +174,55 @@ app.delete('/delete-account/:userId', async (req, res) => { try { const uId = re
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 
 app.get('/api/statuses', async (req, res) => { try { const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000); const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } }).populate('views.viewerId', 'displayName photoUrl').sort({ createdAt: 1 }); res.json(statuses); } catch(e) { res.status(500).json([]); } });
+// ==========================================
+// 📸 ROTA DE PUBLICAÇÃO DE STATUS (BLINDADA)
+// ==========================================
 app.post('/api/status', async (req, res) => { 
     try { 
         const newStatus = new StatusMsg(req.body); 
         await newStatus.save(); 
         
-        // 1. Emite para quem está com o app aberto (Velocidade da Luz)
+        // 1. Atualiza quem está com o app aberto instantaneamente (Zero Delay)
         io.emit('new_status_published', newStatus); 
         
-        // 2. 🚀 NOTIFICAÇÃO PUSH NATIVA (Para quem está com o app fechado)
-        const senderUser = await User.findById(newStatus.senderId);
-        if (senderUser && process.env.VAPID_PUBLIC_KEY) {
-            // Busca todos os usuários que têm permissão de notificação (exceto quem postou)
-            const allUsers = await User.find({ _id: { $ne: newStatus.senderId } });
-            
-            allUsers.forEach(user => {
-                if (user.pushSubscriptions && user.pushSubscriptions.length > 0) {
-                    let previewText = newStatus.type === 'image' ? '📷 Publicou uma nova foto' : newStatus.content;
-                    
-                    const payload = JSON.stringify({ 
-                        title: 'Novo Status', 
-                        body: `${senderUser.displayName}: ${previewText}`, 
-                        icon: senderUser.photoUrl || '/favicon.png',
-                        tag: `status_update_${newStatus.senderId}`, // Agrupa notificações da mesma pessoa
-                        url: '/'
+        // 2. Tenta enviar Push Notification silenciosamente (Escudo Anti-Crash)
+        try {
+            const webpush = require('web-push'); // Importa a ferramenta aqui!
+            if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+                webpush.setVapidDetails(
+                    process.env.VAPID_SUBJECT || 'mailto:admin@chatptt.com',
+                    process.env.VAPID_PUBLIC_KEY,
+                    process.env.VAPID_PRIVATE_KEY
+                );
+                
+                const senderUser = await User.findById(newStatus.senderId);
+                if (senderUser) {
+                    const allUsers = await User.find({ _id: { $ne: newStatus.senderId } });
+                    allUsers.forEach(user => {
+                        if (user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+                            let previewText = newStatus.type === 'image' ? '📷 Publicou uma nova foto' : newStatus.content;
+                            const payload = JSON.stringify({ 
+                                title: 'Novo Status', 
+                                body: `${senderUser.displayName}: ${previewText}`, 
+                                icon: senderUser.photoUrl || '/favicon.png',
+                                tag: `status_update_${newStatus.senderId}`, // Agrupa
+                                url: '/'
+                            });
+                            user.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
+                        }
                     });
-                    
-                    user.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
                 }
-            });
+            }
+        } catch (pushError) {
+            console.log("Notificação Push de status ignorada:", pushError.message);
         }
         
+        // Responde "Sucesso" ao telemóvel para fechar a janela imediatamente!
         res.json({ success: true }); 
-    } catch(e) { res.status(500).json({ error: 'Erro' }); } 
+    } catch(e) { 
+        console.error("Erro ao postar status:", e);
+        res.status(500).json({ error: 'Erro ao salvar status na base de dados' }); 
+    } 
 });
 app.post('/api/status/view', async (req, res) => { try { const { statusId, viewerId } = req.body; const status = await StatusMsg.findById(statusId); if (status && status.senderId.toString() !== viewerId) { const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId); if (!alreadyViewed) { if(!status.views) status.views = []; status.views.push({ viewerId: viewerId, viewedAt: new Date() }); await status.save(); io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId }); } } res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 

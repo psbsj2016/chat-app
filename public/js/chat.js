@@ -565,7 +565,6 @@ socket.on('message_edited', (data) => {
         const textSpan = el.querySelector('.msg-text-content');
         if (textSpan) textSpan.innerHTML = escapeHTML(data.newContent) + ' <span style="font-size:10.5px; opacity:0.7; margin-left: 5px;">(editado)</span>';
     }
-    // Atualiza Cache Local
     if (messageCache[currentChatId]) {
         const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
         if (cMsg) cMsg.content = data.newContent + ' (editado)';
@@ -590,8 +589,6 @@ socket.on('message_deleted', (data) => {
             el.innerHTML = (infoDiv ? infoDiv.outerHTML : '') + apagadaHtml + (statusDiv ? statusDiv.outerHTML : '');
         }
     }
-    
-    // Atualiza Cache Local
     if (messageCache[currentChatId]) {
         const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId);
         if (cMsg) { 
@@ -606,7 +603,6 @@ socket.on('message_deleted', (data) => {
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
 
-// 🚀 RECEBIMENTO DE MENSAGENS COM CACHE INSTANTÂNEO
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId; const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender }; const senderId = senderObj._id;
     let targetId; if (isGroup) { targetId = msg.groupId; } else { const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver; targetId = (senderId === myId) ? receiverId : senderId; }
@@ -619,7 +615,6 @@ socket.on('receive_message', (msg) => {
             if (!messageCache[currentChatId]) messageCache[currentChatId] = []; 
             messageCache[currentChatId].push(msg); 
             
-            // 🔥 GRAVA NO DISCO PARA ZERO DELAY NA PRÓXIMA VEZ
             const cacheKey = isGroup ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`;
             localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50)));
         } 
@@ -790,8 +785,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     document.getElementById('chat-title').innerText = name; 
     document.getElementById('chat-avatar').src = photo || (isGroupChat ? 'https://cdn-icons-png.flaticon.com/512/166/166258.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'); 
     
-    // Removemos o innerHTML='' daqui para que o ecrã não pisque antes do cache aparecer
-    
     const contactDiv = document.getElementById(`contact-${id}`); 
     if (contactDiv) { 
         contactDiv.classList.remove('has-unread'); 
@@ -827,7 +820,6 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
 
-// 🚀 CARREGAMENTO INSTANTÂNEO COM CACHE (OFFLINE-FIRST)
 window.loadMessages = async function(userId) { 
     lastRenderedDate = null; 
     const box = document.getElementById('chat-box');
@@ -841,7 +833,6 @@ window.loadMessages = async function(userId) {
         }
     }
 
-    // Se tem cache, mostra na hora!
     if (cached && cached.length > 0) {
         box.innerHTML = '';
         cached.forEach(displayMessage);
@@ -853,7 +844,6 @@ window.loadMessages = async function(userId) {
         const res = await fetch(`/messages/${myId}/${userId}`); 
         const msgs = await res.json(); 
         
-        // Só atualiza o HTML se a nuvem tiver algo novo (evita que a tela pisque à toa)
         if (!cached || JSON.stringify(cached) !== JSON.stringify(msgs)) { 
             messageCache[userId] = msgs; 
             localStorage.setItem(`chat_cache_${userId}`, JSON.stringify(msgs.slice(-50)));
@@ -1271,6 +1261,36 @@ window.deleteMessageForEveryone = async function(msgId) {
         await fetch(`/message/${msgId}`, { method: 'DELETE' });
     }
 }
+
+// 🔥 FUNÇÃO: APAGAR TUDO DA CONVERSA DEFINITIVAMENTE 🔥
+window.deleteCurrentChat = async function() {
+    if (!currentChatId) return;
+    
+    if (isGroupChat) {
+        alert("Para apagar o histórico de um Grupo, precisa abrir o Perfil do Grupo e sair dele.");
+        return;
+    }
+    
+    if (confirm("⚠️ ATENÇÃO EXTREMA!\nDeseja apagar TODAS as mensagens desta conversa DEFINITIVAMENTE para os dois lados?\n\nEsta ação não poderá ser desfeita.")) {
+        try {
+            await fetch(`/messages/${myId}/${currentChatId}`, { method: 'DELETE' });
+            
+            // Limpa da tela e da memória local
+            messageCache[currentChatId] = [];
+            localStorage.removeItem(`chat_cache_${currentChatId}`);
+            document.getElementById('chat-box').innerHTML = '';
+            
+            // Avisa o servidor para recarregar as listas
+            socket.emit('group_updated'); 
+            
+            alert("✅ Histórico completamente destruído com sucesso.");
+            backToMain();
+            loadContacts();
+        } catch(e) {
+            alert("Erro ao tentar apagar a conversa.");
+        }
+    }
+};
 
 window.sendReaction = function(emoji) { socket.emit('react_message', { msgId: selectedMsgData._id, emoji: emoji, receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 window.copySelectedMessage = function() { if(!selectedMsgData || !selectedMsgData.content) return; const tempDiv = document.createElement('div'); tempDiv.innerHTML = selectedMsgData.content; const qMsg = tempDiv.querySelector('.quoted-msg'); if(qMsg) qMsg.remove(); navigator.clipboard.writeText(tempDiv.innerText.trim()).then(() => alert("Texto copiado!")); window.closeMessageMenu(); }
