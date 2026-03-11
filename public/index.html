@@ -276,12 +276,97 @@
 
     <div id="appearance-screen" class="app-screen hidden" style="position: relative;"><div class="main-header"><button class="icon-btn" onclick="cancelAppearanceSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:800;">Aparência</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px; height: calc(100% - 140px); overflow-y: auto;"><div class="settings-group"><div class="setting-item"><span style="font-weight:600;">Modo Escuro</span><label class="switch"><input type="checkbox" id="theme-switch"><span class="slider round"></span></label></div><div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;"><span style="font-size: 13.5px; color:var(--secondary-text); font-weight:700; text-transform:uppercase;">Tamanho da Fonte</span><select id="font-size-select" class="chic-input" style="margin:0; padding:10px; font-weight:600;"><option value="small">Pequeno</option><option value="medium">Médio (Ideal)</option><option value="large">Grande</option></select></div></div><div style="display: flex; align-items: center; gap: 8px; margin: 25px 0 10px 5px;"><span class="material-icons-round" style="color: var(--brand-primary);">checkroom</span><h3 style="font-size: 14px; color: var(--secondary-text); text-transform: uppercase; margin: 0; font-weight: 800;">Meu Inventário Neon</h3></div><div class="settings-group" id="inventory-list" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2);"></div></div><div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 10; box-shadow: 0 -4px 15px rgba(0,0,0,0.05);"><button class="chic-btn" onclick="cancelAppearanceSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Cancelar</button><button class="chic-btn" onclick="saveAppearanceSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Salvar</button></div></div>
 
-    <div id="notifications-screen" class="app-screen hidden" style="position: relative;">
-        <div class="main-header" style="z-index: 20;">
+    <div id="notifications-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; max-width: 100vw; background: var(--bg-color); overflow: hidden; position: fixed; top: 0; left: 0; z-index: 1000;">
+        
+        <div class="main-header" style="flex-shrink: 0; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.2); background: var(--card-bg);">
             <button class="icon-btn" onclick="cancelNotificationSettings()"><span class="material-icons-round">arrow_back</span></button>
             <span class="header-title" style="font-size:18px; font-weight:800;">Permissões</span>
             <div style="width: 40px;"></div>
         </div>
+        
+        <div class="settings-content" style="flex: 1; padding: 15px; overflow-y: auto; padding-bottom: 100px;">
+            
+            <div class="settings-group" style="margin-bottom: 20px;">
+                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: var(--brand-primary); text-transform: uppercase; letter-spacing: 1px;">💬 Chats</div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <select id="perm-chat-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
+                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
+                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
+                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
+                        </select>
+                        <button class="icon-btn" onclick="testNotificationSound('perm-chat-sound')" style="background: var(--brand-primary); border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
+                    </div>
+                </div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Permitir usar Microfone</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-chat-mic" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Permitir usar Câmera</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-chat-cam" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Mostrar prévia no topo da tela</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-chat-preview" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Notificar Reações (❤️)</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-chat-react" checked><span class="slider round"></span></label></div>
+            </div>
+
+            <div class="settings-group" style="margin-bottom: 20px;">
+                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #10B981; text-transform: uppercase; letter-spacing: 1px;">👥 Grupos</div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <select id="perm-group-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
+                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
+                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
+                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
+                        </select>
+                        <button class="icon-btn" onclick="testNotificationSound('perm-group-sound')" style="background: #10B981; border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
+                    </div>
+                </div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Permitir usar Microfone</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-group-mic" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Permitir usar Câmera</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-group-cam" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Mostrar prévia no topo da tela</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-group-preview" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Notificar Reações (❤️)</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-group-react" checked><span class="slider round"></span></label></div>
+            </div>
+
+            <div class="settings-group" style="margin-bottom: 20px;">
+                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #F59E0B; text-transform: uppercase; letter-spacing: 1px;">📸 Stories</div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <select id="perm-story-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
+                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
+                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
+                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
+                        </select>
+                        <button class="icon-btn" onclick="testNotificationSound('perm-story-sound')" style="background: #F59E0B; border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
+                    </div>
+                </div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Permitir usar Câmera</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-story-cam" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Mostrar prévia no topo da tela</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-story-preview" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Notificar quem viu ou reagiu</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-story-react" checked><span class="slider round"></span></label></div>
+            </div>
+
+            <div class="settings-group" style="margin-bottom: 20px;">
+                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #8B5CF6; text-transform: uppercase; letter-spacing: 1px;">🧩 Módulos do Sistema</div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Comunidades (Pleno Funcionamento)</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-mod-comm" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Inglês PTT (Pleno Funcionamento)</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-mod-eng" checked><span class="slider round"></span></label></div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: center; gap: 15px;"><span style="font-weight:600; font-size: 14px; flex: 1; line-height: 1.3;">Jogos (Pleno Funcionamento)</span><label class="switch" style="flex-shrink: 0;"><input type="checkbox" id="perm-mod-games" checked><span class="slider round"></span></label></div>
+            </div>
+
+            <div class="settings-group" style="margin-bottom: 20px;">
+                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #EF4444; text-transform: uppercase; letter-spacing: 1px;">📱 Sistema</div>
+                <div class="setting-item" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                        <span style="font-weight:600; font-size: 14px; line-height: 1.3;">Limpar emblema na tela inicial</span>
+                        <span style="font-size: 11.5px; color: var(--secondary-text); line-height: 1.3;">Remove a contagem (bolinha vermelha) do ícone do app sempre que o abrir.</span>
+                    </div>
+                    <label class="switch" style="flex-shrink: 0; margin-top: 5px;"><input type="checkbox" id="perm-sys-badge" checked><span class="slider round"></span></label>
+                </div>
+            </div>
+
+        </div>
+        
+        <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 10px; z-index: 30; box-shadow: 0 -10px 20px rgba(0,0,0,0.4);">
+            <button class="chic-btn" onclick="cancelNotificationSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Descartar</button>
+            <button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Aplicar Permissões</button>
+        </div>
+    </div>
         
         <div class="settings-content" style="padding: 15px; height: calc(100% - 70px); overflow-y: auto; padding-bottom: 120px;">
             
