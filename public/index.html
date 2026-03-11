@@ -324,7 +324,7 @@
         </div>
     </div>
     
-    <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 11000; background: var(--bg-color);">
+  <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 11000; background: var(--bg-color);">
         <div style="display: flex; flex-direction: column; height: 100%; width: 100%; position: relative;">
             
             <div style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(15px); position: absolute; top: 0; width: 100%; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);">
@@ -336,7 +336,7 @@
             <div id="status-preview-area" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden; padding-top: 60px; padding-bottom: 80px;">
                 <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative; font-family: 'Inter', sans-serif; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></textarea>
                 
-                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;">
+                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; background: #000; position: absolute; top: 0; left: 0; z-index: 1;">
                 
                 <div id="status-caption-container" class="hidden" style="position: absolute; bottom: 100px; width: 90%; z-index: 3;">
                     <input type="text" id="status-caption-input" placeholder="Adicionar legenda..." style="width: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 15px 20px; border-radius: 30px; color: white; font-size: 15px; font-weight: 500; outline: none; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
@@ -366,7 +366,8 @@
         
         <div id="story-content-area" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative;">
             <div id="story-text-display" style="color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; z-index: 2; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></div>
-            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 1;">
+            
+            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1;">
             
             <div id="story-caption-display" class="hidden" style="position: absolute; bottom: 80px; width: 100%; text-align: center; z-index: 3; padding: 0 20px;">
                 <span style="background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; color: white; font-size: 15px; font-weight: 600; display: inline-block; backdrop-filter: blur(10px); max-width: 90%; word-wrap: break-word;"></span>
@@ -433,13 +434,18 @@
     <nav id="bottom-navigation" class="bottom-nav hidden">
      
          <div id="video-call-screen" class="app-screen hidden" style="z-index: 100000; background: #0B0F19; flex-direction: column; height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0;">
-        <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>
         
-        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 110px; height: 160px; object-fit: cover; border-radius: 16px; border: 2px solid var(--brand-primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2; background: #1E293B;"></video>
-        
-        <div id="call-status-text" style="position: absolute; top: 40px; left: 20px; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); z-index: 2;">A Ligar...</div>
+        <div id="audio-call-avatar-container" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1;">
+            <img id="audio-call-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--brand-primary); object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.4); animation: pulseRed 2s infinite;">
+        </div>
 
-        <div style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 25px; z-index: 3;">
+        <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: contain; background: transparent; position: relative; z-index: 2;"></video>
+        
+        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 3; background: #1E293B;"></video>
+        
+        <div id="call-status-text" style="position: absolute; top: max(50px, env(safe-area-inset-top)); left: 0; width: 100%; text-align: center; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); z-index: 3; pointer-events: none;">A ligar...</div>
+
+        <div style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 4;">
             <button id="btn-toggle-mic" class="icon-btn" onclick="toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
                 <span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>
             </button>
@@ -470,7 +476,7 @@
                 </button>
             </div>
         </div>
-    </div>    
+    </div>
      
         <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
         <div class="nav-item" onclick="switchTab('explorar', this)"><div class="nav-icon"><span class="material-icons-round">explore</span></div><span>Explorar</span></div>

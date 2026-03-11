@@ -5,7 +5,6 @@ let localAudioStream = null;
 let peerConnections = {}; 
 let currentVoiceChannelId = null;
 
-// Servidores públicos da Google para contornar Firewalls e NATs
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
 const btnJoinVoice = document.getElementById('btn-join-voice');
@@ -45,7 +44,6 @@ function leaveVoiceChannel() {
 if(btnJoinVoice) btnJoinVoice.onclick = () => joinVoiceChannel(currentVoiceChannelId || currentChannelId);
 if(btnLeaveVoice) btnLeaveVoice.onclick = () => leaveVoiceChannel();
 
-// Quando alguém entra na sala, nós (que já lá estamos) criamos uma Oferta P2P para ele
 socket.on('user_joined_voice', async (data) => {
     const peerSocketId = data.socketId;
     if(peerConnections[peerSocketId]) return; 
@@ -123,10 +121,15 @@ let currentFacingMode = 'user';
 let isVideoCallActive = true; 
 let callRingInterval = null;
 
-// Recebe a instrução do chat.js (se o user clicou no ícone de vídeo ou telefone)
+// Recebe a instrução do chat.js
 window.initVideoCall = async function(targetId, isVideo = true) {
     if (!targetId) return;
     if (isGroupChat) return alert("As chamadas só estão disponíveis para conversas privadas (1 a 1).");
+    
+    // 🔒 TRAVA DE SEGURANÇA: Evita "Múltiplas Ligações"
+    if (currentCallTarget || incomingCallData) {
+        return alert("Termine a chamada atual antes de iniciar uma nova.");
+    }
     
     isVideoCallActive = isVideo;
     
@@ -137,8 +140,16 @@ window.initVideoCall = async function(targetId, isVideo = true) {
         document.getElementById('local-video').style.display = isVideo ? 'block' : 'none';
         document.getElementById('btn-flip-cam').style.display = isVideo ? 'flex' : 'none';
         document.getElementById('btn-toggle-cam').style.display = isVideo ? 'flex' : 'none';
-        document.getElementById('call-status-text').innerText = "A ligar...";
         
+        document.getElementById('call-status-text').innerText = isVideo ? "Vídeo: A ligar..." : "Áudio: A ligar...";
+        
+        const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
+        if (audioAvatarContainer) {
+            audioAvatarContainer.classList.toggle('hidden', isVideo);
+            const targetPhoto = document.getElementById('chat-avatar').src; 
+            document.getElementById('audio-call-avatar').src = targetPhoto;
+        }
+
         currentCallTarget = targetId;
         if(typeof showElement === 'function') showElement('video-call-screen');
         
@@ -152,16 +163,21 @@ window.initVideoCall = async function(targetId, isVideo = true) {
 };
 
 socket.on('incoming_call', (data) => {
+    // 🔒 TRAVA DE SEGURANÇA: Rejeita automaticamente se você já estiver em ligação
+    if (currentCallTarget || incomingCallData) {
+        socket.emit('reject_call', { callerId: data.callerId });
+        return;
+    }
+
     incomingCallData = data;
-    isVideoCallActive = data.isVideo;
+    isVideoCallActive = data.isVideo !== undefined ? data.isVideo : true; // Fallback de segurança
     
     document.getElementById('caller-name').innerText = data.callerName; 
     document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-    document.getElementById('caller-type').innerText = data.isVideo ? "Chamada de Vídeo..." : "Chamada de Voz...";
+    document.getElementById('caller-type').innerText = isVideoCallActive ? "Chamada de Vídeo..." : "Chamada de Voz...";
     
     if(typeof showElement === 'function') showElement('incoming-call-modal');
     
-    // Toca o som de campainha repetidamente
     if(typeof playNotificationSound === 'function') playNotificationSound('bell');
     callRingInterval = setInterval(() => { if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 3000);
 });
@@ -180,6 +196,12 @@ window.acceptCall = async function() {
         document.getElementById('btn-toggle-cam').style.display = isVideoCallActive ? 'flex' : 'none';
         document.getElementById('call-status-text').innerText = "Conectado";
         
+        const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
+        if (audioAvatarContainer) {
+            audioAvatarContainer.classList.toggle('hidden', isVideoCallActive);
+            document.getElementById('audio-call-avatar').src = incomingCallData.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+        }
+
         if(typeof showElement === 'function') showElement('video-call-screen');
         
         socket.emit('accept_call', { targetId: currentCallTarget, callerId: currentCallTarget, answererId: myId });
@@ -240,7 +262,10 @@ function createVideoPeerConnection(target) {
     videoPC.ontrack = (event) => { 
         const remoteVid = document.getElementById('remote-video');
         remoteVid.srcObject = event.streams[0]; 
-        // Se for só áudio, escondemos o vídeo remoto visualmente
+        
+        // Força a reprodução caso o telemóvel bloqueie
+        remoteVid.play().catch(e => console.log("Auto-play preventivo contornado.", e));
+        
         if(!isVideoCallActive) remoteVid.style.opacity = '0';
         else remoteVid.style.opacity = '1';
     };
@@ -294,11 +319,9 @@ window.flipCamera = async function() {
         const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: currentFacingMode } }, audio: true });
         const newVideoTrack = newStream.getVideoTracks()[0];
         
-        // Substitui a track para quem está a ver
         const sender = videoPC.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender) sender.replaceTrack(newVideoTrack);
         
-        // Pára a câmera antiga e atualiza o ecrã local
         const oldVideoTrack = videoStream.getVideoTracks()[0];
         if (oldVideoTrack) { oldVideoTrack.stop(); videoStream.removeTrack(oldVideoTrack); }
         videoStream.addTrack(newVideoTrack);
