@@ -320,6 +320,13 @@ function hideSlideHints() {
 }
 
 async function startRecording() { 
+    // 🔥 TRAVA DE SEGURANÇA: LÊ A CONFIGURAÇÃO DE PRIVACIDADE DO UTILIZADOR
+    if (localStorage.getItem('perm_chat_mic') === 'false') {
+        alert("🔒 PRIVACIDADE: O uso do microfone para os Chats está desativado.\n\nVá em Meu Perfil > Configurações > Permissões e Notificações para reativá-lo.");
+        resetAudioUI();
+        return;
+    }
+
     const attachMenu = document.getElementById('attach-menu'); if(attachMenu) attachMenu.classList.add('hidden');
     const drawer = document.getElementById('emoji-drawer'); if (drawer) drawer.style.height = '0px';
 

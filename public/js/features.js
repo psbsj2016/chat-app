@@ -645,9 +645,75 @@ window.openAppearanceSettings = function() { hideElement('settings-screen'); sho
 window.saveAppearanceSettings = function() { const isDark = document.getElementById('theme-switch').checked; const fSize = document.getElementById('font-size-select').value; if(isDark) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); saveProfile({ theme: 'dark' }); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); saveProfile({ theme: 'light' }); } if (typeof window.changeFontSize === 'function') { window.changeFontSize(fSize); } else { document.body.classList.remove('font-small', 'font-medium', 'font-large'); document.body.classList.add(`font-${fSize}`); localStorage.setItem('fontSize', fSize); saveProfile({ fontSize: fSize }); } alert("Aparência atualizada! ✅"); backToSettings(); };
 window.cancelAppearanceSettings = function() { backToSettings(); };
 
-window.openNotificationsSettings = function() { hideElement('settings-screen'); showElement('notifications-screen'); document.getElementById('notification-sound-select').value = localStorage.getItem('notificationSound') || 'modern'; }
-window.saveNotificationSettings = function() { const sound = document.getElementById('notification-sound-select').value; if (typeof window.changeNotificationSound === 'function') { window.changeNotificationSound(sound); } else { localStorage.setItem('notificationSound', sound); } alert("Notificações atualizadas! ✅"); backToSettings(); };
+// ABRIR O GIGANTE MENU DE PERMISSÕES
+window.openNotificationsSettings = function() { 
+    hideElement('settings-screen'); 
+    showElement('notifications-screen'); 
+    
+    // Lê os dados salvos ou assume o padrão (true/ligado)
+    const getBool = (key, defaultVal = true) => { const val = localStorage.getItem(key); return val === null ? defaultVal : val === 'true'; };
+    
+    document.getElementById('perm-chat-sound').value = localStorage.getItem('perm_chat_sound') || 'modern';
+    document.getElementById('perm-chat-mic').checked = getBool('perm_chat_mic');
+    document.getElementById('perm-chat-cam').checked = getBool('perm_chat_cam');
+    document.getElementById('perm-chat-preview').checked = getBool('perm_chat_preview');
+    document.getElementById('perm-chat-react').checked = getBool('perm_chat_react');
+
+    document.getElementById('perm-group-sound').value = localStorage.getItem('perm_group_sound') || 'pop';
+    document.getElementById('perm-group-mic').checked = getBool('perm_group_mic');
+    document.getElementById('perm-group-cam').checked = getBool('perm_group_cam');
+    document.getElementById('perm-group-preview').checked = getBool('perm_group_preview');
+    document.getElementById('perm-group-react').checked = getBool('perm_group_react');
+
+    document.getElementById('perm-story-sound').value = localStorage.getItem('perm_story_sound') || 'hologram';
+    document.getElementById('perm-story-cam').checked = getBool('perm_story_cam');
+    document.getElementById('perm-story-preview').checked = getBool('perm_story_preview');
+    document.getElementById('perm-story-react').checked = getBool('perm_story_react');
+
+    document.getElementById('perm-mod-comm').checked = getBool('perm_mod_comm');
+    document.getElementById('perm-mod-eng').checked = getBool('perm_mod_eng');
+    document.getElementById('perm-mod-games').checked = getBool('perm_mod_games');
+    document.getElementById('perm-sys-badge').checked = getBool('perm_sys_badge');
+};
+
+// SALVAR O MENU GIGANTE
+window.saveNotificationSettings = function() { 
+    localStorage.setItem('perm_chat_sound', document.getElementById('perm-chat-sound').value);
+    localStorage.setItem('perm_chat_mic', document.getElementById('perm-chat-mic').checked);
+    localStorage.setItem('perm_chat_cam', document.getElementById('perm-chat-cam').checked);
+    localStorage.setItem('perm_chat_preview', document.getElementById('perm-chat-preview').checked);
+    localStorage.setItem('perm_chat_react', document.getElementById('perm-chat-react').checked);
+
+    localStorage.setItem('perm_group_sound', document.getElementById('perm-group-sound').value);
+    localStorage.setItem('perm_group_mic', document.getElementById('perm-group-mic').checked);
+    localStorage.setItem('perm_group_cam', document.getElementById('perm-group-cam').checked);
+    localStorage.setItem('perm_group_preview', document.getElementById('perm-group-preview').checked);
+    localStorage.setItem('perm_group_react', document.getElementById('perm-group-react').checked);
+
+    localStorage.setItem('perm_story_sound', document.getElementById('perm-story-sound').value);
+    localStorage.setItem('perm_story_cam', document.getElementById('perm-story-cam').checked);
+    localStorage.setItem('perm_story_preview', document.getElementById('perm-story-preview').checked);
+    localStorage.setItem('perm_story_react', document.getElementById('perm-story-react').checked);
+
+    localStorage.setItem('perm_mod_comm', document.getElementById('perm-mod-comm').checked);
+    localStorage.setItem('perm_mod_eng', document.getElementById('perm-mod-eng').checked);
+    localStorage.setItem('perm_mod_games', document.getElementById('perm-mod-games').checked);
+    localStorage.setItem('perm_sys_badge', document.getElementById('perm-sys-badge').checked);
+    
+    // Salva globalmente o som padrão para manter compatibilidade rápida
+    localStorage.setItem('notificationSound', document.getElementById('perm-chat-sound').value);
+
+    alert("🛡️ Permissões e Segurança atualizadas com sucesso!"); 
+    backToSettings(); 
+};
+
 window.cancelNotificationSettings = function() { backToSettings(); };
+
+// BOTÃO DE PLAY NAS CAIXAS (Modificado para ler de qualquer select)
+window.testNotificationSound = function(selectId) {
+    const soundType = document.getElementById(selectId).value;
+    playNotificationSound(soundType);
+};
 
 window.openAccountSettings = function() { hideElement('settings-screen'); showElement('account-screen'); const emailEl = document.getElementById('config-email'); if(emailEl) emailEl.innerText = cachedMe.email || 'Carregando...'; }
 window.viewMyProfilePhoto = function() { document.getElementById('viewer-photo').src = document.getElementById('config-avatar').src; showElement('photo-viewer-modal'); }
