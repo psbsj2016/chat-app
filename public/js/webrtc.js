@@ -135,7 +135,7 @@ function addParticipantToUI(id, profile) {
 function removeParticipantFromUI(id) { const p = document.getElementById(`participant-${id}`); if (p) p.remove(); const a = document.getElementById(`audio-${id}`); if (a) a.remove(); }
 
 // ==============================================================
-// 📹 MOTOR DE CHAMADAS P2P (CHATS PRIVADOS) - COM MINIMIZAR E NOTIFICAÇÃO
+// 📹 MOTOR DE CHAMADAS P2P (AGORA 100% INSTANTÂNEO)
 // ==============================================================
 let videoStream = null;
 let videoPC = null;
@@ -146,7 +146,7 @@ let isVideoCallActive = true;
 let callRingInterval = null;
 let isCallMinimized = false;
 
-// 🎧 SISTEMA NATIVO DE "TUUU... TUUU..." PARA QUEM LIGA
+// 🎧 SISTEMA NATIVO DE "TUUU... TUUU..."
 let ringbackCtx = null;
 let ringbackIntervalId = null;
 
@@ -160,7 +160,7 @@ function startRingbackTone() {
             const osc2 = ringbackCtx.createOscillator();
             const gain = ringbackCtx.createGain();
             
-            osc1.type = 'sine'; osc1.frequency.value = 425; // Frequência padrão de tom de chamada
+            osc1.type = 'sine'; osc1.frequency.value = 425; 
             osc2.type = 'sine'; osc2.frequency.value = 480;
             
             osc1.connect(gain); osc2.connect(gain);
@@ -175,9 +175,9 @@ function startRingbackTone() {
             osc1.stop(ringbackCtx.currentTime + 1.6); osc2.stop(ringbackCtx.currentTime + 1.6);
         };
 
-        playBeep(); // Toca o primeiro imediato
-        ringbackIntervalId = setInterval(playBeep, 4000); // Repete a cada 4 segundos
-    } catch(e) { console.log("Áudio bloqueado pelo navegador."); }
+        playBeep(); 
+        ringbackIntervalId = setInterval(playBeep, 4000); 
+    } catch(e) {}
 }
 
 function stopRingbackTone() {
@@ -203,7 +203,7 @@ window.initVideoCall = async function(targetId, isVideo = true) {
         document.getElementById('btn-flip-cam').style.display = isVideo ? 'flex' : 'none';
         document.getElementById('btn-toggle-cam').style.display = isVideo ? 'flex' : 'none';
         
-        document.getElementById('call-status-text').innerText = "A chamar..."; // O usuário vê que está a chamar
+        document.getElementById('call-status-text').innerText = "A chamar..."; 
         
         const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
         if (audioAvatarContainer) {
@@ -220,10 +220,7 @@ window.initVideoCall = async function(targetId, isVideo = true) {
         const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
         
         socket.emit('call_user', { targetId: targetId, callerId: myId, callerName: myName, callerPhoto: myPhoto, isVideo: isVideo });
-        
-        // 🔔 COMEÇA A TOCAR O "TUUU... TUUU..."
         startRingbackTone();
-
     } catch (e) { 
         alert("Permissão de câmera/microfone negada ou dispositivo indisponível!"); 
     }
@@ -246,7 +243,6 @@ socket.on('incoming_call', (data) => {
     const incomingModal = document.getElementById('incoming-call-modal');
     if(incomingModal) incomingModal.classList.remove('hidden');
     
-    // Se a app estiver em segundo plano, lança notificação do SO!
     if (document.hidden && "Notification" in window && Notification.permission === "granted") {
         const notif = new Notification(`Chamada de ${data.callerName}`, {
             body: isVideoCallActive ? 'Chamada de Vídeo' : 'Chamada de Voz',
@@ -254,17 +250,14 @@ socket.on('incoming_call', (data) => {
             tag: 'incoming_call',
             requireInteraction: true
         });
-        notif.onclick = function() {
-            window.focus();
-            this.close();
-        };
+        notif.onclick = function() { window.focus(); this.close(); };
     }
 
     if(typeof playNotificationSound === 'function') playNotificationSound('bell');
     callRingInterval = setInterval(() => { if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 3000);
 });
 
-// ATENDER
+// ATENDER A CHAMADA
 window.acceptCall = async function() {
     clearInterval(callRingInterval);
     const incomingModal = document.getElementById('incoming-call-modal');
@@ -278,7 +271,7 @@ window.acceptCall = async function() {
         document.getElementById('local-video').style.display = isVideoCallActive ? 'block' : 'none';
         document.getElementById('btn-flip-cam').style.display = isVideoCallActive ? 'flex' : 'none';
         document.getElementById('btn-toggle-cam').style.display = isVideoCallActive ? 'flex' : 'none';
-        document.getElementById('call-status-text').innerText = "00:00"; // Conectado
+        document.getElementById('call-status-text').innerText = "00:00"; 
         
         const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
         if (audioAvatarContainer) {
@@ -297,24 +290,63 @@ window.acceptCall = async function() {
     }
 };
 
-window.rejectCall = function() { 
+// ==========================================
+// 🚀 DESLIGAR OU REJEITAR CHAMADA (AÇÃO IMEDIATA)
+// ==========================================
+
+window.endVideoCall = function(emitSignal = true) {
     clearInterval(callRingInterval);
-    const incomingModal = document.getElementById('incoming-call-modal');
-    if(incomingModal) incomingModal.classList.add('hidden');
-    if (incomingCallData) { socket.emit('reject_call', { callerId: incomingCallData.callerId }); incomingCallData = null; } 
+    stopRingbackTone();
+    
+    // Descobre para quem avisar (se liguei ou se estava a receber)
+    let targetToNotify = currentCallTarget;
+    if (!targetToNotify && incomingCallData) targetToNotify = incomingCallData.callerId;
+    
+    // Se fui eu que desliguei, mando o aviso
+    if (emitSignal && targetToNotify) {
+        socket.emit('end_call', { targetId: targetToNotify });
+    }
+    
+    if (videoPC) { videoPC.close(); videoPC = null; } 
     stopVideoMedia(); 
+    
+    // FECHA AS TELAS NA MESMA FRAÇÃO DE SEGUNDO!
+    const callScreen = document.getElementById('video-call-screen');
+    if(callScreen) {
+        callScreen.classList.remove('minimized-call');
+        callScreen.onclick = null;
+        callScreen.classList.add('hidden');
+    }
+    
+    const incomingModal = document.getElementById('incoming-call-modal');
+    if(incomingModal) {
+        incomingModal.classList.add('hidden');
+    }
+    
+    isCallMinimized = false;
+    currentCallTarget = null; 
+    incomingCallData = null;
 };
 
-// QUANDO O AMIGO REJEITA
+window.rejectCall = function() { 
+    if (incomingCallData) { socket.emit('reject_call', { callerId: incomingCallData.callerId }); } 
+    window.endVideoCall(false); 
+};
+
+// SE O OUTRO LADO REJEITOU A MINHA CHAMADA -> FECHA TUDO NA HORA
 socket.on('call_rejected', () => { 
-    stopRingbackTone(); // Para o som "Tuuu... Tuuu..."
-    document.getElementById('call-status-text').innerText = "Chamada Recusada";
-    setTimeout(() => window.endVideoCall(false), 2000); 
+    window.endVideoCall(false); 
 });
 
-// QUANDO O AMIGO ATENDE
+// SE O OUTRO LADO DESLIGOU -> FECHA TUDO NA HORA
+socket.on('call_ended', () => { 
+    window.endVideoCall(false); 
+});
+
+// ==========================================
+
 socket.on('call_accepted', async (data) => { 
-    stopRingbackTone(); // Para o som "Tuuu... Tuuu..."
+    stopRingbackTone();
     document.getElementById('call-status-text').innerText = "00:00";
     createVideoPeerConnection(currentCallTarget); 
     const offer = await videoPC.createOffer(); 
@@ -379,31 +411,6 @@ window.toggleMinimizeCall = function() {
         callScreen.onclick = null;
     }
 };
-
-window.endVideoCall = function(emitSignal = true) {
-    clearInterval(callRingInterval);
-    stopRingbackTone();
-    if (emitSignal && currentCallTarget) socket.emit('end_call', { targetId: currentCallTarget });
-    if (videoPC) { videoPC.close(); videoPC = null; } 
-    stopVideoMedia(); 
-    
-    const callScreen = document.getElementById('video-call-screen');
-    if(callScreen) {
-        callScreen.classList.remove('minimized-call');
-        callScreen.onclick = null;
-        isCallMinimized = false;
-        callScreen.classList.add('hidden');
-    }
-    
-    currentCallTarget = null; 
-    incomingCallData = null;
-};
-
-socket.on('call_ended', () => { 
-    stopRingbackTone();
-    document.getElementById('call-status-text').innerText = "Chamada Terminada";
-    setTimeout(() => window.endVideoCall(false), 1500); 
-});
 
 function stopVideoMedia() { 
     if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
