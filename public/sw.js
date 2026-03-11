@@ -1,8 +1,8 @@
 // ==============================================================
-// 🛡️ CHATPTT SERVICE WORKER V4 (Modo Evergreen - Sempre Atualizado)
+// 🛡️ CHATPTT SERVICE WORKER V5 (Evergreen + Notificações Nativas)
 // ==============================================================
 
-const CACHE_NAME = 'chatptt-cache-v4'; 
+const CACHE_NAME = 'chatptt-cache-v5'; 
 
 const urlsToCache = [
     '/',
@@ -54,32 +54,63 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ==============================================================
-// 🔔 MOTOR DE NOTIFICAÇÕES PUSH (Intacto)
+// 🔔 MOTOR DE NOTIFICAÇÕES PUSH NATIVO (Estilo WhatsApp)
 // ==============================================================
 self.addEventListener('push', function(event) {
     if (event.data) {
         const data = event.data.json();
-        const title = data.title || 'Nova Mensagem';
+        
         const options = {
-            body: data.body || 'Você tem uma nova mensagem no ChatPTT.', icon: '/favicon.png', badge: '/favicon.png', 
-            vibrate: [200, 100, 200, 100, 200], data: data, requireInteraction: true 
+            body: data.body || 'Nova mensagem recebida',
+            icon: data.icon || '/favicon.png', // Foto do contato ou grupo
+            badge: '/favicon.png', // Ícone pequeno na barra superior do Android
+            vibrate: [200, 100, 200], // Vibração clássica (Tu-Tum)
+            tag: data.tag || 'chatptt-msg', // 🔥 AGRUPAMENTO: Atualiza a mesma notificação se for da mesma pessoa
+            renotify: true, // Faz vibrar/tocar sempre que a notificação é atualizada
+            requireInteraction: false, // Fica na bandeja normalmente sem forçar ação na tela
+            data: {
+                url: data.url || '/'
+            }
         };
-        event.waitUntil(self.registration.showNotification(title, options));
-        if (data.unreadCount && navigator.setAppBadge) { navigator.setAppBadge(data.unreadCount).catch((error) => {}); }
+
+        event.waitUntil(
+            // Verifica se o utilizador já está com a App aberta e olhando para ela
+            self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+                const isFocused = clientList.some(client => client.focused);
+                
+                // Atualiza a "bolinha vermelha" (Badge) no ícone do aplicativo no ecrã do telemóvel!
+                if (data.unreadCount && navigator.setAppBadge) { 
+                    navigator.setAppBadge(data.unreadCount).catch(() => {}); 
+                }
+
+                // Se a app NÃO estiver aberta na tela, lança a notificação pop-up no topo
+                if (!isFocused) {
+                    return self.registration.showNotification(data.title || 'ChatPTT', options);
+                }
+            })
+        );
     }
 });
 
+// Ação ao clicar na notificação do topo da tela!
 self.addEventListener('notificationclick', function(event) {
     event.notification.close(); 
+    
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+            // Se a app já estiver aberta em segundo plano (minimizado), traz ela para a frente
             if (clientList.length > 0) {
                 let client = clientList[0];
-                for (let i = 0; i < clientList.length; i++) { if (clientList[i].focused) client = clientList[i]; }
+                for (let i = 0; i < clientList.length; i++) { 
+                    if (clientList[i].focused) client = clientList[i]; 
+                }
                 return client.focus();
             }
-            return clients.openWindow('/');
+            // Se estava totalmente fechada, abre uma nova janela
+            return self.clients.openWindow(event.notification.data.url || '/');
         })
     );
+    
+    // Limpa a bolinha vermelha do ícone ao entrar na app
     if (navigator.clearAppBadge) navigator.clearAppBadge();
 });

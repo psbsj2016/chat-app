@@ -37,16 +37,7 @@ function initSockets(io) {
         
         socket.on('join_group', (groupId) => { socket.join(groupId); });
             
-        // 🔥 CORREÇÃO CRÍTICA AQUI: O servidor agora repassa o 'isVideo' para quem recebe a chamada
-        socket.on('call_user', (data) => { 
-            io.to(data.targetId).emit('incoming_call', { 
-                callerId: data.callerId, 
-                callerName: data.callerName, 
-                callerPhoto: data.callerPhoto, 
-                isVideo: data.isVideo 
-            }); 
-        });
-        
+        socket.on('call_user', (data) => { io.to(data.targetId).emit('incoming_call', { callerId: data.callerId, callerName: data.callerName, callerPhoto: data.callerPhoto, isVideo: data.isVideo }); });
         socket.on('accept_call', (data) => { io.to(data.callerId).emit('call_accepted', { answererId: data.answererId }); });
         socket.on('reject_call', (data) => { io.to(data.callerId).emit('call_rejected'); });
         socket.on('video_signal', (data) => { io.to(data.targetId).emit('video_signal', { from: data.from, signal: data.signal }); });
@@ -112,16 +103,33 @@ function initSockets(io) {
                 const populatedMsg = await Message.findById(msg._id).populate('sender', 'displayName photoUrl unlockedItems');
                 const senderUser = await User.findById(data.senderId);
 
+                // 🌟 LÓGICA DE PREVIEW NATIVO PARA NOTIFICAÇÕES
+                let previewText = data.content;
+                if (data.fileType === 'image') previewText = '📷 Imagem';
+                else if (data.fileType === 'video') previewText = '🎥 Vídeo';
+                else if (data.fileType === 'audio') previewText = '🎵 Áudio de Voz';
+                else if (data.fileType === 'pdf') previewText = '📄 Documento';
+                else if (previewText && previewText.includes('<div class="quoted-msg"')) {
+                    previewText = previewText.replace(/<div class="quoted-msg"[\s\S]*?<\/div>/, '').trim() || 'Respondeu a uma mensagem';
+                }
+
                 if (data.groupId) { 
                     io.to(data.groupId).emit('receive_message', populatedMsg);
                     const group = await Group.findById(data.groupId);
                     if(group) {
                         const members = await User.find({ _id: { $in: group.members, $ne: data.senderId } });
-                        const senderName = senderUser ? senderUser.displayName : 'Alguém';
+                        const senderName = senderUser ? senderUser.displayName : 'Membro';
                         members.forEach(async member => {
                             if (process.env.VAPID_PUBLIC_KEY && member.pushSubscriptions && member.pushSubscriptions.length > 0) {
                                 const unreadCount = await Message.countDocuments({ receiver: member._id, status: 'sent' });
-                                const payload = JSON.stringify({ title: `Grupo ${group.name}`, body: `${senderName}: Nova Mensagem`, unreadCount: unreadCount + 1 });
+                                const payload = JSON.stringify({ 
+                                    title: `${group.name}`, 
+                                    body: `${senderName}: ${previewText}`, 
+                                    icon: group.photoUrl || '/favicon.png',
+                                    tag: `group_${group._id}`, // Agrupa notificações deste grupo
+                                    unreadCount: unreadCount + 1,
+                                    url: '/'
+                                });
                                 member.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
                             }
                         });
@@ -155,7 +163,14 @@ function initSockets(io) {
                         const receiver = await User.findById(data.receiverId);
                         if (process.env.VAPID_PUBLIC_KEY && receiver && receiver.pushSubscriptions && receiver.pushSubscriptions.length > 0) {
                             const unreadCount = await Message.countDocuments({ receiver: data.receiverId, status: 'sent' });
-                            const payload = JSON.stringify({ title: `CPTT: ${senderUser ? senderUser.displayName : 'Nova Mensagem'}`, body: 'Nova Mensagem', unreadCount });
+                            const payload = JSON.stringify({ 
+                                title: senderUser ? senderUser.displayName : 'Nova Mensagem', 
+                                body: previewText, 
+                                icon: senderUser ? senderUser.photoUrl : '/favicon.png',
+                                tag: `chat_${data.senderId}`, // Agrupa mensagens da mesma pessoa
+                                unreadCount,
+                                url: '/'
+                            });
                             receiver.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
                         }
                     }
@@ -168,7 +183,6 @@ function initSockets(io) {
         socket.on('profile_updated', (data) => { io.emit('user_profile_updated', data); });
         socket.on('group_updated', () => { io.emit('force_reload_contacts'); }); 
 
-        // Jogos (Mantidos Inalterados)
         socket.on('join_english_arena', (data) => {
             const { userId, skill, userName } = data;
             englishArenaQueue = englishArenaQueue.filter(p => p.socket.connected && p.userId !== userId);
