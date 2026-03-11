@@ -218,9 +218,14 @@
                 <div class="attach-menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981; font-size: 22px;">headphones</span> <span style="font-weight: 600;">Áudio</span></div>
             </div>
 
+            <style>
+                @keyframes slideUpAnim { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-15px); opacity: 0; } }
+                @keyframes slideLeftAnim { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(-15px); opacity: 0; } }
+            </style>
+            
             <div style="padding: 0 10px; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 8px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
                 
-                <div id="chat-input-container" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box; min-width: 0;">
+                <div id="chat-input-container" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: opacity 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box; min-width: 0;">
                     <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
                     <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; white-space: pre-wrap; min-width: 0;"></div>
                     <div id="btn-attach-wrapper" style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
@@ -229,30 +234,33 @@
                     </div>
                 </div>
 
-                <div id="recording-ui" class="hidden premium-record-ui" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; background: var(--input-bg); padding: 5px 12px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px;">
+                <div id="recording-ui" class="hidden" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; background: var(--card-bg); border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px; padding: 0 10px; z-index: 20;">
+                    <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; width: 36px; height: 36px; padding: 0; flex-shrink: 0; background: transparent; border: none; display: flex; justify-content: center; align-items: center;"><span class="material-icons-round" style="font-size: 24px;">delete</span></button>
                     
-                    <div id="recording-active-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; justify-content:space-between; align-items:center; width:100%; height: 100%; min-width: 0;">
-                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:8px; flex-shrink: 0;">
-                            <div style="width:10px; height:10px; background:#EF4444; border-radius:50%; animation: pulseRed 1s infinite;"></div>
-                            <div style="font-size:16px; color:white; font-weight:700; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
+                    <div id="recording-waveform-area" style="flex: 1; display: flex; align-items: center; gap: 8px; margin: 0 10px; min-width: 0; overflow: hidden;">
+                        <div id="recording-timer" style="color: #EF4444; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 38px; text-align: center; animation: pulseRed 1.5s infinite;">0:00</div>
+                        <canvas id="audio-visualizer" style="height: 30px; width: 100%; flex: 1;"></canvas>
+                    </div>
+
+                    <div id="preview-progress-area" class="hidden" style="flex: 1; display: flex; align-items: center; gap: 10px; margin: 0 10px; min-width: 0;">
+                        <div style="flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; position: relative; overflow: hidden;">
+                            <div id="preview-progress" style="position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--brand-primary); transition: width 0.1s;"></div>
                         </div>
-                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:12px; flex-shrink: 0;">
-                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">delete</span></button>
-                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #F59E0B; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 30px;">pause_circle_filled</span></button>
-                        </div>
+                        <div id="preview-timer-total" style="font-size: 13px; color: var(--text-muted); font-weight: 700; flex-shrink: 0;">0:00</div>
                     </div>
                     
-                    <div id="recording-preview-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; justify-content:space-between; width:100%; height: 100%; min-width: 0; gap: 8px;">
-                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">delete</span></button>
-                        <div style="flex:1; display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; background:rgba(0,0,0,0.2); border-radius:16px; padding:4px 8px; position:relative; overflow:hidden; min-width: 0;">
-                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--brand-primary); padding: 0; width: 28px; height: 28px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">play_arrow</span></button>
-                            <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;"><div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div></div>
-                            <div style="font-size:13px; color:var(--text-muted); font-weight: 700; font-family:monospace; flex-shrink: 0;" id="preview-timer-total">0:00</div>
-                        </div>
-                    </div>
+                    <button id="btn-pause-play" class="icon-btn" onclick="togglePausePlayRecording()" style="color: #F59E0B; width: 36px; height: 36px; padding: 0; flex-shrink: 0; background: transparent; border: none; display: flex; justify-content: center; align-items: center;"><span class="material-icons-round" id="pause-play-icon" style="font-size: 28px;">pause_circle</span></button>
                 </div>
 
-                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()" style="flex-shrink: 0; margin-bottom: 1px;"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
+                <button id="dynamic-action-btn" class="circular-primary-btn" style="flex-shrink: 0; margin-bottom: 1px; z-index: 25;"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
+
+                <div id="slide-to-cancel-ui" class="hidden" style="position: absolute; right: 70px; bottom: 15px; display: flex; align-items: center; gap: 8px; color: #94A3B8; font-size: 14px; font-weight: 600; pointer-events: none; z-index: 15;">
+                    <span class="material-icons-round" style="font-size: 20px; animation: slideLeftAnim 1.5s infinite;">chevron_left</span> Deslize para cancelar
+                </div>
+                <div id="slide-to-lock-ui" class="hidden" style="position: absolute; right: 12px; bottom: 70px; display: flex; flex-direction: column; align-items: center; gap: 5px; color: #94A3B8; font-size: 12px; font-weight: 600; pointer-events: none; z-index: 15; background: var(--card-bg); padding: 10px 8px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);">
+                    <span class="material-icons-round" style="font-size: 20px; animation: slideUpAnim 1.5s infinite;">keyboard_arrow_up</span>
+                    <span class="material-icons-round" style="font-size: 18px; color: white;">lock</span>
+                </div>
             </div>
 
             <div id="emoji-drawer">
@@ -367,93 +375,8 @@
             <button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Aplicar Permissões</button>
         </div>
     </div>
-        
-        <div class="settings-content" style="padding: 15px; height: calc(100% - 70px); overflow-y: auto; padding-bottom: 120px;">
-            
-            <div class="settings-group" style="margin-bottom: 20px;">
-                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: var(--brand-primary); text-transform: uppercase; letter-spacing: 1px;">💬 Chats</div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <select id="perm-chat-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
-                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
-                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
-                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
-                        </select>
-                        <button class="icon-btn" onclick="testNotificationSound('perm-chat-sound')" style="background: var(--brand-primary); border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
-                    </div>
-                </div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Permitir usar Microfone</span><label class="switch"><input type="checkbox" id="perm-chat-mic" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Permitir usar Câmera</span><label class="switch"><input type="checkbox" id="perm-chat-cam" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Mostrar prévia no topo da tela</span><label class="switch"><input type="checkbox" id="perm-chat-preview" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Notificar Reações (❤️)</span><label class="switch"><input type="checkbox" id="perm-chat-react" checked><span class="slider round"></span></label></div>
-            </div>
-
-            <div class="settings-group" style="margin-bottom: 20px;">
-                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #10B981; text-transform: uppercase; letter-spacing: 1px;">👥 Grupos</div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <select id="perm-group-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
-                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
-                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
-                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
-                        </select>
-                        <button class="icon-btn" onclick="testNotificationSound('perm-group-sound')" style="background: #10B981; border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
-                    </div>
-                </div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Permitir usar Microfone</span><label class="switch"><input type="checkbox" id="perm-group-mic" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Permitir usar Câmera</span><label class="switch"><input type="checkbox" id="perm-group-cam" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Mostrar prévia no topo da tela</span><label class="switch"><input type="checkbox" id="perm-group-preview" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Notificar Reações (❤️)</span><label class="switch"><input type="checkbox" id="perm-group-react" checked><span class="slider round"></span></label></div>
-            </div>
-
-            <div class="settings-group" style="margin-bottom: 20px;">
-                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #F59E0B; text-transform: uppercase; letter-spacing: 1px;">📸 Stories</div>
-                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-size: 14px; font-weight:600; color: var(--text-color);">Som de Notificação</span>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                        <select id="perm-story-sound" class="chic-input" style="margin:0; padding:10px; flex: 1; font-weight: 600; font-size: 14px;">
-                            <option value="modern">Moderno (Neo)</option><option value="pop">Pop (Suave)</option><option value="bell">Sino Espacial</option>
-                            <option value="cyber">Cyberpunk (Laser)</option><option value="hologram">Holograma (Brilho)</option><option value="sonar">Sonar (Radar)</option>
-                            <option value="digital">Digital (Click)</option><option value="arcade">Arcade (Retro)</option><option value="none">Silencioso</option>
-                        </select>
-                        <button class="icon-btn" onclick="testNotificationSound('perm-story-sound')" style="background: #F59E0B; border-radius: 12px; width: 44px; height: 44px; flex-shrink: 0;"><span class="material-icons-round" style="color: white;">play_arrow</span></button>
-                    </div>
-                </div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Permitir usar Câmera</span><label class="switch"><input type="checkbox" id="perm-story-cam" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Mostrar prévia no topo da tela</span><label class="switch"><input type="checkbox" id="perm-story-preview" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Notificar quem viu ou reagiu</span><label class="switch"><input type="checkbox" id="perm-story-react" checked><span class="slider round"></span></label></div>
-            </div>
-
-            <div class="settings-group" style="margin-bottom: 20px;">
-                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #8B5CF6; text-transform: uppercase; letter-spacing: 1px;">🧩 Módulos do Sistema</div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Comunidades (Pleno Funcionamento)</span><label class="switch"><input type="checkbox" id="perm-mod-comm" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Inglês PTT (Pleno Funcionamento)</span><label class="switch"><input type="checkbox" id="perm-mod-eng" checked><span class="slider round"></span></label></div>
-                <div class="setting-item"><span style="font-weight:600; font-size: 14px;">Jogos (Pleno Funcionamento)</span><label class="switch"><input type="checkbox" id="perm-mod-games" checked><span class="slider round"></span></label></div>
-            </div>
-
-            <div class="settings-group" style="margin-bottom: 20px;">
-                <div style="padding: 15px 15px 5px 15px; font-size: 13px; font-weight: 900; color: #EF4444; text-transform: uppercase; letter-spacing: 1px;">📱 Sistema</div>
-                <div class="setting-item" style="align-items: flex-start;">
-                    <div style="display: flex; flex-direction: column; gap: 4px; padding-right: 15px;">
-                        <span style="font-weight:600; font-size: 14px;">Limpar emblema na tela inicial</span>
-                        <span style="font-size: 11px; color: var(--secondary-text);">Remove a contagem (bolinha vermelha) do ícone do aplicativo no seu telemóvel sempre que o abrir.</span>
-                    </div>
-                    <label class="switch"><input type="checkbox" id="perm-sys-badge" checked><span class="slider round"></span></label>
-                </div>
-            </div>
-
-        </div>
-        
-        <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px calc(15px + env(safe-area-inset-bottom)); background: var(--card-bg); border-top: 1px solid var(--input-bg); display: flex; gap: 10px; z-index: 30; box-shadow: 0 -10px 20px rgba(0,0,0,0.2);">
-            <button class="chic-btn" onclick="cancelNotificationSettings()" style="flex: 1; background: transparent; color: var(--secondary-text); border: 1px solid var(--input-bg); margin: 0;">Descartar</button>
-            <button class="chic-btn" onclick="saveNotificationSettings()" style="flex: 1; margin: 0; background: var(--brand-primary);">Aplicar Permissões</button>
-        </div>
-    </div>
 
     <div id="classifications-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title" style="font-size:20px; font-weight:700;">Classificações</span><div style="width: 40px;"></div></div><div class="settings-content" style="padding: 15px;"><button class="chic-btn" style="background: var(--brand-secondary); margin-bottom: 20px;" onclick="createNewClassification()">+ Criar Nova Classificação</button><div id="classifications-list"></div></div></div>
-    
     <div id="account-screen" class="app-screen hidden"><div class="main-header"><button class="icon-btn" onclick="backToSettings()"><span class="material-icons-round">arrow_back</span></button><span class="header-title">Conta</span><div style="width: 40px;"></div></div><div class="settings-content"><div class="settings-group"><div class="setting-item"><span style="font-weight:500;">E-mail</span><span id="config-email" style="color:var(--secondary-text);">...</span></div><div class="setting-item" onclick="openChangePasswordModal()"><span style="font-weight:600; color:var(--brand-primary);">Alterar Senha</span></div><div class="setting-item" onclick="deleteAccount()"><span style="color:#EF4444; font-weight:600;"><span class="material-icons-round" style="font-size:18px; vertical-align:middle; color:#EF4444;">delete_forever</span> Excluir Minha Conta</span></div></div></div></div>
 
     <div id="screen-communities" class="app-screen hidden">
