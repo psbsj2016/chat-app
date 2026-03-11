@@ -81,11 +81,11 @@
         emoji-picker::part(category-title) { background-color: #0B0F19; color: #8696A0; font-size: 13px; padding: 10px 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         emoji-picker::part(search-input) { background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; color: white; }
 
-        .circular-primary-btn { background: #00A884; box-shadow: 0 2px 10px rgba(0, 168, 132, 0.4); border: none; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-bottom: 2px; }
+        .circular-primary-btn { background: #00A884; box-shadow: 0 2px 10px rgba(0, 168, 132, 0.4); border: none; width: 46px; height: 46px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; transition: all 0.2s; flex-shrink: 0; margin-bottom: 2px; z-index: 10; }
         .circular-primary-btn:active { transform: scale(0.95); }
-        .circular-primary-btn.recording-pulse { background: #EF4444; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); animation: recordPulse 1.5s infinite; }
+        .circular-primary-btn.recording-pulse { background: #EF4444 !important; color: white !important; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); animation: recordPulse 1.5s infinite; opacity: 1 !important; }
+        .circular-primary-btn.ready-to-send { background: #10B981 !important; color: white !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5); transform: scale(1.08); opacity: 1 !important; }
         @keyframes recordPulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        @keyframes pulseRed { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         
         .premium-record-ui { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px;}
         .record-action-btn { background: var(--card-bg); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.2s; }
@@ -218,7 +218,7 @@
                 <div class="attach-menu-item" onclick="triggerUpload('audio/*')"><span class="material-icons-round" style="color: #10B981; font-size: 22px;">headphones</span> <span style="font-weight: 600;">Áudio</span></div>
             </div>
 
-            <div style="padding: 0 10px; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 6px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
+            <div style="padding: 0 10px; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 8px; width: 100%; box-sizing: border-box; position: relative; margin-bottom: 5px;">
                 
                 <div id="chat-input-container" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; background: var(--input-bg); border-radius: 24px; padding: 6px 10px; min-height: 48px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.1); box-sizing: border-box; min-width: 0;">
                     <button class="icon-btn" id="btn-emoji" onclick="toggleEmojiPicker(event)" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background:transparent; border:none; margin-bottom: 1px; margin-right: 6px;"><span class="material-icons-round" style="font-size: 26px;">mood</span></button>
@@ -229,29 +229,30 @@
                     </div>
                 </div>
 
-                <div id="recording-ui" class="hidden premium-record-ui" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--input-bg); padding: 5px 8px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px;">
+                <div id="recording-ui" class="hidden premium-record-ui" style="flex: 1; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; background: var(--input-bg); padding: 5px 12px; border-radius: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); min-width: 0; height: 48px; box-sizing: border-box; margin-bottom: 0px;">
+                    
                     <div id="recording-active-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; justify-content:space-between; align-items:center; width:100%; height: 100%; min-width: 0;">
-                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:6px; margin-left: 5px; flex-shrink: 0;">
-                            <div style="width:8px; height:8px; background:#EF4444; border-radius:50%; animation: pulseRed 1s infinite;"></div>
-                            <div style="font-size:16px; color:var(--text-color); font-weight:600; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
+                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:8px; flex-shrink: 0;">
+                            <div style="width:10px; height:10px; background:#EF4444; border-radius:50%; animation: pulseRed 1s infinite;"></div>
+                            <div style="font-size:16px; color:white; font-weight:700; font-variant-numeric: tabular-nums;" id="recording-timer">0:00</div>
                         </div>
-                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:10px; margin-right: 5px; flex-shrink: 0;">
-                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #EF4444; padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 28px;">pause_circle_outline</span></button>
+                        <div style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; gap:12px; flex-shrink: 0;">
+                            <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">delete</span></button>
+                            <button class="icon-btn" onclick="stopRecordingForPreview()" style="color: #F59E0B; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 30px;">pause_circle_filled</span></button>
                         </div>
                     </div>
-                    <div id="recording-preview-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; justify-content:space-between; width:100%; height: 100%; min-width: 0;">
-                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 4px; margin-left: 5px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">delete_outline</span></button>
-                        <div style="flex:1; display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; background:rgba(255,255,255,0.05); border-radius:16px; padding:4px 8px; margin: 0 10px; position:relative; overflow:hidden; min-width: 0;">
-                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--secondary-text); padding: 4px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 20px;">play_arrow</span></button>
+                    
+                    <div id="recording-preview-state" class="hidden" style="display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; justify-content:space-between; width:100%; height: 100%; min-width: 0; gap: 8px;">
+                        <button class="icon-btn" onclick="cancelRecording()" style="color: #EF4444; padding: 0; width: 32px; height: 32px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">delete</span></button>
+                        <div style="flex:1; display:flex; flex-direction: row; flex-wrap: nowrap; align-items:center; background:rgba(0,0,0,0.2); border-radius:16px; padding:4px 8px; position:relative; overflow:hidden; min-width: 0;">
+                            <button class="icon-btn" id="preview-play-btn" onclick="togglePreviewAudio()" style="color: var(--brand-primary); padding: 0; width: 28px; height: 28px; background:transparent; border:none; flex-shrink: 0; display:flex; align-items:center; justify-content:center;"><span class="material-icons-round" style="font-size: 26px;">play_arrow</span></button>
                             <div style="flex:1; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin: 0 8px; position:relative; overflow:hidden;"><div id="preview-progress" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--brand-primary); transition:width 0.1s;"></div></div>
-                            <div style="font-size:12px; color:var(--text-muted); font-family:monospace; flex-shrink: 0;" id="preview-timer-total">0:00</div>
+                            <div style="font-size:13px; color:var(--text-muted); font-weight: 700; font-family:monospace; flex-shrink: 0;" id="preview-timer-total">0:00</div>
                         </div>
-                        <button class="icon-btn" onclick="resumeRecording()" style="color: #EF4444; padding: 4px; margin-right: 5px; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">mic</span></button>
                     </div>
                 </div>
 
-                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()" style="flex-shrink: 0;"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
+                <button id="dynamic-action-btn" class="circular-primary-btn" onclick="handleDynamicAction()" style="flex-shrink: 0; margin-bottom: 1px;"><span class="material-icons-round" id="dynamic-action-icon" style="font-size: 24px;">mic</span></button>
             </div>
 
             <div id="emoji-drawer">

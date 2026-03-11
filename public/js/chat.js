@@ -266,8 +266,8 @@ setTimeout(() => {
     }); 
 }, 1000);
 
-// ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT
+   // ==============================================================
+// 🎙️ MOTOR DE ÁUDIO PREMIUM E INPUT (CORES E STATUS NATIVOS)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
@@ -365,11 +365,11 @@ async function startRecording() {
             showElement('recording-ui'); 
             showElement('recording-active-state'); 
             hideElement('recording-preview-state'); 
-            showElement('btn-pause-record'); 
         }
 
+        // 🔥 BOTÃO DE GRAVAÇÃO ATIVO (VERMELHO PULSANTE)
         dynamicActionIcon.innerText = 'send'; 
-        dynamicActionIcon.style.animation = 'popIn 0.2s ease';
+        dynamicActionBtn.classList.remove('ready-to-send');
         dynamicActionBtn.classList.add('recording-pulse');
 
         globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
@@ -399,56 +399,7 @@ async function startRecording() {
         
         globalMediaRecorder.start(); 
         emitTypingStatus('recording'); 
-        drawAudioVisualizer(); 
     } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
-}
-
-function drawAudioVisualizer() { 
-    const canvas = document.getElementById('audio-visualizer'); 
-    if(!canvas) return; 
-    
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if(canvas.width !== rect.width * dpr) {
-        canvas.width = rect.width * dpr; 
-        canvas.height = rect.height * dpr;
-    }
-    
-    const ctx = canvas.getContext('2d'); 
-    ctx.scale(dpr, dpr);
-    
-    const draw = () => { 
-        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
-        visualizerAnimationId = requestAnimationFrame(draw); 
-        
-        audioAnalyzer.getByteFrequencyData(audioDataArray);
-        ctx.clearRect(0, 0, rect.width, rect.height); 
-        
-        const barWidth = 3.5; 
-        const gap = 2.5; 
-        const totalBars = Math.floor(rect.width / (barWidth + gap)); 
-        const centerY = rect.height / 2;
-
-        for(let i = 0; i < totalBars; i++) { 
-            const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
-            const value = audioDataArray[dataIndex];
-            
-            const percent = value / 255;
-            let h = Math.max(3, percent * (rect.height - 4)); 
-            
-            const gradient = ctx.createLinearGradient(0, centerY - h/2, 0, centerY + h/2);
-            gradient.addColorStop(0, '#EC4899');
-            gradient.addColorStop(0.5, '#8B5CF6');
-            gradient.addColorStop(1, '#3B82F6');
-            
-            ctx.fillStyle = gradient; 
-            
-            ctx.beginPath();
-            ctx.roundRect(i * (barWidth + gap), centerY - (h / 2), barWidth, h, 2);
-            ctx.fill();
-        } 
-    }; 
-    draw(); 
 }
 
 window.stopRecordingForPreview = function() { 
@@ -476,7 +427,9 @@ function resetAudioUI() {
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
     pendingAudioFile = null; showPreviewAfterStop = false; isRecordingCancelled = false; 
-    dynamicActionBtn.classList.remove('recording-pulse');
+    
+    // 🔥 RESTAURA O BOTÃO AO ESTADO NORMAL
+    dynamicActionBtn.classList.remove('recording-pulse', 'ready-to-send');
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
@@ -485,10 +438,13 @@ function resetAudioUI() {
 function setupPreviewUI(blob) { 
     if (typeof hideElement === 'function') {
         hideElement('recording-active-state'); 
-        hideElement('btn-pause-record'); 
         showElement('recording-preview-state'); 
     }
+    
+    // 🔥 ÁUDIO FINALIZADO: BOTÃO FICA VERDE SÓLIDO (PRONTO PARA ENVIAR)
     dynamicActionBtn.classList.remove('recording-pulse'); 
+    dynamicActionBtn.classList.add('ready-to-send');
+    dynamicActionIcon.innerText = 'send';
 
     const audioUrl = URL.createObjectURL(blob); 
     previewAudioObj = new Audio(audioUrl); 
@@ -501,25 +457,25 @@ function setupPreviewUI(blob) {
         const curr = Math.floor(previewAudioObj.currentTime); 
         const m = Math.floor(curr / 60).toString().padStart(2, '0'); 
         const s = (curr % 60).toString().padStart(2, '0'); 
-        document.getElementById('preview-timer').innerText = `${m}:${s}`; 
+        document.getElementById('preview-timer-total').innerText = `${m}:${s}`; 
     }; 
     
     previewAudioObj.onended = () => { 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
+        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
         progressBar.style.width = '0%'; 
-        document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText;  
+        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
     }; 
     
-    document.getElementById('preview-timer').innerText = document.getElementById('recording-timer').innerText; 
+    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText; 
 }
 
 window.togglePreviewAudio = function() { 
     if(!previewAudioObj) return; 
     const playBtn = document.getElementById('preview-play-btn'); 
     if(previewAudioObj.paused) { 
-        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">pause</span>'; 
+        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">pause</span>'; 
     } else { 
-        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 20px;">play_arrow</span>'; 
+        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
     } 
 }
 
