@@ -122,56 +122,6 @@ window.closeScheduleModal = function() {
 };
 
 // ==============================================================
-// 🔎 PESQUISA GERAL DE CONTATOS E GRUPOS (TELA INICIAL)
-// ==============================================================
-window.toggleMainSearch = function() {
-    const bar = document.getElementById('main-search-bar');
-    const input = document.getElementById('search-input');
-    if (bar.classList.contains('hidden')) {
-        bar.classList.remove('hidden');
-        input.value = '';
-        input.focus();
-    } else {
-        bar.classList.add('hidden');
-        input.value = '';
-        window.handleSearch('');
-    }
-};
-
-window.handleSearch = function(query) {
-    const term = query.toLowerCase().trim();
-    const items = document.querySelectorAll('#users-list .user-item');
-    let hasVisible = false;
-    
-    items.forEach(item => {
-        const nameEl = item.querySelector('.user-item-name');
-        const name = nameEl ? nameEl.innerText.toLowerCase() : '';
-        
-        if (name.includes(term)) {
-            item.style.display = 'flex';
-            hasVisible = true;
-        } else {
-            item.style.display = 'none';
-        }
-    });
-
-    let noResultMsg = document.getElementById('no-search-result');
-    if (!hasVisible && term !== '') {
-        if (!noResultMsg) {
-            noResultMsg = document.createElement('div');
-            noResultMsg.id = 'no-search-result';
-            noResultMsg.style = 'text-align:center; padding:30px; color:var(--secondary-text); width: 100%; font-weight: 600; font-size: 14px;';
-            noResultMsg.innerHTML = '<span class="material-icons-round" style="font-size: 40px; margin-bottom: 10px; opacity: 0.5;">search_off</span><br>Nenhuma conversa encontrada.';
-            document.getElementById('users-list').appendChild(noResultMsg);
-        } else {
-            noResultMsg.style.display = 'block';
-        }
-    } else if (noResultMsg) {
-        noResultMsg.style.display = 'none';
-    }
-};
-
-// ==============================================================
 // 🔎 PESQUISA DENTRO DO CHAT
 // ==============================================================
 let chatSearchMatches = []; let currentSearchIndex = -1;
@@ -778,11 +728,6 @@ window.renderContactsList = function(groups, users) {
         clickArea.innerHTML = `<div class="user-avatar-container" onclick="event.stopPropagation(); window.viewContactProfile('${user._id}', '${safeName}', '${photo}', false)"><div class="status-dot contact-status-dot ${statusClass}" data-userid="${user._id}"></div>${sectorLabel}<img src="${photo}" class="avatar-small"></div><div class="user-item-info"><div class="user-item-top"><div class="user-item-name" style="display:flex; align-items:center;">${name}${vipHtml}</div><div class="user-item-time" style="${isUnreadU ? 'color: var(--brand-primary); font-weight: 800;' : ''}">${timeText}</div></div><div class="user-item-bottom"><div class="user-item-msg" style="${lastMsgStyle}">${lastMsgText}</div>${badgeHtml}</div></div>`; 
         setupLongPress(clickArea, user._id, safeName, false, photo, email); div.appendChild(clickArea); list.appendChild(div); 
     });
-
-    const searchInput = document.getElementById('search-input');
-    if (searchInput && searchInput.value.trim() !== '') {
-        window.handleSearch(searchInput.value);
-    }
 }
 
 function getChatDateString(dateObj) { const today = new Date(); const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1); if (dateObj.toDateString() === today.toDateString()) return "Hoje"; if (dateObj.toDateString() === yesterday.toDateString()) return "Ontem"; return dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }); }
