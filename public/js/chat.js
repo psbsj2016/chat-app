@@ -175,12 +175,12 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM (Ondas, Bloqueio, Pausa, Resume)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (Ondas, Bloqueio e UI Moderna)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
 let isRecordingCancelled = false; 
-let isRecordingPaused = false;
+let isPreviewMode = false;
 let previewAudioObj = null;
 
 let audioContext = null;
@@ -192,13 +192,12 @@ const msgInputEl = document.getElementById('message-input');
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
+// O botão de microfone agora ouve o Touch para deslizar
 let holdTimer = null; 
 let startX = 0; 
 let startY = 0;
 let isRecordingNow = false;
 let isRecordingLocked = false;
-let recordingInterval = null;
-let recordingSeconds = 0;
 
 if (msgInputEl) { 
     msgInputEl.addEventListener('input', () => { 
@@ -232,10 +231,13 @@ function resetDynamicButton() {
 }
 
 window.handleDynamicAction = function() { 
+    // Só envia com um clique se for um botão de Envio/Check!
     if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') { 
-        if (isRecordingNow || isRecordingLocked || isRecordingPaused) {
+        if (isRecordingNow || isRecordingLocked || isPreviewMode) {
+            // Envia o áudio pronto!
             stopAndSendRecording();
         } else {
+            // Envia texto normal
             sendMessage(); 
             resetAudioUI(); 
         }
@@ -244,6 +246,7 @@ window.handleDynamicAction = function() {
     }
 }
 
+// OS GESTOS DE TOUCH DO MICROFONE (Estilo WhatsApp)
 if (dynamicActionBtn) {
     dynamicActionBtn.addEventListener('touchstart', (e) => {
         if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') return;
@@ -255,33 +258,35 @@ if (dynamicActionBtn) {
         holdTimer = setTimeout(() => {
             isRecordingNow = true;
             isRecordingLocked = false;
-            isRecordingPaused = false;
             if(navigator.vibrate) navigator.vibrate(50);
             startRecording();
             
-            const cancelUI = document.getElementById('slide-to-cancel-ui');
-            const lockUI = document.getElementById('slide-to-lock-ui');
-            if(cancelUI) cancelUI.classList.remove('hidden');
-            if(lockUI) lockUI.classList.remove('hidden');
+            // Mostra os guias de deslizar
+            document.getElementById('slide-to-cancel-ui').classList.remove('hidden');
+            document.getElementById('slide-to-lock-ui').classList.remove('hidden');
             document.getElementById('chat-input-container').style.opacity = '0';
         }, 300);
     }, {passive: false});
 
     dynamicActionBtn.addEventListener('touchmove', (e) => {
-        if (!isRecordingNow || isRecordingLocked || isRecordingPaused) return;
+        if (!isRecordingNow || isRecordingLocked) return;
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
         
+        // Deslizar para Esquerda = Cancelar
         if (startX - currentX > 60) {
             isRecordingNow = false;
             cancelRecording();
+            hideSlideHints();
             if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
         }
+        // Deslizar para Cima = Trancar Gravação
         else if (startY - currentY > 60) {
             isRecordingLocked = true;
             hideSlideHints();
             if(navigator.vibrate) navigator.vibrate(50);
             
+            // Microfone vira o botão de enviar gigante
             dynamicActionBtn.classList.remove('recording-pulse');
             dynamicActionBtn.classList.add('ready-to-send');
             dynamicActionIcon.innerText = 'send';
@@ -296,9 +301,11 @@ if (dynamicActionBtn) {
         
         if (isRecordingNow) {
             if (!isRecordingLocked) {
+                // Soltou o dedo sem trancar -> Envia direto!
                 isRecordingNow = false;
                 stopAndSendRecording();
             }
+            // Se trancou, a gravação continua até ele clicar no botão 'send'
         }
     });
 }
@@ -313,11 +320,7 @@ function hideSlideHints() {
 }
 
 async function startRecording() { 
-    if (localStorage.getItem('perm_chat_mic') === 'false') {
-        alert("🔒 PRIVACIDADE: O uso do microfone para os Chats está desativado.\n\nVá em Meu Perfil > Configurações > Permissões e Notificações para reativá-lo.");
-        resetAudioUI();
-        return;
-    }
+    
 
     const attachMenu = document.getElementById('attach-menu'); if(attachMenu) attachMenu.classList.add('hidden');
     const drawer = document.getElementById('emoji-drawer'); if (drawer) drawer.style.height = '0px';
@@ -325,7 +328,7 @@ async function startRecording() {
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
         globalMediaRecorder = new MediaRecorder(audioStream); 
-        audioChunks = []; isRecordingCancelled = false; isRecordingPaused = false;
+        audioChunks = []; isRecordingCancelled = false; isPreviewMode = false;
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioContext = new AudioContext();
@@ -338,20 +341,15 @@ async function startRecording() {
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
         
-        document.getElementById('recording-active-state').classList.remove('hidden');
+        // Estado de gravação
         document.getElementById('recording-waveform-area').classList.remove('hidden');
         document.getElementById('preview-progress-area').classList.add('hidden');
-        document.getElementById('recording-preview-state').classList.add('hidden');
+        document.getElementById('pause-play-icon').innerText = 'pause_circle';
+        document.getElementById('pause-play-icon').style.color = '#F59E0B';
         
         dynamicActionBtn.classList.add('recording-pulse');
 
-        globalMediaRecorder.ondataavailable = e => { 
-            if (e.data.size > 0) audioChunks.push(e.data); 
-            if (globalMediaRecorder.state === "paused") {
-                const tempBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
-                setupPreviewUI(tempBlob);
-            }
-        }; 
+        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
         
         globalMediaRecorder.onstop = () => { 
             clearInterval(recordingInterval); 
@@ -364,8 +362,7 @@ async function startRecording() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
             pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            sendMessage(); 
-            resetAudioUI(); 
+            if (isPreviewMode) { setupPreviewUI(audioBlob); } else { sendMessage(); resetAudioUI(); } 
         }; 
         
         recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
@@ -414,65 +411,34 @@ function drawAudioVisualizer() {
     draw(); 
 }
 
+// ⏸️ O BOTÃO DE PAUSAR / PLAY
 window.togglePausePlayRecording = function() {
     if (!globalMediaRecorder) return;
     
-    if (globalMediaRecorder.state === "recording") {
-        globalMediaRecorder.pause();
-        globalMediaRecorder.requestData(); 
-        isRecordingPaused = true;
-        clearInterval(recordingInterval); 
-        
-        document.getElementById('recording-active-state').classList.add('hidden');
-        document.getElementById('recording-preview-state').classList.remove('hidden');
-        
-        dynamicActionBtn.classList.remove('recording-pulse');
-        dynamicActionBtn.classList.add('ready-to-send');
-        dynamicActionIcon.innerText = 'send';
-    }
-}
-
-window.resumeRecording = function() {
-    if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
-        globalMediaRecorder.resume(); 
-        isRecordingPaused = false;
-        
-        recordingInterval = setInterval(() => { 
-            recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60).toString(); 
-            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
-            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
-        }, 1000);
-        
-        if (previewAudioObj) {
-            previewAudioObj.pause();
-            previewAudioObj.currentTime = 0;
-            document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
-        }
-        
-        document.getElementById('recording-preview-state').classList.add('hidden');
-        document.getElementById('recording-active-state').classList.remove('hidden');
-        
-        document.getElementById('recording-waveform-area').classList.remove('hidden');
-        document.getElementById('preview-progress-area').classList.add('hidden');
-        
-        dynamicActionBtn.classList.remove('ready-to-send');
-        dynamicActionBtn.classList.add('recording-pulse');
-        dynamicActionIcon.innerText = 'send';
-        
-        drawAudioVisualizer(); 
+    if (!isPreviewMode) {
+        // Estava a gravar -> Transforma em Preview (Para a gravação de vez)
+        isPreviewMode = true;
+        globalMediaRecorder.stop(); // Dispara o onstop que chama setupPreviewUI
+    } else {
+        // Já estava em preview -> Dá Play/Pause no áudio salvo
+        togglePreviewAudio();
     }
 }
 
 function setupPreviewUI(blob) { 
-    const audioUrl = URL.createObjectURL(blob); 
-    if (previewAudioObj) { previewAudioObj.pause(); }
-    previewAudioObj = new Audio(audioUrl); 
-    
     document.getElementById('recording-waveform-area').classList.add('hidden');
     document.getElementById('preview-progress-area').classList.remove('hidden');
     
-    const playBtn = document.getElementById('preview-play-btn'); 
+    const pauseIcon = document.getElementById('pause-play-icon');
+    pauseIcon.innerText = 'play_circle';
+    pauseIcon.style.color = '#10B981';
+    
+    dynamicActionBtn.classList.remove('recording-pulse');
+    dynamicActionBtn.classList.add('ready-to-send');
+    dynamicActionIcon.innerText = 'send';
+
+    const audioUrl = URL.createObjectURL(blob); 
+    previewAudioObj = new Audio(audioUrl); 
     const progressBar = document.getElementById('preview-progress'); 
     
     previewAudioObj.ontimeupdate = () => { 
@@ -485,7 +451,7 @@ function setupPreviewUI(blob) {
     }; 
     
     previewAudioObj.onended = () => { 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
+        pauseIcon.innerText = 'play_circle'; 
         progressBar.style.width = '0%'; 
         document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
     }; 
@@ -495,26 +461,22 @@ function setupPreviewUI(blob) {
 
 window.togglePreviewAudio = function() { 
     if(!previewAudioObj) return; 
-    const playBtn = document.getElementById('preview-play-btn'); 
+    const pauseIcon = document.getElementById('pause-play-icon'); 
     if(previewAudioObj.paused) { 
-        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">pause</span>'; 
+        previewAudioObj.play(); pauseIcon.innerText = 'pause_circle'; 
     } else { 
-        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
+        previewAudioObj.pause(); pauseIcon.innerText = 'play_circle'; 
     } 
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
-        isRecordingCancelled = false; 
-        globalMediaRecorder.stop(); 
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { isPreviewMode = false; globalMediaRecorder.stop(); }
+    else if (pendingAudioFile && isPreviewMode) { sendMessage(); resetAudioUI(); }
 }
 
 window.cancelRecording = function() { 
-    if (globalMediaRecorder && (globalMediaRecorder.state === "recording" || globalMediaRecorder.state === "paused")) { 
-        isRecordingCancelled = true; 
-        globalMediaRecorder.stop(); 
-    } 
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { isRecordingCancelled = true; globalMediaRecorder.stop(); } 
+    else if (pendingAudioFile && isPreviewMode) { pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); } 
     hideSlideHints();
 }
 
@@ -524,7 +486,7 @@ function resetAudioUI() {
     document.getElementById('chat-input-container').style.opacity = '1';
 
     if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
-    pendingAudioFile = null; isRecordingPaused = false; isRecordingCancelled = false; 
+    pendingAudioFile = null; isPreviewMode = false; isRecordingCancelled = false; 
     isRecordingNow = false; isRecordingLocked = false;
     
     dynamicActionBtn.classList.remove('recording-pulse', 'ready-to-send');
@@ -804,6 +766,7 @@ window.closeMessageMenu = function() { const overlay = document.getElementById('
 window.deleteSingleMessage = function(msgId) { if(confirm("Apagar esta mensagem apenas da sua tela?")) { const msgEl = document.getElementById(`msg-${msgId}`); if(msgEl) msgEl.remove(); } }
 window.deleteMessageForEveryone = async function(msgId) { if(confirm("Apagar mensagem para todos?")) { await fetch(`/message/${msgId}`, { method: 'DELETE' }); } }
 
+// 🔥 FUNÇÃO: APAGAR TUDO DA CONVERSA DEFINITIVAMENTE 🔥
 window.deleteCurrentChat = async function() {
     if (!currentChatId) return;
     if (isGroupChat) return alert("Para apagar o histórico de um Grupo, precisa abrir o Perfil do Grupo e sair dele.");
@@ -813,7 +776,7 @@ window.deleteCurrentChat = async function() {
             messageCache[currentChatId] = [];
             localStorage.removeItem(`chat_cache_${currentChatId}`);
             document.getElementById('chat-box').innerHTML = '';
-            socket.emit('group_updated');
+            socket.emit('group_updated'); // Força reload de contatos no outro lado
             alert("✅ Histórico completamente destruído com sucesso.");
             backToMain();
             loadContacts();
