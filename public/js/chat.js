@@ -175,13 +175,14 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM (Ondas, Bloqueio e UI Moderna)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (Sistema de Clique Seguro)
 // ==============================================================
 let audioChunks = []; 
 let audioStream = null; 
 let isRecordingCancelled = false; 
-let isPreviewMode = false;
-let previewAudioObj = null;
+let recordingInterval = null;
+let recordingSeconds = 0;
+let pendingAudioFile = null;
 
 let audioContext = null;
 let audioAnalyzer = null;
@@ -191,12 +192,6 @@ let visualizerAnimationId = null;
 const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-
-let holdTimer = null; 
-let startX = 0; 
-let startY = 0;
-let isRecordingNow = false;
-let isRecordingLocked = false;
 
 if (msgInputEl) { 
     msgInputEl.addEventListener('input', () => { 
@@ -209,7 +204,6 @@ if (msgInputEl) {
         } else { 
             if (!window.editingMsgId) resetDynamicButton(); 
         } 
-        if (pendingAudioFile) { pendingAudioFile = null; msgInputEl.setAttribute('data-placeholder', 'Mensagem'); resetAudioUI(); } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
@@ -217,7 +211,7 @@ if (msgInputEl) {
     msgInputEl.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
+            if (msgInputEl.innerText.trim().length > 0) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
         } 
     }); 
 }
@@ -229,81 +223,23 @@ function resetDynamicButton() {
     } 
 }
 
-// OS GESTOS DE TOUCH DO MICROFONE (Estilo WhatsApp)
+// 🚀 LÓGICA DE GRAVAÇÃO COM 1 CLIQUE
 if (dynamicActionBtn) {
-    dynamicActionBtn.addEventListener('touchstart', (e) => {
-        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') return;
-        if (e.cancelable) e.preventDefault();
-        
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        
-        holdTimer = setTimeout(() => {
-            isRecordingNow = true;
-            isRecordingLocked = false;
-            if(navigator.vibrate) navigator.vibrate(50);
-            startRecording();
-            
-            document.getElementById('slide-to-cancel-ui').classList.remove('hidden');
-            document.getElementById('slide-to-lock-ui').classList.remove('hidden');
-            document.getElementById('chat-input-container').style.opacity = '0';
-        }, 300);
-    }, {passive: false});
+    dynamicActionBtn.onclick = (e) => {
+        e.preventDefault();
+        const iconTxt = dynamicActionIcon.innerText;
 
-    dynamicActionBtn.addEventListener('touchmove', (e) => {
-        if (!isRecordingNow || isRecordingLocked) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        
-        // Deslizar para Esquerda = Cancelar
-        if (startX - currentX > 60) {
-            isRecordingNow = false;
-            cancelRecording();
-            hideSlideHints();
-            if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
-        }
-        // Deslizar para Cima = Trancar Gravação
-        else if (startY - currentY > 60) {
-            isRecordingLocked = true;
-            hideSlideHints();
-            if(navigator.vibrate) navigator.vibrate(50);
-            
-            dynamicActionBtn.classList.remove('recording-pulse');
-            dynamicActionBtn.classList.add('ready-to-send');
-            dynamicActionIcon.innerText = 'send';
-        }
-    }, {passive: false});
-
-    dynamicActionBtn.addEventListener('touchend', (e) => {
-        clearTimeout(holdTimer);
-        hideSlideHints();
-        
-        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') {
-            if (isRecordingNow || isRecordingLocked || isPreviewMode) {
+        if (iconTxt === 'send' || iconTxt === 'check') {
+            if (globalMediaRecorder && globalMediaRecorder.state !== 'inactive') {
                 stopAndSendRecording();
             } else {
                 sendMessage(); 
                 resetAudioUI(); 
             }
-            return;
+        } else if (iconTxt === 'mic') {
+            startRecording();
         }
-        
-        if (isRecordingNow) {
-            if (!isRecordingLocked) {
-                isRecordingNow = false;
-                stopAndSendRecording();
-            }
-        }
-    });
-}
-
-function hideSlideHints() {
-    const cancelUI = document.getElementById('slide-to-cancel-ui');
-    const lockUI = document.getElementById('slide-to-lock-ui');
-    const inputCont = document.getElementById('chat-input-container');
-    if(cancelUI) cancelUI.classList.add('hidden');
-    if(lockUI) lockUI.classList.add('hidden');
-    if(inputCont) inputCont.style.opacity = '1';
+    };
 }
 
 async function startRecording() { 
@@ -313,7 +249,7 @@ async function startRecording() {
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
         globalMediaRecorder = new MediaRecorder(audioStream); 
-        audioChunks = []; isRecordingCancelled = false; isPreviewMode = false;
+        audioChunks = []; isRecordingCancelled = false; 
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioContext = new AudioContext();
@@ -326,12 +262,19 @@ async function startRecording() {
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
         
+        const slideCancel = document.getElementById('slide-to-cancel-ui'); if(slideCancel) slideCancel.classList.add('hidden');
+        const slideLock = document.getElementById('slide-to-lock-ui'); if(slideLock) slideLock.classList.add('hidden');
+
         document.getElementById('recording-waveform-area').classList.remove('hidden');
         document.getElementById('preview-progress-area').classList.add('hidden');
-        document.getElementById('pause-play-icon').innerText = 'pause_circle';
-        document.getElementById('pause-play-icon').style.color = '#F59E0B';
+        
+        const pauseIcon = document.getElementById('pause-play-icon');
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
         
         dynamicActionBtn.classList.add('recording-pulse');
+        dynamicActionBtn.classList.add('ready-to-send');
+        dynamicActionIcon.innerText = 'send';
 
         globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
         
@@ -341,12 +284,16 @@ async function startRecording() {
             if(audioContext && audioContext.state !== 'closed') audioContext.close();
             cancelAnimationFrame(visualizerAnimationId);
 
-            if (isRecordingCancelled) { pendingAudioFile = null; resetAudioUI(); return; } 
+            if (isRecordingCancelled) { 
+                resetAudioUI(); 
+                return; 
+            } 
             
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
-            pendingAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
+            const finalAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            if (isPreviewMode) { setupPreviewUI(audioBlob); } else { handleFileUploadWithAudio(pendingAudioFile); } 
+            handleFileUploadWithAudio(finalAudioFile); 
+            resetAudioUI();
         }; 
         
         recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
@@ -370,9 +317,11 @@ function drawAudioVisualizer() {
     const ctx = canvas.getContext('2d'); 
     
     const draw = () => { 
-        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
+        if(!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return; 
         visualizerAnimationId = requestAnimationFrame(draw); 
         
+        if (globalMediaRecorder.state === 'paused') return;
+
         audioAnalyzer.getByteFrequencyData(audioDataArray);
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         
@@ -396,76 +345,47 @@ function drawAudioVisualizer() {
 }
 
 window.togglePausePlayRecording = function() {
-    if (!globalMediaRecorder && !previewAudioObj) return;
-    
-    if (!isPreviewMode) {
-        isPreviewMode = true;
-        globalMediaRecorder.stop(); 
-    } else {
-        togglePreviewAudio();
-    }
-}
-
-function setupPreviewUI(blob) { 
-    document.getElementById('recording-waveform-area').classList.add('hidden');
-    document.getElementById('preview-progress-area').classList.remove('hidden');
+    if (!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return;
     
     const pauseIcon = document.getElementById('pause-play-icon');
-    pauseIcon.innerText = 'play_circle';
-    pauseIcon.style.color = '#10B981';
-    
-    dynamicActionBtn.classList.remove('recording-pulse');
-    dynamicActionBtn.classList.add('ready-to-send');
-    dynamicActionIcon.innerText = 'send';
 
-    const audioUrl = URL.createObjectURL(blob); 
-    const hiddenPlayer = document.getElementById('hidden-audio-preview');
-    hiddenPlayer.src = audioUrl;
-    previewAudioObj = hiddenPlayer; 
-    
-    const progressBar = document.getElementById('preview-progress'); 
-    
-    previewAudioObj.ontimeupdate = () => { 
-        const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
-        progressBar.style.width = `${progress}%`; 
-        const curr = Math.floor(previewAudioObj.currentTime); 
-        const m = Math.floor(curr / 60).toString(); 
-        const s = (curr % 60).toString().padStart(2, '0'); 
-        document.getElementById('preview-timer-total').innerText = `${m}:${s}`; 
-    }; 
-    
-    previewAudioObj.onended = () => { 
-        pauseIcon.innerText = 'play_circle'; 
-        progressBar.style.width = '0%'; 
-        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
-    }; 
-    
-    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText; 
-}
-
-window.togglePreviewAudio = function() { 
-    if(!previewAudioObj) return; 
-    const pauseIcon = document.getElementById('pause-play-icon'); 
-    if(previewAudioObj.paused) { 
-        previewAudioObj.play(); pauseIcon.innerText = 'pause_circle'; 
-    } else { 
-        previewAudioObj.pause(); pauseIcon.innerText = 'play_circle'; 
-    } 
+    if (globalMediaRecorder.state === "recording") {
+        globalMediaRecorder.pause(); 
+        pauseIcon.innerText = 'play_circle';
+        pauseIcon.style.color = '#10B981';
+        dynamicActionBtn.classList.remove('recording-pulse');
+        clearInterval(recordingInterval); 
+    } else if (globalMediaRecorder.state === "paused") {
+        globalMediaRecorder.resume(); 
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
+        dynamicActionBtn.classList.add('recording-pulse');
+        
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const m = Math.floor(recordingSeconds / 60).toString(); 
+            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        }, 1000);
+    }
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        isPreviewMode = false; globalMediaRecorder.stop(); 
-    } else if (pendingAudioFile && isPreviewMode) { 
-        handleFileUploadWithAudio(pendingAudioFile); 
-        resetAudioUI(); 
-    }
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        globalMediaRecorder.stop(); 
+    } 
 }
 
 window.cancelRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { isRecordingCancelled = true; globalMediaRecorder.stop(); } 
-    else if (pendingAudioFile && isPreviewMode) { pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); } 
-    hideSlideHints();
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        isRecordingCancelled = true; 
+        if (globalMediaRecorder.state === 'paused') {
+            globalMediaRecorder.resume(); 
+        }
+        globalMediaRecorder.stop(); 
+    } else {
+        resetAudioUI();
+    }
 }
 
 function resetAudioUI() { 
@@ -473,17 +393,14 @@ function resetAudioUI() {
     document.getElementById('chat-input-container').classList.remove('hidden');
     document.getElementById('chat-input-container').style.opacity = '1';
 
-    if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj.src = ''; previewAudioObj = null; } 
-    pendingAudioFile = null; isPreviewMode = false; isRecordingCancelled = false; 
-    isRecordingNow = false; isRecordingLocked = false;
+    isRecordingCancelled = false; 
     
-    dynamicActionBtn.classList.remove('recording-pulse', 'ready-to-send');
+    resetDynamicButton();
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
 }
 
-// 🚀 FUNÇÃO PARA ENVIAR O ÁUDIO DIRETO PRO SERVIDOR
 window.handleFileUploadWithAudio = function(file) {
     if(!file) return;
     executeUpload(file, 'audio');
@@ -590,8 +507,6 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     let content = textOverride || input.innerText.trim(); 
     
     if (window.editingMsgId && !fileUrl) { fetch(`/message/${window.editingMsgId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newContent: content }) }); window.editingMsgId = null; input.innerHTML = ''; resetDynamicButton(); return; }
-    
-    if (pendingAudioFile) { handleFileUploadWithAudio(pendingAudioFile); resetAudioUI(); return; } 
     
     if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
     if((!content && !fileUrl) || !currentChatId) return; 
