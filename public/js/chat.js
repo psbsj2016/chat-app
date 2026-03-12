@@ -1,15 +1,6 @@
 // ==============================================================
 // 💬 MOTOR DE CHAT, SOCKETS E CONTATOS (ZERO DELAY IMPLEMENTADO)
 // ==============================================================
-
-// Prevenção de Erros Globais
-window.hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || [];
-window.unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
-window.unreadGroups = JSON.parse(localStorage.getItem('unreadGroups')) || {};
-window.currentSectors = window.currentSectors || [];
-window.messageCache = window.messageCache || {};
-let onlineUsersList = [];
-
 let searchTimeout = null;
 let pressTimer = null;
 let currentSelectedMsgElement = null;
@@ -309,8 +300,8 @@ if (dynamicActionBtn) {
         if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') return;
         if (e.cancelable) e.preventDefault();
         
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
         
         holdTimer = setTimeout(() => {
             isRecordingNow = true;
@@ -329,8 +320,8 @@ if (dynamicActionBtn) {
 
     dynamicActionBtn.addEventListener('touchmove', (e) => {
         if (!isRecordingNow || isRecordingLocked || isPreviewMode) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
+        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
         
         if (startX - currentX > 60) {
             isRecordingNow = false;
@@ -398,10 +389,13 @@ async function startRecording() {
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
         
-        document.getElementById('recording-active-state').classList.remove('hidden');
+        const activeState = document.getElementById('recording-active-state');
+        if (activeState) activeState.classList.remove('hidden');
         document.getElementById('recording-waveform-area').classList.remove('hidden');
         document.getElementById('preview-progress-area').classList.add('hidden');
-        document.getElementById('recording-preview-state').classList.add('hidden');
+        
+        const previewState = document.getElementById('recording-preview-state');
+        if (previewState) previewState.classList.add('hidden');
         
         dynamicActionBtn.classList.add('recording-pulse');
 
@@ -425,7 +419,7 @@ async function startRecording() {
             pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
             if (isPreviewMode) {
-                // Fica na tela aguardando Envio
+                // Aguarda na tela de preview (pausado)
             } else {
                 sendMessage(); 
                 resetAudioUI(); 
@@ -481,12 +475,14 @@ function drawAudioVisualizer() {
 window.stopRecordingForPreview = function() {
     if (globalMediaRecorder && globalMediaRecorder.state === "recording") {
         isPreviewMode = true;
-        globalMediaRecorder.pause(); // Apenas pausa! Permite retomar.
+        globalMediaRecorder.pause(); 
         globalMediaRecorder.requestData(); 
         clearInterval(recordingInterval); 
         
-        document.getElementById('recording-active-state').classList.add('hidden');
-        document.getElementById('recording-preview-state').classList.remove('hidden');
+        const activeState = document.getElementById('recording-active-state');
+        if (activeState) activeState.classList.add('hidden');
+        const previewState = document.getElementById('recording-preview-state');
+        if (previewState) previewState.classList.remove('hidden');
         
         dynamicActionBtn.classList.remove('recording-pulse');
         dynamicActionBtn.classList.add('ready-to-send');
@@ -494,35 +490,40 @@ window.stopRecordingForPreview = function() {
     }
 }
 
-window.resumeRecording = function() {
-    if (globalMediaRecorder && globalMediaRecorder.state === "paused") {
-        isPreviewMode = false;
-        globalMediaRecorder.resume(); 
-        
-        recordingInterval = setInterval(() => { 
-            recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60).toString(); 
-            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
-            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
-        }, 1000);
-        
+window.togglePausePlayRecording = function() {
+    if (!globalMediaRecorder) return;
+    
+    if (!isPreviewMode) {
+        window.stopRecordingForPreview();
+    } else {
         if (previewAudioObj) {
-            previewAudioObj.pause();
-            previewAudioObj.currentTime = 0;
-            document.getElementById('preview-play-btn').innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
+            window.togglePreviewAudio();
+        } else {
+            // Se estava pausado e quer voltar a gravar (Resume!)
+            isPreviewMode = false;
+            globalMediaRecorder.resume(); 
+            
+            recordingInterval = setInterval(() => { 
+                recordingSeconds++; 
+                const m = Math.floor(recordingSeconds / 60).toString(); 
+                const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+                document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+            }, 1000);
+            
+            const previewState = document.getElementById('recording-preview-state');
+            if (previewState) previewState.classList.add('hidden');
+            const activeState = document.getElementById('recording-active-state');
+            if (activeState) activeState.classList.remove('hidden');
+            
+            document.getElementById('recording-waveform-area').classList.remove('hidden');
+            document.getElementById('preview-progress-area').classList.add('hidden');
+            
+            dynamicActionBtn.classList.remove('ready-to-send');
+            dynamicActionBtn.classList.add('recording-pulse');
+            dynamicActionIcon.innerText = 'send';
+            
+            drawAudioVisualizer(); 
         }
-        
-        document.getElementById('recording-preview-state').classList.add('hidden');
-        document.getElementById('recording-active-state').classList.remove('hidden');
-        
-        document.getElementById('recording-waveform-area').classList.remove('hidden');
-        document.getElementById('preview-progress-area').classList.add('hidden');
-        
-        dynamicActionBtn.classList.remove('ready-to-send');
-        dynamicActionBtn.classList.add('recording-pulse');
-        dynamicActionIcon.innerText = 'send';
-        
-        drawAudioVisualizer(); 
     }
 }
 
@@ -537,6 +538,9 @@ function setupPreviewUI(blob) {
     const playBtn = document.getElementById('preview-play-btn'); 
     const progressBar = document.getElementById('preview-progress'); 
     
+    const pIcon = document.getElementById('pause-play-icon');
+    if (pIcon) { pIcon.innerText = 'mic'; pIcon.style.color = '#EF4444'; } // O botão da lixeira muda para Mic para retomar a gravação!
+    
     previewAudioObj.ontimeupdate = () => { 
         const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
         progressBar.style.width = `${progress}%`; 
@@ -547,7 +551,7 @@ function setupPreviewUI(blob) {
     }; 
     
     previewAudioObj.onended = () => { 
-        playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
+        if(playBtn) playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
         progressBar.style.width = '0%'; 
         document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
     }; 
@@ -559,9 +563,9 @@ window.togglePreviewAudio = function() {
     if(!previewAudioObj) return; 
     const playBtn = document.getElementById('preview-play-btn'); 
     if(previewAudioObj.paused) { 
-        previewAudioObj.play(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">pause</span>'; 
+        previewAudioObj.play(); if(playBtn) playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">pause</span>'; 
     } else { 
-        previewAudioObj.pause(); playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
+        previewAudioObj.pause(); if(playBtn) playBtn.innerHTML = '<span class="material-icons-round" style="font-size: 26px;">play_arrow</span>'; 
     } 
 }
 
