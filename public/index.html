@@ -135,7 +135,7 @@
 
         <div class="material-header"><img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" onclick="toggleDrawer()" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg);"><div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div><button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button></div>
         <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
-        <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>       
+        <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>        
         
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1;"></div>
 
@@ -260,6 +260,8 @@
                     <span class="material-icons-round" style="font-size: 18px; color: white;">lock</span>
                 </div>
             </div>
+
+            <audio id="hidden-audio-preview" class="hidden"></audio>
 
             <div id="emoji-drawer">
                 <emoji-picker id="neo-emoji-picker"></emoji-picker>

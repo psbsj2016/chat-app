@@ -192,7 +192,6 @@ const msgInputEl = document.getElementById('message-input');
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
 
-// O botão de microfone agora ouve o Touch para deslizar
 let holdTimer = null; 
 let startX = 0; 
 let startY = 0;
@@ -230,22 +229,6 @@ function resetDynamicButton() {
     } 
 }
 
-window.handleDynamicAction = function() { 
-    // Só envia com um clique se for um botão de Envio/Check!
-    if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') { 
-        if (isRecordingNow || isRecordingLocked || isPreviewMode) {
-            // Envia o áudio pronto!
-            stopAndSendRecording();
-        } else {
-            // Envia texto normal
-            sendMessage(); 
-            resetAudioUI(); 
-        }
-    } else {
-        alert("Pressione e segure o microfone para gravar um áudio.");
-    }
-}
-
 // OS GESTOS DE TOUCH DO MICROFONE (Estilo WhatsApp)
 if (dynamicActionBtn) {
     dynamicActionBtn.addEventListener('touchstart', (e) => {
@@ -261,7 +244,6 @@ if (dynamicActionBtn) {
             if(navigator.vibrate) navigator.vibrate(50);
             startRecording();
             
-            // Mostra os guias de deslizar
             document.getElementById('slide-to-cancel-ui').classList.remove('hidden');
             document.getElementById('slide-to-lock-ui').classList.remove('hidden');
             document.getElementById('chat-input-container').style.opacity = '0';
@@ -286,7 +268,6 @@ if (dynamicActionBtn) {
             hideSlideHints();
             if(navigator.vibrate) navigator.vibrate(50);
             
-            // Microfone vira o botão de enviar gigante
             dynamicActionBtn.classList.remove('recording-pulse');
             dynamicActionBtn.classList.add('ready-to-send');
             dynamicActionIcon.innerText = 'send';
@@ -297,15 +278,21 @@ if (dynamicActionBtn) {
         clearTimeout(holdTimer);
         hideSlideHints();
         
-        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') return;
+        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') {
+            if (isRecordingNow || isRecordingLocked || isPreviewMode) {
+                stopAndSendRecording();
+            } else {
+                sendMessage(); 
+                resetAudioUI(); 
+            }
+            return;
+        }
         
         if (isRecordingNow) {
             if (!isRecordingLocked) {
-                // Soltou o dedo sem trancar -> Envia direto!
                 isRecordingNow = false;
                 stopAndSendRecording();
             }
-            // Se trancou, a gravação continua até ele clicar no botão 'send'
         }
     });
 }
@@ -320,8 +307,6 @@ function hideSlideHints() {
 }
 
 async function startRecording() { 
-    
-
     const attachMenu = document.getElementById('attach-menu'); if(attachMenu) attachMenu.classList.add('hidden');
     const drawer = document.getElementById('emoji-drawer'); if (drawer) drawer.style.height = '0px';
 
@@ -341,7 +326,6 @@ async function startRecording() {
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
         
-        // Estado de gravação
         document.getElementById('recording-waveform-area').classList.remove('hidden');
         document.getElementById('preview-progress-area').classList.add('hidden');
         document.getElementById('pause-play-icon').innerText = 'pause_circle';
@@ -360,9 +344,9 @@ async function startRecording() {
             if (isRecordingCancelled) { pendingAudioFile = null; resetAudioUI(); return; } 
             
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
-            pendingAudioFile = new File([audioBlob], `voicemail_${Date.now()}.webm`, { type: 'audio/webm' }); 
+            pendingAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            if (isPreviewMode) { setupPreviewUI(audioBlob); } else { sendMessage(); resetAudioUI(); } 
+            if (isPreviewMode) { setupPreviewUI(audioBlob); } else { handleFileUploadWithAudio(pendingAudioFile); } 
         }; 
         
         recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
@@ -411,16 +395,13 @@ function drawAudioVisualizer() {
     draw(); 
 }
 
-// ⏸️ O BOTÃO DE PAUSAR / PLAY
 window.togglePausePlayRecording = function() {
-    if (!globalMediaRecorder) return;
+    if (!globalMediaRecorder && !previewAudioObj) return;
     
     if (!isPreviewMode) {
-        // Estava a gravar -> Transforma em Preview (Para a gravação de vez)
         isPreviewMode = true;
-        globalMediaRecorder.stop(); // Dispara o onstop que chama setupPreviewUI
+        globalMediaRecorder.stop(); 
     } else {
-        // Já estava em preview -> Dá Play/Pause no áudio salvo
         togglePreviewAudio();
     }
 }
@@ -438,7 +419,10 @@ function setupPreviewUI(blob) {
     dynamicActionIcon.innerText = 'send';
 
     const audioUrl = URL.createObjectURL(blob); 
-    previewAudioObj = new Audio(audioUrl); 
+    const hiddenPlayer = document.getElementById('hidden-audio-preview');
+    hiddenPlayer.src = audioUrl;
+    previewAudioObj = hiddenPlayer; 
+    
     const progressBar = document.getElementById('preview-progress'); 
     
     previewAudioObj.ontimeupdate = () => { 
@@ -470,8 +454,12 @@ window.togglePreviewAudio = function() {
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { isPreviewMode = false; globalMediaRecorder.stop(); }
-    else if (pendingAudioFile && isPreviewMode) { sendMessage(); resetAudioUI(); }
+    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
+        isPreviewMode = false; globalMediaRecorder.stop(); 
+    } else if (pendingAudioFile && isPreviewMode) { 
+        handleFileUploadWithAudio(pendingAudioFile); 
+        resetAudioUI(); 
+    }
 }
 
 window.cancelRecording = function() { 
@@ -485,7 +473,7 @@ function resetAudioUI() {
     document.getElementById('chat-input-container').classList.remove('hidden');
     document.getElementById('chat-input-container').style.opacity = '1';
 
-    if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj = null; } 
+    if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj.src = ''; previewAudioObj = null; } 
     pendingAudioFile = null; isPreviewMode = false; isRecordingCancelled = false; 
     isRecordingNow = false; isRecordingLocked = false;
     
@@ -493,6 +481,12 @@ function resetAudioUI() {
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
+}
+
+// 🚀 FUNÇÃO PARA ENVIAR O ÁUDIO DIRETO PRO SERVIDOR
+window.handleFileUploadWithAudio = function(file) {
+    if(!file) return;
+    executeUpload(file, 'audio');
 }
 
 // ==============================================================
@@ -580,13 +574,13 @@ async function executeUpload(file, type) {
     const tempMsg = { _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: '', fileUrl: localUrl, fileType: type, status: 'sent', timestamp: new Date() }; 
     displayMessage(tempMsg); 
     const tempDiv = document.getElementById(`msg-${tempId}`); 
-    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info'); if(info) info.innerHTML += '<span class="material-icons uploading-icon">sync</span>'; } 
+    if(tempDiv) { tempDiv.classList.add('uploading-msg'); const info = tempDiv.querySelector('.msg-info') || tempDiv; info.innerHTML += '<span class="material-icons-round" style="animation: spin 1s linear infinite; font-size:14px; vertical-align:middle; margin-left:5px;">sync</span>'; } 
     const formData = new FormData(); formData.append('file', file); 
     try { 
         const res = await fetch('/upload', { method: 'POST', body: formData }); const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Falha na Nuvem'); 
         if(tempDiv) tempDiv.remove(); 
-        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo enviado', fileUrl: data.url, fileType: type }; 
+        const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: 'Arquivo Mídia', fileUrl: data.url, fileType: type }; 
         socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
     } catch (e) { if(tempDiv) tempDiv.remove(); alert("❌ Erro no Envio: " + e.message); } finally { document.getElementById('file-input').value = ''; } 
 }
@@ -597,7 +591,7 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     
     if (window.editingMsgId && !fileUrl) { fetch(`/message/${window.editingMsgId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newContent: content }) }); window.editingMsgId = null; input.innerHTML = ''; resetDynamicButton(); return; }
     
-    if (pendingAudioFile) { const dataTransfer = new DataTransfer(); dataTransfer.items.add(pendingAudioFile); document.getElementById('file-input').files = dataTransfer.files; pendingAudioFile = null; input.setAttribute('data-placeholder', 'Sua mensagem'); handleFileUpload(document.getElementById('file-input')); return; } 
+    if (pendingAudioFile) { handleFileUploadWithAudio(pendingAudioFile); resetAudioUI(); return; } 
     
     if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
     if((!content && !fileUrl) || !currentChatId) return; 
@@ -605,6 +599,7 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; 
     socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
     if(!fileUrl) input.innerHTML = ''; 
+    resetDynamicButton();
 }
 
 window.pinMessage = function(msgObj) { const chatKey = isGroupChat ? `pinned_${currentChatId}` : `pinned_${[myId, currentChatId].sort().join('_')}`; localStorage.setItem(chatKey, JSON.stringify(msgObj)); showPinnedMessage(msgObj); socket.emit('react_message', { msgId: msgObj._id, emoji: '📌', receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
@@ -729,14 +724,14 @@ function displayMessage(msg) {
     if (displayContent && displayContent.includes('🚫 Esta mensagem foi apagada')) { msgBody = `<span class="msg-text-content" style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`; } 
     else if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
     else if (msg.fileType === 'video') msgBody = `<video controls src="${msg.fileUrl}" class="chat-video" style="border-radius:8px; max-width:100%;"></video>`; 
-    else if (msg.fileType === 'audio') msgBody = `<audio controls src="${msg.fileUrl}" class="chat-audio" style="height:40px; margin-bottom:5px;"></audio>`; 
+    else if (msg.fileType === 'audio') msgBody = `<audio controls src="${msg.fileUrl}" class="chat-audio" style="height:40px; margin-bottom:5px; border-radius: 20px; outline: none;"></audio>`; 
     else if (msg.fileType === 'pdf') msgBody = `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf" style="display:flex; align-items:center; gap:5px;"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
     else if (msg.fileType === 'invite') { try { const invData = JSON.parse(displayContent); msgBody = ` <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 10px; text-align: center; margin-top: 5px;"> <span class="material-icons-round" style="font-size: 28px; color: var(--brand-primary); margin-bottom: 5px;">radar</span> <div style="font-weight: 800; font-size: 14px; color: white;">Convite de Comunidade</div> <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">${invData.commName}</div> <button class="chic-btn" style="margin: 0; padding: 6px 12px; font-size: 12px; background: var(--brand-primary); color: white;" onclick="previewCommunityInvite('${invData.commId}', '${invData.commName}')">Ver</button> </div> `; } catch(e) { msgBody = `Erro no convite`; } }
     else { msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; }
     
     contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
     const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; const tickColor = msg.status === 'read' ? '#38bdf8' : 'rgba(255,255,255,0.6)'; const statusHtml = isMe ? `<span class="material-icons-round" style="font-size:15px; margin-left:3px; color:${tickColor};">done_all</span>` : '';
-    div.innerHTML = ` ${contentHtml} <div style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;"> <span class="msg-time">${timeString}</span>${statusHtml} </div> ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''} `; 
+    div.innerHTML = ` ${contentHtml} <div class="msg-info" style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;"> <span class="msg-time">${timeString}</span>${statusHtml} </div> ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''} `; 
     
     box.appendChild(div); box.scrollTop = box.scrollHeight; 
 }
