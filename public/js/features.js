@@ -90,37 +90,50 @@ window.renderCommunityMessage = function(msg) {
 
 window.toggleCommunityMembers = function() { const bar = document.getElementById('community-members-bar'); if(!bar) return; if(bar.style.display === 'none' || bar.style.display === '') { bar.style.display = 'flex'; loadCommunityMembers(); } else { bar.style.display = 'none'; } }
 
+// features.js - Renderização Otimizada (Buffer de Tela)
 window.loadCommunityMembers = async function() { 
     if(!currentCommunityId) return; 
     const list = document.getElementById('community-members-list'); 
     list.innerHTML = '<div style="color:#64748B; text-align:center; margin-top:30px;"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size:30px;">radar</span><br>Escaneando...</div>'; 
+    
     try { 
         const res = await fetch(`/communities/${currentCommunityId}/members`); 
         const members = await res.json(); 
         let rolesMap = {}; 
+        
         members.forEach(m => { 
             if(!m.userId) return; 
             let roleName = m.roleId ? m.roleId.name : 'Membro'; 
             let roleColor = m.roleId ? m.roleId.color : '#CBD5E1'; 
             if(!rolesMap[roleName]) rolesMap[roleName] = { color: roleColor, users: [] }; 
-            let isOnline = onlineUsersList.includes(m.userId._id.toString()) || m.userId._id.toString() === myId; 
+            let isOnline = onlineUsersList.includes(m.userId._id.toString()) || m.userId._id.toString() === window.myId; 
             rolesMap[roleName].users.push({ id: m.userId._id, name: m.userId.displayName || 'Usuário', photo: m.userId.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', online: isOnline }); 
         }); 
-        list.innerHTML = ''; 
+        
+        // 💡 NOVA LÓGICA: Usamos uma variável (Buffer) para acumular todo o HTML na memória
+        let htmlBuffer = ''; 
+        
         for(let role in rolesMap) { 
             let group = rolesMap[role]; 
             group.users.sort((a, b) => b.online - a.online); 
-            list.innerHTML += `<div style="color: #94A3B8; margin-top: 15px; margin-bottom: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase;">${role} — ${group.users.length}</div>`; 
+            htmlBuffer += `<div style="color: #94A3B8; margin-top: 15px; margin-bottom: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase;">${role} — ${group.users.length}</div>`; 
+            
             group.users.forEach(u => { 
                 let statusColor = u.online ? '#22C55E' : '#64748B'; 
                 let opacity = u.online ? '1' : '0.5'; 
-                list.innerHTML += `<div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; opacity: ${opacity};"><div style="position: relative;"><img src="${u.photo}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"><div style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; background: ${statusColor}; border: 2px solid #0B0F19; border-radius: 50%;"></div></div><span style="color: ${group.color}; font-weight: 600; font-size: 14px; flex: 1;">${u.name}</span></div>`; 
+                // Adicionamos ao buffer em vez de injetar direto no innerHTML
+                htmlBuffer += `<div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; opacity: ${opacity};"><div style="position: relative;"><img src="${u.photo}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"><div style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; background: ${statusColor}; border: 2px solid #0B0F19; border-radius: 50%;"></div></div><span style="color: ${group.color}; font-weight: 600; font-size: 14px; flex: 1;">${u.name}</span></div>`; 
             }); 
         } 
+        
+        // Injetamos o HTML todo de uma só vez (Máxima Performance de UI!)
+        list.innerHTML = htmlBuffer; 
+        
     } catch(e) { 
         list.innerHTML = '<div style="color:#EF4444; text-align:center;">Erro no radar.</div>'; 
     } 
 }
+
 window.deleteCommChannel = async function(channelId, commId) { if(!confirm("⚠️ Apagar este canal?")) return; try { const res = await fetch(`/communities/channels/${channelId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, commId: commId }) }); const data = await res.json(); if(data.success) openCommunity(commId, document.getElementById('active-comm-name').innerText.split('<')[0].trim()); } catch(e) {} }
 window.deleteCommunity = async function(commId) { if(!confirm("🔥 DESTRUIR este servidor?")) return; try { const res = await fetch(`/communities/${commId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId }) }); const data = await res.json(); if(data.success) resetCommunityView(); } catch(e) {} }
 window.leaveCommunity = async function(commId) { if(!confirm("🚪 Sair deste servidor?")) return; try { const res = await fetch('/communities/leave', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, communityId: commId }) }); const data = await res.json(); if(data.success) resetCommunityView(); } catch(e) {} }

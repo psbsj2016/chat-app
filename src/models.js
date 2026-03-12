@@ -82,6 +82,10 @@ const CommunityMessageSchema = new mongoose.Schema({ channelId: { type: mongoose
 const CommunityMessage = mongoose.model('CommunityMessage', CommunityMessageSchema);
 
 const ScheduledMsgSchema = new mongoose.Schema({ senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, targetId: String, isGroup: Boolean, content: String, scheduledTime: Date, status: { type: String, default: 'pending' } });
+// 💡 NOVA LÓGICA: Criamos um Índice Composto. 
+// Agora o MongoDB sabe exatamente onde estão as mensagens "pendentes" ordenadas por "tempo",
+// sem precisar de ler a tabela inteira! (Zero Delay)
+ScheduledMsgSchema.index({ status: 1, scheduledTime: 1 });
 const ScheduledMsg = mongoose.model('ScheduledMsg', ScheduledMsgSchema);
 
 const ReportSchema = new mongoose.Schema({ reporterId: String, reportedId: String, messageId: String, reason: String, timestamp: { type: Date, default: Date.now } });
