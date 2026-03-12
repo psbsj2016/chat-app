@@ -171,7 +171,25 @@ window.renderNotes = function() {
 }
 
 window.openNoteModal = function() { editingNoteId = null; document.getElementById('note-title').value = ''; document.getElementById('note-content').innerHTML = ''; showElement('note-modal'); setTimeout(() => document.getElementById('note-content').focus(), 100); }
-window.viewNote = function(id) { const note = currentNotes.find(n => n._id === id); if(!note) return; editingNoteId = note._id; document.getElementById('note-title').value = note.title || ''; document.getElementById('note-content').innerHTML = note.content || ''; showElement('note-modal'); }
+// features.js - Segurança na exibição de notas
+window.viewNote = function(id) { 
+    // Procura a nota atual na cache
+    const note = currentNotes.find(n => n._id === id); 
+    if(!note) return; 
+    
+    editingNoteId = note._id; 
+    document.getElementById('note-title').value = note.title || ''; 
+    
+    // 💡 NOVA LÓGICA: Sanitizamos o conteúdo com o DOMPurify. 
+    // Se houver alguma tag <script> maliciosa, ela será destruída aqui!
+    const rawContent = note.content || '';
+    const safeContent = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rawContent) : rawContent;
+    
+    // Injeta o conteúdo 100% seguro na tela
+    document.getElementById('note-content').innerHTML = safeContent; 
+    
+    showElement('note-modal'); 
+}
 window.saveNote = async function() { const title = document.getElementById('note-title').value.trim(); const contentHTML = document.getElementById('note-content').innerHTML.trim(); const tempDiv = document.createElement('div'); tempDiv.innerHTML = contentHTML; if(!tempDiv.textContent.trim() && !contentHTML.includes('<img')) return alert('Vazia!'); const btn = document.querySelector('#note-modal .chic-btn'); const originalText = btn.innerText; btn.innerText = 'Salvando...'; try { if (editingNoteId) { await fetch(`/notes/${editingNoteId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, content: contentHTML }) }); } else { await fetch('/notes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: myId, title, content: contentHTML }) }); } hideElement('note-modal'); loadNotes(); } catch(e) {} finally { btn.innerText = originalText; } }
 window.deleteNote = async function(id) { if(!confirm("Apagar?")) return; try { await fetch(`/notes/${id}`, { method: 'DELETE' }); loadNotes(); } catch(e) {} }
 
