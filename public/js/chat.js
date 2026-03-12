@@ -180,8 +180,6 @@ setTimeout(() => {
 let audioChunks = []; 
 let audioStream = null; 
 let isRecordingCancelled = false; 
-let isPreviewMode = false;
-let previewAudioObj = null;
 
 let audioContext = null;
 let audioAnalyzer = null;
@@ -191,12 +189,6 @@ let visualizerAnimationId = null;
 const msgInputEl = document.getElementById('message-input'); 
 const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
 const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-
-let holdTimer = null; 
-let startX = 0; 
-let startY = 0;
-let isRecordingNow = false;
-let isRecordingLocked = false;
 
 if (msgInputEl) { 
     msgInputEl.addEventListener('input', () => { 
@@ -209,7 +201,6 @@ if (msgInputEl) {
         } else { 
             if (!window.editingMsgId) resetDynamicButton(); 
         } 
-        if (pendingAudioFile) { pendingAudioFile = null; msgInputEl.setAttribute('data-placeholder', 'Mensagem'); resetAudioUI(); } 
         if (!currentChatId) return; 
         emitTypingStatus('typing'); 
     }); 
@@ -217,7 +208,7 @@ if (msgInputEl) {
     msgInputEl.addEventListener('keydown', (e) => { 
         if (e.key === 'Enter' && !e.shiftKey) { 
             e.preventDefault(); 
-            if (msgInputEl.innerText.trim().length > 0 || pendingAudioFile) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
+            if (msgInputEl.innerText.trim().length > 0) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
         } 
     }); 
 }
@@ -229,81 +220,25 @@ function resetDynamicButton() {
     } 
 }
 
-// OS GESTOS DE TOUCH DO MICROFONE (Estilo WhatsApp)
+// 🚀 NOVA LÓGICA DE CLIQUE (SEM GESTOS BUGADOS)
 if (dynamicActionBtn) {
-    dynamicActionBtn.addEventListener('touchstart', (e) => {
-        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') return;
-        if (e.cancelable) e.preventDefault();
-        
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        
-        holdTimer = setTimeout(() => {
-            isRecordingNow = true;
-            isRecordingLocked = false;
-            if(navigator.vibrate) navigator.vibrate(50);
-            startRecording();
-            
-            document.getElementById('slide-to-cancel-ui').classList.remove('hidden');
-            document.getElementById('slide-to-lock-ui').classList.remove('hidden');
-            document.getElementById('chat-input-container').style.opacity = '0';
-        }, 300);
-    }, {passive: false});
+    dynamicActionBtn.onclick = (e) => {
+        e.preventDefault();
+        const iconTxt = dynamicActionIcon.innerText;
 
-    dynamicActionBtn.addEventListener('touchmove', (e) => {
-        if (!isRecordingNow || isRecordingLocked) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        
-        // Deslizar para Esquerda = Cancelar
-        if (startX - currentX > 60) {
-            isRecordingNow = false;
-            cancelRecording();
-            hideSlideHints();
-            if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
-        }
-        // Deslizar para Cima = Trancar Gravação
-        else if (startY - currentY > 60) {
-            isRecordingLocked = true;
-            hideSlideHints();
-            if(navigator.vibrate) navigator.vibrate(50);
-            
-            dynamicActionBtn.classList.remove('recording-pulse');
-            dynamicActionBtn.classList.add('ready-to-send');
-            dynamicActionIcon.innerText = 'send';
-        }
-    }, {passive: false});
-
-    dynamicActionBtn.addEventListener('touchend', (e) => {
-        clearTimeout(holdTimer);
-        hideSlideHints();
-        
-        if (dynamicActionIcon.innerText === 'send' || dynamicActionIcon.innerText === 'check') {
-            if (isRecordingNow || isRecordingLocked || isPreviewMode) {
+        if (iconTxt === 'send' || iconTxt === 'check') {
+            // Se estiver gravando ou pausado, envia o áudio. Senão, envia o texto.
+            if (globalMediaRecorder && globalMediaRecorder.state !== 'inactive') {
                 stopAndSendRecording();
             } else {
                 sendMessage(); 
                 resetAudioUI(); 
             }
-            return;
+        } else if (iconTxt === 'mic') {
+            // Inicia a gravação com 1 clique (Auto-Lock)
+            startRecording();
         }
-        
-        if (isRecordingNow) {
-            if (!isRecordingLocked) {
-                isRecordingNow = false;
-                stopAndSendRecording();
-            }
-        }
-    });
-}
-
-function hideSlideHints() {
-    const cancelUI = document.getElementById('slide-to-cancel-ui');
-    const lockUI = document.getElementById('slide-to-lock-ui');
-    const inputCont = document.getElementById('chat-input-container');
-    if(cancelUI) cancelUI.classList.add('hidden');
-    if(lockUI) lockUI.classList.add('hidden');
-    if(inputCont) inputCont.style.opacity = '1';
+    };
 }
 
 async function startRecording() { 
@@ -313,7 +248,7 @@ async function startRecording() {
     try { 
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
         globalMediaRecorder = new MediaRecorder(audioStream); 
-        audioChunks = []; isRecordingCancelled = false; isPreviewMode = false;
+        audioChunks = []; isRecordingCancelled = false; 
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioContext = new AudioContext();
@@ -326,12 +261,21 @@ async function startRecording() {
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
         
+        // Esconde os textos de "Deslize" pois agora é por clique
+        const slideCancel = document.getElementById('slide-to-cancel-ui'); if(slideCancel) slideCancel.classList.add('hidden');
+        const slideLock = document.getElementById('slide-to-lock-ui'); if(slideLock) slideLock.classList.add('hidden');
+
         document.getElementById('recording-waveform-area').classList.remove('hidden');
         document.getElementById('preview-progress-area').classList.add('hidden');
-        document.getElementById('pause-play-icon').innerText = 'pause_circle';
-        document.getElementById('pause-play-icon').style.color = '#F59E0B';
         
+        const pauseIcon = document.getElementById('pause-play-icon');
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
+        
+        // Transforma o botão de Mic no botão de Enviar
         dynamicActionBtn.classList.add('recording-pulse');
+        dynamicActionBtn.classList.add('ready-to-send');
+        dynamicActionIcon.innerText = 'send';
 
         globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
         
@@ -341,12 +285,16 @@ async function startRecording() {
             if(audioContext && audioContext.state !== 'closed') audioContext.close();
             cancelAnimationFrame(visualizerAnimationId);
 
-            if (isRecordingCancelled) { pendingAudioFile = null; resetAudioUI(); return; } 
+            if (isRecordingCancelled) { 
+                resetAudioUI(); 
+                return; 
+            } 
             
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
-            pendingAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
+            const finalAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            if (isPreviewMode) { setupPreviewUI(audioBlob); } else { handleFileUploadWithAudio(pendingAudioFile); } 
+            handleFileUploadWithAudio(finalAudioFile); 
+            resetAudioUI();
         }; 
         
         recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
@@ -370,9 +318,14 @@ function drawAudioVisualizer() {
     const ctx = canvas.getContext('2d'); 
     
     const draw = () => { 
-        if(!globalMediaRecorder || globalMediaRecorder.state !== 'recording') return; 
+        if(!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return; 
         visualizerAnimationId = requestAnimationFrame(draw); 
         
+        if (globalMediaRecorder.state === 'paused') {
+            // Se estiver pausado, não atualiza a onda
+            return;
+        }
+
         audioAnalyzer.getByteFrequencyData(audioDataArray);
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         
@@ -395,77 +348,49 @@ function drawAudioVisualizer() {
     draw(); 
 }
 
+// ⏸️ LÓGICA DE PAUSA E RESUMO (VERDADEIRA)
 window.togglePausePlayRecording = function() {
-    if (!globalMediaRecorder && !previewAudioObj) return;
-    
-    if (!isPreviewMode) {
-        isPreviewMode = true;
-        globalMediaRecorder.stop(); 
-    } else {
-        togglePreviewAudio();
-    }
-}
-
-function setupPreviewUI(blob) { 
-    document.getElementById('recording-waveform-area').classList.add('hidden');
-    document.getElementById('preview-progress-area').classList.remove('hidden');
+    if (!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return;
     
     const pauseIcon = document.getElementById('pause-play-icon');
-    pauseIcon.innerText = 'play_circle';
-    pauseIcon.style.color = '#10B981';
-    
-    dynamicActionBtn.classList.remove('recording-pulse');
-    dynamicActionBtn.classList.add('ready-to-send');
-    dynamicActionIcon.innerText = 'send';
 
-    const audioUrl = URL.createObjectURL(blob); 
-    const hiddenPlayer = document.getElementById('hidden-audio-preview');
-    hiddenPlayer.src = audioUrl;
-    previewAudioObj = hiddenPlayer; 
-    
-    const progressBar = document.getElementById('preview-progress'); 
-    
-    previewAudioObj.ontimeupdate = () => { 
-        const progress = (previewAudioObj.currentTime / previewAudioObj.duration) * 100; 
-        progressBar.style.width = `${progress}%`; 
-        const curr = Math.floor(previewAudioObj.currentTime); 
-        const m = Math.floor(curr / 60).toString(); 
-        const s = (curr % 60).toString().padStart(2, '0'); 
-        document.getElementById('preview-timer-total').innerText = `${m}:${s}`; 
-    }; 
-    
-    previewAudioObj.onended = () => { 
-        pauseIcon.innerText = 'play_circle'; 
-        progressBar.style.width = '0%'; 
-        document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText;  
-    }; 
-    
-    document.getElementById('preview-timer-total').innerText = document.getElementById('recording-timer').innerText; 
-}
-
-window.togglePreviewAudio = function() { 
-    if(!previewAudioObj) return; 
-    const pauseIcon = document.getElementById('pause-play-icon'); 
-    if(previewAudioObj.paused) { 
-        previewAudioObj.play(); pauseIcon.innerText = 'pause_circle'; 
-    } else { 
-        previewAudioObj.pause(); pauseIcon.innerText = 'play_circle'; 
-    } 
+    if (globalMediaRecorder.state === "recording") {
+        // Pausar
+        globalMediaRecorder.pause(); 
+        pauseIcon.innerText = 'mic';
+        pauseIcon.style.color = '#10B981';
+        dynamicActionBtn.classList.remove('recording-pulse'); // Para de piscar a bolinha vermelha
+        clearInterval(recordingInterval); // Pausa o cronômetro
+    } else if (globalMediaRecorder.state === "paused") {
+        // Retomar Gravação
+        globalMediaRecorder.resume();
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
+        dynamicActionBtn.classList.add('recording-pulse'); // Volta a piscar
+        
+        // Retoma o cronômetro
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const m = Math.floor(recordingSeconds / 60).toString(); 
+            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        }, 1000);
+    }
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { 
-        isPreviewMode = false; globalMediaRecorder.stop(); 
-    } else if (pendingAudioFile && isPreviewMode) { 
-        handleFileUploadWithAudio(pendingAudioFile); 
-        resetAudioUI(); 
-    }
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        globalMediaRecorder.stop(); // O onstop cuida da criação do arquivo e do envio!
+    } 
 }
 
 window.cancelRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state === "recording") { isRecordingCancelled = true; globalMediaRecorder.stop(); } 
-    else if (pendingAudioFile && isPreviewMode) { pendingAudioFile = null; if(previewAudioObj) previewAudioObj.pause(); resetAudioUI(); } 
-    hideSlideHints();
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        isRecordingCancelled = true; 
+        globalMediaRecorder.stop(); // O onstop vê a flag e descarta
+    } else {
+        resetAudioUI();
+    }
 }
 
 function resetAudioUI() { 
@@ -473,11 +398,9 @@ function resetAudioUI() {
     document.getElementById('chat-input-container').classList.remove('hidden');
     document.getElementById('chat-input-container').style.opacity = '1';
 
-    if(previewAudioObj) { previewAudioObj.pause(); previewAudioObj.src = ''; previewAudioObj = null; } 
-    pendingAudioFile = null; isPreviewMode = false; isRecordingCancelled = false; 
-    isRecordingNow = false; isRecordingLocked = false;
+    isRecordingCancelled = false; 
     
-    dynamicActionBtn.classList.remove('recording-pulse', 'ready-to-send');
+    resetDynamicButton();
     const input = document.getElementById('message-input'); 
     if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
     emitStopTypingStatus(); 
@@ -590,8 +513,6 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     let content = textOverride || input.innerText.trim(); 
     
     if (window.editingMsgId && !fileUrl) { fetch(`/message/${window.editingMsgId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newContent: content }) }); window.editingMsgId = null; input.innerHTML = ''; resetDynamicButton(); return; }
-    
-    if (pendingAudioFile) { handleFileUploadWithAudio(pendingAudioFile); resetAudioUI(); return; } 
     
     if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
     if((!content && !fileUrl) || !currentChatId) return; 
@@ -865,7 +786,243 @@ window.uploadNewGroupPhoto = async function(input) { const file = input.files[0]
 // 👤 EXIBIÇÃO DE PERFIL / PAINEL DE GRUPO
 // ==============================================================
 window.viewContactProfile = function(id, name, photo, isGroup) { const tempId = currentChatId; const tempIsGroup = isGroupChat; currentChatId = id; isGroupChat = isGroup; window.showCurrentChatProfile(); setTimeout(() => { currentChatId = tempId; isGroupChat = tempIsGroup; }, 500); };
-window.showCurrentChatProfile = async function() { if (!currentChatId) return; if (isGroupChat) { try { const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); if (!group) return alert("Grupo não encontrado."); let modal = document.getElementById('dynamic-group-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-group-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } const isAdmin = group.admin === myId; let members = group.members || []; members.sort((a, b) => { if (a._id === group.admin) return -1; if (b._id === group.admin) return 1; return 0; }); let membersHtml = members.map(m => { const isGroupAdmin = m._id === group.admin; const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]); return ` <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="display:flex; align-items:center; gap:12px;"> <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};"> <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span> </div> ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''} </div> `; }).join(''); const descText = group.description || 'Nenhuma descrição adicionada ao grupo.'; const descHtml = isAdmin ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);"> <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p> <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span> </div>` : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`; const addMemberBtnHtml = isAdmin ? ` <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;"> <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR </button> ` : ''; modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;"> <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;"> <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''} </div> <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2> ${descHtml} <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"> <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span> ${addMemberBtnHtml} </div> <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;"> ${membersHtml} </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch(e) { console.error(e); alert("Erro ao carregar dados do grupo."); } return; } try { const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const user = cachedUsers.find(u => u._id === currentChatId); if (!user) return alert("❌ Dados do perfil não encontrados no radar."); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email || 'Não informado'; const phone = user.phone || 'Não informado'; const xp = user.xp || 0; const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip'); let modal = document.getElementById('dynamic-profile-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-profile-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);"> <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2> <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div> <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div> <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div> </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch (e) { console.error("Falha ao abrir perfil: ", e); alert("Erro ao carregar os dados do perfil."); } };
+window.showCurrentChatProfile = async function() { if (!currentChatId) return; if (isGroupChat) { try { const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); if (!group) return alert("Grupo não encontrado."); let modal = document.getElementById('dynamic-group-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-group-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } const isAdmin = group.admin === myId; let members = group.members || []; members.sort((a, b) => { if (a._id === group.admin) return -1; if (b._id === group.admin) return 1; return 0; }); let membersHtml = members.map(m => { const isGroupAdmin = m._id === group.admin; const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]); return ` <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="display:flex; align-items:center; gap:12px;"> <img src="${photo}" stylewidth:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};"> <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span> </div> ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''} </div> `; }).join(''); const descText = group.description || 'Nenhuma descrição adicionada ao grupo.'; const descHtml = isAdmin ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);"> <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p> <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span> </div>` : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`; const addMemberBtnHtml = isAdmin ? ` <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;"> <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR </button> ` : ''; modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;"> <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;"> <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''} </div> <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2> ${descHtml} <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"> <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span> ${addMemberBtnHtml} </div> <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;"> ${membersHtml} </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch(e) { console.error(e); alert("Erro ao carregar dados do grupo."); } return; } try { const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const user = cachedUsers.find(u => u._id === currentChatId); if (!user) return alert("❌ Dados do perfil não encontrados no radar."); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email || 'Não informado'; const phone = user.phone || 'Não informado'; const xp = user.xp || 0; const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip'); let modal = document.getElementById('dynamic-profile-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-profile-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);"> <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2> <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div> <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div> <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div> </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch (e) { console.error("Falha ao abrir perfil: ", e); alert("Erro ao carregar os dados do perfil."); } };
 
 window.reportContact = function(id) { if(!id) return; if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) { alert("Contato denunciado com sucesso."); } };
 window.blockContact = function(id) { if(!id) return; if(confirm("Tem certeza que deseja bloquear este contato?")) { alert("Contato bloqueado."); if(!hiddenChats.includes(id)) hiddenChats.push(id); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); backToMain(); loadContacts(); } };
+
+// ==============================================================
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (Sistema de Clique Seguro)
+// ==============================================================
+let audioChunks = []; 
+let audioStream = null; 
+let isRecordingCancelled = false; 
+
+let audioContext = null;
+let audioAnalyzer = null;
+let audioDataArray = null;
+let visualizerAnimationId = null;
+
+const msgInputEl = document.getElementById('message-input'); 
+const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
+const dynamicActionIcon = document.getElementById('dynamic-action-icon');
+
+if (msgInputEl) { 
+    msgInputEl.addEventListener('input', () => { 
+        const textLength = msgInputEl.innerText.trim().length; 
+        if (textLength > 0) { 
+            if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send' && dynamicActionIcon.innerText !== 'check') { 
+                dynamicActionIcon.innerText = 'send'; 
+                dynamicActionIcon.style.animation = 'popIn 0.2s ease'; 
+            } 
+        } else { 
+            if (!window.editingMsgId) resetDynamicButton(); 
+        } 
+        if (!currentChatId) return; 
+        emitTypingStatus('typing'); 
+    }); 
+
+    msgInputEl.addEventListener('keydown', (e) => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            if (msgInputEl.innerText.trim().length > 0) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
+        } 
+    }); 
+}
+
+function resetDynamicButton() { 
+    if (dynamicActionIcon) { 
+        dynamicActionIcon.innerText = 'mic'; 
+        dynamicActionBtn.classList.remove('ready-to-send', 'recording-pulse');
+    } 
+}
+
+// 🚀 NOVA LÓGICA: GRAVAÇÃO COM 1 CLIQUE
+if (dynamicActionBtn) {
+    dynamicActionBtn.onclick = (e) => {
+        e.preventDefault();
+        const iconTxt = dynamicActionIcon.innerText;
+
+        if (iconTxt === 'send' || iconTxt === 'check') {
+            // Se estiver a gravar ou pausado, envia o áudio. Senão, envia o texto.
+            if (globalMediaRecorder && globalMediaRecorder.state !== 'inactive') {
+                stopAndSendRecording();
+            } else {
+                sendMessage(); 
+                resetAudioUI(); 
+            }
+        } else if (iconTxt === 'mic') {
+            // Inicia a gravação (Seguro: evita múltiplos toques simultâneos)
+            startRecording();
+        }
+    };
+}
+
+async function startRecording() { 
+    const attachMenu = document.getElementById('attach-menu'); if(attachMenu) attachMenu.classList.add('hidden');
+    const drawer = document.getElementById('emoji-drawer'); if (drawer) drawer.style.height = '0px';
+
+    try { 
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        globalMediaRecorder = new MediaRecorder(audioStream); 
+        audioChunks = []; isRecordingCancelled = false; 
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(audioStream);
+        audioAnalyzer = audioContext.createAnalyser();
+        audioAnalyzer.fftSize = 128; 
+        source.connect(audioAnalyzer);
+        audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
+
+        document.getElementById('chat-input-container').classList.add('hidden'); 
+        document.getElementById('recording-ui').classList.remove('hidden'); 
+        
+        // Remove avisos antigos de deslizar do HTML (pois agora é por clique)
+        const slideCancel = document.getElementById('slide-to-cancel-ui'); if(slideCancel) slideCancel.classList.add('hidden');
+        const slideLock = document.getElementById('slide-to-lock-ui'); if(slideLock) slideLock.classList.add('hidden');
+
+        document.getElementById('recording-waveform-area').classList.remove('hidden');
+        document.getElementById('preview-progress-area').classList.add('hidden');
+        
+        const pauseIcon = document.getElementById('pause-play-icon');
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
+        
+        // Transforma o Mic no botão de Enviar
+        dynamicActionBtn.classList.add('recording-pulse');
+        dynamicActionBtn.classList.add('ready-to-send');
+        dynamicActionIcon.innerText = 'send';
+
+        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
+        
+        // O onstop faz todo o trabalho de gerar o ficheiro, e decide se envia ou destrói
+        globalMediaRecorder.onstop = () => { 
+            clearInterval(recordingInterval); 
+            audioStream.getTracks().forEach(track => track.stop()); 
+            if(audioContext && audioContext.state !== 'closed') audioContext.close();
+            cancelAnimationFrame(visualizerAnimationId);
+
+            if (isRecordingCancelled) { 
+                resetAudioUI(); 
+                return; 
+            } 
+            
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
+            const finalAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
+            
+            handleFileUploadWithAudio(finalAudioFile); 
+            resetAudioUI();
+        }; 
+        
+        recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const m = Math.floor(recordingSeconds / 60).toString(); 
+            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        }, 1000); 
+        
+        globalMediaRecorder.start(); 
+        emitTypingStatus('recording'); 
+        drawAudioVisualizer(); 
+    } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
+}
+
+function drawAudioVisualizer() { 
+    const canvas = document.getElementById('audio-visualizer'); if(!canvas) return; 
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width; canvas.height = rect.height;
+    const ctx = canvas.getContext('2d'); 
+    
+    const draw = () => { 
+        if(!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return; 
+        visualizerAnimationId = requestAnimationFrame(draw); 
+        
+        // Se pausou, congela a onda perfeitamente
+        if (globalMediaRecorder.state === 'paused') return;
+
+        audioAnalyzer.getByteFrequencyData(audioDataArray);
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        
+        const barWidth = 3; const gap = 2; 
+        const totalBars = Math.floor(canvas.width / (barWidth + gap)); 
+        const centerY = canvas.height / 2;
+
+        for(let i = 0; i < totalBars; i++) { 
+            const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
+            const value = audioDataArray[dataIndex];
+            const percent = value / 255;
+            let h = Math.max(2, percent * (canvas.height - 4)); 
+            
+            ctx.fillStyle = '#3B82F6'; 
+            ctx.beginPath();
+            ctx.roundRect(i * (barWidth + gap), centerY - (h / 2), barWidth, h, 2);
+            ctx.fill();
+        } 
+    }; 
+    draw(); 
+}
+
+// ⏸️ LÓGICA VERDADEIRA DE PAUSA E RETOMADA
+window.togglePausePlayRecording = function() {
+    if (!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return;
+    
+    const pauseIcon = document.getElementById('pause-play-icon');
+
+    if (globalMediaRecorder.state === "recording") {
+        globalMediaRecorder.pause(); // A Mágica! A API pausa o ficheiro em memória.
+        pauseIcon.innerText = 'play_circle';
+        pauseIcon.style.color = '#10B981';
+        dynamicActionBtn.classList.remove('recording-pulse');
+        clearInterval(recordingInterval); 
+    } else if (globalMediaRecorder.state === "paused") {
+        globalMediaRecorder.resume(); // Retoma a gravação no mesmo ficheiro.
+        pauseIcon.innerText = 'pause_circle';
+        pauseIcon.style.color = '#F59E0B';
+        dynamicActionBtn.classList.add('recording-pulse');
+        
+        recordingInterval = setInterval(() => { 
+            recordingSeconds++; 
+            const m = Math.floor(recordingSeconds / 60).toString(); 
+            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
+            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        }, 1000);
+    }
+}
+
+// 📤 BOTÃO VERDE (FINALIZA O BLOCO DE ÁUDIO E MANDA PARA O ONSTOP)
+window.stopAndSendRecording = function() { 
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        globalMediaRecorder.stop(); 
+    } 
+}
+
+// 🗑️ LIXEIRA (DESCARTA TUDO COM SEGURANÇA)
+window.cancelRecording = function() { 
+    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
+        isRecordingCancelled = true; 
+        globalMediaRecorder.stop(); 
+    } else {
+        resetAudioUI();
+    }
+}
+
+function resetAudioUI() { 
+    document.getElementById('recording-ui').classList.add('hidden'); 
+    document.getElementById('chat-input-container').classList.remove('hidden');
+    document.getElementById('chat-input-container').style.opacity = '1';
+
+    isRecordingCancelled = false; 
+    
+    resetDynamicButton();
+    const input = document.getElementById('message-input'); 
+    if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
+    emitStopTypingStatus(); 
+}
+
+// 🚀 ENVIO PARA O CLOUDINARY
+window.handleFileUploadWithAudio = function(file) {
+    if(!file) return;
+    executeUpload(file, 'audio');
+}
