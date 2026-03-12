@@ -126,7 +126,7 @@ function initSockets(io) {
                                     title: `${group.name}`, 
                                     body: `${senderName}: ${previewText}`, 
                                     icon: group.photoUrl || '/favicon.png',
-                                    tag: `group_${group._id}`, // Agrupa notificações deste grupo
+                                    tag: `group_${group._id}`, 
                                     unreadCount: unreadCount + 1,
                                     url: '/'
                                 });
@@ -138,18 +138,48 @@ function initSockets(io) {
                     io.to(data.receiverId).emit('receive_message', populatedMsg); 
                     io.to(data.senderId).emit('receive_message', populatedMsg); 
 
+                    // =========================================================
+                    // 🧠 NOVO CÉREBRO DA IA GEMINI (COM MEMÓRIA E IDENTIDADE)
+                    // =========================================================
                     if (String(data.receiverId) === String(getBotUserId()) && data.content) {
                         io.to(data.senderId).emit('typing', { senderId: getBotUserId(), senderName: '🤖 CPTT IA', action: 'typing' });
                         try {
+                            // 💡 1. MEMÓRIA: Buscar as últimas 6 mensagens trocadas
+                            const historyMsgs = await Message.find({
+                                $or: [
+                                    { sender: data.senderId, receiver: getBotUserId() },
+                                    { sender: getBotUserId(), receiver: data.senderId }
+                                ]
+                            }).sort({ _id: -1 }).limit(6);
+
+                            // 💡 2. FORMATAR: Traduzir para a linguagem do Gemini
+                            const formatadoGemini = historyMsgs.reverse().map(m => ({
+                                role: String(m.sender) === String(getBotUserId()) ? "model" : "user",
+                                parts: [{ text: m.content || "" }]
+                            }));
+
+                            // 💡 3. IDENTIDADE: Instrução de Sistema
+                            const payloadGemini = {
+                                systemInstruction: {
+                                    parts: [{ text: `Você é a CPTT IA, a assistente inteligente e amigável do ChatPTT SuperApp. O utilizador que está a falar consigo chama-se ${senderUser ? senderUser.displayName : 'Usuário'}. Responda de forma clara, natural e ajude-o no que for preciso.` }]
+                                },
+                                contents: formatadoGemini
+                            };
+
                             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
                             const aiRes = await fetch(url, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ contents: [{ parts: [{ text: `Você é o assistente inteligente do ChatPTT: ${data.content}` }] }] })
+                                body: JSON.stringify(payloadGemini)
                             });
+                            
                             const aiData = await aiRes.json();
-                            let replyText = "Tive um branco nas nuvens...";
-                            if (aiData.candidates && aiData.candidates.length > 0) { replyText = aiData.candidates[0].content.parts[0].text; }
+                            let replyText = "Tive um branco nas nuvens... Pode repetir?";
+                            
+                            if (aiData.candidates && aiData.candidates.length > 0) { 
+                                replyText = aiData.candidates[0].content.parts[0].text; 
+                            }
+                            
                             io.to(data.senderId).emit('stop_typing', { senderId: getBotUserId() });
                             
                             const botMsg = new Message({ sender: getBotUserId(), receiver: data.senderId, content: replyText, fileType: 'text', status: 'sent', _id: new mongoose.Types.ObjectId() });
@@ -157,6 +187,7 @@ function initSockets(io) {
                             const popBotMsg = await Message.findById(botMsg._id).populate('sender', 'displayName photoUrl unlockedItems');
                             io.to(data.senderId).emit('receive_message', popBotMsg);
                         } catch (netError) {
+                            console.error("Erro no cérebro da IA:", netError);
                             io.to(data.senderId).emit('stop_typing', { senderId: getBotUserId() });
                         }
                     } else {
@@ -167,7 +198,7 @@ function initSockets(io) {
                                 title: senderUser ? senderUser.displayName : 'Nova Mensagem', 
                                 body: previewText, 
                                 icon: senderUser ? senderUser.photoUrl : '/favicon.png',
-                                tag: `chat_${data.senderId}`, // Agrupa mensagens da mesma pessoa
+                                tag: `chat_${data.senderId}`, 
                                 unreadCount,
                                 url: '/'
                             });
@@ -243,31 +274,74 @@ function initSockets(io) {
         socket.on('bounce_sync_pos', (data) => { socket.to(data.roomId).emit('bounce_opponent_pos', { id: socket.id, y: data.y, vy: data.vy }); });
         socket.on('bounce_player_died', (data) => { socket.to(data.roomId).emit('bounce_match_won', { loserId: socket.id }); });
 
+        // =========================================================
+        // 🎮 LÓGICA DO COLOR BOUNCE (COM PROTEÇÃO DE MEMÓRIA)
+        // =========================================================
         socket.on('join_color_bounce', (data) => {
             colorBounceQueue = colorBounceQueue.filter(p => p.socket.connected && p.id !== socket.id);
             colorBounceQueue.push({ id: socket.id, socket: socket, profile: data.profile });
+            
             if (colorBounceQueue.length >= 2) {
                 const p1 = colorBounceQueue.shift(); const p2 = colorBounceQueue.shift();
                 if (p1.socket.connected && p2.socket.connected) {
                     const roomId = `color_rush_${p1.id}`; p1.socket.join(roomId); p2.socket.join(roomId);
                     io.to(roomId).emit('color_bounce_start', { roomId, seed: Math.random(), players: [{ id: p1.id, name: p1.profile?.name || 'P1' }, { id: p2.id, name: p2.profile?.name || 'P2' }] });
-                } else { if (p1.socket.connected) colorBounceQueue.push(p1); if (p2.socket.connected) colorBounceQueue.push(p2); }
+                } else { 
+                    if (p1.socket.connected) colorBounceQueue.push(p1); 
+                    if (p2.socket.connected) colorBounceQueue.push(p2); 
+                }
             } else {
                 setTimeout(() => {
                     const stillInQueue = colorBounceQueue.find(p => p.id === socket.id);
                     if (stillInQueue && colorBounceQueue.length === 1) {
-                        colorBounceQueue = colorBounceQueue.filter(p => p.id !== socket.id); const roomId = `color_rush_bot_${socket.id}`; socket.join(roomId);
-                        io.to(roomId).emit('color_bounce_start', { roomId, seed: Math.random(), players: [{ id: socket.id, name: data.profile?.name || 'Você' }, { id: 'bot_ia', name: '🤖 Piloto IA' }] });
-                        let botX = 0; let botInterval = setInterval(() => { botX += 7.0; io.to(roomId).emit('color_bounce_sync', { id: 'bot_ia', x: botX, y: 300, color: '#EC4899' }); if(botX > 20000) { io.to(roomId).emit('color_bounce_win', { winnerId: 'bot_ia' }); clearInterval(botInterval); } }, 50);
-                        socket.on('disconnect', () => clearInterval(botInterval));
+                        colorBounceQueue = colorBounceQueue.filter(p => p.id !== socket.id); 
+                        const roomId = `color_rush_bot_${socket.id}`; 
+                        socket.join(roomId);
+                        
+                        io.to(roomId).emit('color_bounce_start', { 
+                            roomId, 
+                            seed: Math.random(), 
+                            players: [
+                                { id: socket.id, name: data.profile?.name || 'Você' }, 
+                                { id: 'bot_ia', name: '🤖 Piloto IA' }
+                            ] 
+                        });
+                        
+                        let botX = 0; 
+                        
+                        // 💡 NOVA LÓGICA: Se o jogador já tinha um bot antigo preso, destruímo-lo primeiro
+                        if (socket.colorBounceBotInterval) clearInterval(socket.colorBounceBotInterval);
+                        
+                        // Guardamos o novo cronómetro diretamente no "socket" do jogador
+                        socket.colorBounceBotInterval = setInterval(() => { 
+                            botX += 7.0; 
+                            io.to(roomId).emit('color_bounce_sync', { id: 'bot_ia', x: botX, y: 300, color: '#EC4899' }); 
+                            
+                            if(botX > 20000) { 
+                                io.to(roomId).emit('color_bounce_win', { winnerId: 'bot_ia' }); 
+                                clearInterval(socket.colorBounceBotInterval); 
+                            } 
+                        }, 50);
+
+                        // 🛡️ PROTEÇÃO: Se o jogador sair da sala manualmente
+                        socket.on('leave_color_bounce', () => {
+                            if (socket.colorBounceBotInterval) clearInterval(socket.colorBounceBotInterval);
+                        });
                     }
                 }, 3000);
             }
-        });
+        }); 
+
         socket.on('color_bounce_sync', (data) => { socket.to(data.roomId).emit('color_bounce_sync', { id: socket.id, x: data.x, y: data.y, color: data.color }); });
         socket.on('color_bounce_finish', (data) => { socket.to(data.roomId).emit('color_bounce_win', { winnerId: socket.id }); });
 
+        // =========================================================
+        // 🚪 EVENTO GLOBAL DE DESCONEXÃO (Fim de jogo seguro)
+        // =========================================================
         socket.on('disconnect', () => { 
+            // 🛡️ PROTEÇÃO: Se a internet cair, destrói o bot preso na memória!
+            if (socket.colorBounceBotInterval) clearInterval(socket.colorBounceBotInterval);
+
             englishArenaQueue = englishArenaQueue.filter(p => p.socket.id !== socket.id);
             snakeQueue = snakeQueue.filter(p => p.socket.id !== socket.id);
             bounceQueue = bounceQueue.filter(p => p.socket.id !== socket.id);
