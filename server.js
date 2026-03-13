@@ -170,6 +170,12 @@ app.get('/api/statuses', async (req, res) => { try { const yesterday = new Date(
 app.post('/api/status', async (req, res) => { 
     try { 
         const newStatus = new StatusMsg(req.body); 
+        
+        // 🔥 BLINDAGEM: Força o banco de dados a guardar o design (Ignora o Strict Mode)
+        if (req.body.bgColor) newStatus.set('bgColor', req.body.bgColor, { strict: false });
+        if (req.body.fontFamily) newStatus.set('fontFamily', req.body.fontFamily, { strict: false });
+        if (req.body.textColor) newStatus.set('textColor', req.body.textColor, { strict: false });
+        
         await newStatus.save(); 
         io.emit('new_status_published', newStatus); 
         
@@ -181,7 +187,6 @@ app.post('/api/status', async (req, res) => {
                     process.env.VAPID_PUBLIC_KEY,
                     process.env.VAPID_PRIVATE_KEY
                 );
-                
                 const senderUser = await User.findById(newStatus.senderId);
                 if (senderUser) {
                     const allUsers = await User.find({ _id: { $ne: newStatus.senderId } });
@@ -200,15 +205,24 @@ app.post('/api/status', async (req, res) => {
                     });
                 }
             }
-        } catch (pushError) {
-            console.log("Notificação Push de status ignorada:", pushError.message);
-        }
+        } catch (pushError) { console.log("Notificação Push ignorada:", pushError.message); }
         
         res.json({ success: true }); 
     } catch(e) { 
-        res.status(500).json({ error: 'Erro ao salvar status na base de dados' }); 
+        res.status(500).json({ error: 'Erro ao salvar status' }); 
     } 
 });
+
+// 🔥 NOVA ROTA: Permitir apagar o Status do servidor
+app.delete('/api/status/:id', async (req, res) => { 
+    try { 
+        await StatusMsg.findByIdAndDelete(req.params.id); 
+        res.json({ success: true }); 
+    } catch(e) { 
+        res.status(500).json({ error: 'Erro ao apagar status' }); 
+    } 
+});
+
 app.post('/api/status/view', async (req, res) => { try { const { statusId, viewerId } = req.body; const status = await StatusMsg.findById(statusId); if (status && status.senderId.toString() !== viewerId) { const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId); if (!alreadyViewed) { if(!status.views) status.views = []; status.views.push({ viewerId: viewerId, viewedAt: new Date() }); await status.save(); 
 // ROTA PARA APAGAR STATUS
 app.delete('/api/status/:id', async (req, res) => { 

@@ -209,7 +209,6 @@ window.deleteNote = async function(id) { if(!confirm("Apagar?")) return; try { a
 document.addEventListener("DOMContentLoaded", () => { setTimeout(loadNotes, 2500); });
 
 // ==============================================================
-// ==============================================================
 // 📸 MOTOR DE STATUS E STORIES (TURBO PREMIUM)
 // ==============================================================
 
@@ -243,7 +242,8 @@ window.fetchStatuses = async function() {
         
         const groups = {};
         allStatuses.forEach(s => {
-            const sId = s.senderId._id || s.senderId;
+            // FIX: Força o ID a ser sempre um Texto (String) para não haver erros de comparação
+            const sId = (s.senderId && s.senderId._id) ? String(s.senderId._id) : String(s.senderId);
             if (!groups[sId]) {
                 groups[sId] = { userId: sId, userName: s.senderName || 'Usuário', userPhoto: s.senderPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', items: [] };
             }
@@ -251,7 +251,7 @@ window.fetchStatuses = async function() {
         });
 
         let myGroup = null;
-        if (groups[myId]) { myGroup = groups[myId]; delete groups[myId]; }
+        if (groups[String(myId)]) { myGroup = groups[String(myId)]; delete groups[String(myId)]; }
         groupedStatuses = Object.values(groups);
         if (myGroup) groupedStatuses.unshift(myGroup);
 
@@ -263,7 +263,7 @@ window.loadStatuses = window.fetchStatuses;
 
 if(typeof socket !== 'undefined') {
     socket.on('new_status_published', (newStatus) => { window.fetchStatuses(); });
-    socket.on('status_view_updated', (data) => { if(data.senderId === myId) window.fetchStatuses(); });
+    socket.on('status_view_updated', (data) => { if(String(data.senderId) === String(myId)) window.fetchStatuses(); });
 }
 
 window.renderStatusTray = function() {
@@ -272,25 +272,24 @@ window.renderStatusTray = function() {
     tray.innerHTML = '';
     
     groupedStatuses.forEach((group, index) => {
-        const isMe = group.userId === myId;
-        const hasUnviewed = !isMe && group.items.some(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
+        const isMe = String(group.userId) === String(myId);
+        const hasUnviewed = !isMe && group.items.some(item => !item.views || !item.views.some(v => String(v.viewerId._id || v.viewerId) === String(myId)));
+        
         const ringClass = hasUnviewed ? 'status-ring-unread' : 'status-ring-read';
+        const ringBg = hasUnviewed ? 'linear-gradient(45deg, #EC4899, #8B5CF6, #06B6D4)' : 'rgba(255,255,255,0.2)';
         const name = isMe ? 'Meu Status' : group.userName.split(' ')[0];
 
         tray.innerHTML += `
-            <div class="status-item" onclick="openStoryViewer(${index})">
-                <div class="status-ring ${ringClass}">
-                    <img src="${group.userPhoto}">
+            <div class="status-item" onclick="openStoryViewer(${index})" style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 72px;">
+                <div class="status-ring ${ringClass}" style="width: 64px; height: 64px; border-radius: 50%; padding: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: ${ringBg};">
+                    <img src="${group.userPhoto}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0B0F19;">
                 </div>
-                <span class="status-name" style="${hasUnviewed ? 'font-weight: 800; color: white;' : ''}">${name}</span>
+                <span class="status-name" style="font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; ${hasUnviewed ? 'font-weight: 800; color: white;' : 'color: #94A3B8;'}">${name}</span>
             </div>
         `;
     });
 };
 
-// -----------------------------------------
-// FIX: SOBREPOSIÇÃO E RENDERIZAÇÃO
-// -----------------------------------------
 window.openStoryViewer = function(userIndex) {
     if (typeof hideAllTabs === 'function') hideAllTabs();
     document.querySelectorAll('.app-screen').forEach(el => el.style.display = 'none');
@@ -303,14 +302,14 @@ window.openStoryViewer = function(userIndex) {
     const group = groupedStatuses[userIndex];
     if (!group) return;
 
-    if (group.userId !== myId) {
-        const firstUnread = group.items.findIndex(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
+    if (String(group.userId) !== String(myId)) {
+        const firstUnread = group.items.findIndex(item => !item.views || !item.views.some(v => String(v.viewerId._id || v.viewerId) === String(myId)));
         if (firstUnread !== -1) currentStoryItemIndex = firstUnread;
     }
     
-    // Mostra botão de apagar se for meu
+    // FIX: Agora o botão de apagar vai aparecer garantidamente para o dono!
     const delBtn = document.getElementById('btn-delete-story');
-    if (delBtn) delBtn.style.display = (group.userId === myId) ? 'flex' : 'none';
+    if (delBtn) delBtn.style.display = (String(group.userId) === String(myId)) ? 'flex' : 'none';
 
     renderCurrentStory();
 };
@@ -348,14 +347,12 @@ window.renderCurrentStory = function() {
     const contentArea = document.getElementById('story-content-area');
     const captionDisplay = document.getElementById('story-caption-display');
 
-    // FIX: LIMPAR COMPLETAMENTE A TELA ANTES DE INJETAR O NOVO
     imgDisplay.src = '';
     imgDisplay.style.display = 'none';
     textDisplay.innerText = '';
     textDisplay.style.display = 'none';
     captionDisplay.classList.add('hidden');
 
-    // Aplica Fontes e Cores Customizadas
     const fFamily = story.fontFamily || "'Inter', sans-serif";
     const tColor = story.textColor || "#FFFFFF";
     textDisplay.style.fontFamily = fFamily;
@@ -377,7 +374,7 @@ window.renderCurrentStory = function() {
 
     renderStoryViews(story);
 
-    if (group.userId !== myId) {
+    if (String(group.userId) !== String(myId)) {
         fetch('/api/status/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId: story._id, viewerId: myId }) })
         .then(() => {
             if(!story.views) story.views = [];
@@ -390,9 +387,6 @@ window.renderCurrentStory = function() {
     startStoryTimer();
 };
 
-// -----------------------------------------
-// NOVO: APAGAR STATUS
-// -----------------------------------------
 window.deleteCurrentStatus = async function() {
     if(!confirm("⚠️ Apagar este status definitivamente?")) return;
     clearInterval(storyProgressInterval);
@@ -403,9 +397,9 @@ window.deleteCurrentStatus = async function() {
     try {
         const res = await fetch(`/api/status/${story._id}`, { method: 'DELETE' });
         if(res.ok) {
-            window.fetchStatuses(); // Recarrega do servidor
-            closeStoryViewer(); // Fecha o modal para resetar
-            alert("🗑️ Status apagado!");
+            window.fetchStatuses(); 
+            closeStoryViewer(); 
+            alert("🗑️ Status apagado com sucesso!");
         } else { alert("Erro ao apagar no servidor."); }
     } catch(e) { alert("Erro de conexão."); }
 };
@@ -463,7 +457,6 @@ window.closeStoryViewer = function() {
     const modal = document.getElementById('story-viewer-modal');
     if(modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
     
-    // FIX: Limpa ao fechar
     document.getElementById('story-image-display').src = '';
     document.getElementById('story-text-display').innerText = '';
     
@@ -472,9 +465,6 @@ window.closeStoryViewer = function() {
     if (typeof showMainScreen === 'function') showMainScreen();
 };
 
-// -----------------------------------------
-// CRIADOR DE STATUS PREMIUM (FONTES E CORES)
-// -----------------------------------------
 window.openCreateStatusModal = function() { 
     const modal = document.getElementById('create-status-modal');
     if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
@@ -489,7 +479,7 @@ window.openCreateStatusModal = function() {
     
     document.getElementById('status-caption-container').classList.add('hidden');
     document.getElementById('status-caption-input').value = '';
-    document.getElementById('status-tools').style.display = 'flex'; // Mostra ferramentas
+    document.getElementById('status-tools').style.display = 'flex'; 
     
     changeStatusColor(0); 
     currentTextColorIndex = 0;
@@ -534,7 +524,7 @@ window.previewStatusImage = function(event) {
         document.getElementById('status-image-preview').classList.remove('hidden'); 
         document.getElementById('status-text-input').style.display = 'none'; 
         document.getElementById('status-caption-container').classList.remove('hidden');
-        document.getElementById('status-tools').style.display = 'none'; // Esconde ferramentas de texto na foto
+        document.getElementById('status-tools').style.display = 'none'; 
     }; 
     reader.readAsDataURL(file); 
 };
@@ -542,14 +532,17 @@ window.previewStatusImage = function(event) {
 window.publishStatus = async function() {
     const textEl = document.getElementById('status-text-input');
     const imgEl = document.getElementById('status-image-preview');
-    const bgEl = document.getElementById('status-preview-area');
     const fileInput = document.getElementById('status-image-upload');
     const captionEl = document.getElementById('status-caption-input');
 
     const text = textEl && textEl.style.display !== 'none' ? textEl.value.trim() : '';
     const hasImage = imgEl && !imgEl.classList.contains('hidden');
     const caption = captionEl && !captionEl.parentElement.classList.contains('hidden') ? captionEl.value.trim() : '';
-    const bgColor = bgEl ? (bgEl.style.backgroundColor || '#8B5CF6') : '#8B5CF6';
+
+    // FIX: Extrai a cor diretamente da lista e não do HTML
+    const bgColor = statusBgColors[currentStatusColorIndex] || '#8B5CF6';
+    const fontFam = statusFonts[currentFontIndex] || "'Inter', sans-serif";
+    const txtCol = statusTextColors[currentTextColorIndex] || "#FFFFFF";
 
     if (!text && !hasImage) { alert('Escreva algo ou adicione uma imagem para publicar!'); return; }
 
@@ -564,11 +557,8 @@ window.publishStatus = async function() {
 
         if (hasImage) {
             let fileToUpload = null;
-            if (fileInput && fileInput.files.length > 0) {
-                fileToUpload = fileInput.files[0];
-            } else if (tempQuickPhotoFile) {
-                fileToUpload = tempQuickPhotoFile;
-            }
+            if (fileInput && fileInput.files.length > 0) fileToUpload = fileInput.files[0];
+            else if (tempQuickPhotoFile) fileToUpload = tempQuickPhotoFile;
 
             if (fileToUpload) {
                 const formData = new FormData();
@@ -594,8 +584,8 @@ window.publishStatus = async function() {
             mediaUrl: mediaUrl, 
             caption: caption, 
             bgColor: bgColor, 
-            fontFamily: statusFonts[currentFontIndex], // NOVA PROPRIEDADE
-            textColor: statusTextColors[currentTextColorIndex], // NOVA PROPRIEDADE
+            fontFamily: fontFam,
+            textColor: txtCol,
             timestamp: new Date().toISOString() 
         };
 
@@ -608,7 +598,7 @@ window.publishStatus = async function() {
             if (captionEl) captionEl.value = '';
             statusBase64Image = null; tempQuickPhotoFile = null; tempQuickPhotoBase64 = null;
             if (typeof socket !== 'undefined') socket.emit('user_profile_updated', { userId: myId });
-            window.fetchStatuses(); // Recarrega instantâneo na minha tela
+            window.fetchStatuses(); 
         } else { alert('Falha no servidor ao publicar.'); }
     } catch(e) { alert('Erro: ' + e.message); } 
     finally { btn.innerHTML = originalText; btn.disabled = false; }
@@ -623,7 +613,7 @@ window.renderStoryViews = function(storyObj) {
     }
     
     const viewList = storyObj.views || [];
-    if (storyObj.senderId === myId || (storyObj.senderId && storyObj.senderId._id === myId)) {
+    if (String(storyObj.senderId) === String(myId) || (storyObj.senderId && String(storyObj.senderId._id) === String(myId))) {
         viewContainer.innerHTML = `<span class="material-icons-round" style="font-size: 20px;">visibility</span> ${viewList.length} Visões`;
         viewContainer.style.display = 'flex';
         viewContainer.onclick = (e) => {
