@@ -305,3 +305,38 @@ window.releaseScreenWakeLock = function() {
         window.wakeLockSentinel = null;
     }
 };
+
+// ==============================================================
+// 📴 MONITOR DE REDE (OFFLINE MODE)
+// ==============================================================
+function updateNetworkStatus() {
+    const offlineBanner = document.getElementById('offline-banner');
+    if (!offlineBanner) return;
+
+    if (!navigator.onLine) {
+        // O utilizador perdeu a internet
+        offlineBanner.classList.remove('hidden');
+        setTimeout(() => offlineBanner.classList.add('show-offline'), 10);
+        console.warn("⚠️ Conexão perdida. Modo offline ativado.");
+    } else {
+        // A internet voltou!
+        offlineBanner.classList.remove('show-offline');
+        setTimeout(() => offlineBanner.classList.add('hidden'), 300);
+        console.log("🌐 Conexão restaurada!");
+        
+        // Reconecta o Socket instantaneamente para receber mensagens perdidas
+        if (socket && typeof socket.connect === 'function' && !socket.connected) {
+            socket.connect();
+            if (myId) socket.emit('join_room', myId);
+        }
+    }
+}
+
+// Ouve as mudanças de rede nativas do telemóvel
+window.addEventListener('online', updateNetworkStatus);
+window.addEventListener('offline', updateNetworkStatus);
+
+// Faz a checagem no arranque da app
+document.addEventListener('DOMContentLoaded', () => {
+    if (!navigator.onLine) updateNetworkStatus();
+});

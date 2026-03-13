@@ -742,14 +742,23 @@
         </div>
     </div>    
 
+          <div id="offline-banner" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; background: #EF4444; color: white; text-align: center; font-weight: 700; font-size: 13px; padding: 8px 15px; z-index: 9999999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.3s ease; transform: translateY(-100%);">
+        <span class="material-icons-round" style="font-size: 16px;">wifi_off</span> 
+        Sem ligação à Internet. A usar o Modo Offline.
+    </div>
+    
+    <style>
+        #offline-banner.show-offline { transform: translateY(0); }
+    </style>    
+
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=7.8" defer></script>
-    <script src="/js/ui.js?v=7.8" defer></script>
-    <script src="/js/chat.js?v=7.8" defer></script>
-    <script src="/js/webrtc.js?v=7.8" defer></script>
-    <script src="/js/features.js?v=7.8" defer></script>
+    <script src="/js/core.js?v=7.9" defer></script>
+    <script src="/js/ui.js?v=7.9" defer></script>
+    <script src="/js/chat.js?v=7.9" defer></script>
+    <script src="/js/webrtc.js?v=7.9" defer></script>
+    <script src="/js/features.js?v=7.9" defer></script>
 </body>
 </html>
