@@ -227,7 +227,8 @@
                     <div id="message-input" contenteditable="true" data-placeholder="Mensagem" style="flex: 1; max-height: 100px; min-height: 24px; line-height: 24px; overflow-y: auto; outline: none; font-size: 17px; color: var(--text-color); padding: 5px 0; word-break: break-word; white-space: pre-wrap; min-width: 0;"></div>
                     <div id="btn-attach-wrapper" style="display: flex; flex-direction: row; flex-wrap: nowrap; gap: 2px; align-items: center; height: 34px; flex-shrink: 0; margin-bottom: 1px; margin-left: 6px;">
                         <button class="icon-btn" onclick="event.stopPropagation(); toggleAttachMenu();" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; transform: rotate(-45deg); flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">attach_file</span></button>
-                        <button class="icon-btn" onclick="document.getElementById('file-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
+                        <input type="file" id="immersive-camera-input" accept="image/*" hidden onchange="openImmersiveCamera(this)">
+                        <button class="icon-btn" onclick="document.getElementById('immersive-camera-input').click()" style="color: #94A3B8; padding: 0; height: 34px; width: 34px; display: flex; align-items: center; justify-content: center; background:transparent; border:none; flex-shrink: 0;"><span class="material-icons-round" style="font-size: 24px;">camera_alt</span></button>
                     </div>
                 </div>
 
@@ -595,6 +596,26 @@
         </div>
     </div>
 
+    <div id="immersive-camera-modal" class="modal-overlay hidden" style="z-index: 150000; background: #000; flex-direction: column; justify-content: space-between; padding: 0;">
+        
+        <div style="width: 100%; padding: max(15px, env(safe-area-inset-top)) 20px 15px 20px; display: flex; justify-content: flex-start; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); z-index: 10;">
+            <button class="icon-btn" onclick="closeImmersiveCamera()" style="background: rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-icons-round" style="color: white; font-size: 26px;">close</span>
+            </button>
+        </div>
+        
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
+            <img id="immersive-camera-preview" src="" style="width: 100%; height: 100%; object-fit: contain;">
+        </div>
+        
+        <div style="width: 100%; padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(20px); display: flex; align-items: center; gap: 10px; z-index: 10; border-top: 1px solid rgba(255,255,255,0.1);">
+            <input type="text" id="immersive-camera-caption" placeholder="Adicionar legenda..." style="flex: 1; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); padding: 12px 20px; border-radius: 30px; color: white; font-size: 15px; outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);">
+            <button id="btn-send-immersive" class="circular-primary-btn" onclick="sendImmersivePhoto()" style="width: 50px; height: 50px; flex-shrink: 0; background: var(--brand-primary); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.5);">
+                <span class="material-icons-round" style="color: white; font-size: 24px; margin-left: 3px;">send</span>
+            </button>
+        </div>
+    </div>
+
     <nav id="bottom-navigation" class="bottom-nav hidden">
         <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
         <div class="nav-item" onclick="switchTab('explorar', this)"><div class="nav-icon"><span class="material-icons-round">explore</span></div><span>Explorar</span></div>
@@ -687,10 +708,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=6.1" defer></script>
-    <script src="/js/ui.js?v=6.1" defer></script>
-    <script src="/js/chat.js?v=6.1" defer></script>
-    <script src="/js/webrtc.js?v=6.1" defer></script>
-    <script src="/js/features.js?v=6.1" defer></script>
+    <script src="/js/core.js?v=6.3" defer></script>
+    <script src="/js/ui.js?v=6.3" defer></script>
+    <script src="/js/chat.js?v=6.3" defer></script>
+    <script src="/js/webrtc.js?v=6.3" defer></script>
+    <script src="/js/features.js?v=6.3" defer></script>
 </body>
 </html>
