@@ -433,7 +433,24 @@ function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_
 
 socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; if (typeof showElement === 'function') showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
 socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) { if (typeof hideElement === 'function') hideElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
-socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
+socket.on('messages_read', (data) => { 
+    // 1. Atualiza visualmente na tela em tempo real (Animação para Azul Ciano)
+    if (data.receiverId === currentChatId) {
+        document.querySelectorAll('.my-msg .msg-tick-icon').forEach(icon => {
+            icon.style.color = '#06B6D4'; 
+        });
+    }
+    
+    // 2. Cura a Amnésia: Salva na Memória (Cache) para não perder ao fechar a conversa
+    if (messageCache[data.receiverId]) {
+        messageCache[data.receiverId].forEach(m => {
+            const senderIdStr = (typeof m.sender === 'object') ? m.sender._id : m.sender;
+            if (senderIdStr === myId) m.status = 'read';
+        });
+        const cacheKey = `chat_cache_${data.receiverId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(messageCache[data.receiverId].slice(-50)));
+    }
+});
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
 socket.on('message_edited', (data) => {
@@ -645,7 +662,10 @@ function displayMessage(msg) {
     else { msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; }
     
     contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
-    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; const tickColor = msg.status === 'read' ? '#38bdf8' : 'rgba(255,255,255,0.6)'; const statusHtml = isMe ? `<span class="material-icons-round" style="font-size:15px; margin-left:3px; color:${tickColor};">done_all</span>` : '';
+    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
+    const isRead = msg.status === 'read';
+    const tickColor = isRead ? '#06B6D4' : 'rgba(255,255,255,0.6)'; // Azul Ciano Neon
+    const statusHtml = isMe ? `<span id="tick-${msg._id}" class="material-icons-round msg-tick-icon" style="font-size:15px; margin-left:3px; color:${tickColor}; transition: color 0.4s ease;">done_all</span>` : '';
     div.innerHTML = ` ${contentHtml} <div class="msg-info" style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;"> <span class="msg-time">${timeString}</span>${statusHtml} </div> ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''} `; 
     
     box.appendChild(div); box.scrollTop = box.scrollHeight; 
