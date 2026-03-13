@@ -61,6 +61,7 @@ window.promptBulkDeleteChat = function() {
 };
 
 window.executeBulkDeleteChat = async function() {
+    const safeHiddenChats = typeof hiddenChats !== 'undefined' ? hiddenChats : [];
     for (let contact of selectedActionContacts) {
         try { 
             if(contact.isGroup) {
@@ -74,11 +75,11 @@ window.executeBulkDeleteChat = async function() {
                 await fetch(`/messages/${myId}/${contact.id}`, { method: 'DELETE' }); 
                 messageCache[contact.id] = []; 
                 localStorage.removeItem(`chat_cache_${contact.id}`);
-                if(!hiddenChats.includes(contact.id)) hiddenChats.push(contact.id); 
+                if(!safeHiddenChats.includes(contact.id)) safeHiddenChats.push(contact.id); 
             }
         } catch(e) {}
     }
-    localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); 
+    localStorage.setItem('hiddenChats', JSON.stringify(safeHiddenChats)); 
     clearContactSelection(); 
     loadContacts();
 };
@@ -175,89 +176,91 @@ setTimeout(() => {
 }, 1000);
 
 // ==============================================================
-// 🎙️ MOTOR DE ÁUDIO PREMIUM (Sistema de Clique Seguro)
+// 🎙️ MOTOR DE ÁUDIO PREMIUM (Protegido contra Conflitos)
 // ==============================================================
-let audioChunks = []; 
-let audioStream = null; 
-let isRecordingCancelled = false; 
-let recordingInterval = null;
-let recordingSeconds = 0;
-let pendingAudioFile = null;
+window.audioChunks = []; 
+window.audioStream = null; 
+window.isRecordingCancelled = false; 
+window.recordingInterval = null;
+window.recordingSeconds = 0;
+window.pendingAudioFile = null;
+window.audioContext = null;
+window.audioAnalyzer = null;
+window.audioDataArray = null;
+window.visualizerAnimationId = null;
 
-let audioContext = null;
-let audioAnalyzer = null;
-let audioDataArray = null;
-let visualizerAnimationId = null;
+setTimeout(() => {
+    const msgInput = document.getElementById('message-input'); 
+    const micBtn = document.getElementById('dynamic-action-btn'); 
+    const micIcon = document.getElementById('dynamic-action-icon');
 
-const msgInputEl = document.getElementById('message-input'); 
-const dynamicActionBtn = document.getElementById('dynamic-action-btn'); 
-const dynamicActionIcon = document.getElementById('dynamic-action-icon');
-
-if (msgInputEl) { 
-    msgInputEl.addEventListener('input', () => { 
-        const textLength = msgInputEl.innerText.trim().length; 
-        if (textLength > 0) { 
-            if (dynamicActionIcon && dynamicActionIcon.innerText !== 'send' && dynamicActionIcon.innerText !== 'check') { 
-                dynamicActionIcon.innerText = 'send'; 
-                dynamicActionIcon.style.animation = 'popIn 0.2s ease'; 
+    if (msgInput) { 
+        msgInput.addEventListener('input', () => { 
+            const textLength = msgInput.innerText.trim().length; 
+            if (textLength > 0) { 
+                if (micIcon && micIcon.innerText !== 'send' && micIcon.innerText !== 'check') { 
+                    micIcon.innerText = 'send'; 
+                    micIcon.style.animation = 'popIn 0.2s ease'; 
+                } 
+            } else { 
+                if (!window.editingMsgId) window.resetDynamicButton(); 
             } 
-        } else { 
-            if (!window.editingMsgId) resetDynamicButton(); 
-        } 
-        if (!currentChatId) return; 
-        emitTypingStatus('typing'); 
-    }); 
+            if (!currentChatId) return; 
+            emitTypingStatus('typing'); 
+        }); 
 
-    msgInputEl.addEventListener('keydown', (e) => { 
-        if (e.key === 'Enter' && !e.shiftKey) { 
-            e.preventDefault(); 
-            if (msgInputEl.innerText.trim().length > 0) { sendMessage(); resetDynamicButton(); resetAudioUI(); } 
-        } 
-    }); 
-}
+        msgInput.addEventListener('keydown', (e) => { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                if (msgInput.innerText.trim().length > 0) { window.sendMessage(); window.resetDynamicButton(); window.resetAudioUI(); } 
+            } 
+        }); 
+    }
 
-function resetDynamicButton() { 
-    if (dynamicActionIcon) { 
-        dynamicActionIcon.innerText = 'mic'; 
-        dynamicActionBtn.classList.remove('ready-to-send', 'recording-pulse');
+    if (micBtn) {
+        micBtn.onclick = (e) => {
+            e.preventDefault();
+            if (!micIcon) return;
+            const iconTxt = micIcon.innerText;
+            if (iconTxt === 'send' || iconTxt === 'check') {
+                if (typeof window.globalMediaRecorder !== 'undefined' && window.globalMediaRecorder && window.globalMediaRecorder.state !== 'inactive') {
+                    window.stopAndSendRecording();
+                } else {
+                    window.sendMessage(); 
+                    window.resetAudioUI(); 
+                }
+            } else if (iconTxt === 'mic') {
+                window.startRecording();
+            }
+        };
+    }
+}, 500);
+
+window.resetDynamicButton = function() { 
+    const micBtn = document.getElementById('dynamic-action-btn'); 
+    const micIcon = document.getElementById('dynamic-action-icon');
+    if (micIcon) { 
+        micIcon.innerText = 'mic'; 
+        if(micBtn) micBtn.classList.remove('ready-to-send', 'recording-pulse');
     } 
 }
 
-// 🚀 LÓGICA DE GRAVAÇÃO COM 1 CLIQUE
-if (dynamicActionBtn) {
-    dynamicActionBtn.onclick = (e) => {
-        e.preventDefault();
-        const iconTxt = dynamicActionIcon.innerText;
-
-        if (iconTxt === 'send' || iconTxt === 'check') {
-            if (globalMediaRecorder && globalMediaRecorder.state !== 'inactive') {
-                stopAndSendRecording();
-            } else {
-                sendMessage(); 
-                resetAudioUI(); 
-            }
-        } else if (iconTxt === 'mic') {
-            startRecording();
-        }
-    };
-}
-
-async function startRecording() { 
+window.startRecording = async function() { 
     const attachMenu = document.getElementById('attach-menu'); if(attachMenu) attachMenu.classList.add('hidden');
     const drawer = document.getElementById('emoji-drawer'); if (drawer) drawer.style.height = '0px';
 
     try { 
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
-        globalMediaRecorder = new MediaRecorder(audioStream); 
-        audioChunks = []; isRecordingCancelled = false; 
+        window.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+        window.globalMediaRecorder = new MediaRecorder(window.audioStream); 
+        window.audioChunks = []; window.isRecordingCancelled = false; 
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext();
-        const source = audioContext.createMediaStreamSource(audioStream);
-        audioAnalyzer = audioContext.createAnalyser();
-        audioAnalyzer.fftSize = 128; 
-        source.connect(audioAnalyzer);
-        audioDataArray = new Uint8Array(audioAnalyzer.frequencyBinCount);
+        window.audioContext = new AudioContext();
+        const source = window.audioContext.createMediaStreamSource(window.audioStream);
+        window.audioAnalyzer = window.audioContext.createAnalyser();
+        window.audioAnalyzer.fftSize = 128; 
+        source.connect(window.audioAnalyzer);
+        window.audioDataArray = new Uint8Array(window.audioAnalyzer.frequencyBinCount);
 
         document.getElementById('chat-input-container').classList.add('hidden'); 
         document.getElementById('recording-ui').classList.remove('hidden'); 
@@ -269,60 +272,63 @@ async function startRecording() {
         document.getElementById('preview-progress-area').classList.add('hidden');
         
         const pauseIcon = document.getElementById('pause-play-icon');
-        pauseIcon.innerText = 'pause_circle';
-        pauseIcon.style.color = '#F59E0B';
+        if(pauseIcon) { pauseIcon.innerText = 'pause_circle'; pauseIcon.style.color = '#F59E0B'; }
         
-        dynamicActionBtn.classList.add('recording-pulse');
-        dynamicActionBtn.classList.add('ready-to-send');
-        dynamicActionIcon.innerText = 'send';
+        const micBtn = document.getElementById('dynamic-action-btn');
+        const micIcon = document.getElementById('dynamic-action-icon');
+        if(micBtn) { micBtn.classList.add('recording-pulse'); micBtn.classList.add('ready-to-send'); }
+        if(micIcon) micIcon.innerText = 'send';
 
-        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); }; 
+        window.globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) window.audioChunks.push(e.data); }; 
         
-        globalMediaRecorder.onstop = () => { 
-            clearInterval(recordingInterval); 
-            audioStream.getTracks().forEach(track => track.stop()); 
-            if(audioContext && audioContext.state !== 'closed') audioContext.close();
-            cancelAnimationFrame(visualizerAnimationId);
+        window.globalMediaRecorder.onstop = () => { 
+            clearInterval(window.recordingInterval); 
+            window.audioStream.getTracks().forEach(track => track.stop()); 
+            if(window.audioContext && window.audioContext.state !== 'closed') window.audioContext.close();
+            cancelAnimationFrame(window.visualizerAnimationId);
 
-            if (isRecordingCancelled) { 
-                resetAudioUI(); 
+            if (window.isRecordingCancelled) { 
+                window.resetAudioUI(); 
                 return; 
             } 
             
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' }); 
-            const finalAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
+            const audioBlob = new Blob(window.audioChunks, { type: 'audio/webm' }); 
+            window.pendingAudioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: 'audio/webm' }); 
             
-            handleFileUploadWithAudio(finalAudioFile); 
-            resetAudioUI();
+            window.handleFileUploadWithAudio(window.pendingAudioFile); 
+            window.resetAudioUI();
         }; 
         
-        recordingSeconds = 0; document.getElementById('recording-timer').innerText = "0:00"; 
-        recordingInterval = setInterval(() => { 
-            recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60).toString(); 
-            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
-            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        window.recordingSeconds = 0; 
+        const timerEl = document.getElementById('recording-timer');
+        if(timerEl) timerEl.innerText = "0:00"; 
+        
+        window.recordingInterval = setInterval(() => { 
+            window.recordingSeconds++; 
+            const m = Math.floor(window.recordingSeconds / 60).toString(); 
+            const s = (window.recordingSeconds % 60).toString().padStart(2, '0'); 
+            if(timerEl) timerEl.innerText = `${m}:${s}`; 
         }, 1000); 
         
-        globalMediaRecorder.start(); 
+        window.globalMediaRecorder.start(); 
         emitTypingStatus('recording'); 
-        drawAudioVisualizer(); 
-    } catch (e) { alert("🎤 Permissão negada para o microfone."); resetAudioUI(); } 
+        window.drawAudioVisualizer(); 
+    } catch (e) { alert("🎤 Permissão negada para o microfone."); window.resetAudioUI(); } 
 }
 
-function drawAudioVisualizer() { 
+window.drawAudioVisualizer = function() { 
     const canvas = document.getElementById('audio-visualizer'); if(!canvas) return; 
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width; canvas.height = rect.height;
     const ctx = canvas.getContext('2d'); 
     
     const draw = () => { 
-        if(!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return; 
-        visualizerAnimationId = requestAnimationFrame(draw); 
+        if(!window.globalMediaRecorder || window.globalMediaRecorder.state === 'inactive') return; 
+        window.visualizerAnimationId = requestAnimationFrame(draw); 
         
-        if (globalMediaRecorder.state === 'paused') return;
+        if (window.globalMediaRecorder.state === 'paused') return;
 
-        audioAnalyzer.getByteFrequencyData(audioDataArray);
+        window.audioAnalyzer.getByteFrequencyData(window.audioDataArray);
         ctx.clearRect(0, 0, canvas.width, canvas.height); 
         
         const barWidth = 3; const gap = 2; 
@@ -330,8 +336,8 @@ function drawAudioVisualizer() {
         const centerY = canvas.height / 2;
 
         for(let i = 0; i < totalBars; i++) { 
-            const dataIndex = Math.floor((i / totalBars) * (audioDataArray.length / 2)); 
-            const value = audioDataArray[dataIndex];
+            const dataIndex = Math.floor((i / totalBars) * (window.audioDataArray.length / 2)); 
+            const value = window.audioDataArray[dataIndex];
             const percent = value / 255;
             let h = Math.max(2, percent * (canvas.height - 4)); 
             
@@ -345,59 +351,59 @@ function drawAudioVisualizer() {
 }
 
 window.togglePausePlayRecording = function() {
-    if (!globalMediaRecorder || globalMediaRecorder.state === 'inactive') return;
+    if (!window.globalMediaRecorder || window.globalMediaRecorder.state === 'inactive') return;
     
     const pauseIcon = document.getElementById('pause-play-icon');
+    const micBtn = document.getElementById('dynamic-action-btn');
 
-    if (globalMediaRecorder.state === "recording") {
-        globalMediaRecorder.pause(); 
-        pauseIcon.innerText = 'play_circle';
-        pauseIcon.style.color = '#10B981';
-        dynamicActionBtn.classList.remove('recording-pulse');
-        clearInterval(recordingInterval); 
-    } else if (globalMediaRecorder.state === "paused") {
-        globalMediaRecorder.resume(); 
-        pauseIcon.innerText = 'pause_circle';
-        pauseIcon.style.color = '#F59E0B';
-        dynamicActionBtn.classList.add('recording-pulse');
+    if (window.globalMediaRecorder.state === "recording") {
+        window.globalMediaRecorder.pause(); 
+        if(pauseIcon) { pauseIcon.innerText = 'play_circle'; pauseIcon.style.color = '#10B981'; }
+        if(micBtn) micBtn.classList.remove('recording-pulse');
+        clearInterval(window.recordingInterval); 
+    } else if (window.globalMediaRecorder.state === "paused") {
+        window.globalMediaRecorder.resume(); 
+        if(pauseIcon) { pauseIcon.innerText = 'pause_circle'; pauseIcon.style.color = '#F59E0B'; }
+        if(micBtn) micBtn.classList.add('recording-pulse');
         
-        recordingInterval = setInterval(() => { 
-            recordingSeconds++; 
-            const m = Math.floor(recordingSeconds / 60).toString(); 
-            const s = (recordingSeconds % 60).toString().padStart(2, '0'); 
-            document.getElementById('recording-timer').innerText = `${m}:${s}`; 
+        window.recordingInterval = setInterval(() => { 
+            window.recordingSeconds++; 
+            const m = Math.floor(window.recordingSeconds / 60).toString(); 
+            const s = (window.recordingSeconds % 60).toString().padStart(2, '0'); 
+            const timerEl = document.getElementById('recording-timer');
+            if(timerEl) timerEl.innerText = `${m}:${s}`; 
         }, 1000);
     }
 }
 
 window.stopAndSendRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
-        globalMediaRecorder.stop(); 
+    if (window.globalMediaRecorder && window.globalMediaRecorder.state !== "inactive") { 
+        window.globalMediaRecorder.stop(); 
     } 
 }
 
 window.cancelRecording = function() { 
-    if (globalMediaRecorder && globalMediaRecorder.state !== "inactive") { 
-        isRecordingCancelled = true; 
-        if (globalMediaRecorder.state === 'paused') {
-            globalMediaRecorder.resume(); 
+    if (window.globalMediaRecorder && window.globalMediaRecorder.state !== "inactive") { 
+        window.isRecordingCancelled = true; 
+        if (window.globalMediaRecorder.state === 'paused') {
+            window.globalMediaRecorder.resume(); 
         }
-        globalMediaRecorder.stop(); 
+        window.globalMediaRecorder.stop(); 
     } else {
-        resetAudioUI();
+        window.resetAudioUI();
     }
 }
 
-function resetAudioUI() { 
-    document.getElementById('recording-ui').classList.add('hidden'); 
-    document.getElementById('chat-input-container').classList.remove('hidden');
-    document.getElementById('chat-input-container').style.opacity = '1';
+window.resetAudioUI = function() { 
+    const ui = document.getElementById('recording-ui'); if(ui) ui.classList.add('hidden'); 
+    const cont = document.getElementById('chat-input-container'); 
+    if(cont) { cont.classList.remove('hidden'); cont.style.opacity = '1'; }
 
-    isRecordingCancelled = false; 
+    window.isRecordingCancelled = false; 
     
-    resetDynamicButton();
+    window.resetDynamicButton();
     const input = document.getElementById('message-input'); 
-    if (input && input.innerText.trim().length === 0) { resetDynamicButton(); } 
+    if (input && input.innerText.trim().length === 0) { window.resetDynamicButton(); } 
     emitStopTypingStatus(); 
 }
 
@@ -432,8 +438,42 @@ function emitTypingStatus(action) { if (!currentChatId) return; const myName = l
 function emitStopTypingStatus() { if (!currentChatId) return; socket.emit('stop_typing', { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null }); }
 
 socket.on('typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; const actionText = data.action === 'recording' ? 'gravando...' : 'digitando...'; const prefix = data.groupId ? `${data.senderName.split(' ')[0]} está ` : ''; const displayHtml = `<span style="color:var(--brand-primary); font-style:italic; font-weight:bold;">${prefix}${actionText}</span>`; if (currentChatId === targetId) { const ind = document.getElementById('typing-indicator'); ind.innerHTML = displayHtml; if (typeof showElement === 'function') showElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea) { if (!msgArea.hasAttribute('data-original')) { msgArea.setAttribute('data-original', msgArea.innerHTML); } msgArea.innerHTML = displayHtml; msgArea.style = ''; } } });
-socket.on('stop_typing', (data) => { if (data.senderId === myId) return; const targetId = data.groupId ? data.groupId : data.senderId; if (currentChatId === targetId) { if (typeof hideElement === 'function') hideElement('typing-indicator'); } const contactDiv = document.getElementById(`contact-${targetId}`); if (contactDiv) { const msgArea = contactDiv.querySelector('.contact-last-msg'); if (msgArea && msgArea.hasAttribute('data-original')) { msgArea.innerHTML = msgArea.getAttribute('data-original'); msgArea.removeAttribute('data-original'); if(unreadCounts[targetId] > 0 || unreadGroups.includes(targetId)) msgArea.style = ''; else msgArea.style = 'color:var(--brand-primary)'; } } });
-socket.on('messages_read', (data) => { if (data.receiverId === currentChatId) document.querySelectorAll('.my-msg .msg-status').forEach(el => el.classList.add('read')); });
+socket.on('stop_typing', (data) => { 
+    if (data.senderId === myId) return; 
+    const targetId = data.groupId ? data.groupId : data.senderId; 
+    if (currentChatId === targetId) { if (typeof hideElement === 'function') hideElement('typing-indicator'); } 
+    const contactDiv = document.getElementById(`contact-${targetId}`); 
+    if (contactDiv) { 
+        const msgArea = contactDiv.querySelector('.contact-last-msg'); 
+        if (msgArea && msgArea.hasAttribute('data-original')) { 
+            msgArea.innerHTML = msgArea.getAttribute('data-original'); 
+            msgArea.removeAttribute('data-original'); 
+            
+            const safeUnread = typeof unreadCounts !== 'undefined' ? unreadCounts : {};
+            const safeUnreadG = typeof unreadGroups !== 'undefined' ? unreadGroups : {};
+            
+            if((safeUnread[targetId] > 0) || (safeUnreadG[targetId] > 0)) msgArea.style = ''; 
+            else msgArea.style = 'color:var(--brand-primary)'; 
+        } 
+    } 
+});
+
+socket.on('messages_read', (data) => { 
+    if (data.receiverId === currentChatId) {
+        document.querySelectorAll('.my-msg .msg-tick-icon').forEach(icon => {
+            icon.style.color = '#06B6D4'; 
+        });
+    }
+    if (messageCache[data.receiverId]) {
+        messageCache[data.receiverId].forEach(m => {
+            const senderIdStr = (typeof m.sender === 'object') ? m.sender._id : m.sender;
+            if (senderIdStr === myId) m.status = 'read';
+        });
+        const cacheKey = `chat_cache_${data.receiverId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(messageCache[data.receiverId].slice(-50)));
+    }
+});
+
 socket.on('message_reacted', (data) => { const msgDiv = document.getElementById(`msg-${data.msgId}`); if (msgDiv) { let reactEl = msgDiv.querySelector('.msg-reaction'); if(!reactEl) { reactEl = document.createElement('div'); reactEl.className = 'msg-reaction'; msgDiv.appendChild(reactEl); } reactEl.innerText = data.emoji; } });
 
 socket.on('message_edited', (data) => {
@@ -453,19 +493,38 @@ socket.on('message_deleted', (data) => {
     if (messageCache[currentChatId]) { const cMsg = messageCache[currentChatId].find(m => m._id === data.msgId); if (cMsg) { cMsg.content = '🚫 Esta mensagem foi apagada'; cMsg.fileUrl = null; cMsg.fileType = 'text'; } const cacheKey = isGroupChat ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`; localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50))); }
 });
 
-document.addEventListener('visibilitychange', () => { if (!document.hidden && currentChatId) { unreadCounts[currentChatId] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); updateAppBadge(); } });
+document.addEventListener('visibilitychange', () => { 
+    if (!document.hidden && currentChatId) { 
+        if (typeof unreadCounts !== 'undefined') {
+            unreadCounts[currentChatId] = 0; 
+            localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+        }
+        if (!isGroupChat) socket.emit('mark_as_read', { senderId: currentChatId, receiverId: myId }); 
+        if (typeof updateAppBadge === 'function') updateAppBadge(); 
+    } 
+});
 
 socket.on('receive_message', (msg) => {
     const isGroup = !!msg.groupId; const senderObj = typeof msg.sender === 'object' ? msg.sender : { _id: msg.sender }; const senderId = senderObj._id;
     let targetId; if (isGroup) { targetId = msg.groupId; } else { const receiverId = typeof msg.receiver === 'object' ? msg.receiver._id : msg.receiver; targetId = (senderId === myId) ? receiverId : senderId; }
     
-    if (hiddenChats.includes(targetId) && senderId !== myId) { hiddenChats = hiddenChats.filter(id => id !== targetId); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); }
+    const safeHiddenChats = typeof hiddenChats !== 'undefined' ? hiddenChats : [];
+    if (safeHiddenChats.includes(targetId) && senderId !== myId) { 
+        const updatedHidden = safeHiddenChats.filter(id => id !== targetId); 
+        localStorage.setItem('hiddenChats', JSON.stringify(updatedHidden)); 
+        if(typeof hiddenChats !== 'undefined') hiddenChats.length = 0;
+    }
     
     if (currentChatId === targetId) { 
         if (!document.getElementById(`msg-${msg._id}`)) { displayMessage(msg); if (!messageCache[currentChatId]) messageCache[currentChatId] = []; messageCache[currentChatId].push(msg); const cacheKey = isGroup ? `chat_cache_group_${currentChatId}` : `chat_cache_${currentChatId}`; localStorage.setItem(cacheKey, JSON.stringify(messageCache[currentChatId].slice(-50))); } 
         if (!isGroup && senderId !== myId) socket.emit('mark_as_read', { senderId: senderId, receiverId: myId }); 
     } else { 
-        if (senderId !== myId) { if (isGroup) { unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1; localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } else { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); } if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); playNotificationSound('modern'); } 
+        if (senderId !== myId) { 
+            if (isGroup && typeof unreadGroups !== 'undefined') { unreadGroups[targetId] = (unreadGroups[targetId] || 0) + 1; localStorage.setItem('unreadGroups', JSON.stringify(unreadGroups)); } 
+            else if (typeof unreadCounts !== 'undefined') { unreadCounts[targetId] = (unreadCounts[targetId] || 0) + 1; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); } 
+            if (typeof updateUnreadBadges === 'function') updateUnreadBadges(); 
+            if (typeof playNotificationSound === 'function') playNotificationSound('modern'); 
+        } 
     }
     
     if (!isGroup && senderObj.displayName && senderId !== myId) { let cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const existingIndex = cachedUsers.findIndex(u => u._id === senderId); if (existingIndex === -1) { cachedUsers.unshift(senderObj); } else { const userToMove = cachedUsers.splice(existingIndex, 1)[0]; userToMove.displayName = senderObj.displayName; userToMove.photoUrl = senderObj.photoUrl; cachedUsers.unshift(userToMove); } localStorage.setItem('cacheUsers', JSON.stringify(cachedUsers)); }
@@ -480,7 +539,7 @@ window.triggerUpload = function(type) { const input = document.getElementById('f
 
 window.handleFileUpload = async function(input) { 
     const file = input.files[0]; if(!file) { input.value = ''; return; }
-    if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB para proteger o sistema."); input.value = ''; return; } 
+    if (file.size > 15 * 1024 * 1024) { alert("⚠️ Arquivo muito grande! O limite de cofre é 15MB."); input.value = ''; return; } 
     let type = 'file'; if(file.type.startsWith('image/')) type = 'image'; else if(file.type.startsWith('video/')) type = 'video'; else if(file.type.startsWith('audio/')) type = 'audio'; else if(file.type === 'application/pdf') type = 'pdf'; 
     executeUpload(file, type); 
 };
@@ -506,15 +565,15 @@ window.sendMessage = function(textOverride=null, fileUrl=null, fileType='text') 
     const input = document.getElementById('message-input'); 
     let content = textOverride || input.innerText.trim(); 
     
-    if (window.editingMsgId && !fileUrl) { fetch(`/message/${window.editingMsgId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newContent: content }) }); window.editingMsgId = null; input.innerHTML = ''; resetDynamicButton(); return; }
+    if (window.editingMsgId && !fileUrl) { fetch(`/message/${window.editingMsgId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ newContent: content }) }); window.editingMsgId = null; input.innerHTML = ''; window.resetDynamicButton(); return; }
     
-    if(messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
+    if(typeof messageToReply !== 'undefined' && messageToReply && !fileUrl && !textOverride) { content = `<div class="quoted-msg" onclick="document.getElementById('msg-${messageToReply.id}').scrollIntoView({behavior: 'smooth', block: 'center'})"><b>${messageToReply.name}</b>${messageToReply.text}</div>` + content; cancelReply(); } 
     if((!content && !fileUrl) || !currentChatId) return; 
     
     const msgData = { senderId: myId, receiverId: isGroupChat ? null : currentChatId, groupId: isGroupChat ? currentChatId : null, content: fileUrl ? 'Arquivo enviado' : content, fileUrl, fileType }; 
     socket.emit('private_message', msgData); clearTimeout(typingTimeout); emitStopTypingStatus(); 
     if(!fileUrl) input.innerHTML = ''; 
-    resetDynamicButton();
+    window.resetDynamicButton();
 }
 
 window.pinMessage = function(msgObj) { const chatKey = isGroupChat ? `pinned_${currentChatId}` : `pinned_${[myId, currentChatId].sort().join('_')}`; localStorage.setItem(chatKey, JSON.stringify(msgObj)); showPinnedMessage(msgObj); socket.emit('react_message', { msgId: msgObj._id, emoji: '📌', receiverId: currentChatId, groupId: isGroupChat ? currentChatId : null }); }
@@ -523,7 +582,8 @@ window.unpinMessage = function() { const chatKey = isGroupChat ? `pinned_${curre
 
 window.openChat = function(id, name, photo, email, type = 'user') { 
     currentChatId = id; currentChatEmail = email; isGroupChat = (type === 'group'); 
-    unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); updateAppBadge(); cancelReply(); 
+    if (typeof unreadCounts !== 'undefined') { unreadCounts[id] = 0; localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); }
+    if (typeof updateAppBadge === 'function') updateAppBadge(); cancelReply(); 
     
     if (typeof hideAllTabs === 'function') hideAllTabs(); 
     if (typeof showElement === 'function') { showElement('chat-screen'); hideElement('typing-indicator'); }
@@ -541,7 +601,7 @@ window.openChat = function(id, name, photo, email, type = 'user') {
     if (!isGroupChat) socket.emit('mark_as_read', { senderId: id, receiverId: myId }); 
     const headerDot = document.getElementById('chat-header-status'); const headerText = document.getElementById('chat-header-status-text');
     if (isGroupChat) { if (headerDot) headerDot.style.display = 'none'; if (headerText) { headerText.innerText = 'Toque para ver membros'; headerText.style.color = 'var(--secondary-text)'; } } 
-    else { const isOnline = onlineUsersList.includes(id); if (headerDot) { headerDot.style.display = 'block'; headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; } if (headerText) { headerText.innerText = isOnline ? 'Online' : 'Offline'; headerText.style.color = isOnline ? '#10B981' : '#EF4444'; } } 
+    else { const isOnline = typeof onlineUsersList !== 'undefined' && onlineUsersList.includes(id); if (headerDot) { headerDot.style.display = 'block'; headerDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`; } if (headerText) { headerText.innerText = isOnline ? 'Online' : 'Offline'; headerText.style.color = isOnline ? '#10B981' : '#EF4444'; } } 
     
     if (isGroupChat) { socket.emit('join_group', id); loadGroupMessages(id); } else { loadMessages(id); } 
 }
@@ -565,7 +625,8 @@ window.loadContacts = async function() {
     const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; 
     if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); if(typeof updateAppBadge === 'function') updateAppBadge(); } 
     try { 
-        const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); 
+        const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); 
+        if (typeof unreadCounts !== 'undefined') { cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); }
         const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
         const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
         localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); 
@@ -574,12 +635,16 @@ window.loadContacts = async function() {
 }
 
 window.renderContactsList = function(groups, users) {
-    const list = document.getElementById('users-list'); if(!list) return; list.innerHTML = ''; const visibleUsers = users.filter(user => !hiddenChats.includes(user._id));
+    const list = document.getElementById('users-list'); if(!list) return; list.innerHTML = ''; 
+    const safeHiddenChats = typeof hiddenChats !== 'undefined' ? hiddenChats : [];
+    const safeUnreadCounts = typeof unreadCounts !== 'undefined' ? unreadCounts : {};
+    
+    const visibleUsers = users.filter(user => !safeHiddenChats.includes(user._id));
     if (groups.length === 0 && visibleUsers.length === 0) { list.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:40px; color:var(--text-color);"><h3 style="font-weight:400; font-size:18px; line-height:1.5;">Nenhuma conversa ainda.<br>Clique no + para pesquisar.</h3></div>`; return; }
     
-    groups.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0));
+    groups.sort((a, b) => (safeUnreadCounts[b._id] || 0) - (safeUnreadCounts[a._id] || 0));
     groups.forEach(group => { 
-        let count = unreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
+        let count = safeUnreadCounts[group._id] || 0; let isUnreadG = count > 0 && currentChatId !== group._id; let extraGroupClass = isUnreadG ? 'has-unread' : ''; let badgeHtml = isUnreadG ? `<div class="unread-count-badge">${count}</div>` : '';
         const isSelected = selectedActionContacts.some(c => c.id === group._id); if (isSelected) extraGroupClass += ' selected-for-action';
         const div = document.createElement('div'); div.className = `user-item ${extraGroupClass}`; div.id = `contact-${group._id}`; const photo = group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'; 
         const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = group.name.replace(/'/g, "\\'"); 
@@ -588,11 +653,11 @@ window.renderContactsList = function(groups, users) {
         setupLongPress(clickArea, group._id, safeName, true, photo, 'Grupo'); div.appendChild(clickArea); list.appendChild(div); 
     }); 
 
-    visibleUsers.sort((a, b) => (unreadCounts[b._id] || 0) - (unreadCounts[a._id] || 0)); 
+    visibleUsers.sort((a, b) => (safeUnreadCounts[b._id] || 0) - (safeUnreadCounts[a._id] || 0)); 
     visibleUsers.forEach(user => { 
-        let count = unreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
-        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
-        let sectorLabel = ''; currentSectors.forEach(sec => { if(sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); 
+        let count = safeUnreadCounts[user._id] || 0; let isUnreadU = count > 0 && currentChatId !== user._id; let extraClass = isUnreadU ? 'has-unread' : ''; let badgeHtml = isUnreadU ? `<div class="unread-count-badge">${count}</div>` : '';
+        const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email; const statusClass = typeof onlineUsersList !== 'undefined' && onlineUsersList.includes(user._id) ? 'status-online' : 'status-offline'; 
+        let sectorLabel = ''; if (typeof currentSectors !== 'undefined' && Array.isArray(currentSectors)) { currentSectors.forEach(sec => { if(sec.members && sec.members.includes(user._id)) { sectorLabel = `<span class="sector-badge">${sec.name}</span>`; extraClass += ' sectored'; } }); }
         let vipHtml = (user.unlockedItems && user.unlockedItems.includes('badge_vip')) ? '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:16px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>' : '';
         const isSelected = selectedActionContacts.some(c => c.id === user._id); if (isSelected) extraClass += ' selected-for-action';
         const div = document.createElement('div'); div.className = `user-item ${extraClass}`; div.id = `contact-${user._id}`; const clickArea = document.createElement('div'); clickArea.style.display = 'flex'; clickArea.style.width = '100%'; clickArea.style.height = '100%'; clickArea.style.alignItems = 'center'; const safeName = name.replace(/'/g, "\\'"); 
@@ -645,7 +710,10 @@ function displayMessage(msg) {
     else { msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; }
     
     contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
-    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; const tickColor = msg.status === 'read' ? '#38bdf8' : 'rgba(255,255,255,0.6)'; const statusHtml = isMe ? `<span class="material-icons-round" style="font-size:15px; margin-left:3px; color:${tickColor};">done_all</span>` : '';
+    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
+    const isRead = msg.status === 'read';
+    const tickColor = isRead ? '#06B6D4' : 'rgba(255,255,255,0.6)';
+    const statusHtml = isMe ? `<span id="tick-${msg._id}" class="material-icons-round msg-tick-icon" style="font-size:15px; margin-left:3px; color:${tickColor}; transition: color 0.4s ease;">done_all</span>` : '';
     div.innerHTML = ` ${contentHtml} <div class="msg-info" style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;"> <span class="msg-time">${timeString}</span>${statusHtml} </div> ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''} `; 
     
     box.appendChild(div); box.scrollTop = box.scrollHeight; 
@@ -782,6 +850,9 @@ window.uploadNewGroupPhoto = async function(input) { const file = input.files[0]
 window.viewContactProfile = function(id, name, photo, isGroup) { const tempId = currentChatId; const tempIsGroup = isGroupChat; currentChatId = id; isGroupChat = isGroup; window.showCurrentChatProfile(); setTimeout(() => { currentChatId = tempId; isGroupChat = tempIsGroup; }, 500); };
 window.showCurrentChatProfile = async function() { if (!currentChatId) return; if (isGroupChat) { try { const res = await fetch(`/group/${currentChatId}`); const group = await res.json(); if (!group) return alert("Grupo não encontrado."); let modal = document.getElementById('dynamic-group-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-group-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } const isAdmin = group.admin === myId; let members = group.members || []; members.sort((a, b) => { if (a._id === group.admin) return -1; if (b._id === group.admin) return 1; return 0; }); let membersHtml = members.map(m => { const isGroupAdmin = m._id === group.admin; const photo = m.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = m._id === myId ? 'Você' : (m.displayName || m.email.split('@')[0]); return ` <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="display:flex; align-items:center; gap:12px;"> <img src="${photo}" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid ${isGroupAdmin ? 'var(--brand-primary)' : 'transparent'};"> <span style="color:var(--text-color); font-weight:700; font-size:15px;">${name}</span> </div> ${isGroupAdmin ? `<span style="font-size:10px; background:var(--brand-primary); color:white; padding:4px 8px; border-radius:12px; font-weight:900; letter-spacing: 0.5px;">DONO</span>` : ''} </div> `; }).join(''); const descText = group.description || 'Nenhuma descrição adicionada ao grupo.'; const descHtml = isAdmin ? `<div style="display:flex; justify-content:center; align-items:flex-start; gap:8px; margin-bottom: 25px; padding: 10px; background: var(--input-bg); border-radius: 12px; border: 1px dashed var(--brand-primary);"> <p style="color:var(--secondary-text); font-size:13px; margin:0; max-width: 200px; word-wrap: break-word; line-height: 1.4;">${descText}</p> <span class="material-icons-round" style="color:var(--brand-primary); font-size:18px; cursor:pointer;" onclick="editGroupDescription('${group._id}', '${group.description || ''}')" title="Editar Descrição">edit</span> </div>` : `<p style="color:var(--secondary-text); font-size:13px; margin-bottom: 25px; max-width: 250px; word-wrap: break-word; margin-left:auto; margin-right:auto; line-height: 1.4;">"${descText}"</p>`; const addMemberBtnHtml = isAdmin ? ` <button onclick="openInviteToGroupModal('${group._id}')" style="background:rgba(59, 130, 246, 0.15); border:1px solid rgba(59, 130, 246, 0.3); color:var(--brand-primary); border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:4px; cursor:pointer; transition:0.2s;"> <span class="material-icons-round" style="font-size:14px;">person_add</span> ADICIONAR </button> ` : ''; modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 85vh; display: flex; flex-direction: column;"> <button onclick="document.getElementById('dynamic-group-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-group-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <div style="position:relative; width:120px; height:120px; margin: 0 auto 15px auto;"> <img src="${group.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png'}" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> ${isAdmin ? `<label for="edit-group-photo-input" style="position:absolute; bottom:0; right:0; background:var(--brand-primary); width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; cursor:pointer; border:3px solid var(--card-bg); transition: 0.2s;"><span class="material-icons-round" style="color:white; font-size:20px;">photo_camera</span></label><input type="file" id="edit-group-photo-input" accept="image/*" style="display:none;" onchange="uploadAndUpdateGroupPhoto('${group._id}', this)">` : ''} </div> <h2 style="margin-bottom:10px; font-weight:900; color: var(--text-color); font-size:22px;">${group.name}</h2> ${descHtml} <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"> <span style="font-weight:900; font-size:14px; color:var(--text-color); text-transform:uppercase;">Membros (${members.length})</span> ${addMemberBtnHtml} </div> <div style="background: var(--input-bg); border-radius:16px; padding:10px 15px; overflow-y:auto; flex:1; border: 1px solid var(--border-color, rgba(255,255,255,0.05)); text-align:left;"> ${membersHtml} </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch(e) { console.error(e); alert("Erro ao carregar dados do grupo."); } return; } try { const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const user = cachedUsers.find(u => u._id === currentChatId); if (!user) return alert("❌ Dados do perfil não encontrados no radar."); const photo = user.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; const name = user.displayName || user.email.split('@')[0]; const email = user.email || 'Não informado'; const phone = user.phone || 'Não informado'; const xp = user.xp || 0; const isVip = user.unlockedItems && user.unlockedItems.includes('badge_vip'); let modal = document.getElementById('dynamic-profile-modal'); if (!modal) { modal = document.createElement('div'); modal.id = 'dynamic-profile-modal'; modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; opacity:0; transition:0.3s ease; backdrop-filter: blur(5px);"; document.body.appendChild(modal); } modal.innerHTML = ` <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);"> <button onclick="document.getElementById('dynamic-profile-modal').style.opacity='0'; setTimeout(()=>document.getElementById('dynamic-profile-modal').style.display='none',300);" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button> <img id="dp-photo" src="${photo}" style="width:110px; height:110px; border-radius:50%; border:4px solid var(--brand-primary, #3B82F6); object-fit:cover; margin-bottom:15px; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);"> <h2 id="dp-name" style="margin-bottom:5px; font-weight:900; color: var(--text-color); font-size:22px;">${name}</h2> <div id="dp-vip" style="color:#F59E0B; font-weight:800; font-size:13px; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase;">${isVip ? '<span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">workspace_premium</span> Usuário VIP' : ''}</div> <div style="background: var(--input-bg); padding:20px; border-radius:16px; text-align:left; font-size:14px; border: 1px solid var(--border-color, rgba(255,255,255,0.05));"> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">email</span> <span id="dp-email" style="color: var(--text-color); font-weight:600; word-break: break-all;">${email}</span></div> <div style="margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--secondary-text); font-size:20px;">phone</span> <span id="dp-phone" style="color: var(--text-color); font-weight:600;">${phone}</span></div> <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons-round" style="color: var(--brand-primary, #3B82F6); font-size:20px;">bolt</span> <b style="color: var(--text-color); font-weight:900; font-size:16px;">XP: <span id="dp-xp" style="color: var(--brand-primary, #3B82F6);">${xp}</span></b></div> </div> </div> `; const dropMenu = document.getElementById('chat-options-menu') || document.getElementById('chat-dropdown-menu'); if (dropMenu) dropMenu.classList.add('hidden'); modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); } catch (e) { console.error("Falha ao abrir perfil: ", e); alert("Erro ao carregar os dados do perfil."); } };
 
+window.reportContact = function(id) { if(!id) return; if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) { alert("Contato denunciado com sucesso."); } };
+window.blockContact = function(id) { if(!id) return; if(confirm("Tem certeza que deseja bloquear este contato?")) { alert("Contato bloqueado."); const safeHiddenChats = typeof hiddenChats !== 'undefined' ? hiddenChats : []; if(!safeHiddenChats.includes(id)) safeHiddenChats.push(id); localStorage.setItem('hiddenChats', JSON.stringify(safeHiddenChats)); backToMain(); loadContacts(); } };
+
 // ==============================================================
 // 📸 SISTEMA DE CÂMERA IMERSIVA (PREVIEW E LEGENDA)
 // ==============================================================
@@ -791,39 +862,27 @@ window.openImmersiveCamera = function(input) {
     const file = input.files[0];
     if (!file) return;
 
-    // Proteção do Servidor: Limite de 15MB
     if (file.size > 15 * 1024 * 1024) {
         alert("⚠️ Imagem muito grande! O limite de segurança é 15MB.");
-        input.value = '';
-        return;
+        input.value = ''; return;
     }
 
     window.currentImmersiveFile = file;
-    
-    // Mostra a foto no ecrã inteiro
     const previewImg = document.getElementById('immersive-camera-preview');
-    previewImg.src = URL.createObjectURL(file);
+    if(previewImg) previewImg.src = URL.createObjectURL(file);
+    const capInput = document.getElementById('immersive-camera-caption');
+    if(capInput) capInput.value = '';
     
-    // Limpa a legenda anterior (se houver)
-    document.getElementById('immersive-camera-caption').value = '';
-    
-    // Abre a cortina do Modal
     const modal = document.getElementById('immersive-camera-modal');
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    
-    // Limpa o input para permitir escolher a mesma foto se cancelar
+    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
     input.value = '';
 };
 
 window.closeImmersiveCamera = function() {
     const modal = document.getElementById('immersive-camera-modal');
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
-    
-    // Liberta a memória do telemóvel
+    if(modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
     const previewImg = document.getElementById('immersive-camera-preview');
-    previewImg.src = '';
+    if(previewImg) previewImg.src = ''; 
     window.currentImmersiveFile = null;
 };
 
@@ -831,33 +890,21 @@ window.sendImmersivePhoto = async function() {
     if (!window.currentImmersiveFile || !currentChatId) return;
 
     const file = window.currentImmersiveFile;
-    // Pega o texto da legenda. Se estiver vazio, envia apenas o ícone.
-    const caption = document.getElementById('immersive-camera-caption').value.trim() || '📷 Imagem';
-    
-    // Feedback visual de carregamento no botão
+    const capInput = document.getElementById('immersive-camera-caption');
+    const caption = (capInput ? capInput.value.trim() : '') || '📷 Imagem';
     const btn = document.getElementById('btn-send-immersive');
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s linear infinite; color: white;">sync</span>';
-    btn.disabled = true;
+    let originalHtml = '';
+    if(btn) { originalHtml = btn.innerHTML; btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s linear infinite; color: white;">sync</span>'; btn.disabled = true; }
 
-    // 1. Cria uma "Bolha Fantasma" instantânea para o utilizador não ficar à espera
     const tempId = 'temp-' + Date.now(); 
     const localUrl = URL.createObjectURL(file); 
     const tempMsg = { 
-        _id: tempId, 
-        sender: myId, 
-        receiver: isGroupChat ? null : currentChatId, 
-        groupId: isGroupChat ? currentChatId : null, 
-        content: caption, 
-        fileUrl: localUrl, 
-        fileType: 'image', 
-        status: 'sent', 
-        timestamp: new Date() 
+        _id: tempId, sender: myId, receiver: isGroupChat ? null : currentChatId, 
+        groupId: isGroupChat ? currentChatId : null, content: caption, 
+        fileUrl: localUrl, fileType: 'image', status: 'sent', timestamp: new Date() 
     }; 
-    
     displayMessage(tempMsg); 
     
-    // 2. Adiciona a rodinha a girar na bolha de chat
     const tempDiv = document.getElementById(`msg-${tempId}`); 
     if(tempDiv) { 
         tempDiv.classList.add('uploading-msg'); 
@@ -865,41 +912,24 @@ window.sendImmersivePhoto = async function() {
         info.innerHTML += '<span class="material-icons-round" style="animation: spin 1s linear infinite; font-size:14px; vertical-align:middle; margin-left:5px;">sync</span>'; 
     } 
 
-    // 3. Envia silenciosamente para o Cloudinary (Nuvem)
-    const formData = new FormData(); 
-    formData.append('file', file); 
+    const formData = new FormData(); formData.append('file', file); 
 
     try { 
         const res = await fetch('/upload', { method: 'POST', body: formData }); 
         const data = await res.json();
-        
         if (!res.ok) throw new Error(data.error || 'Falha na Nuvem'); 
-        
-        // Remove a bolha fantasma
         if(tempDiv) tempDiv.remove(); 
         
-        // 4. Dispara a mensagem oficial pelo Socket para o amigo receber!
         const msgData = { 
-            senderId: myId, 
-            receiverId: isGroupChat ? null : currentChatId, 
-            groupId: isGroupChat ? currentChatId : null, 
-            content: caption, // Envia o texto da legenda junto com a foto
-            fileUrl: data.url, 
-            fileType: 'image' 
+            senderId: myId, receiverId: isGroupChat ? null : currentChatId, 
+            groupId: isGroupChat ? currentChatId : null, content: caption, 
+            fileUrl: data.url, fileType: 'image' 
         }; 
         socket.emit('private_message', msgData); 
-        
-        emitStopTypingStatus(); 
-        closeImmersiveCamera(); // Fecha o modal e volta ao chat
-        
+        emitStopTypingStatus(); window.closeImmersiveCamera(); 
     } catch (e) { 
-        if(tempDiv) tempDiv.remove(); 
-        alert("❌ Erro ao enviar a foto: " + e.message); 
+        if(tempDiv) tempDiv.remove(); alert("❌ Erro ao enviar a foto: " + e.message); 
     } finally { 
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
+        if(btn) { btn.innerHTML = originalHtml; btn.disabled = false; }
     } 
 };
-
-window.reportContact = function(id) { if(!id) return; if(confirm("Deseja enviar uma denúncia sobre este contato para a administração?")) { alert("Contato denunciado com sucesso."); } };
-window.blockContact = function(id) { if(!id) return; if(confirm("Tem certeza que deseja bloquear este contato?")) { alert("Contato bloqueado."); if(!hiddenChats.includes(id)) hiddenChats.push(id); localStorage.setItem('hiddenChats', JSON.stringify(hiddenChats)); backToMain(); loadContacts(); } };
