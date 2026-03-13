@@ -891,8 +891,9 @@ window.closeCreateStatus = function() {
 };
 
 window.changeStatusColor = function(forceIndex = null) { 
-    currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusColors.length; 
-    document.getElementById('status-preview-area').style.background = statusColors[currentStatusColorIndex]; 
+    // CORREÇÃO: Lê a variável com o nome correto (statusBgColors)
+    currentStatusColorIndex = forceIndex !== null ? forceIndex : (currentStatusColorIndex + 1) % statusBgColors.length; 
+    document.getElementById('status-preview-area').style.background = statusBgColors[currentStatusColorIndex]; 
 };
 
 window.previewStatusImage = function(event) { 

@@ -223,8 +223,26 @@ app.delete('/api/status/:id', async (req, res) => {
     } 
 });
 
-app.post('/api/status/view', async (req, res) => { try { const { statusId, viewerId } = req.body; const status = await StatusMsg.findById(statusId); if (status && status.senderId.toString() !== viewerId) { const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId); if (!alreadyViewed) { if(!status.views) status.views = []; status.views.push({ viewerId: viewerId, viewedAt: new Date() }); await status.save(); 
-// ROTA PARA APAGAR STATUS
+app.post('/api/status/view', async (req, res) => { 
+    try { 
+        const { statusId, viewerId } = req.body; 
+        const status = await StatusMsg.findById(statusId); 
+        if (status && status.senderId.toString() !== viewerId) { 
+            const alreadyViewed = status.views && status.views.some(v => v.viewerId && v.viewerId.toString() === viewerId); 
+            if (!alreadyViewed) { 
+                if(!status.views) status.views = []; 
+                status.views.push({ viewerId: viewerId, viewedAt: new Date() }); 
+                await status.save(); 
+                io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId }); 
+            } 
+        } 
+        res.json({ success: true }); 
+    } catch(e) { 
+        res.status(500).json({ error: 'Erro' }); 
+    } 
+});
+
+// 🔥 ROTA CORRIGIDA PARA APAGAR STATUS
 app.delete('/api/status/:id', async (req, res) => { 
     try { 
         await StatusMsg.findByIdAndDelete(req.params.id); 
@@ -233,6 +251,7 @@ app.delete('/api/status/:id', async (req, res) => {
         res.status(500).json({ error: 'Erro ao apagar status' }); 
     } 
 });
+
 io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId }); } } res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
