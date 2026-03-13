@@ -107,9 +107,6 @@ app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await M
 app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
-// ==========================================
-// 🔥 ROTAS DE EDIÇÃO E EXCLUSÃO PARA TODOS (ESTILO WHATSAPP)
-// ==========================================
 app.put('/message/:msgId', async (req, res) => {
     try {
         const { newContent } = req.body;
@@ -119,7 +116,6 @@ app.put('/message/:msgId', async (req, res) => {
         msg.content = newContent;
         await msg.save();
 
-        // Emite a atualização via Sockets para a sala correta
         if (msg.groupId) io.to(msg.groupId.toString()).emit('message_edited', { msgId: msg._id, newContent });
         else {
             io.to(msg.sender.toString()).emit('message_edited', { msgId: msg._id, newContent });
@@ -134,7 +130,6 @@ app.delete('/message/:msgId', async (req, res) => {
         const msg = await Message.findById(req.params.msgId);
         if (!msg) return res.status(404).json({ error: 'Not found' });
         
-        // Em vez de deletar fisicamente, mudamos para texto de mensagem apagada
         msg.content = '🚫 Esta mensagem foi apagada';
         msg.fileUrl = null;
         msg.fileType = 'text';
@@ -149,9 +144,6 @@ app.delete('/message/:msgId', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Erro ao apagar mensagem' }); }
 });
 
-// ==========================================
-// 🚀 ROTA DE UPLOAD
-// ==========================================
 app.post('/upload', (req, res) => { 
     upload.single('file')(req, res, async function (err) { 
         if (err instanceof multer.MulterError) { return res.status(400).json({ error: 'Arquivo excede 15MB.' }); } else if (err) { return res.status(500).json({ error: 'Erro ao processar arquivo.' }); } 
@@ -174,20 +166,15 @@ app.delete('/delete-account/:userId', async (req, res) => { try { const uId = re
 app.delete('/messages/:myId/:otherId', async (req, res) => { try { await Message.deleteMany({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }); res.json({ msg: 'ok' }); } catch (e) { res.status(500).json({error:'Erro'}); } });
 
 app.get('/api/statuses', async (req, res) => { try { const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000); const statuses = await StatusMsg.find({ createdAt: { $gte: yesterday } }).populate('views.viewerId', 'displayName photoUrl').sort({ createdAt: 1 }); res.json(statuses); } catch(e) { res.status(500).json([]); } });
-// ==========================================
-// 📸 ROTA DE PUBLICAÇÃO DE STATUS (BLINDADA)
-// ==========================================
+
 app.post('/api/status', async (req, res) => { 
     try { 
         const newStatus = new StatusMsg(req.body); 
         await newStatus.save(); 
-        
-        // 1. Atualiza quem está com o app aberto instantaneamente (Zero Delay)
         io.emit('new_status_published', newStatus); 
         
-        // 2. Tenta enviar Push Notification silenciosamente (Escudo Anti-Crash)
         try {
-            const webpush = require('web-push'); // Importa a ferramenta aqui!
+            const webpush = require('web-push'); 
             if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
                 webpush.setVapidDetails(
                     process.env.VAPID_SUBJECT || 'mailto:admin@chatptt.com',
@@ -205,7 +192,7 @@ app.post('/api/status', async (req, res) => {
                                 title: 'Novo Status', 
                                 body: `${senderUser.displayName}: ${previewText}`, 
                                 icon: senderUser.photoUrl || '/favicon.png',
-                                tag: `status_update_${newStatus.senderId}`, // Agrupa
+                                tag: `status_update_${newStatus.senderId}`, 
                                 url: '/'
                             });
                             user.pushSubscriptions.forEach(sub => webpush.sendNotification(sub, payload).catch(e=>{}));
@@ -217,10 +204,8 @@ app.post('/api/status', async (req, res) => {
             console.log("Notificação Push de status ignorada:", pushError.message);
         }
         
-        // Responde "Sucesso" ao telemóvel para fechar a janela imediatamente!
         res.json({ success: true }); 
     } catch(e) { 
-        console.error("Erro ao postar status:", e);
         res.status(500).json({ error: 'Erro ao salvar status na base de dados' }); 
     } 
 });
@@ -243,7 +228,31 @@ app.delete('/notes/:id', async (req, res) => { try { await Note.findByIdAndDelet
 app.post('/schedule-message', async (req, res) => { try { const newSchedule = new ScheduledMsg(req.body); await newSchedule.save(); res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/scheduled-messages/:userId', async (req, res) => { try { const msgs = await ScheduledMsg.find({ senderId: req.params.userId, status: 'pending' }).sort('scheduledTime'); res.json(msgs); } catch(e) { res.status(500).json([]); } });
 app.delete('/schedule-message/:id', async (req, res) => { try { await ScheduledMsg.findByIdAndDelete(req.params.id); res.json({success: true}); } catch(e) { res.status(500).json({error: 'Erro'}); } });
-app.post('/subscribe', async (req, res) => { const { userId, subscription } = req.body; try { const user = await User.findById(userId); if (user) { user.pushSubscriptions = user.pushSubscriptions || []; const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); if (!exists) { user.pushSubscriptions.push(subscription); await user.save(); } res.status(201).json({}); } else { res.status(404).json({error: 'User not found'}); } } catch(e) { res.status(500).json({error: 'Error'}); } });
+
+// ==========================================
+// 🔑 ROTA VAPID (NOVA - PARA O TELEMÓVEL ASSINAR)
+// ==========================================
+app.get('/vapid-public-key', (req, res) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+app.post('/subscribe', async (req, res) => { 
+    const { userId, subscription } = req.body; 
+    try { 
+        const user = await User.findById(userId); 
+        if (user) { 
+            user.pushSubscriptions = user.pushSubscriptions || []; 
+            const exists = user.pushSubscriptions.find(sub => sub.endpoint === subscription.endpoint); 
+            if (!exists) { 
+                user.pushSubscriptions.push(subscription); 
+                await user.save(); 
+            } 
+            res.status(201).json({}); 
+        } else { 
+            res.status(404).json({error: 'User not found'}); 
+        } 
+    } catch(e) { res.status(500).json({error: 'Error'}); } 
+});
 
 app.post('/communities', async (req, res) => { try { const { name, description, ownerId, isPublic, category } = req.body; const comm = new Community({ name, description, ownerId, isPublic, category }); await comm.save(); const ownerRole = new CommunityRole({ communityId: comm._id, name: 'Fundador', color: '#F59E0B', permissions: { canManageChannels: true, canDeleteMessages: true, canKickUsers: true } }); await ownerRole.save(); const member = new CommunityMember({ communityId: comm._id, userId: ownerId, roleId: ownerRole._id }); await member.save(); await new CommunityChannel({ communityId: comm._id, name: 'avisos', type: 'announcement', order: 1 }).save(); await new CommunityChannel({ communityId: comm._id, name: 'chat-geral', type: 'text', order: 2 }).save(); res.json({ success: true, community: comm }); } catch (error) { res.status(500).json({ error: 'Erro' }); } });
 app.get('/communities-explore', async (req, res) => { try { const comms = await Community.find({ isPublic: true }).sort('-createdAt').limit(20); res.json(comms); } catch (e) { res.status(500).json([]); } });

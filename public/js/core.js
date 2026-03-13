@@ -31,18 +31,74 @@ var audioCtx = null;
 var deferredPrompt;
 
 // ==============================================================
-// 📱 MOTOR PWA E PERMISSÕES
+// 📱 MOTOR PWA E PERMISSÕES (Com VAPID Dinâmico)
 // ==============================================================
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if(typeof showElement === 'function') showElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden'); });
 async function installPWA() { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); } }
 window.addEventListener('appinstalled', () => { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); if(typeof gainXP === 'function') gainXP(200, false); if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 1500); });
 if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) { const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); }
-function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
-async function registerServiceWorkerAndSubscribe() { if ('serviceWorker' in navigator && 'PushManager' in window && myId) { try { const registration = await navigator.serviceWorker.register('/sw.js'); const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY'; const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicVapidKey) }); await fetch('/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, subscription }) }); } catch (error) {} } }
-function checkAndShowPermissions() { if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { if(typeof hideAllTabs === 'function') hideAllTabs(); if(typeof hideElement === 'function') { hideElement('auth-screen'); hideElement('welcome-screen'); } if(typeof showElement === 'function') showElement('permissions-screen'); } else { if(typeof showMainScreen === 'function') showMainScreen(); } }
+
+function urlBase64ToUint8Array(base64String) { 
+    const padding = '='.repeat((4 - base64String.length % 4) % 4); 
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/'); 
+    const rawData = window.atob(base64); 
+    const outputArray = new Uint8Array(rawData.length); 
+    for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } 
+    return outputArray; 
+}
+
+async function registerServiceWorkerAndSubscribe() { 
+    if ('serviceWorker' in navigator && 'PushManager' in window && myId) { 
+        try { 
+            const registration = await navigator.serviceWorker.register('/sw.js'); 
+            
+            // Busca a chave pública dinamicamente do servidor
+            let publicVapidKey = '';
+            try {
+                const res = await fetch('/vapid-public-key');
+                if (res.ok) {
+                    const data = await res.json();
+                    publicVapidKey = data.publicKey;
+                }
+            } catch (e) { console.warn("Servidor não forneceu a chave VAPID."); }
+
+            // Fallback para a chave que você já tinha caso a rota falhe
+            if (!publicVapidKey) {
+                publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY';
+            }
+
+            const subscription = await registration.pushManager.subscribe({ 
+                userVisibleOnly: true, 
+                applicationServerKey: urlBase64ToUint8Array(publicVapidKey) 
+            }); 
+            
+            await fetch('/subscribe', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ userId: myId, subscription }) 
+            }); 
+            
+            console.log("✅ Inscrição Push ativada com sucesso!");
+        } catch (error) {
+            console.error("❌ Falha na inscrição Push:", error);
+        } 
+    } 
+}
+
+function checkAndShowPermissions() { 
+    if ("Notification" in window && Notification.permission !== "granted" && localStorage.getItem('permissionsAsked') !== 'true') { 
+        if(typeof hideAllTabs === 'function') hideAllTabs(); 
+        if(typeof hideElement === 'function') { hideElement('auth-screen'); hideElement('welcome-screen'); } 
+        if(typeof showElement === 'function') showElement('permissions-screen'); 
+    } else { 
+        if(typeof showMainScreen === 'function') showMainScreen(); 
+    } 
+}
 
 function grantAppPermissions() { 
     localStorage.setItem('permissionsAsked', 'true'); 
+    
+    // Truque para desbloquear o áudio no iOS/Android
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
     if(audioCtx.state === 'suspended') audioCtx.resume(); 
     const osc = audioCtx.createOscillator(); 
@@ -52,11 +108,17 @@ function grantAppPermissions() {
     
     if ("Notification" in window) { 
         Notification.requestPermission().then(permission => { 
-            if (permission === 'granted') registerServiceWorkerAndSubscribe(); 
+            if (permission === 'granted') {
+                registerServiceWorkerAndSubscribe(); 
+                alert("🔔 Notificações ativadas! O seu telemóvel vai vibrar com novas mensagens.");
+            } else {
+                alert("⚠️ Permissão negada. Pode ativar mais tarde nas configurações do seu telemóvel.");
+            }
             if(typeof hideElement === 'function') hideElement('permissions-screen'); 
             if(typeof showMainScreen === 'function') showMainScreen(); 
         }); 
     } else { 
+        alert("⚠️ O seu dispositivo não suporta notificações nativas.");
         if(typeof hideElement === 'function') hideElement('permissions-screen'); 
         if(typeof showMainScreen === 'function') showMainScreen(); 
     } 
@@ -129,7 +191,6 @@ function initApp() {
         
         if (typeof showMainScreen === 'function') showMainScreen();
 
-        // 🔥 REMOVE A "TRAVA" DO PRÉ-ARRANQUE PARA AS TELAS NÃO SOBREPOREM MAIS!
         const fastBoot = document.getElementById('fast-boot-style');
         if (fastBoot) fastBoot.remove();
 
