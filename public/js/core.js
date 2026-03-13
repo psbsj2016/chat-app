@@ -62,11 +62,19 @@ async function registerServiceWorkerAndSubscribe() {
                 }
             } catch (e) { console.warn("Servidor não forneceu a chave VAPID."); }
 
-            // Fallback para a chave que você já tinha caso a rota falhe
+            // Fallback
             if (!publicVapidKey) {
                 publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY';
             }
 
+            // 💡 A VACINA: Remove a inscrição velha (se existir) antes de colocar a nova!
+            const existingSub = await registration.pushManager.getSubscription();
+            if (existingSub) {
+                await existingSub.unsubscribe();
+                console.log("♻️ Chave Push antiga removida.");
+            }
+
+            // Cria a inscrição nova e limpa
             const subscription = await registration.pushManager.subscribe({ 
                 userVisibleOnly: true, 
                 applicationServerKey: urlBase64ToUint8Array(publicVapidKey) 
@@ -225,3 +233,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
     if (typeof loadContacts === 'function') loadContacts();
 });
+

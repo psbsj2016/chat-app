@@ -933,3 +933,134 @@ window.sendImmersivePhoto = async function() {
         if(btn) { btn.innerHTML = originalHtml; btn.disabled = false; }
     } 
 };
+
+// ==============================================================
+// 🛠️ FIX: EDIÇÃO E ADIÇÃO DE MEMBROS EM GRUPOS
+// ==============================================================
+
+// 1. Função para Editar a Descrição do Grupo
+window.editGroupDescription = async function(groupId, currentDesc) {
+    const safeDesc = (currentDesc === 'undefined' || currentDesc === 'null') ? '' : currentDesc;
+    const newDesc = prompt("Digite a nova descrição do grupo:", safeDesc);
+    
+    if (newDesc !== null && newDesc.trim() !== safeDesc) {
+        try {
+            const res = await fetch(`/groups/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: newDesc.trim() })
+            });
+            if (res.ok) {
+                // Atualiza o painel aberto para mostrar o novo texto instantaneamente
+                window.showCurrentChatProfile(); 
+                if (socket) socket.emit('group_updated'); // Pede para os outros atualizarem
+            } else {
+                alert("Erro ao atualizar descrição no servidor.");
+            }
+        } catch (e) {
+            alert("Erro de conexão.");
+        }
+    }
+};
+
+// 2. Função para Abrir o Modal Dinâmico de Adicionar Membros
+window.openInviteToGroupModal = async function(groupId) {
+    // Se já houver um modal aberto, remove para não duplicar
+    let existing = document.getElementById('dynamic-invite-modal');
+    if (existing) existing.remove();
+
+    // Cria o Modal visual na hora (estilo Glassmorphism)
+    const modal = document.createElement('div');
+    modal.id = 'dynamic-invite-modal';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = "z-index: 100000; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px);";
+    
+    modal.innerHTML = `
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius:24px; padding:25px; width:90%; max-width:400px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7); max-height: 80vh; display: flex; flex-direction: column;">
+            <button onclick="document.getElementById('dynamic-invite-modal').remove()" style="position:absolute; top:15px; right:20px; background:transparent; border:none; color: var(--secondary-text); font-size:28px; cursor:pointer; transition:0.2s;">&times;</button>
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(59, 130, 246, 0.1); display: flex; justify-content: center; align-items: center; margin: 0 auto 10px auto;">
+                <span class="material-icons-round" style="font-size:28px; color:var(--brand-primary);">person_add</span>
+            </div>
+            <h2 style="margin-bottom:15px; font-weight:900; color: var(--text-color); font-size:20px;">Adicionar Recrutas</h2>
+            <div id="invite-candidates-list" style="flex: 1; overflow-y: auto; text-align: left; margin-bottom: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                <div style="text-align:center; padding:20px; color:var(--brand-primary);">
+                    <span class="material-icons-round" style="animation: spin 1s infinite;">sync</span><br>Buscando contatos...
+                </div>
+            </div>
+            <button id="btn-confirm-invite" class="chic-btn" style="background: var(--brand-primary); width: 100%; margin: 0;">Adicionar Selecionados</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    try {
+        // Puxa os dados do grupo (para saber quem já está lá)
+        const groupRes = await fetch(`/group/${groupId}`);
+        const groupData = await groupRes.json();
+        const currentMemberIds = groupData.members.map(m => m._id);
+
+        // Puxa a sua lista de contatos globais
+        const usersRes = await fetch(`/users/${myId}`);
+        const allUsers = await usersRes.json();
+
+        // Filtra para exibir apenas quem AINDA NÃO É membro
+        const candidates = allUsers.filter(u => !currentMemberIds.includes(u._id));
+
+        const listEl = document.getElementById('invite-candidates-list');
+        listEl.innerHTML = '';
+
+        if (candidates.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);">Todos os seus contatos já estão neste grupo!</div>';
+            document.getElementById('btn-confirm-invite').style.display = 'none';
+            return;
+        }
+
+        // Renderiza cada candidato com uma Checkbox elegante
+        candidates.forEach(u => {
+            const name = u.displayName || u.email.split('@')[0];
+            const photo = u.photoUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+            listEl.innerHTML += `
+                <label style="display:flex; align-items:center; gap:12px; padding:10px; background:var(--input-bg); border-radius:12px; margin-bottom:8px; cursor:pointer; transition: background 0.2s;">
+                    <input type="checkbox" value="${u._id}" class="invite-candidate-checkbox" style="width:20px; height:20px; accent-color:var(--brand-primary);">
+                    <img src="${photo}" style="width:36px; height:36px; border-radius:50%; object-fit:cover;">
+                    <span style="font-weight:600; color:var(--text-color); font-size: 14px;">${name}</span>
+                </label>
+            `;
+        });
+
+        // Ação ao clicar em "Adicionar Selecionados"
+        document.getElementById('btn-confirm-invite').onclick = async () => {
+            const checkboxes = document.querySelectorAll('.invite-candidate-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) return alert("Selecione pelo menos um contato para adicionar.");
+            
+            const btn = document.getElementById('btn-confirm-invite');
+            btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Adicionando...';
+            btn.disabled = true;
+            
+            try {
+                const addRes = await fetch(`/groups/${groupId}/add-members`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userIds: selectedIds })
+                });
+                
+                if(addRes.ok) {
+                    document.getElementById('dynamic-invite-modal').remove(); // Fecha pop-up
+                    window.showCurrentChatProfile(); // Atualiza a lista de membros no Perfil do Grupo!
+                    if (socket) socket.emit('group_updated'); // Alerta os restantes participantes
+                    alert("✅ Novos membros adicionados com sucesso!");
+                } else {
+                    throw new Error("Falha ao salvar");
+                }
+            } catch(e) {
+                alert("Erro ao adicionar membros.");
+                btn.innerText = 'Adicionar Selecionados';
+                btn.disabled = false;
+            }
+        };
+
+    } catch(e) {
+        document.getElementById('invite-candidates-list').innerHTML = '<div style="color:#EF4444; text-align:center;">Erro ao carregar contatos.</div>';
+    }
+};
