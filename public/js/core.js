@@ -340,3 +340,71 @@ window.addEventListener('offline', updateNetworkStatus);
 document.addEventListener('DOMContentLoaded', () => {
     if (!navigator.onLine) updateNetworkStatus();
 });
+
+// ==============================================================
+// 🔗 MOTOR DE PARTILHA NATIVA (WEB SHARE & SHARE TARGET)
+// ==============================================================
+
+// 1. Partilhar o App com o mundo (Outbound)
+window.shareApp = async function() {
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'ChatPTT SuperApp',
+                text: '🚀 Venha testar o ChatPTT, o nosso novo SuperApp com IA, Jogos e WebRTC P2P!',
+                url: window.location.origin
+            });
+        } catch (err) { console.log('Partilha cancelada pelo utilizador.'); }
+    } else {
+        navigator.clipboard.writeText(window.location.origin);
+        alert("✅ Link copiado para a área de transferência! Envie para os seus amigos.");
+    }
+    if (typeof toggleDrawer === 'function') toggleDrawer();
+};
+
+// 2. Receber partilhas de outras Apps do telemóvel (Inbound)
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    
+    // O manifest.json envia os dados via GET
+    if (params.get('text') || params.get('url')) {
+        const sharedText = params.get('text') || '';
+        const sharedUrl = params.get('url') || '';
+        const fullShare = `${sharedText} ${sharedUrl}`.trim();
+        
+        if (fullShare) {
+            // Guarda na memória temporária do telemóvel
+            localStorage.setItem('pending_share', fullShare);
+            
+            // Limpa o URL no navegador para não colar de novo se o utilizador atualizar a página
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            setTimeout(() => {
+                alert("🔗 Link recebido do seu telemóvel!\n\nAbra qualquer conversa e o link será colado automaticamente na caixa de texto.");
+            }, 1000);
+        }
+    }
+});
+
+// 3. Colar a mensagem partilhada assim que um chat é aberto
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.user-item')) { // Deteta que o utilizador clicou numa conversa
+        setTimeout(() => {
+            const pending = localStorage.getItem('pending_share');
+            const input = document.getElementById('message-input');
+            
+            if (pending && input) {
+                // Cola o texto e limpa a memória
+                input.innerText = pending;
+                localStorage.removeItem('pending_share');
+                
+                // Coloca o cursor a piscar para ele enviar
+                input.focus(); 
+                
+                // Destaca o input visualmente por 1 segundo
+                input.parentElement.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.8)";
+                setTimeout(() => input.parentElement.style.boxShadow = "0 1px 2px rgba(0,0,0,0.1)", 1000);
+            }
+        }, 400); // Aguarda a janela do chat abrir
+    }
+});
