@@ -98,6 +98,16 @@
         
         .status-online { background-color: #10B981 !important; }
         .status-offline { background-color: #EF4444 !important; }
+        /* 📸 FIX: STATUS TRAY (Impede fotos gigantes e formata o carrossel) */
+        .status-tray { display: flex; gap: 15px; padding: 15px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+        .status-tray::-webkit-scrollbar { display: none; }
+        .status-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 72px; }
+        .status-create-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); border: 2px dashed var(--brand-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .status-ring { width: 64px; height: 64px; border-radius: 50%; padding: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .status-ring-unread { background: linear-gradient(45deg, #EC4899, #8B5CF6, #06B6D4); }
+        .status-ring-read { background: rgba(255,255,255,0.2); }
+        .status-ring img { width: 100% !important; height: 100% !important; border-radius: 50% !important; object-fit: cover !important; border: 2px solid var(--bg-color) !important; }
+        .status-name { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
     </style>
 </head>
 <body>
@@ -723,10 +733,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=7.0" defer></script>
-    <script src="/js/ui.js?v=7.0" defer></script>
-    <script src="/js/chat.js?v=7.0" defer></script>
-    <script src="/js/webrtc.js?v=7.0" defer></script>
-    <script src="/js/features.js?v=7.0" defer></script>
+    <script src="/js/core.js?v=7.1" defer></script>
+    <script src="/js/ui.js?v=7.1" defer></script>
+    <script src="/js/chat.js?v=7.1" defer></script>
+    <script src="/js/webrtc.js?v=7.1" defer></script>
+    <script src="/js/features.js?v=7.1" defer></script>
 </body>
 </html>

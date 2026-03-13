@@ -698,14 +698,15 @@ window.renderStatusTray = function() {
         const hasUnviewed = !isMe && group.items.some(item => !item.views || !item.views.some(v => v.viewerId._id === myId || v.viewerId === myId));
         
         const ringClass = hasUnviewed ? 'status-ring-unread' : 'status-ring-read';
+        const ringBg = hasUnviewed ? 'linear-gradient(45deg, #EC4899, #8B5CF6, #06B6D4)' : 'rgba(255,255,255,0.2)';
         const name = isMe ? 'Meu Status' : group.userName.split(' ')[0];
 
         tray.innerHTML += `
-            <div class="status-item" onclick="openStoryViewer(${index})">
-                <div class="status-ring ${ringClass}">
-                    <img src="${group.userPhoto}">
+            <div class="status-item" onclick="openStoryViewer(${index})" style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 72px;">
+                <div class="status-ring ${ringClass}" style="width: 64px; height: 64px; border-radius: 50%; padding: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: ${ringBg};">
+                    <img src="${group.userPhoto}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #0B0F19;">
                 </div>
-                <span class="status-name" style="${hasUnviewed ? 'font-weight: 800; color: white;' : ''}">${name}</span>
+                <span class="status-name" style="font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; ${hasUnviewed ? 'font-weight: 800; color: white;' : 'color: #94A3B8;'}">${name}</span>
             </div>
         `;
     });
