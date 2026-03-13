@@ -431,59 +431,74 @@
         </div>
     </div>
     
-    <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 11000; background: var(--bg-color);">
-        <div style="display: flex; flex-direction: column; height: 100%; width: 100%; position: relative;">
+    <div id="create-status-modal" class="modal-overlay hidden" style="z-index: 150000; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(20px); flex-direction: column; justify-content: space-between; padding: 0;">
+        
+        <div style="width: 100%; padding: max(15px, env(safe-area-inset-top)) 20px 15px 20px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); z-index: 10;">
+            <button class="icon-btn" onclick="closeCreateStatus()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <span class="material-icons-round" style="color: white; font-size: 24px;">close</span>
+            </button>
             
-            <div style="padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(15px); position: absolute; top: 0; width: 100%; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <button class="icon-btn" onclick="closeCreateStatus()" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="color: white; font-size: 20px;">close</span></button>
-                <div style="color: white; font-weight: 800; font-size: 16px; letter-spacing: 0.5px;">Novo Status</div>
-                <button class="chic-btn mini-btn" id="btn-publish-status" onclick="publishStatus()" style="margin: 0; background: var(--brand-primary); font-weight: 800; padding: 6px 16px; border-radius: 20px; font-size: 13px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">Publicar</button>
+            <div id="status-tools" style="display: flex; gap: 10px; background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1);">
+                <button class="icon-btn" onclick="cycleStatusFont()" title="Mudar Fonte" style="padding:5px;"><span class="material-icons-round" style="color: white; font-size: 22px;">text_format</span></button>
+                <button class="icon-btn" onclick="cycleStatusTextColor()" title="Cor do Texto" style="padding:5px;"><span class="material-icons-round" id="text-color-icon" style="color: #FFFFFF; font-size: 22px;">palette</span></button>
+                <button class="icon-btn" onclick="changeStatusColor()" title="Cor do Fundo" style="padding:5px;"><span class="material-icons-round" style="color: #38bdf8; font-size: 22px;">format_color_fill</span></button>
             </div>
+        </div>
+
+        <div id="status-preview-area" style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; position: relative; overflow: hidden; transition: background 0.4s ease;">
+            <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; z-index: 1;">
             
-            <div id="status-preview-area" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #8B5CF6; transition: background 0.3s; position: relative; overflow: hidden; padding-top: 60px; padding-bottom: 80px;">
-                <textarea id="status-text-input" placeholder="O que está a pensar?" style="background: transparent; border: none; color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; height: 50%; resize: none; outline: none; z-index: 2; position: relative; font-family: 'Inter', sans-serif; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></textarea>
-                
-                <img id="status-image-preview" class="hidden" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; background: #000; position: absolute; top: 0; left: 0; z-index: 1;">
-                
-                <div id="status-caption-container" class="hidden" style="position: absolute; bottom: 100px; width: 90%; z-index: 3;">
-                    <input type="text" id="status-caption-input" placeholder="Adicionar legenda..." style="width: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 15px 20px; border-radius: 30px; color: white; font-size: 15px; font-weight: 500; outline: none; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-                </div>
-            </div>
+            <textarea id="status-text-input" placeholder="Digite seu Status..." style="background: transparent; border: none; color: white; font-size: 36px; font-weight: 800; text-align: center; width: 90%; resize: none; outline: none; z-index: 2; text-shadow: 0 4px 15px rgba(0,0,0,0.3); font-family: 'Inter', sans-serif;" rows="5"></textarea>
             
-            <div style="padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 25, 0.95); position: absolute; bottom: 0; width: 100%; z-index: 10; border-top: 1px solid rgba(255,255,255,0.05); padding-bottom: calc(15px + env(safe-area-inset-bottom));">
-                <button class="icon-btn" id="btn-status-color" onclick="changeStatusColor()" style="background: rgba(255,255,255,0.1); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s;"><span class="material-icons-round" style="color: white; font-size: 24px;">palette</span></button>
-                <label for="status-image-upload" class="icon-btn" style="background: var(--brand-secondary); width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4); transition: transform 0.2s;">
-                    <span class="material-icons-round" style="color: white; font-size: 28px;">image</span>
-                </label>
-                <input type="file" id="status-image-upload" accept="image/*" class="hidden" onchange="previewStatusImage(event)">
-                <div style="width: 46px;"></div> 
+            <div id="status-caption-container" class="hidden" style="position: absolute; bottom: 20px; width: 90%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding: 10px; border-radius: 20px; z-index: 3; border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center;">
+                <input type="text" id="status-caption-input" placeholder="Adicionar legenda..." style="flex: 1; background: transparent; border: none; color: white; outline: none; font-size: 15px; padding: 0 10px;">
             </div>
+        </div>
+
+        <div style="width: 100%; padding: 15px 20px calc(15px + env(safe-area-inset-bottom)); background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(20px); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); z-index: 10;">
+            <input type="file" id="status-image-upload" accept="image/*" hidden onchange="previewStatusImage(event)">
+            <button class="icon-btn" onclick="document.getElementById('status-image-upload').click()" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+                <span class="material-icons-round" style="color: var(--brand-primary); font-size: 26px;">photo_camera</span>
+            </button>
+            
+            <button id="btn-publish-status" class="chic-btn" onclick="publishStatus()" style="margin: 0; background: linear-gradient(45deg, #4F46E5, #EC4899); box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4); padding: 12px 30px; font-weight: 800; letter-spacing: 1px; border-radius: 30px; display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons-round" style="font-size: 20px;">rocket_launch</span> PUBLICAR
+            </button>
         </div>
     </div>
     
-    <div id="story-viewer-modal" class="modal-overlay hidden" style="z-index: 12000; background: #000;">
-        <div style="position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 5px; z-index: 10;" id="story-progress-container"></div>
-        <div style="position: absolute; top: 30px; left: 15px; display: flex; align-items: center; gap: 10px; z-index: 10; width: 100%;">
-            <img id="story-author-photo" src="" style="width: 40px; height: 40px; border-radius: 50%;">
-            <div>
-                <div id="story-author-name" style="color: white; font-weight: 800; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Nome</div>
-                <div id="story-time" style="color: rgba(255,255,255,0.9); font-size: 11px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Agora mesmo</div>
+    <div id="story-viewer-modal" class="modal-overlay hidden" style="z-index: 150000; background: #000; flex-direction: column; justify-content: flex-start; padding: 0;">
+        <div id="story-progress-container" style="display: flex; gap: 4px; padding: 15px 10px 10px 10px; width: 100%; position: absolute; top: max(0px, env(safe-area-inset-top)); z-index: 10;"></div>
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 25px 15px 10px 15px; width: 100%; position: absolute; top: max(10px, env(safe-area-inset-top)); z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img id="story-author-photo" src="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary);">
+                <div style="display: flex; flex-direction: column;">
+                    <span id="story-author-name" style="color: white; font-weight: 700; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);"></span>
+                    <span id="story-time" style="color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 600;"></span>
+                </div>
             </div>
-            <button class="icon-btn" onclick="closeStoryViewer()" style="margin-left: auto; margin-right: 20px;"><span class="material-icons-round" style="color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">close</span></button>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button id="btn-delete-story" onclick="deleteCurrentStatus()" class="icon-btn" style="background: rgba(239,68,68,0.2); border-radius: 50%; width: 36px; height: 36px; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+                    <span class="material-icons-round" style="color: #EF4444; font-size: 20px;">delete</span>
+                </button>
+                <button onclick="closeStoryViewer()" class="icon-btn" style="background: rgba(255,255,255,0.2); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+                    <span class="material-icons-round" style="color: white; font-size: 24px;">close</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="story-content-area" style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative;">
+            <img id="story-image-display" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <div id="story-text-display" style="color: white; font-size: 32px; font-weight: 800; text-align: center; padding: 30px; word-wrap: break-word; max-width: 100%; display: none; text-shadow: 0 4px 15px rgba(0,0,0,0.3);"></div>
+            
+            <div id="story-caption-display" class="hidden" style="position: absolute; bottom: 40px; width: 90%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding: 12px 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <span style="color: white; font-size: 15px; font-weight: 500;"></span>
+            </div>
         </div>
         
-        <div id="story-content-area" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative;">
-            <div id="story-text-display" style="color: white; font-size: 32px; font-weight: 800; text-align: center; width: 90%; z-index: 2; text-shadow: 0 2px 10px rgba(0,0,0,0.2);"></div>
-            
-            <img id="story-image-display" class="hidden" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1;">
-            
-            <div id="story-caption-display" class="hidden" style="position: absolute; bottom: 80px; width: 100%; text-align: center; z-index: 3; padding: 0 20px;">
-                <span style="background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; color: white; font-size: 15px; font-weight: 600; display: inline-block; backdrop-filter: blur(10px); max-width: 90%; word-wrap: break-word;"></span>
-            </div>
-        </div>
-        
-        <div onclick="prevStory()" style="position: absolute; top:0; left:0; width:30%; height:100%; z-index: 5;"></div>
-        <div onclick="nextStory()" style="position: absolute; top:0; right:0; width:70%; height:100%; z-index: 5;"></div>
+        <div style="position: absolute; top: 0; left: 0; width: 30%; height: 100%; z-index: 5;" onclick="prevStory()"></div>
+        <div style="position: absolute; top: 0; right: 0; width: 30%; height: 100%; z-index: 5;" onclick="nextStory()"></div>
     </div>
 
     <div id="bulk-invite-modal" class="modal-overlay hidden" style="z-index:9999; display:none; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
@@ -708,10 +723,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=6.9" defer></script>
-    <script src="/js/ui.js?v=6.9" defer></script>
-    <script src="/js/chat.js?v=6.9" defer></script>
-    <script src="/js/webrtc.js?v=6.9" defer></script>
-    <script src="/js/features.js?v=6.9" defer></script>
+    <script src="/js/core.js?v=7.0" defer></script>
+    <script src="/js/ui.js?v=7.0" defer></script>
+    <script src="/js/chat.js?v=7.0" defer></script>
+    <script src="/js/webrtc.js?v=7.0" defer></script>
+    <script src="/js/features.js?v=7.0" defer></script>
 </body>
 </html>
