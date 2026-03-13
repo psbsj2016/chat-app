@@ -98,7 +98,7 @@
         
         .status-online { background-color: #10B981 !important; }
         .status-offline { background-color: #EF4444 !important; }
-        /* 📸 FIX: STATUS TRAY (Impede fotos gigantes e formata o carrossel) */
+        /* 📸 FIX: STATUS TRAY */
         .status-tray { display: flex; gap: 15px; padding: 15px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
         .status-tray::-webkit-scrollbar { display: none; }
         .status-item { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; width: 72px; }
@@ -130,7 +130,7 @@
     <div id="welcome-screen" class="app-screen hidden"><div class="welcome-content"><img src="favicon.png" class="welcome-logo"><h1>ChatPTT</h1><p>Conectando o seu mundo.</p><div style="margin-top: 30px; display: flex; justify-content: center;"><div style="width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div></div></div></div>
     <div id="permissions-screen" class="app-screen hidden" style="background: var(--bg-color); align-items: center; justify-content: center; padding: 20px;"><div style="background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center;"><span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">settings_suggest</span><h2 style="color: var(--text-color); margin-bottom: 15px;">Configuração Rápida</h2><p style="color: var(--secondary-text); font-size: 15px; margin-bottom: 20px; line-height: 1.5;">Para a experiência completa, precisamos de algumas permissões:</p><button onclick="grantAppPermissions()" class="chic-btn">Entrar na Comunidade</button></div></div>
 
-    <div id="main-screen" class="app-screen hidden">
+    <div id="main-screen" class="app-screen hidden" style="display: flex; flex-direction: column; height: 100dvh; width: 100%; overflow: hidden; position: relative;">
         <div id="contact-action-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 60px; background: var(--brand-primary); z-index: 50; display: flex; align-items: center; padding: 0 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
             <button class="icon-btn" onclick="clearContactSelection()" style="background: rgba(255,255,255,0.2); border-radius: 50%; padding: 6px; margin-right: 15px;">
                 <span class="material-icons-round" style="color: #FFFFFF; font-size: 24px;">close</span>
@@ -147,7 +147,7 @@
         <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
         <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>        
         
-        <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1;"></div>
+        <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1; padding-bottom: 90px !important;"></div>
 
         <div class="fab-wrapper"><input type="file" id="quick-camera-input" accept="image/*" capture="environment" hidden onchange="handleQuickCamera(this)"><div id="fab-options" class="fab-options-container"><button class="mini-fab" onclick="openAddContactScreen(); toggleFab()"><span class="material-icons-round">person_add</span> <span>Novo Contato</span></button><button class="mini-fab" onclick="openCreateGroupModal(); toggleFab()"><span class="material-icons-round">group_add</span> <span>Criar Grupo</span></button></div><button class="fab main-fab" id="main-fab-btn" onclick="toggleFab()"><span class="material-icons-round" style="transition: transform 0.3s; font-size: 32px;">add</span></button></div>
     </div>
@@ -571,166 +571,7 @@
     
     <div id="create-group-modal" class="modal-overlay hidden" style="z-index: 9999;"><div class="modal-content" style="max-width: 400px; height: 80%; display: flex; flex-direction: column; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%;"><div style="position: relative; flex-shrink: 0;"><img id="new-group-photo" src="https://cdn-icons-png.flaticon.com/512/166/166258.png" style="width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid var(--brand-primary); cursor: pointer;" onclick="document.getElementById('new-group-file').click()"><span class="material-icons-round" style="position: absolute; bottom: 0; right: -5px; background: var(--brand-primary); color: white; border-radius: 50%; padding: 4px; font-size: 14px;">camera_alt</span><input type="file" id="new-group-file" hidden onchange="uploadNewGroupPhoto(this)"></div><div style="flex: 1;"><h3 style="margin: 0 0 5px 0; font-size: 18px;">Novo Grupo</h3><input type="text" id="group-name-input" placeholder="Nome do Grupo" class="chic-input" style="margin:0; padding:10px;"></div></div><div style="position: relative; margin-bottom: 15px; width: 100%;"><span class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary-text);">search</span><input type="text" id="group-search-input" placeholder="Buscar membros..." class="chic-input" style="padding-left: 45px; margin: 0; font-weight: 600;" onkeyup="filterGroupContacts(this.value)"></div><div id="group-candidates-list" style="flex: 1; overflow-y: auto; width: 100%; border-top: 1px solid var(--input-bg); padding-top: 10px; display: flex; flex-direction: column; gap: 5px;"></div><div class="modal-actions" style="display: flex; gap: 10px; width: 100%; margin-top:15px;"><button onclick="closeCreateGroup()" style="flex:1; background:transparent; border:1px solid var(--input-bg); border-radius:12px; color:var(--secondary-text); font-weight:600;">Cancelar</button><button onclick="submitCreateGroup()" class="chic-btn" style="flex:1; margin:0;">Criar</button></div></div></div>
 
-    <style>
-        #video-call-screen:not(.hidden) { display: flex !important; }
-        #incoming-call-modal:not(.hidden) { display: flex !important; }
-    </style>
-    
-    <div id="video-call-screen" class="hidden" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: #0B0F19 !important; flex-direction: column; overflow: hidden; margin: 0 !important; padding: 0 !important; transition: all 0.3s ease;">
-        <button id="btn-minimize-call" class="icon-btn" onclick="event.stopPropagation(); toggleMinimizeCall()" style="position: absolute; top: max(20px, env(safe-area-inset-top)); left: 20px; z-index: 10; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-            <span class="material-icons-round" style="color: white; font-size: 28px;">keyboard_arrow_down</span>
-        </button>
-
-        <div id="audio-call-avatar-container" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; pointer-events: none;">
-            <img id="audio-call-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--brand-primary); object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.4); animation: pulseRed 2s infinite;">
-        </div>
-
-        <video id="remote-video" autoplay playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: transparent; z-index: 2; pointer-events: none;"></video>
-        
-        <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 3; background: #1E293B; transition: all 0.3s ease; pointer-events: none;"></video>
-        
-        <div id="call-status-text" style="position: absolute; top: max(80px, env(safe-area-inset-top)); left: 0; width: 100%; text-align: center; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); z-index: 3; pointer-events: none;">A chamar...</div>
-
-        <div id="call-controls" style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 4; transition: opacity 0.3s;">
-            <button id="btn-toggle-mic" class="icon-btn" onclick="event.stopPropagation(); toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
-                <span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>
-            </button>
-            <button class="icon-btn" onclick="event.stopPropagation(); endVideoCall(true)" style="background: #EF4444; width: 70px; height: 70px; border-radius: 50%; box-shadow: 0 4px 20px rgba(239,68,68,0.6);">
-                <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
-            </button>
-            <button id="btn-toggle-cam" class="icon-btn" onclick="event.stopPropagation(); toggleVideoCam()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
-                <span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>
-            </button>
-            <button id="btn-flip-cam" class="icon-btn" onclick="event.stopPropagation(); flipCamera()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;">
-                <span class="material-icons-round" style="color: white; font-size: 28px;">cameraswitch</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="incoming-call-modal" class="hidden" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(15px); flex-direction: column; align-items: center; justify-content: center; margin: 0 !important; padding: 20px; box-sizing: border-box;">
-        <img id="caller-photo" src="" style="width: 140px; height: 140px; border-radius: 50%; border: 4px solid var(--brand-primary); margin-bottom: 25px; object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); animation: pulseRed 1.5s infinite;">
-        <h2 id="caller-name" style="color: white; font-size: 32px; margin-bottom: 5px; font-weight: 900; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nome</h2>
-        <div id="caller-type" style="color: var(--brand-secondary); font-size: 16px; margin-bottom: 60px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Chamada...</div>
-        <div style="display: flex; gap: 40px; width: 100%; justify-content: center; max-width: 300px;">
-            <button class="icon-btn" onclick="rejectCall()" style="background: #EF4444; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;">
-                <span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span>
-            </button>
-            <button class="icon-btn" onclick="acceptCall()" style="background: #10B981; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(16,185,129,0.5); animation: bounce 2s infinite;">
-                <span class="material-icons-round" style="color: white; font-size: 36px;">call</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="immersive-camera-modal" class="modal-overlay hidden" style="z-index: 150000; background: #000; flex-direction: column; justify-content: space-between; padding: 0;">
-        
-        <div style="width: 100%; padding: max(15px, env(safe-area-inset-top)) 20px 15px 20px; display: flex; justify-content: flex-start; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); z-index: 10;">
-            <button class="icon-btn" onclick="closeImmersiveCamera()" style="background: rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                <span class="material-icons-round" style="color: white; font-size: 26px;">close</span>
-            </button>
-        </div>
-        
-        <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;">
-            <img id="immersive-camera-preview" src="" style="width: 100%; height: 100%; object-fit: contain;">
-        </div>
-        
-        <div style="width: 100%; padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(20px); display: flex; align-items: center; gap: 10px; z-index: 10; border-top: 1px solid rgba(255,255,255,0.1);">
-            <input type="text" id="immersive-camera-caption" placeholder="Adicionar legenda..." style="flex: 1; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); padding: 12px 20px; border-radius: 30px; color: white; font-size: 15px; outline: none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);">
-            <button id="btn-send-immersive" class="circular-primary-btn" onclick="sendImmersivePhoto()" style="width: 50px; height: 50px; flex-shrink: 0; background: var(--brand-primary); box-shadow: 0 4px 15px rgba(79, 70, 229, 0.5);">
-                <span class="material-icons-round" style="color: white; font-size: 24px; margin-left: 3px;">send</span>
-            </button>
-        </div>
-    </div>
-
-    <nav id="bottom-navigation" class="bottom-nav hidden">
-        <div class="nav-item active" onclick="switchTab('conversas', this)"><div class="nav-icon"><span class="material-icons-round">chat_bubble</span></div><span>Chat</span></div>
-        <div class="nav-item" onclick="switchTab('explorar', this)"><div class="nav-icon"><span class="material-icons-round">explore</span></div><span>Explorar</span></div>
-        <div class="nav-item" onclick="switchTab('anotacoes', this)"><div class="nav-icon"><span class="material-icons-round">note_alt</span></div><span>Notas</span></div>
-        <div class="nav-item" onclick="switchTab('jogos', this)"><div class="nav-icon"><span class="material-icons-round">sports_esports</span></div><span>Jogos</span></div>
-    </nav>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            history.replaceState({ appState: 'home' }, '', window.location.pathname);
-
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.attributeName === 'class' || mutation.attributeName === 'style') {
-                        const target = mutation.target;
-                        const isVisible = !target.classList.contains('hidden') && target.style.display !== 'none';
-                        
-                        if (isVisible && target.id !== 'main-screen' && target.id !== 'auth-screen' && target.id !== 'bottom-navigation') {
-                            if (!history.state || history.state.openId !== target.id) {
-                                history.pushState({ openId: target.id }, '', '#' + target.id);
-                            }
-                        }
-                    }
-                });
-            });
-
-            document.querySelectorAll('.app-screen, .modal-overlay').forEach(el => {
-                observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
-            });
-
-            window.addEventListener('popstate', (event) => {
-                
-                const emojiDrawer = document.getElementById('emoji-drawer');
-                if (emojiDrawer && emojiDrawer.style.height === '300px') {
-                    emojiDrawer.style.height = '0px';
-                    history.pushState({ appState: 'chat' }, '', '#chat-screen'); 
-                    return;
-                }
-                const attachMenu = document.getElementById('attach-menu');
-                if (attachMenu && !attachMenu.classList.contains('hidden')) {
-                    attachMenu.classList.add('hidden');
-                    history.pushState({ appState: 'chat' }, '', '#chat-screen'); 
-                    return;
-                }
-
-                const incomingModal = document.getElementById('incoming-call-modal');
-                if (incomingModal && !incomingModal.classList.contains('hidden')) {
-                    if (typeof rejectCall === 'function') rejectCall();
-                    return;
-                }
-                const callScreen = document.getElementById('video-call-screen');
-                if (callScreen && !callScreen.classList.contains('hidden')) {
-                    if (typeof endVideoCall === 'function') endVideoCall(true);
-                    return;
-                }
-
-                const storyViewer = document.getElementById('story-viewer-modal');
-                if (storyViewer && !storyViewer.classList.contains('hidden')) {
-                    if (typeof closeStoryViewer === 'function') closeStoryViewer();
-                    return;
-                }
-
-                const openModals = Array.from(document.querySelectorAll('.modal-overlay:not(.hidden)'));
-                if (openModals.length > 0) {
-                    const topModal = openModals[openModals.length - 1];
-                    if (typeof hideElement === 'function') hideElement(topModal.id);
-                    else topModal.classList.add('hidden');
-                    return;
-                }
-
-                const chatScreen = document.getElementById('chat-screen');
-                if (chatScreen && !chatScreen.classList.contains('hidden')) {
-                    if (typeof backToMain === 'function') backToMain();
-                    return;
-                }
-
-                const profileScreen = document.getElementById('profile-screen');
-                const settingsScreen = document.getElementById('settings-screen');
-                const exploreScreen = document.getElementById('screen-explorar');
-                
-                if ((profileScreen && !profileScreen.classList.contains('hidden')) || 
-                    (settingsScreen && !settingsScreen.classList.contains('hidden')) ||
-                    (exploreScreen && !exploreScreen.classList.contains('hidden'))) {
-                    if (typeof backToMain === 'function') backToMain();
-                    return;
-                }
-            });
-        });
-    
-                <div id="pwa-install-modal" class="modal-overlay hidden" style="z-index: 200000; background: rgba(0,0,0,0.8); align-items: flex-end; padding: 0; display: none;">
+    <div id="pwa-install-modal" class="modal-overlay hidden" style="z-index: 200000; background: rgba(0,0,0,0.8); align-items: flex-end; padding: 0; display: none;">
         <div style="background: var(--card-bg); width: 100%; border-radius: 24px 24px 0 0; padding: 30px 20px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.5); text-align: center; border-top: 1px solid rgba(255,255,255,0.1); animation: slideUpAnim 0.3s ease-out;">
             <img src="favicon.png" style="width: 70px; height: 70px; border-radius: 18px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);">
             <h2 style="font-weight: 900; font-size: 22px; margin-bottom: 8px; color: var(--text-color);">Instalar ChatPTT</h2>
@@ -742,23 +583,18 @@
         </div>
     </div>    
 
-          <div id="offline-banner" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; background: #EF4444; color: white; text-align: center; font-weight: 700; font-size: 13px; padding: 8px 15px; z-index: 9999999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.3s ease; transform: translateY(-100%);">
+    <div id="offline-banner" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; background: #EF4444; color: white; text-align: center; font-weight: 700; font-size: 13px; padding: 8px 15px; z-index: 9999999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.3s ease; transform: translateY(-100%);">
         <span class="material-icons-round" style="font-size: 16px;">wifi_off</span> 
         Sem ligação à Internet. A usar o Modo Offline.
     </div>
-    
-    <style>
-        #offline-banner.show-offline { transform: translateY(0); }
-    </style>    
 
-    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=7.9" defer></script>
-    <script src="/js/ui.js?v=7.9" defer></script>
-    <script src="/js/chat.js?v=7.9" defer></script>
-    <script src="/js/webrtc.js?v=7.9" defer></script>
-    <script src="/js/features.js?v=7.9" defer></script>
+    <script src="/js/core.js?v=8.0" defer></script>
+    <script src="/js/ui.js?v=8.0" defer></script>
+    <script src="/js/chat.js?v=8.0" defer></script>
+    <script src="/js/webrtc.js?v=8.0" defer></script>
+    <script src="/js/features.js?v=8.0" defer></script>
 </body>
 </html>
