@@ -234,3 +234,77 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof loadContacts === 'function') loadContacts();
 });
 
+// ==============================================================
+// 📱 APIs NATIVAS DE PROGRESSIVE WEB APP (PWA)
+// ==============================================================
+
+// 1. BANNER VIP DE INSTALAÇÃO
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // Impede o banner feio do Google Chrome
+    deferredPrompt = e;
+    
+    // Se ele nunca recusou, mostra o nosso banner VIP após 3 segundos navegando no app
+    if(!localStorage.getItem('pwa_declined') && !window.matchMedia('(display-mode: standalone)').matches) {
+        setTimeout(() => {
+            const installModal = document.getElementById('pwa-install-modal');
+            if(installModal) {
+                installModal.classList.remove('hidden');
+                installModal.style.display = 'flex';
+            }
+        }, 3000);
+    }
+});
+
+const installBtn = document.getElementById('btn-confirm-install');
+if(installBtn) {
+    installBtn.addEventListener('click', async () => {
+        const installModal = document.getElementById('pwa-install-modal');
+        if(installModal) installModal.style.display = 'none';
+        if (deferredPrompt) {
+            deferredPrompt.prompt(); // Abre o instalador nativo do Android/iOS
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') console.log('✅ PWA Instalado!');
+            deferredPrompt = null;
+        }
+    });
+}
+
+// 2. APP BADGING API (A Bolinha Vermelha no Ícone do Celular)
+window.updateAppBadge = function() {
+    if (navigator.setAppBadge) {
+        let totalUnread = 0;
+        if (typeof unreadCounts !== 'undefined') {
+            Object.values(unreadCounts).forEach(c => totalUnread += c);
+        }
+        if (typeof unreadGroups !== 'undefined') {
+            Object.values(unreadGroups).forEach(c => totalUnread += c);
+        }
+        
+        // Se houver permissão do usuário em Permissões
+        const canBadge = localStorage.getItem('perm_sys_badge') !== 'false';
+        
+        if (totalUnread > 0 && canBadge) {
+            navigator.setAppBadge(totalUnread).catch(e => console.warn("Badging falhou"));
+        } else {
+            if(navigator.clearAppBadge) navigator.clearAppBadge().catch(e => {});
+        }
+    }
+};
+
+// 3. SCREEN WAKE LOCK API (Impede o ecrã de apagar)
+window.wakeLockSentinel = null;
+window.requestScreenWakeLock = async function() {
+    try {
+        if ('wakeLock' in navigator) {
+            window.wakeLockSentinel = await navigator.wakeLock.request('screen');
+            console.log('☀️ Wake Lock ativado (Ecrã não vai apagar)');
+        }
+    } catch (err) { console.log(`Wake Lock bloqueado: ${err.message}`); }
+};
+window.releaseScreenWakeLock = function() {
+    if (window.wakeLockSentinel !== null) {
+        window.wakeLockSentinel.release();
+        window.wakeLockSentinel = null;
+    }
+};
