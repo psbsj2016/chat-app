@@ -28,15 +28,7 @@ var messageToReply = null;
 var cachedMe = JSON.parse(localStorage.getItem('cacheMe')) || {};
 var hiddenChats = JSON.parse(localStorage.getItem('hiddenChats')) || []; 
 var audioCtx = null;
-var deferredPrompt;
-
-// ==============================================================
-// 📱 MOTOR PWA E PERMISSÕES (Com VAPID Dinâmico)
-// ==============================================================
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if(typeof showElement === 'function') showElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.remove('hidden'); });
-async function installPWA() { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); } else { alert("Para instalar no iOS: Toque no ícone de 'Compartilhar' no Safari e escolha 'Adicionar à Tela de Início'."); } }
-window.addEventListener('appinstalled', () => { if(typeof hideElement === 'function') hideElement('pwa-install-banner'); const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); setTimeout(() => { alert("🎉 CHATPTT INSTALADO!\nBem-vindo à experiência VIP. +200 XP!"); if(typeof gainXP === 'function') gainXP(200, false); if(typeof playNotificationSound === 'function') playNotificationSound('bell'); }, 1500); });
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) { const menuBtn = document.getElementById('install-menu-btn'); if(menuBtn) menuBtn.classList.add('hidden'); }
+var deferredPrompt; // Declarado apenas uma vez!
 
 function urlBase64ToUint8Array(base64String) { 
     const padding = '='.repeat((4 - base64String.length % 4) % 4); 
@@ -52,7 +44,6 @@ async function registerServiceWorkerAndSubscribe() {
         try { 
             const registration = await navigator.serviceWorker.register('/sw.js'); 
             
-            // Busca a chave pública dinamicamente do servidor
             let publicVapidKey = '';
             try {
                 const res = await fetch('/vapid-public-key');
@@ -62,19 +53,16 @@ async function registerServiceWorkerAndSubscribe() {
                 }
             } catch (e) { console.warn("Servidor não forneceu a chave VAPID."); }
 
-            // Fallback
             if (!publicVapidKey) {
                 publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB21E23f8C-jBvUq_5qE4qXkY';
             }
 
-            // 💡 A VACINA: Remove a inscrição velha (se existir) antes de colocar a nova!
             const existingSub = await registration.pushManager.getSubscription();
             if (existingSub) {
                 await existingSub.unsubscribe();
                 console.log("♻️ Chave Push antiga removida.");
             }
 
-            // Cria a inscrição nova e limpa
             const subscription = await registration.pushManager.subscribe({ 
                 userVisibleOnly: true, 
                 applicationServerKey: urlBase64ToUint8Array(publicVapidKey) 
@@ -106,7 +94,6 @@ function checkAndShowPermissions() {
 function grantAppPermissions() { 
     localStorage.setItem('permissionsAsked', 'true'); 
     
-    // Truque para desbloquear o áudio no iOS/Android
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
     if(audioCtx.state === 'suspended') audioCtx.resume(); 
     const osc = audioCtx.createOscillator(); 
@@ -239,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==============================================================
 
 // 1. BANNER VIP DE INSTALAÇÃO
-let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); // Impede o banner feio do Google Chrome
     deferredPrompt = e;
@@ -256,19 +242,30 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
 });
 
+// Ação de confirmar a instalação
 const installBtn = document.getElementById('btn-confirm-install');
 if(installBtn) {
     installBtn.addEventListener('click', async () => {
         const installModal = document.getElementById('pwa-install-modal');
         if(installModal) installModal.style.display = 'none';
         if (deferredPrompt) {
-            deferredPrompt.prompt(); // Abre o instalador nativo do Android/iOS
+            deferredPrompt.prompt(); 
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') console.log('✅ PWA Instalado!');
             deferredPrompt = null;
         }
     });
 }
+
+// O Evento Mágico de Sucesso de Instalação (+200 XP)
+window.addEventListener('appinstalled', () => { 
+    const installModal = document.getElementById('pwa-install-modal');
+    if(installModal) installModal.style.display = 'none'; 
+    setTimeout(() => { 
+        alert("🎉 CHATPTT INSTALADO NA TELA INICIAL!\nBem-vindo à experiência VIP. Você ganhou +200 XP!"); 
+        if(typeof gainXP === 'function') gainXP(200, false); 
+        if(typeof playNotificationSound === 'function') playNotificationSound('bell'); 
+    }, 1500); 
+});
 
 // 2. APP BADGING API (A Bolinha Vermelha no Ícone do Celular)
 window.updateAppBadge = function() {
