@@ -171,7 +171,7 @@ app.post('/api/status', async (req, res) => {
     try { 
         const newStatus = new StatusMsg(req.body); 
         
-        // 🔥 BLINDAGEM: Força o banco de dados a guardar o design (Ignora o Strict Mode)
+        // 🔥 BLINDAGEM: Força o banco de dados a guardar o design
         if (req.body.bgColor) newStatus.set('bgColor', req.body.bgColor, { strict: false });
         if (req.body.fontFamily) newStatus.set('fontFamily', req.body.fontFamily, { strict: false });
         if (req.body.textColor) newStatus.set('textColor', req.body.textColor, { strict: false });
@@ -213,16 +213,6 @@ app.post('/api/status', async (req, res) => {
     } 
 });
 
-// 🔥 NOVA ROTA: Permitir apagar o Status do servidor
-app.delete('/api/status/:id', async (req, res) => { 
-    try { 
-        await StatusMsg.findByIdAndDelete(req.params.id); 
-        res.json({ success: true }); 
-    } catch(e) { 
-        res.status(500).json({ error: 'Erro ao apagar status' }); 
-    } 
-});
-
 app.post('/api/status/view', async (req, res) => { 
     try { 
         const { statusId, viewerId } = req.body; 
@@ -242,7 +232,6 @@ app.post('/api/status/view', async (req, res) => {
     } 
 });
 
-// 🔥 ROTA CORRIGIDA PARA APAGAR STATUS
 app.delete('/api/status/:id', async (req, res) => { 
     try { 
         await StatusMsg.findByIdAndDelete(req.params.id); 
@@ -251,8 +240,6 @@ app.delete('/api/status/:id', async (req, res) => {
         res.status(500).json({ error: 'Erro ao apagar status' }); 
     } 
 });
-
-io.emit('status_view_updated', { statusId: statusId, senderId: status.senderId }); } } res.json({ success: true }); } catch(e) { res.status(500).json({ error: 'Erro' }); } });
 
 app.post('/groups', async (req, res) => { try { const uniqueMembers = [...new Set([...req.body.members, req.body.adminId].map(String))]; const g = new Group({ name: req.body.name, admin: req.body.adminId, members: uniqueMembers, photoUrl: req.body.photoUrl || 'https://cdn-icons-png.flaticon.com/512/166/166258.png' }); await g.save(); res.json(g); } catch (e) { res.status(500).json({error:'Erro'}); } });
 app.get('/groups/:userId', async (req, res) => { try { res.json(await Group.find({ members: req.params.userId })); } catch (e) { res.status(500).json([]); } });
