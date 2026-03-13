@@ -167,8 +167,8 @@
                 </div>
             </div>
             <div style="display: flex; gap: 15px; color: var(--text-color); flex-shrink: 0; padding-right: 10px; position: relative; align-items: center;">
-                <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="initVideoCall(currentChatId, true)">videocam</span>
-                <span class="material-icons-round" style="cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, false)">call</span>
+                <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer; font-size: 26px;" onclick="initVideoCall(currentChatId, true)" title="Chamada de Vídeo">videocam</span>
+                <span class="material-icons-round" style="color: var(--brand-primary); cursor: pointer; font-size: 24px;" onclick="initVideoCall(currentChatId, false)" title="Chamada de Voz">call</span>
                 <span class="material-icons-round" style="cursor: pointer; font-size: 26px;" onclick="event.stopPropagation(); toggleMenu('chat-options-menu');">more_vert</span>
                 <div id="chat-options-menu" class="dropdown-menu right-menu hidden" style="top: 40px; right: 0;">
                     <div class="menu-item" onclick="openChatSearch(); toggleMenu('chat-options-menu')"><span class="material-icons-round">search</span> Buscar</div>
@@ -525,7 +525,7 @@
         <div style="background: var(--card-bg); border: 1px dashed var(--brand-primary); border-radius:24px; padding:30px; width:90%; max-width:350px; text-align:center; position:relative; box-shadow: 0 15px 50px rgba(0,0,0,0.7);">
             <span class="material-icons-round" style="font-size: 60px; color: var(--brand-primary); margin-bottom: 15px;">local_police</span>
             <h2 style="font-weight:900; margin-bottom:10px; font-size:24px;">Acesso Restrito</h2>
-            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrar o QG:</p>
+            <p style="color:var(--text-muted); font-size:14px; margin-bottom:25px;">Você está a um passo de integrating o QG:</p>
             <div id="invite-confirm-comm-name" style="font-size: 20px; font-weight: 900; color: white; margin-bottom: 30px; background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--brand-primary);"></div>
             <div style="display:flex; gap:12px;">
                 <button onclick="hideElement('invite-confirm-modal')" class="chic-btn" style="flex:1; margin:0; background:var(--input-bg); color:var(--text-color);">Cancelar</button>
@@ -733,10 +733,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>    
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=7.4" defer></script>
-    <script src="/js/ui.js?v=7.4" defer></script>
-    <script src="/js/chat.js?v=7.4" defer></script>
-    <script src="/js/webrtc.js?v=7.4" defer></script>
-    <script src="/js/features.js?v=7.4" defer></script>
+    <script src="/js/core.js?v=7.6" defer></script>
+    <script src="/js/ui.js?v=7.6" defer></script>
+    <script src="/js/chat.js?v=7.6" defer></script>
+    <script src="/js/webrtc.js?v=7.6" defer></script>
+    <script src="/js/features.js?v=7.6" defer></script>
 </body>
 </html>
