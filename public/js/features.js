@@ -1276,3 +1276,65 @@ window.playNotificationSound = function(type) {
     } catch(e) { console.log("Web Audio bloqueado no navegador."); }
 
 };
+
+// ==============================================================
+// 📸 FIX: LIXEIRA DOS STORIES (APAGAR STATUS) E OBSERVER
+// ==============================================================
+
+window.deleteCurrentStatus = async function() {
+    if (!confirm("⚠️ Deseja apagar este Story definitivamente?")) return;
+    
+    const btn = document.getElementById('btn-delete-story');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span>';
+    
+    try {
+        // Se o seu app não guardar o ID exato do story, usamos o seu myId como Fallback de segurança
+        const targetId = window.currentStoryId || myId; 
+        
+        const res = await fetch(`/status/${targetId}`, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId })
+        });
+        
+        if (res.ok) {
+            // Fecha a tela de story
+            if(typeof closeStoryViewer === 'function') closeStoryViewer();
+            else document.getElementById('story-viewer-modal').classList.add('hidden');
+            
+            // Recarrega a barra de stories e avisa os amigos
+            if (typeof loadStatuses === 'function') loadStatuses();
+            if (socket) socket.emit('status_updated'); 
+        } else {
+            alert("Erro ao apagar o Story.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Erro de conexão ao tentar apagar.");
+    } finally {
+        btn.innerHTML = originalHtml;
+    }
+};
+
+// 🕵️ RASTREADOR: Liga a lixeira automaticamente apenas nos SEUS stories
+document.addEventListener('DOMContentLoaded', () => {
+    const authorLabel = document.getElementById('story-author-name');
+    if (authorLabel) {
+        const observer = new MutationObserver(() => {
+            const name = authorLabel.innerText.trim();
+            const myName = (localStorage.getItem('displayName') || '').trim();
+            const deleteBtn = document.getElementById('btn-delete-story');
+            
+            if (deleteBtn) {
+                // Se o nome do Story for "Você", ou o seu nome de perfil, liga a lixeira!
+                if (name === 'Você' || name === myName || name === 'Eu') {
+                    deleteBtn.style.display = 'flex';
+                } else {
+                    deleteBtn.style.display = 'none';
+                }
+            }
+        });
+        observer.observe(authorLabel, { childList: true, characterData: true, subtree: true });
+    }
+});

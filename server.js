@@ -103,6 +103,26 @@ app.get('/users/:myId', async (req, res) => {
     } catch (e) { res.status(500).json([]); }
 });
 
+// ==============================================================
+// 🗑️ ROTA PARA APAGAR STATUS / STORIES
+// ==============================================================
+app.delete('/status/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+        
+        // Proteção Nível 2: Se o ID recebido for o próprio usuário, destrói todos os stories ativos dele
+        if (id === userId) {
+            await StatusMsg.deleteMany({ author: userId });
+        } else {
+            await StatusMsg.findByIdAndDelete(id);
+        }
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ error: 'Erro ao apagar o story' });
+    }
+});
+
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
 app.get('/search', async (req, res) => { 
     const { query, myId } = req.query; 
