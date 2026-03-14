@@ -27,8 +27,8 @@ startCronJobs();
 // 🎓 INICIALIZAÇÃO DO CATÁLOGO DE INGLÊS PTT
 // ==============================================================
 const EnglishService = require('./src/english/english.service'); // Ajuste o caminho se necessário
-EnglishService.initializeDatabase()
-    .then(() => console.log("📚 Catálogo do Inglês PTT inicializado e verificado com sucesso!"))
+EnglishService.seedEnglishCatalog()
+    .then(() => console.log("📚 Catálogo do Inglês PTT verificado!"))
     .catch(e => console.error("❌ Erro ao inicializar Catálogo de Inglês:", e));
 
 app.use(aegisMiddleware);
