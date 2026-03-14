@@ -134,8 +134,9 @@ function addParticipantToUI(id, profile) {
 }
 function removeParticipantFromUI(id) { const p = document.getElementById(`participant-${id}`); if (p) p.remove(); const a = document.getElementById(`audio-${id}`); if (a) a.remove(); }
 
+
 // ==============================================================
-// 📹 MOTOR DE CHAMADAS P2P (AGORA 100% INSTANTÂNEO)
+// 📹 MOTOR DE CHAMADAS P2P (BLINDADO E SINCRONIZADO)
 // ==============================================================
 let videoStream = null;
 let videoPC = null;
@@ -145,6 +146,32 @@ let currentFacingMode = 'user';
 let isVideoCallActive = true; 
 let callRingInterval = null;
 let isCallMinimized = false;
+let iceCandidateQueue = []; // 🔥 A FILA MÁGICA DE ESPERA
+
+// SISTEMA DE TEMPO DE CHAMADA
+let activeCallTimer = null;
+let activeCallSeconds = 0;
+
+function startCallTimer() {
+    activeCallSeconds = 0;
+    clearInterval(activeCallTimer);
+    const textEl = document.getElementById('call-status-text');
+    if(textEl) { textEl.style.color = '#10B981'; textEl.innerText = "00:00"; }
+    
+    activeCallTimer = setInterval(() => {
+        activeCallSeconds++;
+        const m = Math.floor(activeCallSeconds / 60).toString().padStart(2, '0');
+        const s = (activeCallSeconds % 60).toString().padStart(2, '0');
+        if(textEl) textEl.innerText = `${m}:${s}`;
+    }, 1000);
+}
+
+function stopCallTimer() {
+    clearInterval(activeCallTimer);
+    activeCallTimer = null;
+    const textEl = document.getElementById('call-status-text');
+    if(textEl) { textEl.style.color = 'white'; }
+}
 
 // 🎧 SISTEMA NATIVO DE "TUUU... TUUU..."
 let ringbackCtx = null;
@@ -159,22 +186,17 @@ function startRingbackTone() {
             const osc1 = ringbackCtx.createOscillator();
             const osc2 = ringbackCtx.createOscillator();
             const gain = ringbackCtx.createGain();
-            
             osc1.type = 'sine'; osc1.frequency.value = 425; 
             osc2.type = 'sine'; osc2.frequency.value = 480;
-            
             osc1.connect(gain); osc2.connect(gain);
             gain.connect(ringbackCtx.destination);
-            
             gain.gain.setValueAtTime(0, ringbackCtx.currentTime);
             gain.gain.linearRampToValueAtTime(0.1, ringbackCtx.currentTime + 0.1);
             gain.gain.setValueAtTime(0.1, ringbackCtx.currentTime + 1.5);
             gain.gain.linearRampToValueAtTime(0, ringbackCtx.currentTime + 1.6);
-            
             osc1.start(ringbackCtx.currentTime); osc2.start(ringbackCtx.currentTime);
             osc1.stop(ringbackCtx.currentTime + 1.6); osc2.stop(ringbackCtx.currentTime + 1.6);
         };
-
         playBeep(); 
         ringbackIntervalId = setInterval(playBeep, 4000); 
     } catch(e) {}
@@ -188,12 +210,10 @@ function stopRingbackTone() {
 window.initVideoCall = async function(targetId, isVideo = true) {
     if (!targetId) return;
     if (isGroupChat) return alert("As chamadas só estão disponíveis para conversas privadas (1 a 1).");
-    
-    if (currentCallTarget || incomingCallData) {
-        return alert("Termine a chamada atual antes de iniciar uma nova.");
-    }
+    if (currentCallTarget || incomingCallData) return alert("Termine a chamada atual antes de iniciar uma nova.");
     
     isVideoCallActive = isVideo;
+    iceCandidateQueue = []; // Limpa a fila
     
     try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: isVideo, audio: true });
@@ -202,7 +222,6 @@ window.initVideoCall = async function(targetId, isVideo = true) {
         document.getElementById('local-video').style.display = isVideo ? 'block' : 'none';
         document.getElementById('btn-flip-cam').style.display = isVideo ? 'flex' : 'none';
         document.getElementById('btn-toggle-cam').style.display = isVideo ? 'flex' : 'none';
-        
         document.getElementById('call-status-text').innerText = "A chamar..."; 
         
         const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
@@ -235,6 +254,7 @@ socket.on('incoming_call', (data) => {
 
     incomingCallData = data;
     isVideoCallActive = data.isVideo !== undefined ? data.isVideo : true; 
+    iceCandidateQueue = []; // Limpa a fila
     
     document.getElementById('caller-name').innerText = data.callerName; 
     document.getElementById('caller-photo').src = data.callerPhoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
@@ -271,7 +291,7 @@ window.acceptCall = async function() {
         document.getElementById('local-video').style.display = isVideoCallActive ? 'block' : 'none';
         document.getElementById('btn-flip-cam').style.display = isVideoCallActive ? 'flex' : 'none';
         document.getElementById('btn-toggle-cam').style.display = isVideoCallActive ? 'flex' : 'none';
-        document.getElementById('call-status-text').innerText = "00:00"; 
+        document.getElementById('call-status-text').innerText = "Conectando..."; 
         
         const audioAvatarContainer = document.getElementById('audio-call-avatar-container');
         if (audioAvatarContainer) {
@@ -291,18 +311,17 @@ window.acceptCall = async function() {
 };
 
 // ==========================================
-// 🚀 DESLIGAR OU REJEITAR CHAMADA (AÇÃO IMEDIATA)
+// 🚀 DESLIGAR OU REJEITAR CHAMADA
 // ==========================================
-
 window.endVideoCall = function(emitSignal = true) {
     clearInterval(callRingInterval);
     stopRingbackTone();
+    stopCallTimer();
+    iceCandidateQueue = [];
     
-    // Descobre para quem avisar (se liguei ou se estava a receber)
     let targetToNotify = currentCallTarget;
     if (!targetToNotify && incomingCallData) targetToNotify = incomingCallData.callerId;
     
-    // Se fui eu que desliguei, mando o aviso
     if (emitSignal && targetToNotify) {
         socket.emit('end_call', { targetId: targetToNotify });
     }
@@ -310,7 +329,6 @@ window.endVideoCall = function(emitSignal = true) {
     if (videoPC) { videoPC.close(); videoPC = null; } 
     stopVideoMedia(); 
     
-    // FECHA AS TELAS NA MESMA FRAÇÃO DE SEGUNDO!
     const callScreen = document.getElementById('video-call-screen');
     if(callScreen) {
         callScreen.classList.remove('minimized-call');
@@ -319,9 +337,7 @@ window.endVideoCall = function(emitSignal = true) {
     }
     
     const incomingModal = document.getElementById('incoming-call-modal');
-    if(incomingModal) {
-        incomingModal.classList.add('hidden');
-    }
+    if(incomingModal) incomingModal.classList.add('hidden');
     
     isCallMinimized = false;
     currentCallTarget = null; 
@@ -333,21 +349,16 @@ window.rejectCall = function() {
     window.endVideoCall(false); 
 };
 
-// SE O OUTRO LADO REJEITOU A MINHA CHAMADA -> FECHA TUDO NA HORA
-socket.on('call_rejected', () => { 
-    window.endVideoCall(false); 
-});
+socket.on('call_rejected', () => { window.endVideoCall(false); alert("Chamada rejeitada ou ocupado."); });
+socket.on('call_ended', () => { window.endVideoCall(false); });
 
-// SE O OUTRO LADO DESLIGOU -> FECHA TUDO NA HORA
-socket.on('call_ended', () => { 
-    window.endVideoCall(false); 
-});
-
+// ==========================================
+// 🔥 O CÉREBRO P2P (NEGOCIAÇÃO PERFEITA)
 // ==========================================
 
 socket.on('call_accepted', async (data) => { 
     stopRingbackTone();
-    document.getElementById('call-status-text').innerText = "00:00";
+    document.getElementById('call-status-text').innerText = "Conectando...";
     createVideoPeerConnection(currentCallTarget); 
     const offer = await videoPC.createOffer(); 
     await videoPC.setLocalDescription(offer); 
@@ -355,30 +366,59 @@ socket.on('call_accepted', async (data) => {
 });
 
 socket.on('video_signal', async (data) => {
-    if (!videoPC) createVideoPeerConnection(currentCallTarget);
-    
-    if (data.signal.type === 'offer') { 
-        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
-        const answer = await videoPC.createAnswer(); 
-        await videoPC.setLocalDescription(answer); 
-        socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: answer }); 
-    }
-    else if (data.signal.type === 'answer') { 
-        await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
-    }
-    else if (data.signal.candidate) { 
-        await videoPC.addIceCandidate(new RTCIceCandidate(data.signal)); 
+    try {
+        if (!videoPC) createVideoPeerConnection(currentCallTarget);
+        
+        if (data.signal.type === 'offer') { 
+            await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
+            const answer = await videoPC.createAnswer(); 
+            await videoPC.setLocalDescription(answer); 
+            socket.emit('video_signal', { targetId: currentCallTarget, from: myId, signal: answer }); 
+            
+            // Drena a fila de espera dos pacotes de rede
+            while(iceCandidateQueue.length > 0) {
+                await videoPC.addIceCandidate(iceCandidateQueue.shift());
+            }
+        }
+        else if (data.signal.type === 'answer') { 
+            await videoPC.setRemoteDescription(new RTCSessionDescription(data.signal)); 
+            
+            // Drena a fila de espera dos pacotes de rede
+            while(iceCandidateQueue.length > 0) {
+                await videoPC.addIceCandidate(iceCandidateQueue.shift());
+            }
+        }
+        else if (data.signal.candidate) { 
+            const candidate = new RTCIceCandidate(data.signal);
+            // Só adiciona a rota se a porta já estiver aberta, senão guarda na fila
+            if (videoPC.remoteDescription && videoPC.remoteDescription.type) {
+                await videoPC.addIceCandidate(candidate); 
+            } else {
+                iceCandidateQueue.push(candidate);
+            }
+        }
+    } catch(err) {
+        console.error("Falha no túnel P2P: ", err);
     }
 });
 
 function createVideoPeerConnection(target) {
     videoPC = new RTCPeerConnection(rtcConfig);
+    
     if(videoStream) {
         videoStream.getTracks().forEach(track => videoPC.addTrack(track, videoStream));
     }
     
     videoPC.onicecandidate = (event) => { 
-        if (event.candidate) { socket.emit('video_signal', { targetId: target, from: myId, signal: event.candidate }); } 
+        if (event.candidate) { 
+            socket.emit('video_signal', { targetId: target, from: myId, signal: event.candidate }); 
+        } 
+    };
+    
+    videoPC.onconnectionstatechange = () => {
+        if (videoPC.connectionState === 'connected') {
+            startCallTimer(); // Inicia o contador apenas quando a ligação for 100% estabelecida!
+        }
     };
     
     videoPC.ontrack = (event) => { 
@@ -392,7 +432,9 @@ function createVideoPeerConnection(target) {
     };
 }
 
-// 🪟 LÓGICA DE MINIMIZAR A CHAMADA (PICTURE-IN-PICTURE NATIVO)
+// ==========================================
+// 🪟 FUNÇÕES VISUAIS E HARDWARE
+// ==========================================
 window.toggleMinimizeCall = function() {
     const callScreen = document.getElementById('video-call-screen');
     if (!callScreen) return;
