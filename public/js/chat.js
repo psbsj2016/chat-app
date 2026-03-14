@@ -1167,3 +1167,186 @@ window.removeGroupMember = async function(groupId, memberId, memberName) {
         alert("Erro de conexão."); 
     }
 };
+
+// ==============================================================
+// 🔍 MOTOR DE DEEP SEARCH (RASTREIO DE PALAVRAS E SCROLL MÁGICO)
+// ==============================================================
+
+window.pendingSearchHighlight = null; // Variável global de espera
+
+// Substitui a sua função de busca básica
+window.handleSearch = async function(query) {
+    query = query.trim();
+    const list = document.getElementById('users-list');
+    
+    if (!query) {
+        if(typeof loadContacts === 'function') loadContacts();
+        return;
+    }
+    
+    list.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s linear infinite; font-size: 32px; color: var(--brand-primary);">sync</span><br><br><b style="font-size:14px;">Rastreando arquivos...</b></div>';
+    
+    try {
+        const res = await fetch(`/search?query=${encodeURIComponent(query)}&myId=${myId}`);
+        const data = await res.json();
+        list.innerHTML = '';
+        
+        // 1. RENDERIZAR PESSOAS
+        if (data.users && data.users.length > 0) {
+            list.innerHTML += '<div style="padding: 10px 15px; font-size: 12px; font-weight: 800; color: var(--brand-primary); text-transform: uppercase;">👥 Contatos</div>';
+            data.users.forEach(u => {
+                list.innerHTML += `
+                    <div class="user-item" onclick="openChat('${u._id}', '${u.displayName || u.email}', '${u.photoUrl}', false); toggleMainSearch();">
+                        <div class="user-avatar-container"><img src="${u.photoUrl}"></div>
+                        <div class="user-item-info">
+                            <div class="user-item-top"><span class="user-item-name">${u.displayName || u.email}</span></div>
+                        </div>
+                    </div>`;
+            });
+        }
+        
+        // 2. RENDERIZAR MENSAGENS (COM HIGHLIGHT NA PREVIEW)
+        if (data.messages && data.messages.length > 0) {
+            list.innerHTML += '<div style="padding: 10px 15px; font-size: 12px; font-weight: 800; color: #10B981; text-transform: uppercase;">💬 Mensagens Encontradas</div>';
+            
+            data.messages.forEach(m => {
+                let chatName = 'Desconhecido';
+                let chatPhoto = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                let targetId = '';
+                let isGroup = false;
+
+                if (m.groupId) {
+                    isGroup = true;
+                    targetId = m.groupId; 
+                    const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || [];
+                    const g = cachedGroups.find(x => x._id === m.groupId);
+                    if(g) { chatName = g.name; chatPhoto = g.photoUrl; } else { chatName = "Grupo CPTT"; }
+                } else {
+                    const other = (m.sender._id === myId) ? m.receiver : m.sender;
+                    if(other) {
+                        targetId = other._id;
+                        chatName = other.displayName || other.email || 'Usuário';
+                        chatPhoto = other.photoUrl || chatPhoto;
+                    }
+                }
+
+                // Proteção contra scripts e criação do grifo amarelo na preview
+                const regex = new RegExp(`(${query})`, 'gi');
+                const safeContent = typeof escapeHTML === 'function' ? escapeHTML(m.content) : m.content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                const highlightedPreview = safeContent.replace(regex, '<span style="background: #FDE047; color: #000; font-weight: 900; padding: 0 3px; border-radius: 4px;">$1</span>');
+                
+                const time = new Date(m.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                const senderName = m.sender._id === myId ? 'Você' : (m.sender.displayName || 'Alguém');
+
+                list.innerHTML += `
+                    <div class="user-item" onclick="jumpToMessage('${targetId}', '${chatName.replace(/'/g, "\\'")}', '${chatPhoto}', ${isGroup}, '${m._id}', '${query}')" style="height: auto; padding: 12px 15px; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.05) !important;">
+                        <div class="user-avatar-container"><img src="${chatPhoto}" style="width: 45px !important; height: 45px !important; border-radius: 12px !important;"></div>
+                        <div class="user-item-info" style="border: none;">
+                            <div class="user-item-top">
+                                <span class="user-item-name" style="font-size: 15px; color: var(--text-color);">${chatName}</span>
+                                <span class="user-item-time" style="color: var(--brand-primary); font-weight: 800;">${time}</span>
+                            </div>
+                            <div class="user-item-msg" style="white-space: normal; line-height: 1.4; margin-top: 4px; color: var(--secondary-text);">
+                                <span style="font-size: 12px; font-weight: 800; color: var(--text-color); opacity: 0.8;">${senderName}:</span> ${highlightedPreview}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+        
+        if (list.innerHTML === '') {
+            list.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--secondary-text);">Nenhuma informação encontrada.</div>';
+        }
+    } catch (e) {
+        list.innerHTML = '<div style="text-align:center; padding: 20px; color: #EF4444;">Falha de comunicação com a Base de Dados.</div>';
+    }
+};
+
+// PREPARA O PULO MÁGICO
+window.jumpToMessage = function(targetId, chatName, chatPhoto, isGroup, msgId, searchWord) {
+    // Guarda a instrução na memória para o "Rastreador" agir depois do chat carregar
+    window.pendingSearchHighlight = { msgId: msgId, word: searchWord };
+    
+    // Fecha a barra de pesquisa
+    const searchBar = document.getElementById('main-search-bar');
+    if(searchBar && !searchBar.classList.contains('hidden')) {
+        if(typeof toggleMainSearch === 'function') toggleMainSearch();
+        else searchBar.classList.add('hidden');
+    }
+
+    // Dispara a sua função existente de abrir o chat
+    if(typeof openChat === 'function') {
+        openChat(targetId, chatName, chatPhoto, isGroup);
+    }
+};
+
+// O RASTREADOR (MUTATION OBSERVER): Fica escondido vendo as mensagens entrarem na tela
+const chatBoxObserver = new MutationObserver(() => {
+    if (window.pendingSearchHighlight) {
+        // Tenta encontrar a mensagem desenhada na tela
+        let targetMsgEl = document.getElementById(`msg-${window.pendingSearchHighlight.msgId}`);
+        
+        // Plano B: Se não usar id="msg-...", procura nas divs todas da tela
+        if (!targetMsgEl) {
+            const allMsgs = document.querySelectorAll('.message');
+            allMsgs.forEach(el => {
+                if (el.id === `msg-${window.pendingSearchHighlight.msgId}` || el.getAttribute('data-id') === window.pendingSearchHighlight.msgId) {
+                    targetMsgEl = el;
+                }
+            });
+        }
+
+        if (targetMsgEl) {
+            // Remove realces antigos de outras mensagens
+            document.querySelectorAll('.targeted-msg-active').forEach(el => el.classList.remove('targeted-msg-active'));
+
+            // Escaneia o texto da mensagem e injeta a tag amarela 
+            const walker = document.createTreeWalker(targetMsgEl, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const textNodes = [];
+            while ((node = walker.nextNode())) { textNodes.push(node); }
+
+            const regex = new RegExp(`(${window.pendingSearchHighlight.word})`, 'gi');
+            textNodes.forEach(textNode => {
+                if(textNode.nodeValue.match(regex)) {
+                    const span = document.createElement('span');
+                    span.innerHTML = textNode.nodeValue.replace(regex, '<span class="search-word-highlight">$1</span>');
+                    textNode.parentNode.replaceChild(span, textNode);
+                }
+            });
+
+            // Aplica a classe que faz pulsar a caixa
+            targetMsgEl.classList.add('targeted-msg-active');
+            
+            // Rola magicamente até a mensagem (com pequeno atraso para as fotos carregarem)
+            setTimeout(() => {
+                targetMsgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 400);
+            
+            // Missão cumprida, desliga a memória
+            window.pendingSearchHighlight = null; 
+        }
+    }
+});
+
+// LIGA O RASTREADOR AO CHAT
+document.addEventListener('DOMContentLoaded', () => {
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox) chatBoxObserver.observe(chatBox, { childList: true, subtree: true });
+});
+
+// DESLIGA O REALCE AO CLICAR EM QUALQUER OUTRO LUGAR
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.targeted-msg-active')) {
+        const activeMsgs = document.querySelectorAll('.targeted-msg-active');
+        activeMsgs.forEach(msg => {
+            msg.classList.remove('targeted-msg-active'); // Tira o brilho e a borda verde
+            // Remove o realce amarelo voltando o texto ao normal
+            const highlights = msg.querySelectorAll('.search-word-highlight');
+            highlights.forEach(h => {
+                const text = document.createTextNode(h.textContent);
+                h.parentNode.replaceChild(text, h);
+            });
+        });
+    }
+});

@@ -1274,10 +1274,5 @@ window.playNotificationSound = function(type) {
         }
 
     } catch(e) { console.log("Web Audio bloqueado no navegador."); }
-};
 
-// Dispara o som ao clicar no botão de Play do Menu
-window.testNotificationSound = function() {
-    const soundType = document.getElementById('notification-sound-select').value;
-    playNotificationSound(soundType);
 };

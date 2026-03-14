@@ -104,7 +104,35 @@ app.get('/users/:myId', async (req, res) => {
 });
 
 app.get('/messages/:myId/:otherId', async (req, res) => { try { res.json(await Message.find({ $or: [ { sender: req.params.myId, receiver: req.params.otherId }, { sender: req.params.otherId, receiver: req.params.myId } ] }).populate('sender', 'displayName photoUrl unlockedItems').sort('timestamp')); } catch (e) { res.status(500).json([]); } });
-app.get('/search', async (req, res) => { const { query, myId } = req.query; if (!query || !myId) return res.json({ users: [], messages: [] }); try { const users = await User.find({ _id: { $ne: myId }, isVerified: true, displayName: { $regex: query, $options: 'i' } }).select('displayName photoUrl email'); const messages = await Message.find({ $or: [ { sender: myId, content: { $regex: query, $options: 'i' } }, { receiver: myId, content: { $regex: query, $options: 'i' } } ] }).populate('sender receiver', 'displayName photoUrl'); res.json({ users, messages }); } catch (e) { res.status(500).json({ users:[], messages:[] }); } });
+app.get('/search', async (req, res) => { 
+    const { query, myId } = req.query; 
+    if (!query || !myId) return res.json({ users: [], messages: [] }); 
+    try { 
+        // 1. Busca Utilizadores
+        const users = await User.find({ 
+            _id: { $ne: myId }, 
+            isVerified: true, 
+            $or: [{ displayName: { $regex: query, $options: 'i' } }, { email: { $regex: query, $options: 'i' } }] 
+        }).select('displayName photoUrl email'); 
+        
+        // 2. Descobre os Grupos a que pertenço
+        const myGroups = await Group.find({ members: myId });
+        const groupIds = myGroups.map(g => g._id);
+
+        // 3. Busca Mensagens (Privadas + Grupos) ignorando apagadas
+        const messages = await Message.find({ 
+            $and: [
+                { content: { $regex: query, $options: 'i' } },
+                { content: { $not: /🚫 Esta mensagem foi apagada/ } },
+                { $or: [ { sender: myId }, { receiver: myId }, { groupId: { $in: groupIds } } ] }
+            ]
+        }).populate('sender receiver', 'displayName photoUrl email').sort({ timestamp: -1 }).limit(40); 
+        
+        res.json({ users, messages }); 
+    } catch (e) { 
+        res.status(500).json({ users:[], messages:[] }); 
+    } 
+});
 app.post('/find-contact', async (req, res) => { const { query, myId } = req.body; try { const user = await User.findOne({ $and: [ { _id: { $ne: myId } }, { isVerified: true }, { $or: [{ email: query }, { phone: query }] } ] }).select('-password -code'); res.json(user ? { found: true, user } : { found: false }); } catch (e) { res.status(500).json({ error: 'Erro' }); } });
 
 app.put('/message/:msgId', async (req, res) => {

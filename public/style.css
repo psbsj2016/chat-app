@@ -1173,3 +1173,29 @@ body.bubble-cyber {
 .action-btn-wa:active {
     transform: scale(0.9); /* Efeito de clique */
 }
+
+/* =========================================
+   🔍 DEEP SEARCH: REALCE DE MENSAGENS
+========================================= */
+.targeted-msg-active {
+    box-shadow: 0 0 0 4px #10B981 !important;
+    transform: scale(1.02);
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    z-index: 10;
+}
+
+.search-word-highlight {
+    background-color: #FDE047;
+    color: #000;
+    font-weight: 900;
+    padding: 0 4px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    animation: popHighlight 0.4s ease-out;
+}
+
+@keyframes popHighlight {
+    0% { transform: scale(1.5); background-color: #fff; }
+    100% { transform: scale(1); background-color: #FDE047; }
+}
