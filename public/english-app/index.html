@@ -114,7 +114,6 @@
         
         .cloze-blank { display: inline-block; min-width: 60px; border-bottom: 3px solid var(--text-muted); padding: 0 5px; text-align: center; color: var(--primary); font-weight: 900; transition: 0.3s; }
         
-        /* NOVO: Input de digitação de texto */
         .text-input-exercise { width: 100%; padding: 15px 20px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; font-size: 18px; font-weight: 600; margin-top: 15px; outline: none; text-align: center; transition: 0.2s; }
         .text-input-exercise:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(59,130,246,0.3); }
 
@@ -215,7 +214,7 @@
         <div class="core-path" id="map-core-container"></div>
     </div>
 
-    <div id="lesson-screen" class="app-screen lesson-dark hidden" style="position: absolute; top:0; left:0; width:100%; z-index: 100;">
+    <div id="lesson-screen" class="app-screen lesson-dark hidden" style="position: absolute; top:0; left:0; width:100%; min-height: 100dvh; z-index: 100;">
         <div class="lesson-header">
             <button class="icon-btn" onclick="abortLesson()" style="background: transparent; border:none; color:var(--text-muted); cursor:pointer;"><span class="material-icons-round">close</span></button>
             <div class="lesson-progress-container" id="lesson-progress"></div>
@@ -255,7 +254,6 @@
         const myId = localStorage.getItem('myId'); 
         const myName = localStorage.getItem('displayName') || 'Aluno VIP';
 
-        // O Catálogo reflete EXATAMENTE os nodes injetados pelo QG Admin
         const nodesCatalog = {
             som: [
                 { id: 'phonetics_1', type: 'core', title: 'Fase Base: Som', desc: 'Conhecimento Estrutural', icon: 'record_voice_over' },
@@ -334,16 +332,68 @@
             else openArenaMatchmaking(skill);
         }
 
-        // MIC & TTS ADVANCED
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; let recognizer = null;
+        // 🔥 O SISTEMA ANTI-APPLE (VERIFICA SUPORTE A RECONHECIMENTO DE VOZ) 🔥
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; 
+        let recognizer = null;
+        let isSpeechSupported = false;
+
         if (SpeechRecognition) {
-            recognizer = new SpeechRecognition(); recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
-            recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
-            recognizer.onspeechend = () => stopMic();
-            recognizer.onerror = () => { stopMic(); setFeedback("Erro na escuta.", "var(--danger)"); };
+            try {
+                recognizer = new SpeechRecognition(); 
+                recognizer.lang = 'en-US'; 
+                recognizer.interimResults = false; 
+                recognizer.maxAlternatives = 1;
+                recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
+                recognizer.onspeechend = () => stopMic();
+                recognizer.onerror = (e) => { 
+                    stopMic(); 
+                    if(e.error === 'not-allowed') {
+                        setFeedback("Microfone bloqueado. Pule a questão.", "var(--danger)");
+                        document.getElementById('btn-action').innerText = "Pular e Continuar"; 
+                        document.getElementById('btn-action').className = "action-btn ready";
+                        stepState = 'verified'; // Permite avançar
+                    } else {
+                        setFeedback("Não entendi bem. Tente novamente.", "var(--danger)"); 
+                    }
+                };
+                isSpeechSupported = true; // Só ativa se não houver erros na construção
+            } catch (e) {
+                isSpeechSupported = false; // Falhou na inicialização (Típico em WebView de iOS)
+            }
         }
-        function toggleMic() { if(!recognizer) return alert("Microfone indisponível."); const micBtn = document.getElementById('mic-btn'); if(isRecording) stopMic(); else { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } }
-        function stopMic() { if (!isRecording) return; isRecording = false; const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); try { recognizer.stop(); }catch(e){} document.getElementById('mic-status').innerText = "Falar"; }
+
+        function toggleMic() { 
+            if(!isSpeechSupported) {
+                alert("O seu navegador (Safari/iOS WebView) bloqueia a IA de voz. Clique em 'Pular' para continuar a aula.");
+                setFeedback("Dispositivo não suporta gravação.", "var(--danger)");
+                document.getElementById('btn-action').innerText = "Pular (Ganhar Pontos)"; 
+                document.getElementById('btn-action').className = "action-btn ready";
+                stepState = 'verified';
+                return;
+            }
+
+            const micBtn = document.getElementById('mic-btn'); 
+            if(isRecording) stopMic(); 
+            else { 
+                try {
+                    recognizer.start(); 
+                    isRecording = true; 
+                    if(micBtn) micBtn.classList.add('recording'); 
+                    document.getElementById('mic-status').innerText = "Escutando..."; 
+                } catch(e) {
+                    alert("Aguarde um segundo e tente novamente.");
+                }
+            } 
+        }
+
+        function stopMic() { 
+            if (!isRecording) return; 
+            isRecording = false; 
+            const micBtn = document.getElementById('mic-btn'); 
+            if(micBtn) micBtn.classList.remove('recording'); 
+            try { recognizer.stop(); } catch(e){} 
+            document.getElementById('mic-status').innerText = "Falar"; 
+        }
 
         function startPerfTimer(seconds) {
             clearInterval(perfTimerInterval); perfSecondsRemaining = seconds; updateTimerUI();
@@ -365,7 +415,6 @@
             coreContainer.innerHTML = '';
             (nodesCatalog[track] || []).forEach((node) => {
                 const btnClass = 'unlocked'; const bgStyle = `background-color: ${color}; border-color: rgba(255,255,255,0.2); box-shadow: 0 0 20px ${color}80;`;
-                // Se for Treino Diário, usa ícone de Raio e botão diferente
                 if(node.id.includes('treino')) {
                     coreContainer.innerHTML += `<button class="daily-workout-btn" onclick="startNodeLesson('${node.id}')" style="background: ${color}; box-shadow: 0 10px 25px ${color}50;"><div style="display: flex; align-items: center; gap: 15px;"><span class="material-icons-round" style="font-size: 32px;">${node.icon}</span><div style="text-align: left;"><div style="font-size: 16px; font-weight: 900;">${node.title}</div><div style="font-size: 11px; font-weight: 600; opacity: 0.9;">${node.desc}</div></div></div><span class="material-icons-round">play_circle_filled</span></button>`;
                 } else {
@@ -445,12 +494,10 @@
             const ttsBtn = currentExercise.audioText ? `<button class="play-btn" onclick="playTTS('${currentExercise.audioText.replace(/'/g, "\\'")}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>` : '';
             
             let instructionText = currentExercise.text;
-            // Se for cloze e tiver "___", sublinha bonito
             if(currentExercise.type.includes('cloze')) instructionText = instructionText.replace('___', '<span class="cloze-blank" id="cloze-blank"></span>');
 
             const instBlock = `<div class="instruction-text" style="${currentExercise.type.includes('cloze') ? 'font-size: 24px;' : ''}">${instructionText}</div>`;
 
-            // CLASSIFICAÇÃO DA MECÂNICA
             const isMultipleChoice = ['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false', 'minimal_pair', 'context_cloze'].includes(currentExercise.type);
             const isAssembly = ['reorder_sentence', 'build_sentence', 'syntax_assembly', 'sentence_assembly'].includes(currentExercise.type);
             const isTyping = ['find_error', 'dictation', 'fast_typing', 'translation', 'simultaneous_training', 'memorization'].includes(currentExercise.type);
@@ -468,7 +515,14 @@
                 html = `${advBlock}${ctxBlock}${instBlock}${ttsBtn}<input type="text" id="typing-answer" class="text-input-exercise" placeholder="Digite a resposta exata..." autocomplete="off">`;
                 setTimeout(() => { const inp = document.getElementById('typing-answer'); if(inp) { inp.focus(); inp.addEventListener('input', () => { document.getElementById('btn-action').className = "action-btn ready"; }); } }, 100);
             } else if (isSpeech) {
-                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}<div class="target-word">${currentExercise.displayWord || ''}</div>${ttsBtn}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>`;
+                // FALLBACK VISUAL PARA DISPOSITIVOS SEM SUPORTE (APPLE iOS)
+                let extraWarning = !isSpeechSupported ? `<div style="color:var(--danger); font-size:12px; margin-top:10px;">⚠️ Seu navegador não suporta Gravação de IA. Pule este exercício.</div>` : '';
+                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}<div class="target-word">${currentExercise.displayWord || ''}</div>${ttsBtn}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>${extraWarning}`;
+                if(!isSpeechSupported) {
+                    document.getElementById('btn-action').innerText = "Pular Exercício";
+                    document.getElementById('btn-action').className = "action-btn ready";
+                    stepState = 'verified'; // Libera o avanço
+                }
             } else if (isListenIsolate) {
                 html = `${ipaBlock}${advBlock}${instBlock}${ttsBtn}`;
                 document.getElementById('btn-action').innerText = "Continuar"; document.getElementById('btn-action').className = "action-btn ready";
@@ -478,7 +532,6 @@
             if (isAssembly) renderAssemblyWorkspace();
         }
 
-        // 🔥 TTS INTELIGENTE (Lê os perfis do QG)
         function playTTS(text) { 
             const u = new SpeechSynthesisUtterance(text); 
             u.lang = 'en-US'; let pitch = 1; let rate = 1;
@@ -510,9 +563,10 @@
             document.getElementById('btn-action').innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score); 
         }
 
-        // 🔥 MOTOR DE VALIDAÇÃO UNIVERSAL 🔥
         function handleLessonAction() {
             if (currentExercise.type === 'listen_isolate') { verifyAndSendScore(100); return; } 
+            
+            // O botão pula automaticamente se for Apple sem suporte
             if (stepState === 'verified') { exerciseIndex++; loadExercise(); return; }
             if (stepState !== 'ready') return;
 
@@ -538,13 +592,19 @@
                 const uAns = inputEl.value.trim().toLowerCase(); const eAns = (currentExercise.answerStr || currentExercise.answer || "").toString().toLowerCase().trim();
                 if (uAns === eAns || (currentExercise.target && uAns.includes(currentExercise.target.toLowerCase()))) { setFeedback("Exato!", "var(--som-color)"); btn.className = "action-btn success"; score = 100; } 
                 else { setFeedback(`Incorreto. O sistema esperava:\n"${currentExercise.answerStr || currentExercise.answer}"`, "var(--danger)"); score = 20; }
-            } else if (isSpeech) { return alert("Aperte o microfone e fale a frase."); }
+            } else if (isSpeech) { 
+                return alert("Aperte o microfone e fale a frase."); 
+            }
 
             btn.innerText = "Continuar"; stepState = 'verified'; verifyAndSendScore(score);
         }
 
         function verifyAndSendScore(score) {
             if(isArenaMode && socket && arenaRoomId) { myArenaScore += score; updateArenaHud(); socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex }); }
+            
+            // PWA INTEGRATION: Envia XP para o ChatPTT se a pontuação for boa!
+            if (score >= 80) { window.parent.postMessage({ type: 'gain_xp', amount: 10 }, '*'); }
+
             sendAttemptToBackend(score);
             if(currentExercise.type === 'listen_isolate') { exerciseIndex++; loadExercise(); }
         }
