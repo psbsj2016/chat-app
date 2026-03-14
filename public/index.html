@@ -144,7 +144,19 @@
         </div>  
 
         <div class="material-header"><img id="header-my-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'" onclick="toggleDrawer()" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; cursor: pointer; background: var(--input-bg);"><div style="flex:1; text-align: center;"><span style="font-weight: 900; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">ChatPTT</span></div><button class="icon-btn" onclick="toggleMainSearch()"><span class="material-icons-round" style="color: var(--text-color);">search</span></button></div>
-        <div id="main-search-bar" class="search-container hidden"><div class="search-box"><span class="material-icons-round" style="color: var(--brand-primary); margin-right: 10px;">search</span><input type="text" id="search-input" placeholder="Buscar nas conversas..." onkeyup="handleSearch(this.value)"><span class="material-icons-round" onclick="toggleMainSearch()" style="color: var(--secondary-text); cursor: pointer;">close</span></div></div>
+        <style>
+            #main-search-bar:not(.hidden) { animation: slideDownSearch 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; display: flex !important; }
+            @keyframes slideDownSearch { 0% { transform: translateY(-15px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        </style>
+        <div id="main-search-bar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; background: var(--card-bg); z-index: 105; align-items: center; padding: max(10px, env(safe-area-inset-top)) 15px 10px 5px; box-shadow: 0 4px 25px rgba(0,0,0,0.15); border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <button class="icon-btn" onclick="toggleMainSearch()" style="background: transparent; padding: 8px; margin-right: 5px;">
+                <span class="material-icons-round" style="color: var(--brand-primary); font-size: 26px;">arrow_back</span>
+            </button>
+            <input type="text" id="search-input" placeholder="Pesquisar mensagens e contatos..." oninput="handleSearch(this.value)" style="flex: 1; border: none; background: transparent; outline: none; font-size: 16.5px; color: var(--text-color); font-weight: 600; width: 100%; height: 40px; padding: 0 5px;">
+            <button class="icon-btn" onclick="document.getElementById('search-input').value=''; handleSearch(''); document.getElementById('search-input').focus();" style="background: transparent; padding: 8px;">
+                <span class="material-icons-round" style="color: var(--secondary-text); font-size: 24px;">close</span>
+            </button>
+        </div>
         <div class="status-tray" id="status-tray-container"><div class="status-item" onclick="openCreateStatusModal()"><div class="status-create-btn"><span class="material-icons-round" style="color: var(--brand-primary); font-size: 32px;">add</span></div><span class="status-name" style="color: var(--text-color); font-weight: 800;">Criar Status</span></div><div id="dynamic-statuses" style="display: contents;"></div></div>        
         
         <div id="users-list" class="contact-list" style="overflow-y: auto; flex: 1; padding-bottom: 90px !important;"></div>
@@ -602,10 +614,10 @@
     </nav>
 
     <script src="/socket.io/socket.io.js" defer></script>
-    <script src="/js/core.js?v=8.8" defer></script>
-    <script src="/js/ui.js?v=8.8" defer></script>
-    <script src="/js/chat.js?v=8.8" defer></script>
-    <script src="/js/webrtc.js?v=8.8" defer></script>
-    <script src="/js/features.js?v=8.8" defer></script>
+    <script src="/js/core.js?v=8.9" defer></script>
+    <script src="/js/ui.js?v=8.9" defer></script>
+    <script src="/js/chat.js?v=8.9" defer></script>
+    <script src="/js/webrtc.js?v=8.9" defer></script>
+    <script src="/js/features.js?v=8.9" defer></script>
 </body>
 </html>
