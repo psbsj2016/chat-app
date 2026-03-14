@@ -9,7 +9,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            /* Tema Escuro para a Aula */
             --bg-color: #05050A; 
             --card-bg: rgba(15, 23, 42, 0.7);
             --text-main: #F8FAFC;
@@ -82,12 +81,6 @@
         .lesson-progress-container { flex: 1; margin: 0 20px; display: flex; gap: 5px; }
         .lesson-step { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; transition: 0.3s; }
         .lesson-step.active { background: var(--primary); }
-        .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(16px); }
 
         .exercise-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px 0; width: 100%; }
         .ipa-text { font-family: monospace; font-size: 22px; color: var(--primary); font-weight: bold; margin-bottom: 10px; letter-spacing: 2px; }
@@ -129,11 +122,14 @@
         .perf-timer { color: #F43F5E; font-family: monospace; font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 5px; }
         .perf-timer.urgent { animation: blinkRed 1s infinite; }
         .arena-hud { background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(59, 130, 246, 0.15)); border: 1px solid var(--arena-color); border-radius: 12px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3); }
+        
+        .offline-badge { display: none; background: #F59E0B; color: #fff; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div id="dashboard-screen" class="app-screen light-dashboard">
+        <div id="offline-indicator" class="offline-badge"><span class="material-icons-round" style="font-size:12px; vertical-align:middle;">wifi_off</span> MODO OFFLINE ATIVO</div>
         
         <div class="ld-section">
             <div class="ld-header">
@@ -254,6 +250,7 @@
         const myId = localStorage.getItem('myId'); 
         const myName = localStorage.getItem('displayName') || 'Aluno VIP';
 
+        // O Catálogo reflete EXATAMENTE os nodes injetados pelo QG Admin
         const nodesCatalog = {
             som: [
                 { id: 'phonetics_1', type: 'core', title: 'Fase Base: Som', desc: 'Conhecimento Estrutural', icon: 'record_voice_over' },
@@ -281,8 +278,44 @@
         let socket = null; let isArenaMode = false; let arenaRoomId = null; let opponentData = null;
         let myArenaScore = 0; let opponentArenaScore = 0;
 
+        // 🔥 MOTOR PWA CACHE (Para funcionar Offline e Rápido) 🔥
+        async function safeFetch(url, cacheKey) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Server response not ok");
+                const data = await res.json();
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                document.getElementById('offline-indicator').style.display = 'none';
+                return data;
+            } catch (e) {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    console.log("A carregar via Cache (Modo Offline)", cacheKey);
+                    document.getElementById('offline-indicator').style.display = 'block';
+                    return JSON.parse(cached);
+                }
+                throw e; // Sem internet e sem cache
+            }
+        }
+
+        // Sincronizador Automático de Tentativas Offline
+        window.addEventListener('online', syncOfflineProgress);
+        async function syncOfflineProgress() {
+            const queue = JSON.parse(localStorage.getItem('english_offline_queue') || '[]');
+            if (queue.length === 0) return;
+            let remaining = [];
+            for (let item of queue) {
+                try {
+                    await fetch(item.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item.payload) });
+                } catch(e) { remaining.push(item); } // Se falhar de novo, guarda para depois
+            }
+            localStorage.setItem('english_offline_queue', JSON.stringify(remaining));
+        }
+
         window.addEventListener('DOMContentLoaded', async () => {
             if(!myId) return;
+            setTimeout(syncOfflineProgress, 3000); // Tenta sincronizar 3s após abrir
+
             if(typeof io !== 'undefined') {
                 socket = io();
                 socket.on('english_arena_waiting', (data) => {
@@ -299,7 +332,7 @@
                     arenaRoomId = data.roomId; opponentData = data.p1.id === myId ? data.p2 : data.p1;
                     myArenaScore = 0; opponentArenaScore = 0;
                     try {
-                        const res = await fetch(`/api/english/skill/${data.skill}`); const fetch_data = await res.json();
+                        const fetch_data = await safeFetch(`/api/english/skill/${data.skill}`, `cache_skill_${data.skill}`);
                         if (fetch_data.success && fetch_data.exercises.length > 0) { 
                             currentExerciseQueue.length = 0; currentExerciseQueue.push(...fetch_data.exercises); 
                             currentNodeId = 'arena_' + data.skill; exerciseIndex = 0;
@@ -320,11 +353,8 @@
 
         function switchMode(mode) {
             currentActiveMode = mode;
-            if(mode === 'solo') {
-                document.getElementById('tab-solo').classList.add('active'); document.getElementById('tab-arena').classList.remove('active');
-            } else {
-                document.getElementById('tab-arena').classList.add('active'); document.getElementById('tab-solo').classList.remove('active');
-            }
+            if(mode === 'solo') { document.getElementById('tab-solo').classList.add('active'); document.getElementById('tab-arena').classList.remove('active'); } 
+            else { document.getElementById('tab-arena').classList.add('active'); document.getElementById('tab-solo').classList.remove('active'); }
         }
 
         function handleSkillClick(skill) {
@@ -334,15 +364,11 @@
 
         // 🔥 O SISTEMA ANTI-APPLE (VERIFICA SUPORTE A RECONHECIMENTO DE VOZ) 🔥
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; 
-        let recognizer = null;
-        let isSpeechSupported = false;
+        let recognizer = null; let isSpeechSupported = false;
 
         if (SpeechRecognition) {
             try {
-                recognizer = new SpeechRecognition(); 
-                recognizer.lang = 'en-US'; 
-                recognizer.interimResults = false; 
-                recognizer.maxAlternatives = 1;
+                recognizer = new SpeechRecognition(); recognizer.lang = 'en-US'; recognizer.interimResults = false; recognizer.maxAlternatives = 1;
                 recognizer.onresult = (e) => { stopMic(); evaluateSpeech(e.results[0][0].transcript); };
                 recognizer.onspeechend = () => stopMic();
                 recognizer.onerror = (e) => { 
@@ -351,48 +377,33 @@
                         setFeedback("Microfone bloqueado. Pule a questão.", "var(--danger)");
                         document.getElementById('btn-action').innerText = "Pular e Continuar"; 
                         document.getElementById('btn-action').className = "action-btn ready";
-                        stepState = 'verified'; // Permite avançar
-                    } else {
-                        setFeedback("Não entendi bem. Tente novamente.", "var(--danger)"); 
-                    }
+                        stepState = 'verified'; 
+                    } else { setFeedback("Não entendi bem. Tente novamente.", "var(--danger)"); }
                 };
-                isSpeechSupported = true; // Só ativa se não houver erros na construção
-            } catch (e) {
-                isSpeechSupported = false; // Falhou na inicialização (Típico em WebView de iOS)
-            }
+                isSpeechSupported = true; 
+            } catch (e) { isSpeechSupported = false; }
         }
 
         function toggleMic() { 
             if(!isSpeechSupported) {
-                alert("O seu navegador (Safari/iOS WebView) bloqueia a IA de voz. Clique em 'Pular' para continuar a aula.");
+                alert("O seu navegador bloqueia a IA de voz. Clique em 'Pular' para continuar a aula.");
                 setFeedback("Dispositivo não suporta gravação.", "var(--danger)");
                 document.getElementById('btn-action').innerText = "Pular (Ganhar Pontos)"; 
                 document.getElementById('btn-action').className = "action-btn ready";
-                stepState = 'verified';
-                return;
+                stepState = 'verified'; return;
             }
-
             const micBtn = document.getElementById('mic-btn'); 
             if(isRecording) stopMic(); 
             else { 
-                try {
-                    recognizer.start(); 
-                    isRecording = true; 
-                    if(micBtn) micBtn.classList.add('recording'); 
-                    document.getElementById('mic-status').innerText = "Escutando..."; 
-                } catch(e) {
-                    alert("Aguarde um segundo e tente novamente.");
-                }
+                try { recognizer.start(); isRecording = true; if(micBtn) micBtn.classList.add('recording'); document.getElementById('mic-status').innerText = "Escutando..."; } 
+                catch(e) { alert("Aguarde um segundo e tente novamente."); }
             } 
         }
 
         function stopMic() { 
-            if (!isRecording) return; 
-            isRecording = false; 
-            const micBtn = document.getElementById('mic-btn'); 
-            if(micBtn) micBtn.classList.remove('recording'); 
-            try { recognizer.stop(); } catch(e){} 
-            document.getElementById('mic-status').innerText = "Falar"; 
+            if (!isRecording) return; isRecording = false; 
+            const micBtn = document.getElementById('mic-btn'); if(micBtn) micBtn.classList.remove('recording'); 
+            try { recognizer.stop(); } catch(e){} document.getElementById('mic-status').innerText = "Falar"; 
         }
 
         function startPerfTimer(seconds) {
@@ -427,19 +438,20 @@
         async function startNodeLesson(nodeId) {
             isArenaMode = false; isPerformanceMode = false; currentPerfSkill = ''; currentNodeId = nodeId;
             document.getElementById('map-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden'); 
-            document.getElementById('exercise-area').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A buscar missão no QG...</h3></div>`;
+            document.getElementById('exercise-area').innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;"><div class="material-icons-round" style="font-size: 50px; color: var(--primary); animation: spin 1s linear infinite;">sync</div><h3 style="margin-top:20px; color:white;">A buscar missão...</h3></div>`;
             document.getElementById('btn-action').classList.add('hidden'); document.getElementById('arena-hud').classList.add('hidden'); document.getElementById('performance-hud').classList.add('hidden');
             document.getElementById('lesson-type-badge').innerText = nodeId.includes('treino') ? "TREINO DIÁRIO" : "AULA ESTRUTURAL";
 
             try {
-                const res = await fetch(`/api/english/node/${nodeId}`); const data = await res.json();
+                // USA O PWA CACHE FETCH
+                const data = await safeFetch(`/api/english/node/${nodeId}`, `cache_node_${nodeId}`);
                 if (data.success && data.exercises.length > 0) { 
                     currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); exerciseIndex = 0;
                     document.getElementById('lesson-progress').innerHTML = '';
                     currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
                     document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
                 } else { alert("Nenhum exercício injetado neste nó ainda."); abortLesson(); }
-            } catch (e) { abortLesson(); } 
+            } catch (e) { alert("Modo Offline: Não tem esta aula descarregada."); abortLesson(); } 
         }
 
         async function startSkillWorkout(skill) {
@@ -450,17 +462,19 @@
             document.getElementById('lesson-type-badge').innerText = "PERFORMANCE";
 
             try {
-                const res = await fetch(`/api/english/skill/${skill}`); const data = await res.json();
+                // USA O PWA CACHE FETCH
+                const data = await safeFetch(`/api/english/skill/${skill}`, `cache_skill_${skill}`);
                 if (data.success && data.exercises.length > 0) { 
                     currentExerciseQueue.length = 0; currentExerciseQueue.push(...data.exercises); currentNodeId = 'skill_' + skill; exerciseIndex = 0;
                     currentExerciseQueue.forEach((_, i) => document.getElementById('lesson-progress').innerHTML += `<div class="lesson-step ${i === 0 ? 'active' : ''}"></div>`);
                     document.getElementById('btn-action').classList.remove('hidden'); loadExercise();
-                } else { alert("Sem exercícios disponíveis no QG."); abortLesson(); }
-            } catch (e) { abortLesson(); } 
+                } else { alert("Sem exercícios disponíveis."); abortLesson(); }
+            } catch (e) { alert("Modo Offline: Sem exercícios em cache."); abortLesson(); } 
         }
 
         async function startTrainingWorkout() { startSkillWorkout('mix'); } 
         function openArenaMatchmaking(skill) {
+            if(!navigator.onLine) return alert("A Arena Online exige conexão de Internet ativa.");
             if(!socket) return alert("Radar Offline.");
             isArenaMode = true; isPerformanceMode = true; currentPerfSkill = skill;
             document.getElementById('dashboard-screen').classList.add('hidden'); document.getElementById('lesson-screen').classList.remove('hidden');
@@ -470,7 +484,7 @@
         }
         function cancelMatchmaking() { if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId); else if(socket) socket.emit('leave_english_arena', 'queue'); isArenaMode = false; abortLesson(); }
 
-        // 🔥 MOTOR DE RENDERIZAÇÃO UNIVERSAL 🔥
+        // 🔥 MOTOR DE RENDERIZAÇÃO UNIVERSAL (COMPATÍVEL COM ADMIN PTT) 🔥
         function loadExercise() {
             if (exerciseIndex >= currentExerciseQueue.length) { finishLesson(); return; }
             currentExercise = currentExerciseQueue[exerciseIndex];
@@ -488,40 +502,47 @@
 
             const area = document.getElementById('exercise-area'); 
             
-            const ipaBlock = (isAdvancedMode && currentExercise.ipa) ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
-            const advBlock = (isAdvancedMode && currentExercise.advTip) ? `<div class="advanced-tip"><span class="material-icons-round">psychology</span> ${currentExercise.advTip}</div>` : '';
-            const ctxBlock = currentExercise.context ? `<div style="font-size:16px; color:var(--text-muted); margin-bottom:15px; font-style:italic;">"${currentExercise.context}"</div>` : '';
-            const ttsBtn = currentExercise.audioText ? `<button class="play-btn" onclick="playTTS('${currentExercise.audioText.replace(/'/g, "\\'")}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>` : '';
-            
-            let instructionText = currentExercise.text;
-            if(currentExercise.type.includes('cloze')) instructionText = instructionText.replace('___', '<span class="cloze-blank" id="cloze-blank"></span>');
-
-            const instBlock = `<div class="instruction-text" style="${currentExercise.type.includes('cloze') ? 'font-size: 24px;' : ''}">${instructionText}</div>`;
-
+            // TIPOS DE MECÂNICAS INJETADAS PELO ADMIN
             const isMultipleChoice = ['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false', 'minimal_pair', 'context_cloze'].includes(currentExercise.type);
             const isAssembly = ['reorder_sentence', 'build_sentence', 'syntax_assembly', 'sentence_assembly'].includes(currentExercise.type);
             const isTyping = ['find_error', 'dictation', 'fast_typing', 'translation', 'simultaneous_training', 'memorization'].includes(currentExercise.type);
-            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word'].includes(currentExercise.type);
+            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word', 'repeat_isolate'].includes(currentExercise.type);
             const isListenIsolate = currentExercise.type === 'listen_isolate';
+            const hasClozeBlank = ['complete_sentence', 'meaning_cloze', 'context_cloze'].includes(currentExercise.type);
+
+            const ipaBlock = (isAdvancedMode && currentExercise.ipa) ? `<div class="ipa-text">${currentExercise.ipa}</div>` : '';
+            const advBlock = (isAdvancedMode && currentExercise.advTip) ? `<div class="advanced-tip"><span class="material-icons-round">psychology</span> ${currentExercise.advTip}</div>` : '';
+            
+            // PREPARAÇÃO INTELIGENTE DO CONTEXTO COM LACUNA (CLOZE)
+            let ctxHtml = currentExercise.context || '';
+            if (hasClozeBlank && ctxHtml.includes('___')) {
+                ctxHtml = ctxHtml.replace('___', '<span class="cloze-blank" id="cloze-blank">___</span>');
+            }
+            const ctxBlock = ctxHtml ? `<div style="font-size:18px; color:var(--text-muted); margin-bottom:15px; font-weight:600; font-style:italic;">"${ctxHtml}"</div>` : '';
+            
+            // TTS INTELIGENTE (Prioridade: audioText > displayWord > context)
+            const ttsTarget = currentExercise.audioText || currentExercise.displayWord || currentExercise.context;
+            const ttsBtn = ttsTarget ? `<button class="play-btn" onclick="playTTS('${ttsTarget.replace(/'/g, "\\'")}')"><span class="material-icons-round" style="font-size:40px;">volume_up</span></button>` : '';
+            
+            const instBlock = `<div class="instruction-text">${currentExercise.text || ''}</div>`;
 
             let html = '';
             if (isMultipleChoice) {
-                let optsHtml = currentExercise.options ? `<div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="${currentExercise.type.includes('cloze') ? `selectClozeOption(${i})` : `selectOption(${i})`}">${opt}</div>`).join('')}</div>` : '';
-                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}${ttsBtn}${optsHtml}`;
+                let optsHtml = currentExercise.options ? `<div class="options-grid" id="quiz-options">${currentExercise.options.map((opt, i) => `<div class="option-btn" onclick="selectOption(${i})">${opt}</div>`).join('')}</div>` : '';
+                html = `${ipaBlock}${advBlock}${instBlock}${ctxBlock}${ttsBtn}${optsHtml}`;
             } else if (isAssembly) {
                 assembledSentence = []; poolWords = currentExercise.options ? [...currentExercise.options] : [];
-                html = `${advBlock}${ctxBlock}${instBlock}${ttsBtn}<div class="assembly-workspace" id="assembly-workspace"></div>`;
+                html = `${advBlock}${instBlock}${ctxBlock}${ttsBtn}<div class="assembly-workspace" id="assembly-workspace"></div>`;
             } else if (isTyping) {
-                html = `${advBlock}${ctxBlock}${instBlock}${ttsBtn}<input type="text" id="typing-answer" class="text-input-exercise" placeholder="Digite a resposta exata..." autocomplete="off">`;
+                html = `${advBlock}${instBlock}${ctxBlock}${ttsBtn}<input type="text" id="typing-answer" class="text-input-exercise" placeholder="Digite a resposta exata..." autocomplete="off">`;
                 setTimeout(() => { const inp = document.getElementById('typing-answer'); if(inp) { inp.focus(); inp.addEventListener('input', () => { document.getElementById('btn-action').className = "action-btn ready"; }); } }, 100);
             } else if (isSpeech) {
-                // FALLBACK VISUAL PARA DISPOSITIVOS SEM SUPORTE (APPLE iOS)
                 let extraWarning = !isSpeechSupported ? `<div style="color:var(--danger); font-size:12px; margin-top:10px;">⚠️ Seu navegador não suporta Gravação de IA. Pule este exercício.</div>` : '';
-                html = `${ipaBlock}${advBlock}${ctxBlock}${instBlock}<div class="target-word">${currentExercise.displayWord || ''}</div>${ttsBtn}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>${extraWarning}`;
+                html = `${ipaBlock}${advBlock}${instBlock}${ctxBlock}<div class="target-word">${currentExercise.displayWord || ''}</div>${ttsBtn}<button class="mic-btn" id="mic-btn" onclick="toggleMic()"><span class="material-icons-round" style="font-size:40px;">mic</span></button><p id="mic-status" style="color:var(--text-muted); font-size:12px;">Falar</p>${extraWarning}`;
                 if(!isSpeechSupported) {
                     document.getElementById('btn-action').innerText = "Pular Exercício";
                     document.getElementById('btn-action').className = "action-btn ready";
-                    stepState = 'verified'; // Libera o avanço
+                    stepState = 'verified';
                 }
             } else if (isListenIsolate) {
                 html = `${ipaBlock}${advBlock}${instBlock}${ttsBtn}`;
@@ -544,8 +565,21 @@
             u.pitch = pitch; u.rate = rate; window.speechSynthesis.speak(u); 
         }
 
-        function selectOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('btn-action').className = "action-btn ready"; }
-        function selectClozeOption(idx) { if(stepState !== 'ready') return; selectedOption = idx; document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); document.getElementById('cloze-blank').innerHTML = currentExercise.options[idx]; document.getElementById('cloze-blank').style.color = "var(--contexto-color)"; document.getElementById('cloze-blank').style.borderColor = "var(--contexto-color)"; document.getElementById('btn-action').className = "action-btn ready"; }
+        function selectOption(idx) { 
+            if(stepState !== 'ready') return; 
+            selectedOption = idx; 
+            document.querySelectorAll('.option-btn').forEach((b, i) => b.classList.toggle('selected', i === idx)); 
+            
+            // Se tiver lacuna, preenche com a palavra escolhida!
+            const cloze = document.getElementById('cloze-blank');
+            if(cloze && currentExercise.options) {
+                cloze.innerText = currentExercise.options[idx];
+                cloze.style.color = 'var(--primary)';
+                cloze.style.borderColor = 'var(--primary)';
+            }
+            document.getElementById('btn-action').className = "action-btn ready"; 
+        }
+
         function renderAssemblyWorkspace() { const workspace = document.getElementById('assembly-workspace'); if(!workspace) return; let ansHtml = assembledSentence.map((w, i) => `<div class="word-block" onclick="removeAssemblyWord(${i})" style="border-color: var(--logica-color); background: rgba(59, 130, 246, 0.2);">${w}</div>`).join(''); let poolHtml = poolWords.map((w, i) => `<div class="word-block" onclick="addAssemblyWord(${i})">${w}</div>`).join(''); workspace.innerHTML = `<div class="answer-box">${ansHtml || '<span style="color:var(--text-muted); font-size:14px;">Toque nas palavras...</span>'}</div><div class="word-pool">${poolHtml}</div>`; if(assembledSentence.length > 0) document.getElementById('btn-action').className = "action-btn ready"; else document.getElementById('btn-action').className = "action-btn"; }
         function addAssemblyWord(idx) { if(stepState !== 'ready') return; assembledSentence.push(poolWords[idx]); poolWords.splice(idx, 1); renderAssemblyWorkspace(); }
         function removeAssemblyWord(idx) { if(stepState !== 'ready') return; poolWords.push(assembledSentence[idx]); assembledSentence.splice(idx, 1); renderAssemblyWorkspace(); }
@@ -566,7 +600,6 @@
         function handleLessonAction() {
             if (currentExercise.type === 'listen_isolate') { verifyAndSendScore(100); return; } 
             
-            // O botão pula automaticamente se for Apple sem suporte
             if (stepState === 'verified') { exerciseIndex++; loadExercise(); return; }
             if (stepState !== 'ready') return;
 
@@ -575,7 +608,7 @@
             const isMultipleChoice = ['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false', 'minimal_pair', 'context_cloze'].includes(currentExercise.type);
             const isAssembly = ['reorder_sentence', 'build_sentence', 'syntax_assembly', 'sentence_assembly'].includes(currentExercise.type);
             const isTyping = ['find_error', 'dictation', 'fast_typing', 'translation', 'simultaneous_training', 'memorization'].includes(currentExercise.type);
-            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word'].includes(currentExercise.type);
+            const isSpeech = ['repetition', 'repeat_sentence', 'free_speech', 'repeat_word', 'repeat_isolate'].includes(currentExercise.type);
 
             if (isAssembly) {
                 if (assembledSentence.length === 0) return alert("Monte a frase!"); 
@@ -602,7 +635,7 @@
         function verifyAndSendScore(score) {
             if(isArenaMode && socket && arenaRoomId) { myArenaScore += score; updateArenaHud(); socket.emit('english_arena_progress', { roomId: arenaRoomId, userId: myId, score: score, exerciseIndex: exerciseIndex }); }
             
-            // PWA INTEGRATION: Envia XP para o ChatPTT se a pontuação for boa!
+            // PWA INTEGRATION: Envia XP para o ChatPTT
             if (score >= 80) { window.parent.postMessage({ type: 'gain_xp', amount: 10 }, '*'); }
 
             sendAttemptToBackend(score);
@@ -613,8 +646,17 @@
         
         async function sendAttemptToBackend(score) {
             if(!myId) return; const timeTaken = Date.now() - exerciseStartTime;
-            if (isPerformanceMode) fetch('/api/english/performance/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken }) }).catch(e=>{});
-            else fetch('/api/english/attempt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: myId, nodeId: currentNodeId, exerciseId: currentExercise.id, score: score, timeMs: timeTaken }) }).catch(e=>{});
+            const endpoint = isPerformanceMode ? '/api/english/performance/attempt' : '/api/english/attempt';
+            const payload = isPerformanceMode ? { userId: myId, skill: currentPerfSkill, score: score, timeMs: timeTaken } : { userId: myId, nodeId: currentNodeId, exerciseId: currentExercise.id, score: score, timeMs: timeTaken };
+            
+            try {
+                await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            } catch(e) {
+                // SALVA OFFLINE SE A INTERNET CAIR!
+                const offlineQueue = JSON.parse(localStorage.getItem('english_offline_queue') || '[]');
+                offlineQueue.push({ endpoint, payload });
+                localStorage.setItem('english_offline_queue', JSON.stringify(offlineQueue));
+            }
         }
 
         function finishLesson(wonByWO = false) {
@@ -625,7 +667,7 @@
                 resultHtml = `<span class="material-icons-round" style="font-size:80px; color:${won ? '#10B981' : '#EF4444'}; margin-bottom:20px;">${won ? 'emoji_events' : 'sentiment_dissatisfied'}</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color:${won ? '#10B981' : '#EF4444'};">${won ? 'VITÓRIA NA ARENA!' : 'DERROTA'}</h2><p style="color:var(--text-muted); font-weight:600;">Placar: Você ${myArenaScore} x ${opponentArenaScore} ${opponentData ? opponentData.name : 'Oponente'}</p>`;
                 if(socket && arenaRoomId) socket.emit('leave_english_arena', arenaRoomId);
             } else if (isPerformanceMode) {
-                resultHtml = `<span class="material-icons-round" style="font-size:80px; color:var(--primary); margin-bottom:20px;">emoji_events</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Treino Concluído!</h2><p style="color:var(--text-muted); font-weight:600;">Métricas salvas no Banco de Dados.</p>`;
+                resultHtml = `<span class="material-icons-round" style="font-size:80px; color:var(--primary); margin-bottom:20px;">emoji_events</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Treino Concluído!</h2><p style="color:var(--text-muted); font-weight:600;">Progresso guardado com sucesso.</p>`;
             } else {
                 resultHtml = `<span class="material-icons-round" style="font-size:80px; color:#F59E0B; margin-bottom:20px;">bolt</span><h2 style="font-size:24px; font-weight:900; margin-bottom:10px; color: white;">Missão Estrutural Concluída!</h2><p style="color:var(--text-muted); font-weight:600;">Domínio Macro atualizado.</p>`;
             }
