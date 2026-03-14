@@ -608,115 +608,32 @@ window.openChat = function(id, name, photo, email, type = 'user') {
 
 window.loadMessages = async function(userId) { 
     lastRenderedDate = null; const box = document.getElementById('chat-box');
-    let cached = messageCache[userId]; 
-    if (!cached) { 
-        const localData = localStorage.getItem(`chat_cache_${userId}`); 
-        if (localData) { cached = JSON.parse(localData); messageCache[userId] = cached; } 
-    }
-    
-    if (cached && cached.length > 0) { 
-        box.innerHTML = ''; 
-        // Envia 'true' para não fazer scroll a cada mensagem
-        cached.forEach(msg => displayMessage(msg, true)); 
-        // 🚀 MÁGICA: Faz o scroll apenas 1 UMA VEZ no final
-        box.scrollTop = box.scrollHeight; 
-    } else { 
-        box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>'; 
-    }
-    
-    try { 
-        const res = await fetch(`/messages/${myId}/${userId}`); 
-        const msgs = await res.json(); 
-        const last50 = msgs.slice(-50); // Otimização de CPU: Processa apenas as últimas 50
-        if (!cached || JSON.stringify(cached) !== JSON.stringify(last50)) { 
-            messageCache[userId] = last50; 
-            localStorage.setItem(`chat_cache_${userId}`, JSON.stringify(last50)); 
-            box.innerHTML = ''; lastRenderedDate = null; 
-            last50.forEach(msg => displayMessage(msg, true)); 
-            setTimeout(() => { box.scrollTop = box.scrollHeight; }, 50);
-        } 
-    } catch (e) {} 
+    let cached = messageCache[userId]; if (!cached) { const localData = localStorage.getItem(`chat_cache_${userId}`); if (localData) { cached = JSON.parse(localData); messageCache[userId] = cached; } }
+    if (cached && cached.length > 0) { box.innerHTML = ''; cached.forEach(displayMessage); } else { box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>'; }
+    try { const res = await fetch(`/messages/${myId}/${userId}`); const msgs = await res.json(); if (!cached || JSON.stringify(cached) !== JSON.stringify(msgs)) { messageCache[userId] = msgs; localStorage.setItem(`chat_cache_${userId}`, JSON.stringify(msgs.slice(-50))); box.innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} 
 }
 
 window.loadGroupMessages = async function(groupId) { 
     lastRenderedDate = null; const box = document.getElementById('chat-box');
-    let cached = messageCache[groupId]; 
-    if (!cached) { 
-        const localData = localStorage.getItem(`chat_cache_group_${groupId}`); 
-        if (localData) { cached = JSON.parse(localData); messageCache[groupId] = cached; } 
-    }
-    
-    if (cached && cached.length > 0) { 
-        box.innerHTML = ''; 
-        cached.forEach(msg => displayMessage(msg, true)); 
-        box.scrollTop = box.scrollHeight; // Scroll único!
-    } else { 
-        box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>'; 
-    }
-    
+    let cached = messageCache[groupId]; if (!cached) { const localData = localStorage.getItem(`chat_cache_group_${groupId}`); if (localData) { cached = JSON.parse(localData); messageCache[groupId] = cached; } }
+    if (cached && cached.length > 0) { box.innerHTML = ''; cached.forEach(displayMessage); } else { box.innerHTML = '<div style="text-align:center; padding:20px; color:var(--secondary-text);"><span class="material-icons-round" style="animation: spin 1s infinite;">sync</span></div>'; }
+    try { const res = await fetch(`/group-messages/${groupId}`); const msgs = await res.json(); if (!cached || JSON.stringify(cached) !== JSON.stringify(msgs)) { messageCache[groupId] = msgs; localStorage.setItem(`chat_cache_group_${groupId}`, JSON.stringify(msgs.slice(-50))); box.innerHTML = ''; lastRenderedDate = null; msgs.forEach(displayMessage); } } catch (e) {} 
+}
+
+window.loadContacts = async function() { 
+    if(!myId) return; 
+    const cachedUsers = JSON.parse(localStorage.getItem('cacheUsers')) || []; const cachedGroups = JSON.parse(localStorage.getItem('cacheGroups')) || []; 
+    if(cachedUsers.length > 0 || cachedGroups.length > 0) { cachedGroups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(cachedGroups, cachedUsers); if(typeof updateAppBadge === 'function') updateAppBadge(); } 
     try { 
-        const res = await fetch(`/group-messages/${groupId}`); 
-        const msgs = await res.json(); 
-        const last50 = msgs.slice(-50);
-        if (!cached || JSON.stringify(cached) !== JSON.stringify(last50)) { 
-            messageCache[groupId] = last50; 
-            localStorage.setItem(`chat_cache_group_${groupId}`, JSON.stringify(last50)); 
-            box.innerHTML = ''; lastRenderedDate = null; 
-            last50.forEach(msg => displayMessage(msg, true)); 
-            setTimeout(() => { box.scrollTop = box.scrollHeight; }, 50);
-        } 
-    } catch (e) {} 
+        const resUnread = await fetch(`/unread/${myId}`); const serverCounts = await resUnread.json(); 
+        if (typeof unreadCounts !== 'undefined') { cachedUsers.forEach(u => { unreadCounts[u._id] = serverCounts[u._id] || 0; }); localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts)); }
+        const resGroups = await fetch(`/groups/${myId}`); const groups = await resGroups.json(); 
+        const resUsers = await fetch(`/users/${myId}`); const users = await resUsers.json(); 
+        localStorage.setItem('cacheGroups', JSON.stringify(groups)); localStorage.setItem('cacheUsers', JSON.stringify(users)); 
+        groups.forEach(g => socket.emit('join_group', g._id)); renderContactsList(groups, users); if(typeof updateAppBadge === 'function') updateAppBadge(); 
+    } catch(e) {} 
 }
 
-// Repare no "preventScroll = false" adicionado na assinatura da função
-function displayMessage(msg, preventScroll = false) { 
-    const box = document.getElementById('chat-box'); 
-    const msgDateObj = new Date(msg.timestamp || Date.now()); const dateStr = getChatDateString(msgDateObj);
-    if (dateStr !== lastRenderedDate) { const divider = document.createElement('div'); divider.className = 'chat-date-divider'; divider.innerHTML = `<span>${dateStr}</span>`; box.appendChild(divider); lastRenderedDate = dateStr; }
-
-    const div = document.createElement('div'); 
-    const senderIdStr = (typeof msg.sender === 'object') ? msg.sender._id : msg.sender; 
-    const isMe = senderIdStr === myId; 
-    
-    div.className = 'message ' + (isMe ? 'my-msg' : 'other-msg'); 
-    div.id = `msg-${msg._id}`; 
-    
-    div.onclick = (e) => { if (window.isMsgSelectionMode) { e.stopPropagation(); window.toggleMessageSelection(div, msg); } };
-    div.addEventListener('touchstart', (e) => { if(window.isMsgSelectionMode) return; pressTimer = window.setTimeout(() => { showMessageMenu(e, div, msg); }, 600); }, {passive: false}); 
-    div.addEventListener('touchend', () => clearTimeout(pressTimer)); 
-    div.addEventListener('touchmove', () => clearTimeout(pressTimer)); 
-    div.addEventListener('contextmenu', (e) => { if(window.isMsgSelectionMode) return; e.preventDefault(); clearTimeout(pressTimer); showMessageMenu(e, div, msg); }); 
-    div.addEventListener('dblclick', () => { if(window.isMsgSelectionMode) return; selectedMsgData = msg; initReply(); });
-    
-    let displayContent = msg.content || ''; let quotedHtml = ''; const quoteMatch = displayContent.match(/(<div class="quoted-msg"[\s\S]*?<\/div>)([\s\S]*)/); 
-    if (quoteMatch) { quotedHtml = quoteMatch[1]; displayContent = quoteMatch[2] || ''; }
-    
-    let vipHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') { if(msg.sender.unlockedItems && msg.sender.unlockedItems.includes('badge_vip')) { vipHtml = '<span class="material-icons-round vip-badge-icon" style="color:#F59E0B; font-size:14px; margin-left:4px; vertical-align:middle;" title="VIP">workspace_premium</span>'; } }
-    let contentHtml = ''; if (isGroupChat && !isMe && typeof msg.sender === 'object') { contentHtml += `<div style="font-size:12.5px; color:var(--brand-primary); font-weight:bold; margin-bottom:3px; display:flex; align-items:center;">${msg.sender.displayName || 'Membro'}${vipHtml}</div>`; }
-    
-    let msgBody = '';
-    if (displayContent && displayContent.includes('🚫 Esta mensagem foi apagada')) { msgBody = `<span class="msg-text-content" style="font-style:italic; color: rgba(255,255,255,0.6);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle;">block</span> Esta mensagem foi apagada</span>`; } 
-    else if (msg.fileType === 'image') msgBody = `<img src="${msg.fileUrl}" class="chat-image" style="border-radius:8px; max-width:100%; cursor:pointer;" onclick="window.open(this.src)">`; 
-    else if (msg.fileType === 'video') msgBody = `<video controls src="${msg.fileUrl}" class="chat-video" style="border-radius:8px; max-width:100%;"></video>`; 
-    else if (msg.fileType === 'audio') msgBody = `<audio controls src="${msg.fileUrl}" class="chat-audio" style="height:40px; margin-bottom:5px; border-radius: 20px; outline: none;"></audio>`; 
-    else if (msg.fileType === 'pdf') msgBody = `<a href="${msg.fileUrl}" target="_blank" class="chat-pdf" style="display:flex; align-items:center; gap:5px;"><span class="material-icons">picture_as_pdf</span> Abrir PDF</a>`; 
-    else if (msg.fileType === 'invite') { try { const invData = JSON.parse(displayContent); msgBody = ` <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 8px; padding: 10px; text-align: center; margin-top: 5px;"> <span class="material-icons-round" style="font-size: 28px; color: var(--brand-primary); margin-bottom: 5px;">radar</span> <div style="font-weight: 800; font-size: 14px; color: white;">Convite de Comunidade</div> <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">${invData.commName}</div> <button class="chic-btn" style="margin: 0; padding: 6px 12px; font-size: 12px; background: var(--brand-primary); color: white;" onclick="previewCommunityInvite('${invData.commId}', '${invData.commName}')">Ver</button> </div> `; } catch(e) { msgBody = `Erro no convite`; } }
-    else { msgBody = `<span class="msg-text-content" style="white-space: pre-wrap;">${escapeHTML(displayContent)}</span>`; }
-    
-    contentHtml += quotedHtml + msgBody + `<span style="display:inline-block; width: 65px; height: 10px;"></span>`;
-    const date = new Date(msg.timestamp || Date.now()); const timeString = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; 
-    const isRead = msg.status === 'read';
-    const tickColor = isRead ? '#06B6D4' : 'rgba(255,255,255,0.6)';
-    const statusHtml = isMe ? `<span id="tick-${msg._id}" class="material-icons-round msg-tick-icon" style="font-size:15px; margin-left:3px; color:${tickColor}; transition: color 0.4s ease;">done_all</span>` : '';
-    div.innerHTML = ` ${contentHtml} <div class="msg-info" style="position: absolute; bottom: 4px; right: 8px; display:flex; align-items:center; font-size:10.5px; color:rgba(255,255,255,0.6); font-weight: 600;"> <span class="msg-time">${timeString}</span>${statusHtml} </div> ${msg.reaction ? `<div class="msg-reaction" style="position:absolute; bottom:-12px; right:10px; background:var(--card-bg); border-radius:50%; padding:2px 4px; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);">${msg.reaction}</div>` : ''} `; 
-    
-    box.appendChild(div); 
-    
-    // 🚀 MÁGICA: Só rola a tela individualmente se for uma nova mensagem enviada agora!
-    if (!preventScroll) {
-        box.scrollTop = box.scrollHeight; 
-    }
-}
 window.renderContactsList = function(groups, users) {
     const list = document.getElementById('users-list'); if(!list) return; list.innerHTML = ''; 
     const safeHiddenChats = typeof hiddenChats !== 'undefined' ? hiddenChats : [];
