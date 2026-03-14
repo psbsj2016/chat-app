@@ -23,6 +23,13 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 initSockets(io);
 startCronJobs();
+// ==============================================================
+// 🎓 INICIALIZAÇÃO DO CATÁLOGO DE INGLÊS PTT
+// ==============================================================
+const EnglishService = require('./src/english/english.service'); // Ajuste o caminho se necessário
+EnglishService.initializeDatabase()
+    .then(() => console.log("📚 Catálogo do Inglês PTT inicializado e verificado com sucesso!"))
+    .catch(e => console.error("❌ Erro ao inicializar Catálogo de Inglês:", e));
 
 app.use(aegisMiddleware);
 app.use(cors());

@@ -221,6 +221,7 @@
 
     <script>
         let currentArsenalList = []; 
+        const MEU_SEGREDO = 'MestrePTT2024'; // 🔑 A Chave Mestra foi inserida aqui!
 
         window.onload = () => { selectCore('estrutural'); };
 
@@ -271,7 +272,6 @@
             loadSavedExercises();
         }
 
-        // 🔥 O NOVO CÉREBRO PEDAGÓGICO: MECÂNICAS EXATAS 🔥
         function updateExerciseTypes() {
             const focusEst = document.getElementById('focus-estrutural').value;
             const core = document.getElementById('core-type').value;
@@ -305,7 +305,6 @@
                     `;
                 }
             } else {
-                // PERFORMANCE TYPES MANTIDOS PARA O APP FUNCIONAR
                 const focusPerf = document.getElementById('focus-performance').value;
                 if (focusPerf === 'listening') typeSelect.innerHTML = `<option value="dictation">⌨️ Dictation (Ditado)</option><option value="audio_comprehension">🎧 Compreensão Auditiva</option>`;
                 if (focusPerf === 'speaking') typeSelect.innerHTML = `<option value="repeat_sentence">🎙️ Fluência Rápida</option><option value="free_speech">💬 Resposta Livre</option>`;
@@ -316,12 +315,10 @@
             toggleFields();
         }
 
-        // 🔥 CAMPOS DINÂMICOS BASEADOS NA MECÂNICA 🔥
         function toggleFields() {
             const type = document.getElementById('type').value;
             const zone = document.getElementById('dynamic-zone');
             
-            // GRUPO: Múltipla Escolha e Contexto (A maioria se encaixa aqui)
             if (['complete_sentence', 'choose_correct', 'synonym', 'antonym', 'meaning_cloze', 'interpret', 'context_word', 'minimal_pairs', 'identify_sound', 'classify_sound', 'audio_comprehension', 'true_false'].includes(type)) {
                 zone.innerHTML = `
                     <div class="input-group"><label>Contexto / Frase com Lacuna (___)</label><input type="text" id="context" placeholder="Ex: The cat is ___ the table."></div>
@@ -330,28 +327,24 @@
                     <div class="input-group"><label style="color:var(--success);">Áudio de Apoio (TTS Opcional)</label><input type="text" id="audioText" placeholder="Texto para a voz ler..."></div>
                 `;
             } 
-            // GRUPO: Construção e Reordenação
             else if (['reorder_sentence', 'build_sentence', 'syntax_assembly'].includes(type)) {
                 zone.innerHTML = `
                     <div class="input-group"><label>Palavras Embaralhadas (Vírgula)</label><input type="text" id="options" placeholder="like, I, coffee"></div>
                     <div class="input-group"><label>Frase Completa e Correta</label><input type="text" id="answerStr" placeholder="I like coffee"></div>
                 `;
             } 
-            // GRUPO: Corrigir Erro
             else if (['find_error'].includes(type)) {
                 zone.innerHTML = `
                     <div class="input-group"><label>Frase com Erro</label><input type="text" id="context" placeholder="Ex: She don't like cats."></div>
                     <div class="input-group"><label>Frase Corrigida (Resposta Exata)</label><input type="text" id="answerStr" placeholder="She doesn't like cats."></div>
                 `;
             } 
-            // GRUPO: Ditado e Escrita Direta
             else if (['dictation', 'fast_typing', 'translation', 'simultaneous_training'].includes(type)) {
                 zone.innerHTML = `
                     <div class="input-group"><label style="color:var(--success);">Áudio Disparado (TTS Obrigatório)</label><input type="text" id="audioText" placeholder="Texto para o robô falar"></div>
                     <div class="input-group"><label>Resposta Exata Exigida (Digitada)</label><input type="text" id="answerStr" placeholder="A frase que o aluno deve escrever"></div>
                 `;
             } 
-            // GRUPO: Fala e Repetição
             else if (['repetition', 'repeat_sentence', 'free_speech'].includes(type)) {
                 zone.innerHTML = `
                     <div class="input-group"><label>Texto Exibido para o Aluno Ler</label><input type="text" id="displayWord" placeholder="What is your name?"></div>
@@ -359,7 +352,6 @@
                     <div class="input-group"><label style="color:var(--success);">Oculto: Áudio TTS</label><input type="text" id="audioText" placeholder="Texto falado pela IA primeiro"></div>
                 `;
             }
-            // Fallback Genérico
             else {
                 zone.innerHTML = `<div style="color:var(--text-muted); font-size:12px; text-align:center;">Configure a mecânica no Backend se não houver campos.</div>`;
             }
@@ -376,6 +368,7 @@
             const targetId = document.getElementById('nodeId').value;
             
             const payload = {
+                adminKey: MEU_SEGREDO, // 🔑 Enviando a Chave Mestra na injeção!
                 core: core,
                 nodeId: targetId,
                 exercise: {
@@ -456,7 +449,6 @@
 
                 const tagHtml = (ex.tags && ex.tags.length > 0) ? `<div style="margin-top:5px; font-size:10px; color:var(--primary);">${ex.tags.map(t=>`#${t}`).join(' ')}</div>` : '';
 
-                // 🔥 BOTÕES DE REORDENAÇÃO 🔥
                 const arrowsHtml = `
                     <div class="reorder-btns">
                         <button class="reorder-btn" onclick="moveExercise(${index}, -1)" ${index === 0 ? 'disabled' : ''}><span class="material-icons-round">keyboard_arrow_up</span></button>
@@ -492,7 +484,11 @@
                 const res = await fetch('/api/english/admin/reorder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nodeId: document.getElementById('nodeId').value, newOrder: currentArsenalList })
+                    body: JSON.stringify({ 
+                        adminKey: MEU_SEGREDO, // 🔑 Chave Mestra!
+                        nodeId: document.getElementById('nodeId').value, 
+                        newOrder: currentArsenalList 
+                    })
                 });
                 const data = await res.json();
                 if (!data.success) { alert("Erro ao salvar ordem no servidor."); loadSavedExercises(); }
@@ -504,7 +500,14 @@
             const btn = document.getElementById('clearBtn'); const originalText = btn.innerHTML;
             btn.innerHTML = `<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span> Expurgo em Andamento...`;
             try {
-                const res = await fetch('/api/english/admin/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nodeId: document.getElementById('nodeId').value }) });
+                const res = await fetch('/api/english/admin/clear', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        adminKey: MEU_SEGREDO, // 🔑 Chave Mestra!
+                        nodeId: document.getElementById('nodeId').value 
+                    }) 
+                });
                 const data = await res.json();
                 if(data.success) { btn.innerHTML = `<span class="material-icons-round">done_all</span> Base Limpa!`; setTimeout(() => { btn.innerHTML = originalText; closeArsenal(); }, 1500); loadSavedExercises(); }
             } catch(e) { alert("Erro ao limpar."); btn.innerHTML = originalText; }
