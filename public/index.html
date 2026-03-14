@@ -24,19 +24,16 @@
         })();
     </script>
 
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="style.css?v=8.9" as="style">
+    <link rel="stylesheet" href="style.css?v=8.9">
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
-
-    <script>
-        const vParams = new URLSearchParams(window.location.search);
-        const appVer = vParams.get('v') || localStorage.getItem('appVersion') || Date.now();
-        document.write('<link rel="stylesheet" href="style.css?v=' + appVer + '">');
-    </script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js" async></script>
     
     <style>
         .contact-list { padding: 0 !important; display: flex; flex-direction: column; overflow-x: hidden; }
