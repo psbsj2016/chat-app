@@ -387,22 +387,92 @@ window.renderCurrentStory = function() {
     startStoryTimer();
 };
 
+// ==============================================================
+// 📸 FIX: LIXEIRA DOS STORIES (APAGAR STATUS INSTANTÂNEO)
+// ==============================================================
+
 window.deleteCurrentStatus = async function() {
-    if(!confirm("⚠️ Apagar este status definitivamente?")) return;
-    clearInterval(storyProgressInterval);
+    if (!confirm("⚠️ Deseja apagar este Story definitivamente?")) return;
     
-    const group = groupedStatuses[currentStoryUserIndex];
-    const story = group.items[currentStoryItemIndex];
+    const btn = document.getElementById('btn-delete-story');
+    const originalHtml = btn.innerHTML;
+    
+    // 1. Inicia o visual de "Processando"
+    btn.innerHTML = '<span class="material-icons-round" style="animation: spin 1s infinite;">sync</span>';
     
     try {
-        const res = await fetch(`/api/status/${story._id}`, { method: 'DELETE' });
-        if(res.ok) {
-            window.fetchStatuses(); 
-            closeStoryViewer(); 
-            alert("🗑️ Status apagado com sucesso!");
-        } else { alert("Erro ao apagar no servidor."); }
-    } catch(e) { alert("Erro de conexão."); }
+        const targetId = window.currentStoryId || myId; 
+        
+        const res = await fetch(`/status/${targetId}`, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId })
+        });
+        
+        if (res.ok) {
+            // 2. MÁGICA INSTANTÂNEA: Esconde o Modal do Story na hora!
+            const modal = document.getElementById('story-viewer-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+            if(typeof closeStoryViewer === 'function') closeStoryViewer();
+
+            // 3. DESTRUIÇÃO NA TELA: Procura a bolinha do seu Story e elimina-a do HTML imediatamente
+            const myName = (localStorage.getItem('displayName') || '').trim();
+            const allStatusItems = document.querySelectorAll('.status-item');
+            
+            allStatusItems.forEach(item => {
+                // Verifica se é o seu Story (ignora o botão fixo de "Criar Status")
+                if (!item.querySelector('.status-create-btn')) {
+                    const textSpan = item.querySelector('.status-name');
+                    if (textSpan && (textSpan.innerText === 'Você' || textSpan.innerText === 'Eu' || textSpan.innerText === myName)) {
+                        item.style.transition = "transform 0.2s, opacity 0.2s";
+                        item.style.transform = "scale(0)";
+                        item.style.opacity = "0";
+                        setTimeout(() => item.remove(), 200); // Exclui do DOM suavemente
+                    }
+                }
+            });
+
+            // 4. Limpa qualquer cache de stories preso na memória do telemóvel
+            localStorage.removeItem('cachedStatuses');
+
+            // 5. Manda atualizar em segundo plano silenciosamente
+            if (typeof loadStatuses === 'function') loadStatuses();
+            if (socket) socket.emit('status_updated'); 
+            
+        } else {
+            alert("Erro ao apagar o Story no servidor.");
+            btn.innerHTML = originalHtml;
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Erro de conexão ao tentar apagar.");
+        btn.innerHTML = originalHtml;
+    }
 };
+
+// 🕵️ RASTREADOR: Liga a lixeira automaticamente apenas nos SEUS stories (Mantém-se igual)
+document.addEventListener('DOMContentLoaded', () => {
+    const authorLabel = document.getElementById('story-author-name');
+    if (authorLabel) {
+        const observer = new MutationObserver(() => {
+            const name = authorLabel.innerText.trim();
+            const myName = (localStorage.getItem('displayName') || '').trim();
+            const deleteBtn = document.getElementById('btn-delete-story');
+            
+            if (deleteBtn) {
+                if (name === 'Você' || name === myName || name === 'Eu') {
+                    deleteBtn.style.display = 'flex';
+                } else {
+                    deleteBtn.style.display = 'none';
+                }
+            }
+        });
+        observer.observe(authorLabel, { childList: true, characterData: true, subtree: true });
+    }
+});
 
 window.setupProgressBars = function(total, currentIndex) {
     const container = document.getElementById('story-progress-container');
