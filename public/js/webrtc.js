@@ -12,7 +12,29 @@ const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { url
 
 const btnJoinVoice = document.getElementById('btn-join-voice'); const btnLeaveVoice = document.getElementById('btn-leave-voice'); const participantsGrid = document.getElementById('voice-participants-grid'); const remoteAudiosContainer = document.getElementById('remote-audios-container');
 
-async function joinVoiceChannel(channelId) { try { localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); currentVoiceChannelId = channelId || currentChannelId; if(btnJoinVoice) btnJoinVoice.style.display = 'none'; if(btnLeaveVoice) btnLeaveVoice.style.display = 'inline-block'; const myName = localStorage.getItem('displayName') || 'Eu'; const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; addParticipantToUI(socket.id, { name: myName, photoUrl: myPhoto }); socket.emit('join_voice_channel', { channelId: currentVoiceChannelId, userProfile: { name: myName, photoUrl: myPhoto } }); } catch (error) { alert("Permissão de microfone negada!"); } }
+function parseMediaError(e) {
+    if (e.name === 'NotAllowedError') return "Acesso bloqueado nas configurações do navegador. Clique no cadeado na barra de endereços e permita a Câmera/Microfone.";
+    if (e.name === 'NotFoundError') return "Nenhuma câmera ou microfone foi detetada no dispositivo.";
+    if (e.name === 'NotReadableError') return "A sua câmera ou microfone já está a ser usada por outro aplicativo em segundo plano.";
+    if (e.name === 'SecurityError' || (e.message && e.message.includes('secure'))) return "O navegador exige conexão HTTPS (Cadeado seguro) para usar chamadas.";
+    return `Erro técnico: ${e.name} - ${e.message}`;
+}
+
+async function joinVoiceChannel(channelId) { 
+    try { 
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); 
+        currentVoiceChannelId = channelId || currentChannelId; 
+        if(btnJoinVoice) btnJoinVoice.style.display = 'none'; 
+        if(btnLeaveVoice) btnLeaveVoice.style.display = 'inline-block'; 
+        const myName = localStorage.getItem('displayName') || 'Eu'; 
+        const myPhoto = localStorage.getItem('photoUrl') || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'; 
+        addParticipantToUI(socket.id, { name: myName, photoUrl: myPhoto }); 
+        socket.emit('join_voice_channel', { channelId: currentVoiceChannelId, userProfile: { name: myName, photoUrl: myPhoto } }); 
+    } catch (e) { 
+        alert("⚠️ Falha ao aceder ao microfone:\n\n" + parseMediaError(e)); 
+    } 
+}
+
 function leaveVoiceChannel() { if (localAudioStream) { localAudioStream.getTracks().forEach(track => track.stop()); localAudioStream = null; } for (let id in peerConnections) { peerConnections[id].close(); delete peerConnections[id]; } socket.emit('leave_voice_channel'); currentVoiceChannelId = null; if(btnJoinVoice) btnJoinVoice.style.display = 'inline-block'; if(btnLeaveVoice) btnLeaveVoice.style.display = 'none'; if(participantsGrid) participantsGrid.innerHTML = ''; if(remoteAudiosContainer) remoteAudiosContainer.innerHTML = ''; }
 if(btnJoinVoice) btnJoinVoice.onclick = () => joinVoiceChannel(currentVoiceChannelId || currentChannelId); if(btnLeaveVoice) btnLeaveVoice.onclick = () => leaveVoiceChannel();
 
@@ -84,7 +106,7 @@ window.initVideoCall = async function(targetId, isVideo = true) {
     
     // BLINDAGEM CONTRA FALTA DE HTTPS
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        return alert("⚠️ O seu navegador bloqueou o acesso. Certifique-se de que está usando HTTPS (conexão segura).");
+        return alert("⚠️ O navegador bloqueou o hardware de mídia. (Geralmente acontece se o app não estiver hospedado em 'https://')");
     }
     
     isVideoCallActive = isVideo; iceCandidateQueue = []; isRemoteDescriptionSet = false;
@@ -116,7 +138,7 @@ window.initVideoCall = async function(targetId, isVideo = true) {
         startRingbackTone();
     } catch (e) { 
         updateCallUI("Falha no Hardware", "#EF4444");
-        alert("Permissão de câmera/microfone negada!"); 
+        alert("⚠️ Erro de Câmera/Microfone:\n\n" + parseMediaError(e)); 
         window.endVideoCall(false);
     }
 };
@@ -167,7 +189,7 @@ window.acceptCall = async function() {
         createVideoPeerConnection(currentCallTarget);
     } catch (e) { 
         updateCallUI("Falha no Hardware", "#EF4444");
-        alert("Erro ao aceder aos dispositivos. Chamada recusada."); 
+        alert("⚠️ Erro ao atender a chamada:\n\n" + parseMediaError(e)); 
         window.rejectCall(); 
     }
 };
