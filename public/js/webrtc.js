@@ -5,7 +5,42 @@
 document.head.insertAdjacentHTML("beforeend", `<style>
     .minimized-call { top: max(20px, env(safe-area-inset-top)) !important; right: 20px !important; left: auto !important; bottom: auto !important; width: 130px !important; height: 190px !important; border-radius: 20px !important; box-shadow: 0 15px 40px rgba(0,0,0,0.7) !important; border: 2px solid var(--brand-primary) !important; overflow: hidden; cursor: pointer; z-index: 1000000 !important; }
     .minimized-call #local-video { display: none !important; } .minimized-call #call-controls { display: none !important; } .minimized-call #call-status-text { display: none !important; } .minimized-call #btn-minimize-call { display: none !important; } .minimized-call:hover { transform: scale(1.05); }
+    #video-call-screen:not(.hidden) { display: flex !important; }
+    #incoming-call-modal:not(.hidden) { display: flex !important; }
 </style>`);
+
+// 🛡️ A FUNÇÃO IMORTAL: Constrói a UI mesmo se o PWA Cache a tiver apagado
+function ensureVideoCallUI() {
+    if (!document.getElementById('video-call-screen')) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="video-call-screen" class="hidden" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: #0B0F19 !important; flex-direction: column; overflow: hidden; margin: 0 !important; padding: 0 !important; transition: all 0.3s ease;">
+            <button id="btn-minimize-call" class="icon-btn" onclick="event.stopPropagation(); toggleMinimizeCall()" style="position: absolute; top: max(20px, env(safe-area-inset-top)); left: 20px; z-index: 10; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"><span class="material-icons-round" style="color: white; font-size: 28px;">keyboard_arrow_down</span></button>
+            <div id="audio-call-avatar-container" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; pointer-events: none;"><img id="audio-call-avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" style="width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--brand-primary); object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.4); animation: pulseRed 2s infinite;"></div>
+            <video id="remote-video" autoplay playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: transparent; z-index: 2; pointer-events: none;"></video>
+            <video id="local-video" autoplay playsinline muted style="position: absolute; top: max(20px, env(safe-area-inset-top)); right: 20px; width: 100px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 3; background: #1E293B; transition: all 0.3s ease; pointer-events: none;"></video>
+            <div id="call-status-text" style="position: absolute; top: max(80px, env(safe-area-inset-top)); left: 0; width: 100%; text-align: center; color: white; font-weight: 800; font-size: 18px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); z-index: 3; pointer-events: none;">A chamar...</div>
+            <div id="call-controls" style="position: absolute; bottom: calc(40px + env(safe-area-inset-bottom)); left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 4; transition: opacity 0.3s;">
+                <button id="btn-toggle-mic" class="icon-btn" onclick="event.stopPropagation(); toggleVideoMic()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;"><span class="material-icons-round" style="color: white; font-size: 28px;">mic</span></button>
+                <button class="icon-btn" onclick="event.stopPropagation(); endVideoCall(true)" style="background: #EF4444; width: 70px; height: 70px; border-radius: 50%; box-shadow: 0 4px 20px rgba(239,68,68,0.6);"><span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span></button>
+                <button id="btn-toggle-cam" class="icon-btn" onclick="event.stopPropagation(); toggleVideoCam()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;"><span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span></button>
+                <button id="btn-flip-cam" class="icon-btn" onclick="event.stopPropagation(); flipCamera()" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); width: 60px; height: 60px; border-radius: 50%;"><span class="material-icons-round" style="color: white; font-size: 28px;">cameraswitch</span></button>
+            </div>
+        </div>`);
+    }
+    
+    if (!document.getElementById('incoming-call-modal')) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="incoming-call-modal" class="hidden" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; background: rgba(11, 15, 25, 0.95); backdrop-filter: blur(15px); flex-direction: column; align-items: center; justify-content: center; margin: 0 !important; padding: 20px; box-sizing: border-box;">
+            <img id="caller-photo" src="" style="width: 140px; height: 140px; border-radius: 50%; border: 4px solid var(--brand-primary); margin-bottom: 25px; object-fit: cover; box-shadow: 0 0 40px rgba(59, 130, 246, 0.6); animation: pulseRed 1.5s infinite;">
+            <h2 id="caller-name" style="color: white; font-size: 32px; margin-bottom: 5px; font-weight: 900; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nome</h2>
+            <div id="caller-type" style="color: var(--brand-secondary); font-size: 16px; margin-bottom: 60px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Chamada...</div>
+            <div style="display: flex; gap: 40px; width: 100%; justify-content: center; max-width: 300px;">
+                <button class="icon-btn" onclick="rejectCall()" style="background: #EF4444; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(239,68,68,0.5); transition: 0.2s;"><span class="material-icons-round" style="color: white; font-size: 36px;">call_end</span></button>
+                <button class="icon-btn" onclick="acceptCall()" style="background: #10B981; width: 75px; height: 75px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(16,185,129,0.5); animation: bounce 2s infinite;"><span class="material-icons-round" style="color: white; font-size: 36px;">call</span></button>
+            </div>
+        </div>`);
+    }
+}
 
 let localAudioStream = null; let peerConnections = {}; let currentVoiceChannelId = null;
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
@@ -49,53 +84,16 @@ function removeParticipantFromUI(id) { const p = document.getElementById(`partic
 // ==============================================================
 // 📹 MOTOR DE CHAMADAS P2P (BLINDADO)
 // ==============================================================
-let videoStream = null;
-let videoPC = null;
-let currentCallTarget = null;
-let incomingCallData = null;
-let currentFacingMode = 'user'; 
-let isVideoCallActive = true; 
-let callRingInterval = null;
-let isCallMinimized = false;
-let iceCandidateQueue = []; 
-let isRemoteDescriptionSet = false;
+let videoStream = null; let videoPC = null; let currentCallTarget = null; let incomingCallData = null; let currentFacingMode = 'user'; let isVideoCallActive = true; let callRingInterval = null; let isCallMinimized = false; let iceCandidateQueue = []; let isRemoteDescriptionSet = false;
 
-// UI Helper
-function updateCallUI(text, color = "white") {
-    const el = document.getElementById('call-status-text');
-    if (el) { el.innerText = text; el.style.color = color; }
-}
+function updateCallUI(text, color = "white") { const el = document.getElementById('call-status-text'); if (el) { el.innerText = text; el.style.color = color; } }
 
 let activeCallTimer = null; let activeCallSeconds = 0;
-function startCallTimer() {
-    activeCallSeconds = 0; clearInterval(activeCallTimer);
-    updateCallUI("00:00", "#10B981");
-    activeCallTimer = setInterval(() => {
-        activeCallSeconds++;
-        const m = Math.floor(activeCallSeconds / 60).toString().padStart(2, '0');
-        const s = (activeCallSeconds % 60).toString().padStart(2, '0');
-        updateCallUI(`${m}:${s}`, "#10B981");
-    }, 1000);
-}
+function startCallTimer() { activeCallSeconds = 0; clearInterval(activeCallTimer); updateCallUI("00:00", "#10B981"); activeCallTimer = setInterval(() => { activeCallSeconds++; const m = Math.floor(activeCallSeconds / 60).toString().padStart(2, '0'); const s = (activeCallSeconds % 60).toString().padStart(2, '0'); updateCallUI(`${m}:${s}`, "#10B981"); }, 1000); }
 function stopCallTimer() { clearInterval(activeCallTimer); activeCallTimer = null; }
 
 let ringbackCtx = null; let ringbackIntervalId = null;
-function startRingbackTone() {
-    try {
-        if(!ringbackCtx) ringbackCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if(ringbackCtx.state === 'suspended') ringbackCtx.resume();
-        const playBeep = () => {
-            const osc1 = ringbackCtx.createOscillator(); const osc2 = ringbackCtx.createOscillator(); const gain = ringbackCtx.createGain();
-            osc1.type = 'sine'; osc1.frequency.value = 425; osc2.type = 'sine'; osc2.frequency.value = 480;
-            osc1.connect(gain); osc2.connect(gain); gain.connect(ringbackCtx.destination);
-            gain.gain.setValueAtTime(0, ringbackCtx.currentTime); gain.gain.linearRampToValueAtTime(0.1, ringbackCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, ringbackCtx.currentTime + 1.5); gain.gain.linearRampToValueAtTime(0, ringbackCtx.currentTime + 1.6);
-            osc1.start(ringbackCtx.currentTime); osc2.start(ringbackCtx.currentTime);
-            osc1.stop(ringbackCtx.currentTime + 1.6); osc2.stop(ringbackCtx.currentTime + 1.6);
-        };
-        playBeep(); ringbackIntervalId = setInterval(playBeep, 4000); 
-    } catch(e) {}
-}
+function startRingbackTone() { try { if(!ringbackCtx) ringbackCtx = new (window.AudioContext || window.webkitAudioContext)(); if(ringbackCtx.state === 'suspended') ringbackCtx.resume(); const playBeep = () => { const osc1 = ringbackCtx.createOscillator(); const osc2 = ringbackCtx.createOscillator(); const gain = ringbackCtx.createGain(); osc1.type = 'sine'; osc1.frequency.value = 425; osc2.type = 'sine'; osc2.frequency.value = 480; osc1.connect(gain); osc2.connect(gain); gain.connect(ringbackCtx.destination); gain.gain.setValueAtTime(0, ringbackCtx.currentTime); gain.gain.linearRampToValueAtTime(0.1, ringbackCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, ringbackCtx.currentTime + 1.5); gain.gain.linearRampToValueAtTime(0, ringbackCtx.currentTime + 1.6); osc1.start(ringbackCtx.currentTime); osc2.start(ringbackCtx.currentTime); osc1.stop(ringbackCtx.currentTime + 1.6); osc2.stop(ringbackCtx.currentTime + 1.6); }; playBeep(); ringbackIntervalId = setInterval(playBeep, 4000); } catch(e) {} }
 function stopRingbackTone() { if (ringbackIntervalId) { clearInterval(ringbackIntervalId); ringbackIntervalId = null; } }
 
 // INICIAR A CHAMADA
@@ -104,11 +102,13 @@ window.initVideoCall = async function(targetId, isVideo = true) {
     if (isGroupChat) return alert("Apenas para conversas privadas.");
     if (currentCallTarget || incomingCallData) return alert("Termine a chamada atual primeiro.");
     
-    // BLINDAGEM CONTRA FALTA DE HTTPS
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        return alert("⚠️ O navegador bloqueou o hardware de mídia. (Geralmente acontece se o app não estiver hospedado em 'https://')");
+        return alert("⚠️ O navegador bloqueou o hardware de mídia. (Verifique se o site está rodando em HTTPS)");
     }
     
+    // 🔥 FORÇA O DESENHO DA TELA CASO O CACHE A TENHA APAGADO!
+    ensureVideoCallUI();
+
     isVideoCallActive = isVideo; iceCandidateQueue = []; isRemoteDescriptionSet = false;
     
     const callScreen = document.getElementById('video-call-screen');
@@ -146,6 +146,10 @@ window.initVideoCall = async function(targetId, isVideo = true) {
 // RECEBER A CHAMADA
 socket.on('incoming_call', (data) => {
     if (currentCallTarget || incomingCallData) { socket.emit('reject_call', { callerId: data.callerId }); return; }
+    
+    // 🔥 FORÇA O DESENHO DA TELA CASO O CACHE A TENHA APAGADO!
+    ensureVideoCallUI();
+
     incomingCallData = data; isVideoCallActive = data.isVideo !== undefined ? data.isVideo : true; 
     iceCandidateQueue = []; isRemoteDescriptionSet = false;
     
@@ -202,7 +206,8 @@ window.endVideoCall = function(emitSignal = true) {
     if (emitSignal && targetToNotify) { socket.emit('end_call', { targetId: targetToNotify }); }
     if (videoPC) { videoPC.close(); videoPC = null; } 
     if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); videoStream = null; } 
-    document.getElementById('local-video').srcObject = null; document.getElementById('remote-video').srcObject = null; 
+    const localV = document.getElementById('local-video'); if(localV) localV.srcObject = null; 
+    const remoteV = document.getElementById('remote-video'); if(remoteV) remoteV.srcObject = null; 
     
     const callScreen = document.getElementById('video-call-screen');
     if(callScreen) { callScreen.classList.remove('minimized-call'); callScreen.onclick = null; callScreen.classList.add('hidden'); }
@@ -269,9 +274,11 @@ function createVideoPeerConnection(target) {
     
     videoPC.ontrack = (event) => { 
         const remoteVid = document.getElementById('remote-video');
-        remoteVid.srcObject = event.streams[0]; 
-        remoteVid.play().catch(e => console.log(e));
-        remoteVid.style.opacity = isVideoCallActive ? '1' : '0';
+        if(remoteVid) {
+            remoteVid.srcObject = event.streams[0]; 
+            remoteVid.play().catch(e => console.log(e));
+            remoteVid.style.opacity = isVideoCallActive ? '1' : '0';
+        }
     };
 }
 
@@ -282,6 +289,6 @@ window.toggleMinimizeCall = function() {
     if (isCallMinimized) { callScreen.classList.add('minimized-call'); callScreen.onclick = function(e) { if (isCallMinimized && !e.target.closest('.icon-btn')) { window.toggleMinimizeCall(); } }; } 
     else { callScreen.classList.remove('minimized-call'); callScreen.onclick = null; }
 };
-window.toggleVideoMic = function() { if (!videoStream) return; const track = videoStream.getAudioTracks()[0]; if(!track) return; track.enabled = !track.enabled; const btn = document.getElementById('btn-toggle-mic'); btn.style.background = track.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = track.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">mic_off</span>'; };
-window.toggleVideoCam = function() { if (!videoStream) return; const track = videoStream.getVideoTracks()[0]; if(!track) return; track.enabled = !track.enabled; const btn = document.getElementById('btn-toggle-cam'); btn.style.background = track.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = track.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam_off</span>'; };
-window.flipCamera = async function() { if (!videoStream || !videoPC) return; currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; try { const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: currentFacingMode } }, audio: true }); const newVideoTrack = newStream.getVideoTracks()[0]; const sender = videoPC.getSenders().find(s => s.track && s.track.kind === 'video'); if (sender) sender.replaceTrack(newVideoTrack); const oldVideoTrack = videoStream.getVideoTracks()[0]; if (oldVideoTrack) { oldVideoTrack.stop(); videoStream.removeTrack(oldVideoTrack); } videoStream.addTrack(newVideoTrack); document.getElementById('local-video').srcObject = videoStream; } catch (e) { currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; } };
+window.toggleVideoMic = function() { if (!videoStream) return; const track = videoStream.getAudioTracks()[0]; if(!track) return; track.enabled = !track.enabled; const btn = document.getElementById('btn-toggle-mic'); if(btn) { btn.style.background = track.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = track.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">mic</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">mic_off</span>'; } };
+window.toggleVideoCam = function() { if (!videoStream) return; const track = videoStream.getVideoTracks()[0]; if(!track) return; track.enabled = !track.enabled; const btn = document.getElementById('btn-toggle-cam'); if(btn) { btn.style.background = track.enabled ? 'rgba(255,255,255,0.2)' : '#EF4444'; btn.innerHTML = track.enabled ? '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam</span>' : '<span class="material-icons-round" style="color: white; font-size: 28px;">videocam_off</span>'; } };
+window.flipCamera = async function() { if (!videoStream || !videoPC) return; currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; try { const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: currentFacingMode } }, audio: true }); const newVideoTrack = newStream.getVideoTracks()[0]; const sender = videoPC.getSenders().find(s => s.track && s.track.kind === 'video'); if (sender) sender.replaceTrack(newVideoTrack); const oldVideoTrack = videoStream.getVideoTracks()[0]; if (oldVideoTrack) { oldVideoTrack.stop(); videoStream.removeTrack(oldVideoTrack); } videoStream.addTrack(newVideoTrack); const localVid = document.getElementById('local-video'); if(localVid) localVid.srcObject = videoStream; } catch (e) { currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'; } };
